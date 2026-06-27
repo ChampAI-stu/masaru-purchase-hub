@@ -96,8 +96,10 @@
   tbody tr:hover{background:#F8FAFC}
   tbody td{padding:13px 14px;vertical-align:middle}
   .pname{font-weight:600}
-  .sku{font-family:'Courier New',monospace;font-size:12px;color:var(--muted);background:#F1F5F9;
-    padding:3px 8px;border-radius:5px;border:1px solid var(--line);white-space:nowrap}
+  .sku{font-family:'Courier New',monospace;font-size:13px;font-weight:600;color:var(--text);background:#F1F5F9;
+    padding:3px 9px;border-radius:5px;border:1px solid var(--line);white-space:nowrap}
+  .po-tag{font-family:'Courier New',monospace;font-size:13px;font-weight:600;color:var(--blue);
+    background:var(--blue-bg);padding:3px 9px;border-radius:5px;border:1px solid #378ADD44;white-space:nowrap}
   .eta-soon{color:var(--amber);font-weight:600}
   /* ETA badge ใกล้เข้า / เลยกำหนด */
   .eta-tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;
@@ -632,7 +634,7 @@ function render(){
     return `<tr data-id="${o.id}" class="${rowClass}">
       <td style="color:var(--muted);font-size:12px">${String(i+1).padStart(3,'0')}</td>
       <td>${o.sku?`<span class="sku">${esc(o.sku)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
-      <td>${o.po_number?`<span class="sku">${esc(o.po_number)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+      <td>${o.po_number?`<span class="po-tag">${esc(o.po_number)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
       <td><span class="pname">${esc(o.product_name)}</span></td>
       <td>${o.quantity?o.quantity.toLocaleString()+' pcs':'—'}</td>
       ${costCell}
