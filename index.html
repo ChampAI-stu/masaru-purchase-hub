@@ -284,6 +284,8 @@
         <option value="สั่งแล้ว">สั่งแล้ว</option>
         <option value="อยู่ระหว่างขนส่ง">อยู่ระหว่างขนส่ง</option>
         <option value="เข้าคลังแล้ว">เข้าคลังแล้ว</option>
+        <option value="__soon__">🔥 ใกล้เข้า (≤7 วัน)</option>
+        <option value="__over__">⚠️ เลยกำหนด</option>
       </select>
       <button class="add-btn" id="addBtn" style="display:none">+ เพิ่ม PO</button>
     </div>
@@ -604,7 +606,10 @@ function render(){
     const matchQ = !q || (o.sku||'').toLowerCase().includes(q)
       || (o.note||'').toLowerCase().includes(q)
       || (o.po_number||'').toLowerCase().includes(q);
-    const matchS = !sf || o.status === sf;
+    let matchS;
+    if(sf === '__soon__')      matchS = etaState(o.eta, o.status) === 'soon';
+    else if(sf === '__over__') matchS = etaState(o.eta, o.status) === 'over';
+    else                       matchS = !sf || o.status === sf;
     return matchQ && matchS;
   });
   rows = applySort(rows);
