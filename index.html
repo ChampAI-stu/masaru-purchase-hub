@@ -1087,10 +1087,14 @@ function handleImportFile(e){
       };
       if(ci.sku < 0){ toast('ไม่พบคอลัมน์ SKU — โหลดเทมเพลตไปใช้นะคะ'); return; }
       importRecords = [];
+      let skippedVoid = 0;
       for(let i=1;i<rows.length;i++){
         const r = rows[i];
         const sku = String(r[ci.sku]||'').trim();
         if(!sku) continue;
+        // ข้ามรายการที่เป็นโมฆะ ไม่เอาเข้าระบบ
+        const erpStatusRaw = ci.status>=0 ? String(r[ci.status]||'').trim() : '';
+        if(erpStatusRaw === 'โมฆะ'){ skippedVoid++; continue; }
         const recvRaw = ci.recv>=0 ? r[ci.recv] : '';
         const qtyRaw = ci.qty>=0 ? r[ci.qty] : '';
         importRecords.push({
@@ -1103,7 +1107,11 @@ function handleImportFile(e){
           _erp: ci.status>=0 ? mapStatus(r[ci.status]) : 'อยู่ระหว่างสั่งซื้อ'   // สถานะ ERP (ไว้คำนวณ)
         });
       }
-      if(importRecords.length === 0){ toast('ไม่พบรายการที่มี SKU'); return; }
+      window._skippedVoid = skippedVoid;   // ไว้แจ้งผู้ใช้ในตัวอย่าง
+      if(importRecords.length === 0){
+        toast(skippedVoid>0 ? `ไม่มีรายการนำเข้า (ข้ามโมฆะ ${skippedVoid} รายการ)` : 'ไม่พบรายการที่มี SKU');
+        return;
+      }
       showImportPreview();
     } catch(err){
       console.error(err); toast('อ่านไฟล์ไม่สำเร็จ: '+err.message);
@@ -1115,6 +1123,8 @@ function handleImportFile(e){
 
 function showImportPreview(){
   $('importCount').textContent = importRecords.length;
+  const skipped = window._skippedVoid || 0;
+  if(skipped > 0) toast(`ข้ามรายการโมฆะ ${skipped} รายการ`);
   const provisional = r => computeStatusMerged(r._erp, r.quantity||0, r.received_qty, null);
   $('importPreviewBody').innerHTML = importRecords.slice(0,50).map(r => `<tr>
     <td style="padding:7px 10px">${esc(r.po_number||'—')}</td>
