@@ -159,9 +159,9 @@
   /* รายการ SKU หลายบรรทัด */
   .sku-section-label{font-size:14px;font-weight:600;color:var(--navy);margin:20px 0 10px;
     padding-top:16px;border-top:1px solid var(--line)}
-  .sku-lines-head{display:grid;grid-template-columns:1fr 90px 34px;gap:8px;
+  .sku-lines-head{display:grid;grid-template-columns:1fr 80px 80px 34px;gap:8px;
     font-size:11px;color:var(--muted);margin-bottom:6px;padding:0 2px}
-  .sku-line{display:grid;grid-template-columns:1fr 90px 34px;gap:8px;margin-bottom:8px;
+  .sku-line{display:grid;grid-template-columns:1fr 80px 80px 34px;gap:8px;margin-bottom:8px;
     align-items:center}
   .sku-line input{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px}
   .sku-line input:focus{outline:none;border-color:var(--navy-light);box-shadow:0 0 0 3px #2E75B622}
@@ -455,6 +455,7 @@
     <div class="sku-lines-head">
       <span>SKU / รหัสสินค้า</span>
       <span>จำนวน</span>
+      <span>จำนวนที่เข้า</span>
       <span></span>
     </div>
     <div id="skuLines"></div>
@@ -915,6 +916,7 @@ function addSkuLine(vals = {}, allowDelete = true){
   line.innerHTML = `
     <input type="text" class="sl-sku" placeholder="MCG-450N" value="${vals.sku ? esc(vals.sku) : ''}">
     <input type="number" class="sl-qty" placeholder="0" min="0" value="${vals.qty != null ? vals.qty : ''}">
+    <input type="number" class="sl-recv" placeholder="0" min="0" value="${vals.recv != null ? vals.recv : ''}">
     <button type="button" class="sku-line-del" title="ลบ">&times;</button>`;
   line.querySelector('.sku-line-del').addEventListener('click', () => {
     const lines = $('skuLines').querySelectorAll('.sku-line');
@@ -940,7 +942,7 @@ window.openEdit = function(id){
   $('editId').value=o.id; $('mPO').value=o.po_number||'';
   $('mEta').value=o.eta||''; $('mStatus').value=o.status||'รอยืนยัน'; $('mNote').value=o.note||'';
   $('skuLines').innerHTML='';
-  addSkuLine({ sku:o.sku, qty:o.quantity });
+  addSkuLine({ sku:o.sku, qty:o.quantity, recv:(o.received_qty!=null)?o.received_qty:null });
   $('addSkuLineBtn').style.display='none';   // แก้ไขทีละรายการ ไม่เพิ่มหลาย SKU
   $('modalBg').style.display='flex';
 };
@@ -948,10 +950,14 @@ window.openEdit = function(id){
 function closeModal(){ $('modalBg').style.display='none'; }
 
 function collectSkuLines(){
-  return [...$('skuLines').querySelectorAll('.sku-line')].map(l => ({
-    sku: l.querySelector('.sl-sku').value.trim(),
-    qty: parseInt(l.querySelector('.sl-qty').value) || 0
-  })).filter(x => x.sku);   // เอาเฉพาะบรรทัดที่มี SKU
+  return [...$('skuLines').querySelectorAll('.sku-line')].map(l => {
+    const recvVal = l.querySelector('.sl-recv').value;
+    return {
+      sku: l.querySelector('.sl-sku').value.trim(),
+      qty: parseInt(l.querySelector('.sl-qty').value) || 0,
+      recv: recvVal === '' ? null : (parseInt(recvVal) || 0)
+    };
+  }).filter(x => x.sku);   // เอาเฉพาะบรรทัดที่มี SKU
 }
 
 async function saveOrder(){
@@ -973,13 +979,13 @@ async function saveOrder(){
     // แก้ไข: อัพเดทแถวเดียว (SKU แรก)
     const ln = lines[0];
     ({ error } = await sb.from('purchase_orders')
-      .update({ ...shared, sku: ln.sku, quantity: ln.qty }).eq('id', id));
+      .update({ ...shared, sku: ln.sku, quantity: ln.qty, received_qty: ln.recv }).eq('id', id));
   } else {
     // เพิ่มใหม่: สร้างหลายแถว แถวละ SKU (ใช้ header PO ร่วมกัน)
     const email = (await sb.auth.getUser()).data.user?.email || 'purchase';
     for(const ln of lines){
       const res = await sb.from('purchase_orders')
-        .insert({ ...shared, sku: ln.sku, quantity: ln.qty, created_by: email })
+        .insert({ ...shared, sku: ln.sku, quantity: ln.qty, received_qty: ln.recv, created_by: email })
         .select('id').single();
       if(res.error){ error = res.error; break; }
     }
