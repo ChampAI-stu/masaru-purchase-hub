@@ -306,7 +306,7 @@
     <div class="summary">
       <div class="sum-card"><div class="sum-label">📋 PO ทั้งหมด</div>
         <div class="sum-val" id="sumTotal">0</div><div class="sum-sub" id="sumTotalQty">รวม 0 ชิ้น</div></div>
-      <div class="sum-card"><div class="sum-label">⏳ รอยืนยัน</div>
+      <div class="sum-card"><div class="sum-label">🛒 อยู่ระหว่างสั่งซื้อ</div>
         <div class="sum-val" id="sumWait" style="color:var(--amber)">0</div><div class="sum-sub">รายการ</div></div>
       <div class="sum-card"><div class="sum-label">🚚 อยู่ระหว่างขนส่ง</div>
         <div class="sum-val" id="sumTransit" style="color:var(--purple)">0</div><div class="sum-sub" id="sumTransitQty">0 ชิ้น</div></div>
@@ -325,9 +325,9 @@
       </div>
       <select class="filter-sel" id="statusFilter">
         <option value="">สถานะทั้งหมด</option>
-        <option value="รอยืนยัน">รอยืนยัน</option>
-        <option value="สั่งแล้ว">สั่งแล้ว</option>
+        <option value="อยู่ระหว่างสั่งซื้อ">อยู่ระหว่างสั่งซื้อ</option>
         <option value="อยู่ระหว่างขนส่ง">อยู่ระหว่างขนส่ง</option>
+        <option value="รอนำส่งเข้าคลัง">รอนำส่งเข้าคลัง</option>
         <option value="เข้าคลังแล้ว">เข้าคลังแล้ว</option>
         <option value="ยกเลิก">ยกเลิก</option>
         <option value="__soon__">🔥 ใกล้เข้า (≤7 วัน)</option>
@@ -434,9 +434,9 @@
       <div class="m-field">
         <label>สถานะ PO</label>
         <select id="mStatus">
-          <option value="รอยืนยัน">รอยืนยัน</option>
-          <option value="สั่งแล้ว">สั่งแล้ว</option>
+          <option value="อยู่ระหว่างสั่งซื้อ">อยู่ระหว่างสั่งซื้อ</option>
           <option value="อยู่ระหว่างขนส่ง">อยู่ระหว่างขนส่ง</option>
+          <option value="รอนำส่งเข้าคลัง">รอนำส่งเข้าคลัง</option>
           <option value="เข้าคลังแล้ว">เข้าคลังแล้ว</option>
           <option value="ยกเลิก">ยกเลิก</option>
         </select>
@@ -497,7 +497,7 @@
         <table style="font-size:12px"><thead><tr>
           <th style="padding:8px 10px">เลขที่ PO</th><th style="padding:8px 10px">SKU</th>
           <th style="padding:8px 10px">จำนวน</th><th style="padding:8px 10px">เข้าแล้ว</th><th style="padding:8px 10px">วันที่เข้าคลัง</th>
-          <th style="padding:8px 10px">สถานะ</th><th style="padding:8px 10px">หมายเหตุ</th>
+          <th style="padding:8px 10px">สถานะ</th>
         </tr></thead><tbody id="importPreviewBody"></tbody></table>
       </div>
     </div>
@@ -525,7 +525,7 @@ let pendingFlash = new Set();   // id แถวที่เพิ่งเปล
 let sortState = { key: null, dir: 'asc' };   // การเรียงคอลัมน์
 let currentPage = 1;
 const PAGE_SIZE = 50;
-const STATUS_ORDER = { 'รอยืนยัน':1, 'สั่งแล้ว':2, 'อยู่ระหว่างขนส่ง':3, 'เข้าคลังแล้ว':4, 'ยกเลิก':9 };
+const STATUS_ORDER = { 'อยู่ระหว่างสั่งซื้อ':1, 'อยู่ระหว่างขนส่ง':2, 'รอนำส่งเข้าคลัง':3, 'เข้าคลังแล้ว':4, 'ยกเลิก':9 };
 
 // ====================================================================
 // 📢 ประกาศ — เก็บใน Supabase ฝ่ายจัดซื้อแก้จากหน้าเว็บได้
@@ -535,11 +535,11 @@ let announceData = null;
 
 
 const STATUS_CLASS = {
-  'รอยืนยัน':'b-wait','สั่งแล้ว':'b-ordered',
-  'อยู่ระหว่างขนส่ง':'b-transit','เข้าคลังแล้ว':'b-arrived','ยกเลิก':'b-cancel'
+  'อยู่ระหว่างสั่งซื้อ':'b-wait','อยู่ระหว่างขนส่ง':'b-transit',
+  'รอนำส่งเข้าคลัง':'b-ordered','เข้าคลังแล้ว':'b-arrived','ยกเลิก':'b-cancel'
 };
 const STATUS_ICON = {
-  'รอยืนยัน':'⏳','สั่งแล้ว':'✓','อยู่ระหว่างขนส่ง':'🚚','เข้าคลังแล้ว':'📦','ยกเลิก':'✕'
+  'อยู่ระหว่างสั่งซื้อ':'🛒','อยู่ระหว่างขนส่ง':'🚚','รอนำส่งเข้าคลัง':'📥','เข้าคลังแล้ว':'📦','ยกเลิก':'✕'
 };
 
 // ===== ELEMENTS =====
@@ -865,7 +865,7 @@ function renderSummary(){
   $('sumTotal').textContent = poCount.toLocaleString();
   $('sumTotalQty').textContent = `${allOrders.length.toLocaleString()} SKU · ${sumQty(allOrders).toLocaleString()} ชิ้น`;
   // รอยืนยัน
-  $('sumWait').textContent = allOrders.filter(o=>o.status==='รอยืนยัน').length;
+  $('sumWait').textContent = allOrders.filter(o=>o.status==='อยู่ระหว่างสั่งซื้อ').length;
   // อยู่ระหว่างขนส่ง + ชิ้น
   const transit = allOrders.filter(o=>o.status==='อยู่ระหว่างขนส่ง');
   $('sumTransit').textContent = transit.length;
@@ -929,7 +929,7 @@ function addSkuLine(vals = {}, allowDelete = true){
 function openAdd(){
   $('modalTitle').textContent = 'เพิ่ม PO ใหม่';
   $('editId').value=''; $('mPO').value=''; $('mEta').value='';
-  $('mStatus').value='รอยืนยัน'; $('mNote').value='';
+  $('mStatus').value='อยู่ระหว่างสั่งซื้อ'; $('mNote').value='';
   $('skuLines').innerHTML='';
   addSkuLine();                          // เริ่มด้วย 1 บรรทัดว่าง
   $('addSkuLineBtn').style.display='block';
@@ -940,7 +940,7 @@ window.openEdit = function(id){
   const o = allOrders.find(x=>x.id===id); if(!o) return;
   $('modalTitle').textContent = 'แก้ไขรายการ';
   $('editId').value=o.id; $('mPO').value=o.po_number||'';
-  $('mEta').value=o.eta||''; $('mStatus').value=o.status||'รอยืนยัน'; $('mNote').value=o.note||'';
+  $('mEta').value=o.eta||''; $('mStatus').value=o.status||'อยู่ระหว่างสั่งซื้อ'; $('mNote').value=o.note||'';
   $('skuLines').innerHTML='';
   addSkuLine({ sku:o.sku, qty:o.quantity, recv:(o.received_qty!=null)?o.received_qty:null });
   $('addSkuLineBtn').style.display='none';   // แก้ไขทีละรายการ ไม่เพิ่มหลาย SKU
@@ -1028,32 +1028,27 @@ $('importConfirm').addEventListener('click', confirmImport);
 
 function downloadTemplate(){
   const ws = XLSX.utils.aoa_to_sheet([
-    ['เลขที่ PO','SKU','จำนวน','จำนวนที่เข้า','วันที่เข้าคลัง','สถานะ','หมายเหตุ'],
-    ['1001','MCG-450N',200,0,'2026-07-15','สั่งแล้ว','ตัวอย่าง — ลบแถวนี้ได้'],
-    ['1001','SCG-630N',150,150,'2026-07-15','สั่งแล้ว',''],
+    ['เลขที่ PO','SKU','จำนวน','จำนวนที่เข้า','วันที่เข้าคลัง','สถานะ'],
+    ['1001','MCG-450N',200,0,'2026-07-15','อยู่ระหว่างสั่งซื้อ'],
+    ['1001','SCG-630N',150,150,'2026-07-15','เข้าคลังแล้ว'],
   ]);
-  ws['!cols'] = [{wch:12},{wch:16},{wch:10},{wch:12},{wch:16},{wch:18},{wch:24}];
+  ws['!cols'] = [{wch:12},{wch:16},{wch:10},{wch:12},{wch:16},{wch:18}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'PO');
   XLSX.writeFile(wb, 'template_po_masaru.xlsx');
 }
 
-// แปลงสถานะจาก ERP → สถานะในระบบ (ไม่รู้จัก = รอยืนยัน)
+// แปลงสถานะจาก ERP → สถานะในระบบ (ไม่รู้จัก = อยู่ระหว่างสั่งซื้อ)
 const STATUS_MAP = {
   // สถานะจริงจาก ERP (ยืนยันแล้ว)
-  'รออนุมัติ':'รอยืนยัน',
-  'อนุมัติเรียบร้อย':'สั่งแล้ว',
+  'รออนุมัติ':'อยู่ระหว่างสั่งซื้อ',
+  'อนุมัติเรียบร้อย':'อยู่ระหว่างสั่งซื้อ',
   'สำเร็จ':'เข้าคลังแล้ว',
-  'โมฆะ':'ยกเลิก',
-  // สำรองอื่นๆ
-  'รอยืนยัน':'รอยืนยัน', 'อนุมัติแล้ว':'สั่งแล้ว', 'สั่งแล้ว':'สั่งแล้ว',
-  'อยู่ระหว่างขนส่ง':'อยู่ระหว่างขนส่ง', 'กำลังจัดส่ง':'อยู่ระหว่างขนส่ง', 'เข้าคลังบางส่วน':'อยู่ระหว่างขนส่ง',
-  'เข้าคลังแล้ว':'เข้าคลังแล้ว', 'เข้าคลังสำเร็จ':'เข้าคลังแล้ว',
-  'ยกเลิก':'ยกเลิก'
+  'โมฆะ':'ยกเลิก'
 };
 function mapStatus(s){
   s = String(s||'').trim();
-  return STATUS_MAP[s] || 'รอยืนยัน';
+  return STATUS_MAP[s] || 'อยู่ระหว่างสั่งซื้อ';
 }
 
 function toISODate(v){
@@ -1107,8 +1102,8 @@ function handleImportFile(e){
           quantity: (qtyRaw==='' || qtyRaw==null) ? null : (parseInt(qtyRaw)||0),
           received_qty: (recvRaw==='' || recvRaw==null) ? null : (parseInt(recvRaw)||0),
           eta: ci.eta>=0 ? toISODate(r[ci.eta]) : null,
-          note: ci.note>=0 ? (String(r[ci.note]||'').trim()||null) : null,
-          _erp: ci.status>=0 ? mapStatus(r[ci.status]) : 'รอยืนยัน'   // สถานะ ERP (ไว้คำนวณ)
+          note: null,   // ไม่อ่านหมายเหตุจากไฟล์ — คงค่าเดิมในเว็บไว้
+          _erp: ci.status>=0 ? mapStatus(r[ci.status]) : 'อยู่ระหว่างสั่งซื้อ'   // สถานะ ERP (ไว้คำนวณ)
         });
       }
       if(importRecords.length === 0){ toast('ไม่พบรายการที่มี SKU'); return; }
@@ -1131,8 +1126,7 @@ function showImportPreview(){
     <td style="padding:7px 10px">${r.received_qty!=null?r.received_qty:'—'}</td>
     <td style="padding:7px 10px">${r.eta?fmtDate(r.eta):'—'}</td>
     <td style="padding:7px 10px">${esc(provisional(r))}</td>
-    <td style="padding:7px 10px">${esc(r.note||'—')}</td>
-  </tr>`).join('') + (importRecords.length>50 ? `<tr><td colspan="7" style="padding:8px;text-align:center;color:var(--muted)">…และอีก ${importRecords.length-50} รายการ</td></tr>` : '');
+  </tr>`).join('') + (importRecords.length>50 ? `<tr><td colspan="6" style="padding:8px;text-align:center;color:var(--muted)">…และอีก ${importRecords.length-50} รายการ</td></tr>` : '');
   $('importPreview').style.display = 'block';
   $('importConfirm').disabled = false; $('importConfirm').style.opacity = '1';
 }
@@ -1142,8 +1136,8 @@ function computeStatusMerged(erp, ordered, received, existingStatus){
   if(erp === 'ยกเลิก') return 'ยกเลิก';
   if(received != null && ordered > 0 && received >= ordered) return 'เข้าคลังแล้ว';
   if(existingStatus != null) return existingStatus;                 // คงสถานะเดิม
-  if(received != null && received > 0) return 'อยู่ระหว่างขนส่ง';
-  return erp === 'เข้าคลังแล้ว' ? 'อยู่ระหว่างขนส่ง' : erp;
+  if(received != null && received > 0) return 'รอนำส่งเข้าคลัง';
+  return erp === 'เข้าคลังแล้ว' ? 'รอนำส่งเข้าคลัง' : erp;
 }
 
 async function confirmImport(){
