@@ -264,8 +264,8 @@
     <div class="field">
       <label>ฝ่าย</label>
       <select id="suRole" style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px">
-        <option value="marketing">การตลาด (ดูอย่างเดียว)</option>
-        <option value="purchase">จัดซื้อ (แก้ไขได้)</option>
+        <option value="marketing">การตลาด</option>
+        <option value="purchase">จัดซื้อ</option>
       </select>
     </div>
     <div class="field">
@@ -618,13 +618,13 @@ function enterApp(session){
   $('app').style.display='block';
   // role UI
   if(currentRole === 'purchase'){
-    $('rolePill').textContent = '📦 ฝ่ายจัดซื้อ (แก้ไขได้)';
+    $('rolePill').textContent = '📦 ฝ่ายจัดซื้อ';
     $('addBtn').style.display='block';
     $('importBtn').style.display='block';
     $('actionsHead').style.display='';
     $('editAnnounceBtn').style.display='block';
   } else {
-    $('rolePill').textContent = '👁️ ฝ่ายการตลาด (ดูอย่างเดียว)';
+    $('rolePill').textContent = '👁️ ฝ่ายการตลาด';
   }
   loadOrders();
   subscribeRealtime();
