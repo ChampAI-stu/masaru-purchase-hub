@@ -525,13 +525,13 @@
       <h2>🗑️ ลบข้อมูลเก่า</h2>
       <button class="modal-close" id="delOldClose">&times;</button>
     </div>
-    <div class="m-field">
-      <label>ลบแผนรับสินค้า "ก่อน" วันที่</label>
-      <input type="date" id="delOldDate">
-      <div id="delOldCount" style="font-size:13px;margin-top:6px"></div>
+    <div class="m-row">
+      <div class="m-field"><label>ตั้งแต่วันที่</label><input type="date" id="delFrom"></div>
+      <div class="m-field"><label>ถึงวันที่ (เว้นว่าง = วันเดียว)</label><input type="date" id="delTo"></div>
     </div>
+    <div id="delOldCount" style="font-size:13px;margin-bottom:6px"></div>
     <div style="background:var(--red-bg);color:var(--red);border-radius:9px;padding:10px 12px;font-size:12.5px;line-height:1.6;margin-bottom:6px">
-      ⚠️ ลบแล้วกู้คืนไม่ได้ — เที่ยวส่งทุกอันก่อนวันที่นี้จะถูกลบทั้งหมด
+      ⚠️ ลบแล้วกู้คืนไม่ได้ — เที่ยวส่งทุกอันในช่วงวันที่ที่เลือกจะถูกลบทั้งหมด
     </div>
     <div class="modal-foot">
       <button class="btn-cancel" id="delOldCancel">ยกเลิก</button>
@@ -1672,16 +1672,9 @@ function renderPlan(){
 
   const html = weekDates.map(date => {
     const dayTrips = byDate[date] || [];
+    if(dayTrips.length === 0) return '';   // วันไหนไม่มีแผน ไม่ต้องแสดง
     const dow = new Date(date).getDay();
     const col = DAY_COLORS[dow];
-    if(dayTrips.length === 0){
-      if(q) return '';   // ระหว่างค้นหา ไม่แสดงวันว่าง
-      return `<div class="plan-day" style="border-top:4px solid ${col.ac}">
-        <div class="plan-day-head" style="background:${col.bg};color:${col.ac}">
-          <span class="plan-day-title">📦 วัน${DAY_NAMES[dow]}ที่ ${fmtDayThai(date)}</span>
-          <span class="plan-day-sum" style="color:${col.ac}">— ยังไม่มีแผน —</span>
-        </div></div>`;
-    }
     let sumIn=0, sumClear=0, sumCartons=0, sumCubic=0;
     dayTrips.forEach(t => t.items.forEach(i => {
       sumIn += (i.qty_in||0); sumClear += (i.clear_order||0);
@@ -1968,28 +1961,36 @@ $('delOldBtn').addEventListener('click', openDelOld);
 $('delOldClose').addEventListener('click', () => $('delOldBg').style.display='none');
 $('delOldCancel').addEventListener('click', () => $('delOldBg').style.display='none');
 $('delOldBg').addEventListener('click', e => { if(e.target===$('delOldBg')) $('delOldBg').style.display='none'; });
-$('delOldDate').addEventListener('change', updateDelOldCount);
+$('delFrom').addEventListener('change', updateDelOldCount);
+$('delTo').addEventListener('change', updateDelOldCount);
 $('delOldDo').addEventListener('click', doDelOld);
 
 function openDelOld(){
-  $('delOldDate').value=''; $('delOldCount').textContent='';
+  $('delFrom').value=''; $('delTo').value=''; $('delOldCount').textContent='';
   $('delOldBg').style.display='flex';
 }
+function delRange(){
+  const from = $('delFrom').value;
+  const to = $('delTo').value || from;   // เว้น "ถึง" = วันเดียว
+  return { from, to };
+}
 function updateDelOldCount(){
-  const d = $('delOldDate').value;
-  if(!d){ $('delOldCount').textContent=''; return; }
-  const n = allTrips.filter(t => t.plan_date < d).length;
-  $('delOldCount').textContent = `จะลบ ${n} เที่ยวส่ง (ก่อนวันที่ ${fmtDate(d)})`;
+  const { from, to } = delRange();
+  if(!from){ $('delOldCount').textContent=''; return; }
+  const n = allTrips.filter(t => t.plan_date >= from && t.plan_date <= to).length;
+  const label = (to===from) ? `วันที่ ${fmtDate(from)}` : `${fmtDate(from)} – ${fmtDate(to)}`;
+  $('delOldCount').textContent = `จะลบ ${n} เที่ยวส่ง (${label})`;
   $('delOldCount').style.color = n>0 ? 'var(--red)' : 'var(--muted)';
 }
 async function doDelOld(){
-  const d = $('delOldDate').value;
-  if(!d){ toast('เลือกวันที่ก่อน'); return; }
-  const victims = allTrips.filter(t => t.plan_date < d);
-  if(victims.length===0){ toast('ไม่มีข้อมูลเก่ากว่าวันที่นี้'); return; }
-  if(!confirm(`ลบแผนรับสินค้า ${victims.length} เที่ยวส่ง ก่อนวันที่ ${fmtDate(d)}?\n(ลบแล้วกู้คืนไม่ได้)`)) return;
+  const { from, to } = delRange();
+  if(!from){ toast('เลือกวันที่ก่อน'); return; }
+  const victims = allTrips.filter(t => t.plan_date >= from && t.plan_date <= to);
+  if(victims.length===0){ toast('ไม่มีข้อมูลในช่วงที่เลือก'); return; }
+  const label = (to===from) ? `วันที่ ${fmtDate(from)}` : `${fmtDate(from)} ถึง ${fmtDate(to)}`;
+  if(!confirm(`ลบแผนรับสินค้า ${victims.length} เที่ยวส่ง (${label})?\n(ลบแล้วกู้คืนไม่ได้)`)) return;
   $('delOldDo').disabled=true; $('delOldDo').textContent='กำลังลบ...';
-  const { error } = await sb.from('receipt_trips').delete().lt('plan_date', d);
+  const { error } = await sb.from('receipt_trips').delete().gte('plan_date', from).lte('plan_date', to);
   $('delOldDo').disabled=false; $('delOldDo').textContent='ลบข้อมูลเก่า';
   if(error){ toast('ลบไม่สำเร็จ: '+error.message); return; }
   $('delOldBg').style.display='none';
