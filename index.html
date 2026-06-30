@@ -233,24 +233,28 @@
   .tab-btn:hover{color:var(--navy)}
   .tab-btn.active{color:var(--navy);border-bottom-color:var(--gold)}
 
-  /* ===== แผนรับสินค้า ===== */
-  .plan-day{margin-bottom:26px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
-  .plan-day-head{background:var(--navy);color:#fff;padding:12px 18px;display:flex;
-    align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  /* ===== แผนรับสินค้า (ตาราง) ===== */
+  .plan-day{margin-bottom:24px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+  .plan-day-head{padding:12px 18px;display:flex;align-items:center;justify-content:space-between;
+    flex-wrap:wrap;gap:8px}
   .plan-day-title{font-size:16px;font-weight:700}
-  .plan-day-sum{font-size:13px;color:var(--gold);font-weight:500}
-  .trip{border-top:1px solid var(--line);padding:14px 18px}
-  .trip:first-child{border-top:none}
-  .trip-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
-  .carrier-tag{display:inline-block;font-size:13px;font-weight:600;padding:4px 14px;border-radius:20px;color:#fff}
-  .trip-note{flex:1;min-width:160px;font-size:13px;color:var(--text)}
-  .trip-acts{display:flex;gap:6px}
-  .trip-table{width:100%;border-collapse:collapse;font-size:13px}
-  .trip-table th{text-align:left;color:#7A5C00;font-weight:600;padding:8px 10px;font-size:12.5px;
-    background:var(--gold-soft);border-bottom:1px solid #E5D08A}
-  .trip-table thead tr{background:var(--gold-soft)}
-  .trip-table td{padding:7px 10px;border-bottom:1px solid #F1F5F9}
-  .trip-table tr:last-child td{border-bottom:none}
+  .plan-day-sum{font-size:13px;font-weight:600}
+  .carrier-tag{display:inline-block;font-size:13px;font-weight:600;padding:4px 14px;border-radius:20px;color:#fff;white-space:nowrap}
+  .trip-acts{display:flex;gap:6px;justify-content:center}
+  .plan-table{width:100%;border-collapse:collapse;font-size:13px}
+  .plan-table th{background:#F1F5F9;color:#475569;font-weight:600;padding:10px 12px;
+    text-align:left;font-size:12.5px;white-space:nowrap;border-bottom:1px solid var(--line)}
+  .plan-table td{padding:9px 12px;border-bottom:1px solid #EEF2F7;vertical-align:middle}
+  .plan-table .num{text-align:right;white-space:nowrap}
+  .plan-table th.num{text-align:right}
+  .plan-table .po-cell{font-weight:600;color:var(--blue);border-right:1px solid #EEF2F7}
+  .plan-table .note-cell{font-size:12.5px;color:var(--text);border-left:1px solid #EEF2F7;
+    border-right:1px solid #EEF2F7;max-width:260px}
+  .plan-table .carrier-cell{text-align:center}
+  .plan-table tr.trip-start td{border-top:2px solid #CBD5E1}
+  .plan-table .plan-subtotal td{background:#F8FAFC;font-weight:700;border-top:2px solid var(--line);
+    border-bottom:none}
+  /* แถวกรอกในฟอร์มเที่ยว */
   .trip-lines-head{display:grid;grid-template-columns:1fr 1fr 80px 90px 34px;gap:8px;
     font-size:11px;color:var(--muted);margin-bottom:6px;padding:0 2px}
   .trip-line{display:grid;grid-template-columns:1fr 1fr 80px 90px 34px;gap:8px;margin-bottom:8px;align-items:center}
@@ -1574,11 +1578,21 @@ function fmtDayThai(d){
   const months=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
   const dt=new Date(d); return `${dt.getDate()} ${months[dt.getMonth()]} ${dt.getFullYear()+543}`;
 }
+// สีประจำวัน (โทนสว่าง): bg=พื้น, ac=ตัวอักษร/ขอบ
+const DAY_NAMES = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+const DAY_COLORS = {
+  0:{bg:'#FDE8E8',ac:'#C0392B'},  // อาทิตย์ แดง
+  1:{bg:'#FFF6CC',ac:'#A88207'},  // จันทร์ เหลือง
+  2:{bg:'#FCE4EC',ac:'#C2185B'},  // อังคาร ชมพู
+  3:{bg:'#E6F4EA',ac:'#1E7145'},  // พุธ เขียว
+  4:{bg:'#FFEAD6',ac:'#C05621'},  // พฤหัสบดี ส้ม
+  5:{bg:'#E3F2FD',ac:'#185FA5'},  // ศุกร์ ฟ้า
+  6:{bg:'#EDE7F6',ac:'#6A4FB3'},  // เสาร์ ม่วง
+};
 
 function renderPlan(){
   const q = $('planSearch').value.toLowerCase().trim();
   const df = $('planDateFilter').value;
-  // กรอง
   let trips = allTrips.filter(t => {
     if(df && t.plan_date !== df) return false;
     if(!q) return true;
@@ -1586,7 +1600,6 @@ function renderPlan(){
       ...t.items.map(i=>(i.po_number||'')+' '+(i.sku||''))].join(' ').toLowerCase();
     return hay.includes(q);
   });
-  // จัดกลุ่มตามวันที่
   const byDate = {};
   trips.forEach(t => { (byDate[t.plan_date] = byDate[t.plan_date] || []).push(t); });
   const dates = Object.keys(byDate).sort((a,b)=>new Date(b)-new Date(a));
@@ -1597,37 +1610,67 @@ function renderPlan(){
     return;
   }
   const canEdit = currentRole==='purchase';
+  const extraCols = canEdit ? 3 : 2;   // หมายเหตุ + ขนส่ง (+ จัดการ)
+
   $('planContent').innerHTML = dates.map(date => {
     const dayTrips = byDate[date];
+    const dow = new Date(date).getDay();
+    const col = DAY_COLORS[dow];
     let sumIn=0, sumClear=0;
     dayTrips.forEach(t => t.items.forEach(i => { sumIn += (i.qty_in||0); sumClear += (i.clear_order||0); }));
-    const tripsHtml = dayTrips.map(t => {
-      const acts = canEdit ? `<div class="trip-acts">
-        <button class="act-btn" onclick="openEditTrip('${t.id}')">✏️</button>
-        <button class="act-btn act-del" onclick="delTrip('${t.id}')">🗑️</button></div>` : '';
-      const rows = t.items.length ? t.items.map(i => `<tr>
-        <td>${i.po_number?esc(i.po_number):'—'}</td>
-        <td>${i.sku?esc(i.sku):'—'}</td>
-        <td>${i.qty_in!=null?i.qty_in.toLocaleString():0}</td>
-        <td>${i.clear_order!=null?i.clear_order.toLocaleString():0}</td>
-      </tr>`).join('') : `<tr><td colspan="4" style="color:var(--muted)">— ไม่มีรายการ —</td></tr>`;
-      return `<div class="trip">
-        <div class="trip-head">
-          ${t.carrier?`<span class="carrier-tag" style="background:${carrierColor(t.carrier)}">${esc(t.carrier)}</span>`:'<span style="color:var(--muted);font-size:13px">— ไม่ระบุขนส่ง —</span>'}
-          <span class="trip-note">${t.note?esc(t.note):''}</span>
-          ${acts}
-        </div>
-        <table class="trip-table"><thead><tr>
-          <th>รหัส PO</th><th>SKU</th><th>ของเข้า</th><th>เคลียออเดอร์</th>
-        </tr></thead><tbody>${rows}</tbody></table>
-      </div>`;
-    }).join('');
-    return `<div class="plan-day">
-      <div class="plan-day-head">
-        <span class="plan-day-title">📦 แผนการรับสินค้า วันที่ ${fmtDayThai(date)}</span>
-        <span class="plan-day-sum">รวม: ของเข้า ${sumIn.toLocaleString()} · เคลียออเดอร์ ${sumClear.toLocaleString()}</span>
+
+    let tbody = '';
+    dayTrips.forEach((t, tripIdx) => {
+      const items = t.items.length ? t.items : [{}];
+      const n = items.length;
+      // รวมเซลล์ PO ที่ติดกัน
+      const poSpan = [];
+      let i=0;
+      while(i<items.length){
+        let j=i;
+        while(j+1<items.length && (items[j+1].po_number||'')===(items[i].po_number||'')) j++;
+        poSpan[i] = j-i+1;
+        for(let k=i+1;k<=j;k++) poSpan[k]=0;
+        i=j+1;
+      }
+      items.forEach((it, idx) => {
+        const startCls = (idx===0 && tripIdx>0) ? ' class="trip-start"' : '';
+        let row = `<tr${startCls}>`;
+        if(poSpan[idx]) row += `<td rowspan="${poSpan[idx]}" class="po-cell">${it.po_number?esc(it.po_number):'—'}</td>`;
+        row += `<td>${it.sku?esc(it.sku):'—'}</td>`;
+        row += `<td class="num">${it.qty_in!=null?it.qty_in.toLocaleString():0}</td>`;
+        row += `<td class="num">${it.clear_order!=null?it.clear_order.toLocaleString():0}</td>`;
+        if(idx===0){
+          row += `<td rowspan="${n}" class="note-cell">${t.note?esc(t.note):'—'}</td>`;
+          row += `<td rowspan="${n}" class="carrier-cell">${t.carrier?`<span class="carrier-tag" style="background:${carrierColor(t.carrier)}">${esc(t.carrier)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>`;
+          if(canEdit) row += `<td rowspan="${n}" class="carrier-cell"><div class="trip-acts">
+            <button class="act-btn" onclick="openEditTrip('${t.id}')">✏️</button>
+            <button class="act-btn act-del" onclick="delTrip('${t.id}')">🗑️</button></div></td>`;
+        }
+        row += '</tr>';
+        tbody += row;
+      });
+    });
+    // แถวรวมท้ายวัน
+    tbody += `<tr class="plan-subtotal">
+      <td></td><td class="num" style="font-weight:700;text-align:right">รวม</td>
+      <td class="num">${sumIn.toLocaleString()}</td><td class="num">${sumClear.toLocaleString()}</td>
+      <td colspan="${extraCols}"></td></tr>`;
+
+    return `<div class="plan-day" style="border-top:4px solid ${col.ac}">
+      <div class="plan-day-head" style="background:${col.bg};color:${col.ac}">
+        <span class="plan-day-title">📦 แผนการรับสินค้า วัน${DAY_NAMES[dow]}ที่ ${fmtDayThai(date)}</span>
+        <span class="plan-day-sum" style="color:${col.ac}">รวม: ของเข้า ${sumIn.toLocaleString()} · เคลียออเดอร์ ${sumClear.toLocaleString()}</span>
       </div>
-      ${tripsHtml}
+      <div class="table-scroll">
+        <table class="plan-table">
+          <thead><tr>
+            <th>รหัส PO</th><th>SKU</th><th class="num">ของเข้า</th><th class="num">เคลียออเดอร์</th>
+            <th>หมายเหตุ</th><th>ขนส่ง</th>${canEdit?'<th>จัดการ</th>':''}
+          </tr></thead>
+          <tbody>${tbody}</tbody>
+        </table>
+      </div>
     </div>`;
   }).join('');
 }
