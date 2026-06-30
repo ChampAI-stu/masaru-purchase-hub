@@ -334,6 +334,7 @@
       </select>
       <button class="add-btn" id="importBtn" style="display:none;background:#1E7145">📥 นำเข้า Excel</button>
       <button class="add-btn" id="addBtn" style="display:none">+ เพิ่ม PO</button>
+      <button class="add-btn" id="bulkDelBtn" style="display:none;background:var(--red)">🗑️ ลบที่เลือก (0)</button>
       <input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="display:none">
     </div>
 
@@ -342,6 +343,9 @@
         <table>
           <thead>
             <tr>
+              <th id="selectHead" style="display:none;width:36px;text-align:center">
+                <input type="checkbox" id="selectAllPage" title="เลือกทั้งหน้า" style="cursor:pointer;width:16px;height:16px">
+              </th>
               <th>#</th>
               <th class="sortable" data-sort="sku">SKU<span class="sort-ind"></span></th>
               <th class="sortable" data-sort="po_number">เลขที่ PO<span class="sort-ind"></span></th>
@@ -523,6 +527,7 @@ let pendingFlash = new Set();   // id แถวที่เพิ่งเปล
 let sortState = { key: null, dir: 'asc' };   // การเรียงคอลัมน์
 let currentPage = 1;
 const PAGE_SIZE = 50;
+let selectedIds = new Set();   // รายการที่ติ๊กไว้เพื่อลบ
 const STATUS_ORDER = { 'อยู่ระหว่างสั่งซื้อ':1, 'อยู่ระหว่างขนส่ง':2, 'รอนำส่งเข้าคลัง':3, 'เข้าคลังแล้ว':4 };
 
 // ====================================================================
@@ -634,6 +639,7 @@ function enterApp(session){
     $('addBtn').style.display='block';
     $('importBtn').style.display='block';
     $('actionsHead').style.display='';
+    $('selectHead').style.display='';
     $('editAnnounceBtn').style.display='block';
   } else {
     $('rolePill').textContent = '👁️ ฝ่ายการตลาด';
@@ -756,7 +762,7 @@ function render(){
   renderSummary();
   const tb = $('tableBody');
   if(rows.length === 0){
-    const colspan = currentRole==='purchase' ? 9 : 8;
+    const colspan = currentRole==='purchase' ? 10 : 8;
     tb.innerHTML = `<tr><td colspan="${colspan}"><div class="empty">
       <div class="big">📋</div>ยังไม่มีรายการ${q||sf?'ที่ตรงกับการค้นหา':''}</div></td></tr>`;
     renderPagination(0);
@@ -792,7 +798,11 @@ function render(){
                   : (recv>0 ? 'color:var(--amber);font-weight:600' : 'color:var(--muted)');
       recvCell = `<span style="${style}">${recv.toLocaleString()}</span>`;
     }
+    const checkCell = currentRole==='purchase'
+      ? `<td style="text-align:center"><input type="checkbox" class="row-check" data-id="${o.id}" ${selectedIds.has(o.id)?'checked':''} style="cursor:pointer;width:16px;height:16px"></td>`
+      : '';
     return `<tr data-id="${o.id}" class="${rowClass}">
+      ${checkCell}
       <td style="color:var(--muted);font-size:12px">${String(startIndex + i + 1).padStart(3,'0')}</td>
       <td>${o.sku?`<span class="sku">${esc(o.sku)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
       <td>${o.po_number?`<span class="po-tag">${esc(o.po_number)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
@@ -818,9 +828,8 @@ function render(){
     });
     pendingFlash.clear();
   }
+  updateBulkUI();
 }
-
-// ===== แบ่งหน้า =====
 function renderPagination(totalRows){
   const pg = $('pagination');
   const totalPages = Math.ceil(totalRows / PAGE_SIZE);
@@ -892,6 +901,57 @@ $('addSkuLineBtn').addEventListener('click', () => addSkuLine());
 $('modalBg').addEventListener('click', e => { if(e.target===$('modalBg')) closeModal(); });
 $('searchInput').addEventListener('input', () => { currentPage=1; render(); });
 $('statusFilter').addEventListener('change', () => { currentPage=1; render(); });
+
+// ===== เลือกหลายรายการเพื่อลบ =====
+$('tableBody').addEventListener('change', e => {
+  if(e.target.classList.contains('row-check')){
+    const id = e.target.dataset.id;
+    if(e.target.checked) selectedIds.add(id); else selectedIds.delete(id);
+    updateBulkUI();
+  }
+});
+$('selectAllPage').addEventListener('change', e => {
+  $('tableBody').querySelectorAll('.row-check').forEach(c => {
+    c.checked = e.target.checked;
+    if(e.target.checked) selectedIds.add(c.dataset.id); else selectedIds.delete(c.dataset.id);
+  });
+  updateBulkUI();
+});
+$('bulkDelBtn').addEventListener('click', bulkDelete);
+
+function updateBulkUI(){
+  const n = selectedIds.size;
+  const btn = $('bulkDelBtn');
+  if(currentRole==='purchase' && n > 0){
+    btn.style.display = 'block';
+    btn.textContent = `🗑️ ลบที่เลือก (${n})`;
+  } else {
+    btn.style.display = 'none';
+  }
+  const checks = [...$('tableBody').querySelectorAll('.row-check')];
+  const sa = $('selectAllPage');
+  if(!sa) return;
+  if(checks.length === 0){ sa.checked = false; sa.indeterminate = false; }
+  else {
+    const c = checks.filter(x=>x.checked).length;
+    sa.checked = c === checks.length;
+    sa.indeterminate = c > 0 && c < checks.length;
+  }
+}
+
+async function bulkDelete(){
+  const ids = [...selectedIds];
+  if(ids.length === 0) return;
+  if(!confirm(`ต้องการลบ ${ids.length} รายการที่เลือกใช่หรือไม่?`)) return;
+  $('bulkDelBtn').disabled = true;
+  const { error } = await sb.from('purchase_orders').delete().in('id', ids);
+  $('bulkDelBtn').disabled = false;
+  if(error){ toast('ลบไม่สำเร็จ: '+error.message); return; }
+  toast(`ลบ ${ids.length} รายการเรียบร้อย`);
+  selectedIds.clear();
+  updateBulkUI();
+  loadOrders();
+}
 
 // คลิกหัวคอลัมน์เพื่อเรียง
 document.querySelectorAll('th[data-sort]').forEach(th => {
