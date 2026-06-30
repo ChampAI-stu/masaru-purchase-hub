@@ -1355,9 +1355,7 @@ function fmtDate(d){
 }
 function fmtDateTime(d){
   if(!d) return '—';
-  const dt=new Date(d);
-  const t=dt.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
-  return `${fmtDate(d)} ${t} น.`;
+  return fmtDate(d);
 }
 function isEtaSoon(d){ if(!d) return false; const diff=(new Date(d)-new Date())/(1000*60*60*24); return diff>=0 && diff<=7; }
 // ===== การเรียงคอลัมน์ =====
