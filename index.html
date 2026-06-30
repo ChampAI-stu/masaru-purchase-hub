@@ -792,10 +792,8 @@ function render(){
       etaCell = `<span class="${est==='soon'?'eta-soon':''}">${fmtDate(o.eta)}</span>${tag}`;
     }
     let recvCell;
-    const recv = o.received_qty;
-    if(recv == null){
-      recvCell = '<span style="color:var(--muted)">—</span>';
-    } else {
+    const recv = o.received_qty != null ? o.received_qty : 0;
+    {
       const ordered = o.quantity || 0;
       const style = (ordered>0 && recv>=ordered) ? 'color:var(--green);font-weight:600'
                   : (recv>0 ? 'color:var(--amber);font-weight:600' : 'color:var(--muted)');
@@ -1203,7 +1201,7 @@ function showImportPreview(){
     <td style="padding:7px 10px">${esc(r.po_number||'—')}</td>
     <td style="padding:7px 10px">${esc(r.sku)}</td>
     <td style="padding:7px 10px">${r.quantity||'—'}</td>
-    <td style="padding:7px 10px">${r.received_qty!=null?r.received_qty:'—'}</td>
+    <td style="padding:7px 10px">${r.received_qty!=null?r.received_qty:0}</td>
     <td style="padding:7px 10px">${r.eta?fmtDate(r.eta):'—'}</td>
     <td style="padding:7px 10px">${esc(provisional(r))}</td>
   </tr>`).join('') + (importRecords.length>50 ? `<tr><td colspan="6" style="padding:8px;text-align:center;color:var(--muted)">…และอีก ${importRecords.length-50} รายการ</td></tr>` : '');
