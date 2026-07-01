@@ -854,7 +854,18 @@ $('logoutBtn').addEventListener('click', async () => {
 });
 
 function enterApp(session){
-  currentRole = session.user?.app_metadata?.user_role || 'marketing';
+  const role = session.user?.app_metadata?.user_role;
+  // อนุญาตเฉพาะบัญชีที่สมัครผ่านเว็บนี้ (มีสิทธิ์ purchase/marketing เท่านั้น)
+  if(role !== 'purchase' && role !== 'marketing'){
+    sb.auth.signOut();
+    $('app').style.display='none';
+    $('loginScreen').style.display='flex';
+    document.querySelector('.login-card').style.display='block';
+    $('signupCard').style.display='none';
+    showLoginErr('บัญชีนี้ไม่มีสิทธิ์เข้าใช้ระบบนี้ — ต้องสมัครสมาชิกผ่านหน้าเว็บนี้เท่านั้น');
+    return;
+  }
+  currentRole = role;
   $('loginScreen').style.display='none';
   $('app').style.display='block';
   // role UI
