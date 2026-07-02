@@ -277,7 +277,7 @@
 <body>
 
 <!-- ============ LOGIN ============ -->
-<div id="loginScreen">
+<div id="loginScreen" style="display:none">
   <div class="login-card">
     <div class="login-logo">
       <div style="background:var(--navy);border-radius:12px;padding:20px 18px;margin-bottom:6px">
@@ -892,7 +892,7 @@ async function doSignup(){
 
 $('logoutBtn').addEventListener('click', async () => {
   await sb.auth.signOut();
-  location.reload();
+  location.replace('index.html');   // ออกแล้วกลับหน้ารวม HUB (login เดียว)
 });
 
 $('portalBtn').addEventListener('click', () => {
@@ -914,14 +914,9 @@ function enterApp(session){
   const roles = (Array.isArray(meta.user_roles) && meta.user_roles.length)
     ? meta.user_roles
     : (meta.user_role ? [meta.user_role] : []);
-  // อนุญาตเฉพาะบัญชีที่มีสิทธิ์ purchase/marketing (สมัครผ่านระบบนี้)
+  // อนุญาตเฉพาะบัญชีที่มีสิทธิ์ purchase/marketing
   if(!roles.includes('purchase') && !roles.includes('marketing')){
-    sb.auth.signOut();
-    $('app').style.display='none';
-    $('loginScreen').style.display='flex';
-    document.querySelector('.login-card').style.display='block';
-    $('signupCard').style.display='none';
-    showLoginErr('บัญชีนี้ไม่มีสิทธิ์เข้าใช้ระบบนี้ — ต้องสมัครสมาชิกผ่านหน้าเว็บนี้เท่านั้น');
+    location.replace('index.html');   // ไม่มีสิทธิ์ → กลับหน้ารวม HUB
     return;
   }
   // มี purchase → แก้ไขได้ ; ไม่มีก็เป็น marketing (ดูอย่างเดียว)
@@ -2101,10 +2096,11 @@ async function doDelOld(){
   loadPlan();
 }
 
-// ===== INIT: check existing session =====
+// ===== INIT: ใช้ session ร่วมจาก HUB (ไม่มี login แยกของ Board) =====
 (async () => {
   const { data } = await sb.auth.getSession();
   if(data.session) enterApp(data.session);
+  else location.replace('index.html');   // ยังไม่ล็อกอิน → ไปหน้ารวม HUB
 })();
 </script>
 </body>
