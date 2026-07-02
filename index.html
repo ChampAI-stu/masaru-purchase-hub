@@ -153,7 +153,7 @@ async function loadApps(){
     if(error || !data || !data.length) return APPS_FALLBACK;
     return data.map(a => ({
       key:a.app_key, icon:a.icon, title:a.title, desc:a.description,
-      url:a.url, note:a.note, roles:a.roles || []
+      url:a.url, roles:a.roles || []
     }));
   }catch(e){ return APPS_FALLBACK; }
 }
@@ -218,7 +218,6 @@ async function showHub(session){
         <div class="app-icon">${a.icon}</div>
         <div class="app-name">${a.title}</div>
         <div class="app-desc">${a.desc}</div>
-        ${a.note?`<div class="app-note">💡 ${a.note}</div>`:''}
         <div class="app-go">เข้าใช้งาน →
           <span class="app-newtab" data-url="${a.url}" title="เปิดในแท็บใหม่">↗ แท็บใหม่</span>
         </div>
