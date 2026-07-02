@@ -273,7 +273,7 @@ function prRoleFromMeta(user){
   return null;                                            // ไม่มีสิทธิ์ใน PR
 }
 
-function goPortal(){ location.href = PORTAL_URL; }
+function goPortal(){ window.open(PORTAL_URL, '_blank'); }   // เปิดหน้ารวมในแท็บใหม่ (เว็บนี้ยังค้างไว้)
 
 /* ---------- BOOT: ใช้ session ร่วมจาก Portal (ไม่มีหน้า login ของตัวเอง) ---------- */
 async function boot(){
