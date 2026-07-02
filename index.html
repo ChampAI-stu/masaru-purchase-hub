@@ -351,6 +351,7 @@
       <button class="logout-btn" id="statusHelpBtn">ℹ️ สถานะ PO</button>
       <button class="logout-btn" id="editAnnounceBtn" style="display:none">📢 แก้ประกาศ</button>
       <span class="role-pill" id="rolePill">—</span>
+      <button class="logout-btn" id="portalBtn" title="เปิดหน้ารวมในแท็บใหม่">🏠 หน้ารวม</button>
       <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
     </div>
   </div>
@@ -892,6 +893,10 @@ async function doSignup(){
 $('logoutBtn').addEventListener('click', async () => {
   await sb.auth.signOut();
   location.reload();
+});
+
+$('portalBtn').addEventListener('click', () => {
+  window.open('portal.html', '_blank');   // เปิดหน้ารวมในแท็บใหม่ (เว็บนี้ยังค้างไว้)
 });
 
 function enterApp(session){
