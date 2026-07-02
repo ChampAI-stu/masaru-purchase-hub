@@ -60,7 +60,9 @@
   .app-name{font-size:18px;font-weight:700;color:var(--navy)}
   .app-desc{font-size:13.5px;color:var(--muted);line-height:1.5;flex:1}
   .app-note{font-size:12px;color:var(--amber);background:#FFFBEB;border-radius:7px;padding:5px 9px}
-  .app-go{color:var(--gold);font-weight:700;font-size:14px;margin-top:2px}
+  .app-go{color:var(--gold);font-weight:700;font-size:14px;margin-top:2px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .app-newtab{color:var(--blue);font-weight:600;font-size:12px;border:1px solid var(--line);border-radius:7px;padding:4px 9px;background:#F8FAFC}
+  .app-newtab:hover{background:#EEF2F8;border-color:var(--blue)}
   .empty-apps{grid-column:1/-1;text-align:center;color:var(--muted);padding:40px;
     background:#fff;border:1px dashed var(--line);border-radius:14px}
   .boot{min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--muted)}
@@ -213,17 +215,23 @@ async function showHub(session){
 
   $('appGrid').innerHTML = apps.length
     ? apps.map(a => `
-      <button class="app-tile" data-url="${a.url}">
+      <div class="app-tile" data-url="${a.url}">
         <div class="app-icon">${a.icon}</div>
         <div class="app-name">${a.title}</div>
         <div class="app-desc">${a.desc}</div>
         ${a.note?`<div class="app-note">💡 ${a.note}</div>`:''}
-        <div class="app-go">เปิดในแท็บใหม่ ↗</div>
-      </button>`).join('')
+        <div class="app-go">เข้าใช้งาน →
+          <span class="app-newtab" data-url="${a.url}" title="เปิดในแท็บใหม่">↗ แท็บใหม่</span>
+        </div>
+      </div>`).join('')
     : `<div class="empty-apps">ยังไม่มีระบบที่บทบาทนี้เข้าใช้งานได้<br>ติดต่อแอดมินเพื่อขอสิทธิ์เพิ่ม</div>`;
 
+  // กดการ์ด = เข้าเว็บในแท็บเดิม
   document.querySelectorAll('.app-tile').forEach(t =>
-    t.addEventListener('click', () => { window.open(t.dataset.url, '_blank'); }));
+    t.addEventListener('click', () => { window.location.href = t.dataset.url; }));
+  // กดปุ่ม "แท็บใหม่" = เปิดแท็บใหม่ (ไม่ให้ทะลุไปโดนการ์ด)
+  document.querySelectorAll('.app-newtab').forEach(b =>
+    b.addEventListener('click', e => { e.stopPropagation(); window.open(b.dataset.url, '_blank'); }));
 }
 
 function showLoginErr(msg){ const e=$('loginErr'); e.textContent=msg; e.classList.remove('hide'); }
