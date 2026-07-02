@@ -2097,6 +2097,13 @@ async function doDelOld(){
 }
 
 // ===== INIT: ใช้ session ร่วมจาก HUB (ไม่มี login แยกของ Board) =====
+// ฟังการเปลี่ยนสถานะ auth — ถ้า logout ที่แท็บ/หน้าไหนก็ตาม หน้านี้เด้งออกทันที
+sb.auth.onAuthStateChange((event, session) => {
+  if(event === 'SIGNED_OUT' || !session){
+    location.replace('index.html');   // ออกจากระบบแล้ว → กลับหน้ารวม HUB ทุกแท็บ
+  }
+});
+
 (async () => {
   const { data } = await sb.auth.getSession();
   if(data.session) enterApp(data.session);
