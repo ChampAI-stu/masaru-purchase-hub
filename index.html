@@ -170,6 +170,11 @@ function getRoles(session){
 }
 
 // ===== BOOT =====
+// ฟังการเปลี่ยนสถานะ auth — ถ้า logout ที่แท็บ/หน้าไหนก็ตาม หน้านี้กลับไปหน้า login ทันที
+sb.auth.onAuthStateChange((event, session) => {
+  if(event === 'SIGNED_OUT' || !session){ showAuth(); }
+});
+
 (async function boot(){
   const { data:{ session } } = await sb.auth.getSession();
   if(session){ showHub(session); }
