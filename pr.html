@@ -292,6 +292,10 @@ async function updatePortalBtn(user){
 async function boot(){
   const bl=$('brand-logo'); if(bl) bl.src=LOGO_WHITE;
   sb = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON);
+  // ฟังการเปลี่ยนสถานะ auth — ถ้า logout ที่แท็บ/หน้าไหนก็ตาม หน้านี้เด้งออกทันที
+  sb.auth.onAuthStateChange((event, session) => {
+    if(event === 'SIGNED_OUT' || !session){ location.replace(PORTAL_URL); }
+  });
   const { data:{ session } } = await sb.auth.getSession();
   if(!session){ location.replace(PORTAL_URL); return; }     // ยังไม่ล็อกอิน → กลับหน้ารวม
   await enterApp(session.user);
