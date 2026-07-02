@@ -100,7 +100,7 @@
     <div class="spacer"></div>
     <span class="who" id="who"></span>
     <button class="logout" onclick="openProfile()">👤 โปรไฟล์</button>
-    <button class="logout" onclick="goPortal()">← หน้ารวม</button>
+    <button class="logout" id="portalBtn" style="display:none" onclick="goPortal()">← หน้ารวม</button>
     <button class="logout" onclick="logout()">ออกจากระบบ</button>
   </header>
 
@@ -273,7 +273,20 @@ function prRoleFromMeta(user){
   return null;                                            // ไม่มีสิทธิ์ใน PR
 }
 
-function goPortal(){ window.open(PORTAL_URL, '_blank'); }   // เปิดหน้ารวมในแท็บใหม่ (เว็บนี้ยังค้างไว้)
+function goPortal(){ window.location.href = PORTAL_URL; }   // กลับหน้ารวม (แท็บเดิม)
+
+// โชว์ปุ่ม "หน้ารวม" เฉพาะบัญชีที่เข้าได้มากกว่า 1 เว็บ
+async function updatePortalBtn(user){
+  $('portalBtn').style.display = 'none';
+  const m = user && user.app_metadata ? user.app_metadata : {};
+  const roles = (Array.isArray(m.user_roles) && m.user_roles.length)
+    ? m.user_roles : (m.user_role ? [m.user_role] : []);
+  try{
+    const { data } = await sb.from('portal_apps').select('roles').eq('active', true);
+    const count = (data||[]).filter(a => (a.roles||[]).some(r => roles.includes(r))).length;
+    if(count > 1) $('portalBtn').style.display = '';
+  }catch(e){ /* เงียบไว้ */ }
+}
 
 /* ---------- BOOT: ใช้ session ร่วมจาก Portal (ไม่มีหน้า login ของตัวเอง) ---------- */
 async function boot(){
@@ -315,6 +328,7 @@ async function enterApp(user){
 
   $('boot').classList.add('hide'); $('app').classList.remove('hide');
   $('who').textContent = name+' ('+role+')';
+  updatePortalBtn(user);   // โชว์ปุ่มหน้ารวมเฉพาะคนที่เข้าได้หลายเว็บ
   if(!first && !last) setTimeout(()=>{ toast('ยังไม่ได้ตั้งชื่อ-นามสกุล — กดปุ่ม 👤 โปรไฟล์'); }, 800);
 
   const isManager = isApprover(role);
