@@ -351,7 +351,7 @@
       <button class="logout-btn" id="statusHelpBtn">ℹ️ สถานะ PO</button>
       <button class="logout-btn" id="editAnnounceBtn" style="display:none">📢 แก้ประกาศ</button>
       <span class="role-pill" id="rolePill">—</span>
-      <button class="logout-btn" id="portalBtn" title="เปิดหน้ารวมในแท็บใหม่">🏠 หน้ารวม</button>
+      <button class="logout-btn" id="portalBtn" style="display:none" title="กลับหน้ารวม">🏠 หน้ารวม</button>
       <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
     </div>
   </div>
@@ -896,8 +896,18 @@ $('logoutBtn').addEventListener('click', async () => {
 });
 
 $('portalBtn').addEventListener('click', () => {
-  window.open('portal.html', '_blank');   // เปิดหน้ารวมในแท็บใหม่ (เว็บนี้ยังค้างไว้)
+  window.location.href = 'portal.html';   // กลับหน้ารวม (แท็บเดิม)
 });
+
+// โชว์ปุ่ม "หน้ารวม" เฉพาะบัญชีที่เข้าได้มากกว่า 1 เว็บ
+async function updatePortalBtn(roles){
+  $('portalBtn').style.display = 'none';
+  try{
+    const { data } = await sb.from('portal_apps').select('roles').eq('active', true);
+    const count = (data||[]).filter(a => (a.roles||[]).some(r => roles.includes(r))).length;
+    if(count > 1) $('portalBtn').style.display = '';
+  }catch(e){ /* เงียบไว้ ถ้าโหลดไม่ได้ก็ไม่โชว์ */ }
+}
 
 function enterApp(session){
   const meta = session.user?.app_metadata || {};
@@ -918,6 +928,7 @@ function enterApp(session){
   currentRole = roles.includes('purchase') ? 'purchase' : 'marketing';
   $('loginScreen').style.display='none';
   $('app').style.display='block';
+  updatePortalBtn(roles);   // โชว์ปุ่มหน้ารวมเฉพาะคนที่เข้าได้หลายเว็บ
   // role UI
   if(currentRole === 'purchase'){
     $('rolePill').textContent = '📦 ฝ่ายจัดซื้อ';
