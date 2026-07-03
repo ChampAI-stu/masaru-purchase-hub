@@ -668,7 +668,9 @@ async function editPR(id){
   EDIT_ID=id;
   showTab('create');
   $('edit-banner').classList.remove('hide');
-  $('edit-banner').innerHTML=`✏️ กำลังแก้ไข <b>${esc(p.pr_number)}</b> ที่ถูกตีกลับ — แก้แล้วกดตรวจสอบและบันทึกเพื่อส่งกลับเข้าอนุมัติใหม่`;
+  $('edit-banner').innerHTML = (p.status==='rejected')
+    ? `✏️ กำลังแก้ไข <b>${esc(p.pr_number)}</b> ที่ถูกตีกลับ — แก้แล้วกดตรวจสอบและบันทึกเพื่อส่งกลับเข้าอนุมัติใหม่`
+    : `✏️ กำลังแก้ไขร่าง <b>${esc(p.pr_number)}</b> — แก้แล้วกดตรวจสอบและบันทึก`;
   $('h-prno').value=p.pr_number; $('h-date').value=p.pr_date||''; $('h-requester').value=p.requester||'';
   $('h-dept').value=p.department||''; $('h-cur').value=p.currency||'CNY'; $('h-rate').value=p.exchange_rate||'';
   $('h-pay').value=p.payment_method||''; $('h-ship').value=p.shipping_method||''; $('h-po').value=p.po_ref_jst||'';
@@ -808,6 +810,7 @@ async function viewPR(id){
     </div>
     <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn gold" onclick="printPR('${id}')">🖨️ พิมพ์ / บันทึก PDF</button>
+      ${(p.status==='draft' && ME.role==='จัดซื้อ')?`<button class="btn" onclick="editPR('${id}')">✏️ แก้ไข</button>`:''}
       ${canSubmit?`<button class="btn" onclick="submitPR('${id}')">📨 ส่งอนุมัติ</button>`:''}
       ${canMgrApprove?`<button class="btn" onclick="approveStep('${id}')">✅ อนุมัติ (หัวหน้า)</button>`:''}
       ${canExecApprove?`<button class="btn" onclick="approveStep('${id}')">✅ อนุมัติ (ผู้บริหาร)</button>`:''}
