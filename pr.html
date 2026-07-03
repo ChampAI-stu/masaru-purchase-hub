@@ -116,6 +116,7 @@
     <section id="tab-list">
       <div class="panel">
         <h2>📋 รายการใบขอซื้อ</h2>
+        <div id="pr-dup-warn" class="hide" style="margin-bottom:12px;padding:11px 14px;border-left:4px solid var(--red);background:#FEF2F2;border-radius:8px;color:#991B1B;font-size:14px"></div>
         <div class="scroll">
           <table>
             <thead><tr>
@@ -648,9 +649,20 @@ async function savePR(){
     await sb.from('pr_items').delete().eq('pr_id',EDIT_ID);
     prId=EDIT_ID;
   } else {
-    const {data,error}=await sb.from('pr').insert(header).select().single();
-    if(error){toast('บันทึกหัว PR ไม่ได้: '+error.message,true);return;}
-    prId=data.id;
+    // กันเลข PR ซ้ำ (race condition): ถ้าเลขชนกัน หาเลขถัดไปแล้วลองใหม่อัตโนมัติ
+    let prData=null, lastErr=null;
+    for(let attempt=0; attempt<10; attempt++){
+      const {data,error}=await sb.from('pr').insert(header).select().single();
+      if(!error){ prData=data; break; }
+      lastErr=error;
+      // ถ้าเป็น error เลขซ้ำ (unique violation / duplicate) → หาเลขใหม่แล้วลองใหม่
+      const dup = error.code==='23505' || /duplicate|unique|pr_number/i.test(error.message||'');
+      if(!dup) break;                       // error อื่น ไม่ใช่เลขซ้ำ → หยุด
+      await genPRNumber();                   // หาเลขล่าสุด +1 ใหม่
+      header.pr_number=$('h-prno').value.trim();
+    }
+    if(!prData){ toast('บันทึกหัว PR ไม่ได้: '+(lastErr?lastErr.message:'เลขซ้ำหลายครั้ง ลองใหม่อีกครั้ง'),true); return; }
+    prId=prData.id;
   }
   const rows=items.map(it=>({...it, pr_id:prId}));
   const {error:e2}=await sb.from('pr_items').insert(rows);
@@ -706,6 +718,18 @@ function renderPRPage(){
   if(PR_PAGE>pages) PR_PAGE=pages;
   if(PR_PAGE<1) PR_PAGE=1;
   $('pr-list-empty').classList.toggle('hide', total>0);
+  // ── ตรวจเลข PR ซ้ำ (จากทั้งหมด ไม่ใช่แค่หน้านี้) ──
+  const numCount={};
+  PR_ALL.forEach(p=>{ if(p.pr_number) numCount[p.pr_number]=(numCount[p.pr_number]||0)+1; });
+  const dupNums=new Set(Object.keys(numCount).filter(n=>numCount[n]>1));
+  // แถบเตือนด้านบน ถ้าพบเลขซ้ำ
+  const warnBox=$('pr-dup-warn');
+  if(warnBox){
+    if(dupNums.size){
+      warnBox.classList.remove('hide');
+      warnBox.innerHTML=`⚠️ <b>พบเลขที่ PR ซ้ำ ${dupNums.size} เลข</b> — ${[...dupNums].join(', ')} · กรุณาเปิดใบที่ซ้ำแล้วแก้เลขให้ไม่ซ้ำกัน`;
+    } else warnBox.classList.add('hide');
+  }
   const start=(PR_PAGE-1)*PR_PER;
   const data=PR_ALL.slice(start, start+PR_PER);
   const stMap={draft:['st-draft','ยังไม่ส่ง'],checked:['st-checked','รอหัวหน้า'],mgr_approved:['st-mgr_approved','รอผู้บริหาร'],approved:['st-approved','อนุมัติ'],rejected:['st-rejected','ตีกลับ']};
@@ -713,8 +737,11 @@ function renderPRPage(){
     const a=p.ai_result||{}; const cnt=(p.pr_items&&p.pr_items[0]?.count)||0;
     const [sc,sl]=stMap[p.status]||stMap.draft;
     const chk = a.fail? `<span class="badge b-fail">🔴 ${a.fail}</span>` : a.warn? `<span class="badge b-warn">⚠️ ${a.warn}</span>` : `<span class="badge b-pass">✅</span>`;
-    return `<tr style="cursor:pointer" onclick="viewPR('${p.id}')">
-      <td><b>${p.pr_number}</b></td><td>${p.pr_date||''}</td><td>${p.requester||''}</td>
+    const isDup=dupNums.has(p.pr_number);
+    const rowStyle=isDup?'cursor:pointer;background:#FEF2F2':'cursor:pointer';
+    const dupTag=isDup?` <span class="badge b-fail" title="เลขนี้ซ้ำกับใบอื่น">⚠️ เลขซ้ำ</span>`:'';
+    return `<tr style="${rowStyle}" onclick="viewPR('${p.id}')">
+      <td><b>${p.pr_number}</b>${dupTag}</td><td>${p.pr_date||''}</td><td>${p.requester||''}</td>
       <td>${cnt} รายการ</td><td class="right">${fmt(p.total_cny)}</td><td class="right">${fmt(p.total_thb)}</td>
       <td>${chk}</td><td>${p.po_number?`<b>${p.po_number}</b>`:'<span class="muted">-</span>'}</td><td><span class="pill ${sc}">${sl}</span></td>
       <td><button class="btn sm ghost" onclick="event.stopPropagation();viewPR('${p.id}')">เปิด</button>${ME.role==='จัดซื้อ'?`<button class="btn sm" style="background:var(--red);margin-left:6px" onclick="event.stopPropagation();delPR('${p.id}','${p.pr_number}')">ลบ</button>`:''}</td></tr>`;
