@@ -714,7 +714,14 @@ async function savePR(){
     if(!prData){ toast('บันทึกหัว PR ไม่ได้: '+(lastErr?lastErr.message:'เลขซ้ำหลายครั้ง ลองใหม่อีกครั้ง'),true); return; }
     prId=prData.id;
   }
-  const rows=items.map(it=>({...it, pr_id:prId}));
+  // ผสมผลตรวจ (check_status/check_notes) จาก CURRENT_CHECK เข้าแต่ละรายการ ก่อนบันทึกลง DB
+  // จับคู่ตาม seq (ลำดับแถว) — ถ้าหาไม่เจอถือว่า pass
+  const checkBySeq={};
+  (CURRENT_CHECK.items||[]).forEach(ci=>{ checkBySeq[ci.seq]={status:ci.check_status||'pass', notes:ci.check_notes||[]}; });
+  const rows=items.map(it=>{
+    const ck=checkBySeq[it.seq]||{status:'pass',notes:[]};
+    return {...it, pr_id:prId, check_status:ck.status, check_notes:ck.notes};
+  });
   const {error:e2}=await sb.from('pr_items').insert(rows);
   if(e2){toast('บันทึกรายการไม่ได้: '+e2.message,true);return;}
   toast('บันทึก '+header.pr_number+' เป็นร่างแล้ว — เปิดใบแล้วกด “ส่งอนุมัติ” ✅');
