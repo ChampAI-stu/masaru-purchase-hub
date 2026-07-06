@@ -944,9 +944,62 @@ async function unsignMine(id){
 }
 async function submitPR(id){
   if(ME.role!=='จัดซื้อ'){toast('เฉพาะจัดซื้อกดส่งได้',true);return;}
+  // เช็คผลตรวจ AI ของใบนี้ — ถ้ามี "ต้องตรวจ" (fail) หรือ "พิจารณา" (warn) → เตือนใหญ่ก่อน
+  const p = PR_ALL.find(x=>String(x.id)===String(id));
+  const a = (p&&p.ai_result)||{};
+  const nFail = a.fail||0, nWarn = a.warn||0;
+  if(nFail>0 || nWarn>0){
+    const ok = await confirmSubmitWarn(p?p.pr_number:'', nFail, nWarn);
+    if(!ok) return;   // ยกเลิก — ไม่ส่ง
+  }
+  await doSubmitPR(id);
+}
+async function doSubmitPR(id){
   const {error}=await sb.from('pr').update({status:'checked'}).eq('id',id);
   if(error){toast(error.message,true);return;}
   toast('ส่งเข้าอนุมัติแล้ว — รอหัวหน้า ✅'); viewPR(id); loadPRs();
+}
+// popup เตือนใหญ่ก่อนส่ง PR ที่ผลตรวจยังไม่ผ่านหมด — คืนค่า true=ยืนยันส่ง / false=ยกเลิก
+function confirmSubmitWarn(prNum, nFail, nWarn){
+  return new Promise(resolve=>{
+    const hasFail = nFail>0;
+    const bg = document.createElement('div');
+    bg.className='modal-bg';
+    bg.innerHTML = `
+      <div class="modal" style="max-width:440px;text-align:center">
+        <div style="font-size:46px;line-height:1;margin-bottom:8px">${hasFail?'🔴':'⚠️'}</div>
+        <h3 style="color:${hasFail?'var(--red)':'#B45309'};margin-bottom:6px">
+          ${hasFail?'ผลตรวจพบปัญหาที่ต้องแก้':'ผลตรวจมีจุดควรพิจารณา'}
+        </h3>
+        <p style="color:var(--muted);font-size:14px;margin-bottom:14px">
+          ใบ <b>${esc(prNum||'')}</b> มีรายการที่ AI ตรวจแล้วยังไม่ผ่านทั้งหมด
+        </p>
+        <div style="display:flex;gap:10px;justify-content:center;margin-bottom:18px">
+          ${nFail>0?`<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 16px">
+            <div style="font-size:24px;font-weight:800;color:var(--red)">${nFail}</div>
+            <div style="font-size:12px;color:#991B1B">🔴 ต้องตรวจ</div></div>`:''}
+          ${nWarn>0?`<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:10px 16px">
+            <div style="font-size:24px;font-weight:800;color:#B45309">${nWarn}</div>
+            <div style="font-size:12px;color:#92400E">⚠️ พิจารณา</div></div>`:''}
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
+          ${hasFail
+            ? 'แนะนำให้กลับไปแก้ไขก่อนส่ง — แต่ถ้ายืนยันจะส่งเข้าอนุมัติทั้งที่ยังมีปัญหา ให้กดปุ่มด้านล่าง'
+            : 'ตรวจสอบความถูกต้องอีกครั้งก่อนส่งเข้าอนุมัติ'}
+        </p>
+        <div style="display:flex;gap:10px">
+          <button class="btn ghost" id="csw-cancel" style="flex:1">↩️ กลับไปแก้ไข</button>
+          <button class="btn" id="csw-ok" style="flex:1;background:${hasFail?'var(--red)':'var(--gold)'}">
+            ยืนยันส่งเข้าอนุมัติ
+          </button>
+        </div>
+      </div>`;
+    document.body.appendChild(bg);
+    const done=(v)=>{ bg.remove(); resolve(v); };
+    bg.querySelector('#csw-cancel').onclick=()=>done(false);
+    bg.querySelector('#csw-ok').onclick=()=>done(true);
+    bg.onclick=(e)=>{ if(e.target===bg) done(false); };
+  });
 }
 async function approveStep(id){
   const {data:p}=await sb.from('pr').select('status').eq('id',id).single();
