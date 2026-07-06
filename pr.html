@@ -675,6 +675,12 @@ async function savePR(){
   const items=collectItems();
   if(!items.length){toast('ไม่มีรายการ',true);return;}
   if(!CURRENT_CHECK){toast('กรุณากดตรวจสอบก่อนบันทึก',true);return;}
+  // เตือนใหญ่ถ้าผลตรวจยังมี "ต้องตรวจ" (fail) หรือ "พิจารณา" (warn) — ทั้งตอนสร้างใหม่และแก้ไข
+  const nFail=CURRENT_CHECK.fail||0, nWarn=CURRENT_CHECK.warn||0;
+  if(nFail>0 || nWarn>0){
+    const ok = await confirmSubmitWarn($('h-prno').value.trim(), nFail, nWarn, 'save');
+    if(!ok) return;   // ยกเลิก — ไม่บันทึก
+  }
   const rate=parseFloat($('h-rate').value)||0;
   let tcny=0,tthb=0; items.forEach(i=>{tcny+=i.total_cny;tthb+=i.total_thb;});
   const header={ pr_number:$('h-prno').value.trim(), pr_date:$('h-date').value,
@@ -949,7 +955,7 @@ async function submitPR(id){
   const a = (p&&p.ai_result)||{};
   const nFail = a.fail||0, nWarn = a.warn||0;
   if(nFail>0 || nWarn>0){
-    const ok = await confirmSubmitWarn(p?p.pr_number:'', nFail, nWarn);
+    const ok = await confirmSubmitWarn(p?p.pr_number:'', nFail, nWarn, 'submit');
     if(!ok) return;   // ยกเลิก — ไม่ส่ง
   }
   await doSubmitPR(id);
@@ -959,10 +965,18 @@ async function doSubmitPR(id){
   if(error){toast(error.message,true);return;}
   toast('ส่งเข้าอนุมัติแล้ว — รอหัวหน้า ✅'); viewPR(id); loadPRs();
 }
-// popup เตือนใหญ่ก่อนส่ง PR ที่ผลตรวจยังไม่ผ่านหมด — คืนค่า true=ยืนยันส่ง / false=ยกเลิก
-function confirmSubmitWarn(prNum, nFail, nWarn){
+// popup เตือนใหญ่เมื่อผลตรวจยังไม่ผ่านหมด — คืนค่า true=ยืนยัน / false=ยกเลิก
+// mode: 'submit' = ก่อนส่งอนุมัติ, 'save' = ก่อนบันทึก
+function confirmSubmitWarn(prNum, nFail, nWarn, mode){
+  mode = mode || 'submit';
   return new Promise(resolve=>{
     const hasFail = nFail>0;
+    const okLabel = mode==='save' ? 'ยืนยันบันทึก' : 'ยืนยันส่งเข้าอนุมัติ';
+    const subText = mode==='save'
+      ? (hasFail ? 'แนะนำให้แก้รายการที่ติดปัญหาก่อนบันทึก — หรือกดยืนยันเพื่อบันทึกเป็นร่างไว้ก่อน'
+                 : 'ตรวจสอบความถูกต้องอีกครั้งก่อนบันทึก')
+      : (hasFail ? 'แนะนำให้กลับไปแก้ไขก่อนส่ง — แต่ถ้ายืนยันจะส่งเข้าอนุมัติทั้งที่ยังมีปัญหา ให้กดปุ่มด้านล่าง'
+                 : 'ตรวจสอบความถูกต้องอีกครั้งก่อนส่งเข้าอนุมัติ');
     const bg = document.createElement('div');
     bg.className='modal-bg';
     bg.innerHTML = `
@@ -982,15 +996,11 @@ function confirmSubmitWarn(prNum, nFail, nWarn){
             <div style="font-size:24px;font-weight:800;color:#B45309">${nWarn}</div>
             <div style="font-size:12px;color:#92400E">⚠️ พิจารณา</div></div>`:''}
         </div>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
-          ${hasFail
-            ? 'แนะนำให้กลับไปแก้ไขก่อนส่ง — แต่ถ้ายืนยันจะส่งเข้าอนุมัติทั้งที่ยังมีปัญหา ให้กดปุ่มด้านล่าง'
-            : 'ตรวจสอบความถูกต้องอีกครั้งก่อนส่งเข้าอนุมัติ'}
-        </p>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">${subText}</p>
         <div style="display:flex;gap:10px">
           <button class="btn ghost" id="csw-cancel" style="flex:1">↩️ กลับไปแก้ไข</button>
           <button class="btn" id="csw-ok" style="flex:1;background:${hasFail?'var(--red)':'var(--gold)'}">
-            ยืนยันส่งเข้าอนุมัติ
+            ${okLabel}
           </button>
         </div>
       </div>`;
