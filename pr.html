@@ -494,7 +494,7 @@ function addRow(d={}){
     <td class="num"><input class="c-price" type="number" step="0.01" value="${d.unit_price||''}" oninput="recalcRow(this)"/></td>
     <td class="right c-tcny">0.00</td>
     <td class="right c-tthb">0.00</td>
-    <td><select class="c-type"><option>เติมสต็อก</option><option>สินค้าใหม่</option></select></td>
+    <td><select class="c-type"><option>เติมสต็อก</option><option>สินค้าใหม่</option><option>สินค้าพิเศษ</option></select></td>
     <td><input class="c-remark" value="${d.remark||''}" style="min-width:120px"/></td>
     <td><button class="btn sm ghost" onclick="this.closest('tr').remove();renumber();recalcAll()">✕</button></td>`;
   tb.appendChild(tr); ensureDatalist(); renumber();
