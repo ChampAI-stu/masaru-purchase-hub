@@ -11,7 +11,7 @@
     --navy:#1A2942; --navy-light:#3A5A8C; --gold:#D0212B; --gold-soft:#FCE4E4;
     --green:#1E7145; --green-bg:#EAF3DE; --amber:#854F0B; --amber-bg:#FFF3CC;
     --blue:#3A5A8C; --blue-bg:#E6F1FB; --purple:#534AB7; --purple-bg:#EEEDFE;
-    --red:#D0212B; --red-bg:#FCE4E4;
+    --red:#D0212B; --red-bg:#FCE4E4; --orange:#B45309; --orange-bg:#FFEAD5;
     --bg:#F4F6FA; --card:#FFFFFF; --line:#E2E8F0; --text:#1E293B; --muted:#64748B;
     --brand-red:#D0212B; --navy-2:#22345A;
   }
@@ -124,6 +124,7 @@
   .b-transit{background:var(--purple-bg);color:var(--purple)}
   .b-arrived{background:var(--green-bg);color:var(--green)}
   .b-abnormal{background:var(--red-bg);color:var(--red);font-weight:600}
+  .b-producing{background:var(--orange-bg);color:var(--orange)}
   .b-cancel{background:#F1F5F9;color:var(--muted);text-decoration:line-through}
   .row-actions{display:flex;gap:6px}
   .act-btn{background:#fff;border:1px solid var(--line);border-radius:7px;padding:6px 9px;
@@ -386,6 +387,7 @@
       <select class="filter-sel" id="statusFilter">
         <option value="">สถานะทั้งหมด</option>
         <option value="อยู่ระหว่างสั่งซื้อ">อยู่ระหว่างสั่งซื้อ</option>
+        <option value="อยู่ระหว่างผลิต">อยู่ระหว่างผลิต</option>
         <option value="อยู่ระหว่างขนส่ง">อยู่ระหว่างขนส่ง</option>
         <option value="รอนำส่งเข้าคลัง">รอนำส่งเข้าคลัง</option>
         <option value="เข้าคลังแล้ว">เข้าคลังแล้ว</option>
@@ -620,6 +622,7 @@
         <label>สถานะ PO</label>
         <select id="mStatus">
           <option value="อยู่ระหว่างสั่งซื้อ">อยู่ระหว่างสั่งซื้อ</option>
+          <option value="อยู่ระหว่างผลิต">อยู่ระหว่างผลิต</option>
           <option value="อยู่ระหว่างขนส่ง">อยู่ระหว่างขนส่ง</option>
           <option value="รอนำส่งเข้าคลัง">รอนำส่งเข้าคลัง</option>
           <option value="เข้าคลังแล้ว">เข้าคลังแล้ว</option>
@@ -716,6 +719,7 @@
         <select id="puStatus">
           <option value="">— ไม่เปลี่ยน —</option>
           <option value="อยู่ระหว่างสั่งซื้อ">อยู่ระหว่างสั่งซื้อ</option>
+          <option value="อยู่ระหว่างผลิต">อยู่ระหว่างผลิต</option>
           <option value="อยู่ระหว่างขนส่ง">อยู่ระหว่างขนส่ง</option>
           <option value="รอนำส่งเข้าคลัง">รอนำส่งเข้าคลัง</option>
           <option value="เข้าคลังแล้ว">เข้าคลังแล้ว</option>
@@ -753,7 +757,11 @@
     <div style="display:flex;flex-direction:column;gap:14px">
       <div style="display:flex;gap:12px;align-items:flex-start">
         <span class="badge b-wait" style="flex:0 0 auto">🛒 อยู่ระหว่างสั่งซื้อ</span>
-        <span style="font-size:13px;line-height:1.6;padding-top:3px">PR อนุมัติแล้ว, สั่งแล้ว, ระหว่างผลิต</span>
+        <span style="font-size:13px;line-height:1.6;padding-top:3px">PR อนุมัติแล้ว, สั่งซื้อแล้ว</span>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <span class="badge b-producing" style="flex:0 0 auto">🏭 อยู่ระหว่างผลิต</span>
+        <span style="font-size:13px;line-height:1.6;padding-top:3px">โรงงานกำลังผลิตสินค้า ยังไม่ได้ส่งออก</span>
       </div>
       <div style="display:flex;gap:12px;align-items:flex-start">
         <span class="badge b-transit" style="flex:0 0 auto">🚚 อยู่ระหว่างขนส่ง</span>
@@ -796,7 +804,7 @@ let currentPage = 1;
 const PAGE_SIZE = 50;
 let selectedIds = new Set();   // รายการที่ติ๊กไว้เพื่อลบ
 let selectionMode = false;     // โหมดเลือกลบ (กดปุ่มถึงจะเปิด)
-const STATUS_ORDER = { 'อยู่ระหว่างสั่งซื้อ':1, 'อยู่ระหว่างขนส่ง':2, 'รอนำส่งเข้าคลัง':3, 'เข้าคลังแล้ว':4, 'ผิดปกติ':5 };
+const STATUS_ORDER = { 'อยู่ระหว่างสั่งซื้อ':1, 'อยู่ระหว่างผลิต':2, 'อยู่ระหว่างขนส่ง':3, 'รอนำส่งเข้าคลัง':4, 'เข้าคลังแล้ว':5, 'ผิดปกติ':6 };
 
 // ====================================================================
 // 📢 ประกาศ — เก็บใน Supabase ฝ่ายจัดซื้อแก้จากหน้าเว็บได้
@@ -806,11 +814,11 @@ let announceData = null;
 
 
 const STATUS_CLASS = {
-  'อยู่ระหว่างสั่งซื้อ':'b-wait','อยู่ระหว่างขนส่ง':'b-transit',
+  'อยู่ระหว่างสั่งซื้อ':'b-wait','อยู่ระหว่างผลิต':'b-producing','อยู่ระหว่างขนส่ง':'b-transit',
   'รอนำส่งเข้าคลัง':'b-ordered','เข้าคลังแล้ว':'b-arrived','ผิดปกติ':'b-abnormal'
 };
 const STATUS_ICON = {
-  'อยู่ระหว่างสั่งซื้อ':'🛒','อยู่ระหว่างขนส่ง':'🚚','รอนำส่งเข้าคลัง':'📥','เข้าคลังแล้ว':'📦','ผิดปกติ':'⚠️'
+  'อยู่ระหว่างสั่งซื้อ':'🛒','อยู่ระหว่างผลิต':'🏭','อยู่ระหว่างขนส่ง':'🚚','รอนำส่งเข้าคลัง':'📥','เข้าคลังแล้ว':'📦','ผิดปกติ':'⚠️'
 };
 
 // ===== ELEMENTS =====
