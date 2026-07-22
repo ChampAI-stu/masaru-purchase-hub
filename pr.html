@@ -127,8 +127,8 @@
   </header>
 
   <nav class="tabs">
-    <button data-tab="dashboard" class="hide" onclick="showTab('dashboard')">📊 Dashboard</button>
     <button data-tab="list" class="active" onclick="showTab('list')">📋 รายการ PR</button>
+    <button data-tab="dashboard" class="hide" onclick="showTab('dashboard')">📊 Dashboard</button>
     <button data-tab="create" onclick="showTab('create')">➕ สร้าง PR</button>
     <button data-tab="master" onclick="showTab('master')">🗄️ ข้อมูลกลาง</button>
   </nav>
@@ -404,7 +404,7 @@ async function enterApp(user){
   document.querySelector('[data-tab="create"]').style.display = isManager?'none':'';
   document.querySelector('[data-tab="master"]').style.display = isManager?'none':'';
   document.querySelector('[data-tab="dashboard"]').classList.toggle('hide', !isManager);
-  showTab(isManager ? 'dashboard' : 'list');
+  showTab('list');
 
   await loadPRs();
   if(!isManager){
