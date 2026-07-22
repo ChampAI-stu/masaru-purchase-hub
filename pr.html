@@ -274,7 +274,7 @@ function prRoleFromMeta(user){
   const roles = (Array.isArray(m.user_roles) && m.user_roles.length)
     ? m.user_roles
     : (m.user_role ? [m.user_role] : []);
-  if(roles.includes('pr_exec'))    return 'ผู้บริหาร';   // ผู้บริหารมาก่อน
+  if(roles.includes('pr_exec') || roles.includes('executive')) return 'ผู้บริหาร';   // ผู้บริหารมาก่อน
   if(roles.includes('pr_manager')) return 'หัวหน้า';     // หัวหน้ามาก่อนจัดซื้อ (หัวหน้าจัดซื้อ = หัวหน้าใน PR)
   if(roles.includes('purchase'))   return 'จัดซื้อ';
   return null;                                            // ไม่มีสิทธิ์ใน PR
@@ -282,17 +282,9 @@ function prRoleFromMeta(user){
 
 function goPortal(){ window.location.href = PORTAL_URL; }   // กลับหน้ารวม (แท็บเดิม)
 
-// โชว์ปุ่ม "หน้ารวม" เฉพาะบัญชีที่เข้าได้มากกว่า 1 เว็บ
+// โชว์ปุ่ม "หน้ารวม" ให้ทุกคนเสมอ
 async function updatePortalBtn(user){
-  $('portalBtn').style.display = 'none';
-  const m = user && user.app_metadata ? user.app_metadata : {};
-  const roles = (Array.isArray(m.user_roles) && m.user_roles.length)
-    ? m.user_roles : (m.user_role ? [m.user_role] : []);
-  try{
-    const { data } = await sb.from('portal_apps').select('roles').eq('active', true);
-    const count = (data||[]).filter(a => (a.roles||[]).some(r => roles.includes(r))).length;
-    if(count > 1) $('portalBtn').style.display = '';
-  }catch(e){ /* เงียบไว้ */ }
+  $('portalBtn').style.display = '';
 }
 
 /* ---------- BOOT: ใช้ session ร่วมจาก Portal (ไม่มีหน้า login ของตัวเอง) ---------- */
