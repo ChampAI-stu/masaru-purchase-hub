@@ -235,16 +235,6 @@
     <p class="muted" style="margin-bottom:14px">ตั้งชื่อจริง-นามสกุล เวลาเซ็นในใบ PR จะใช้ชื่อนี้อัตโนมัติ</p>
     <div class="fld"><label>ชื่อจริง</label><input id="pf-first" placeholder="เช่น วีรภัทร"/></div>
     <div class="fld"><label>นามสกุล</label><input id="pf-last" placeholder="เช่น ใจดี"/></div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
-      <label style="font-weight:600;color:var(--navy)">🔗 เชื่อมบัญชี LINE</label>
-      <p class="muted" style="margin:4px 0 8px">สร้างรหัสแล้วส่งให้บอทใน LINE เพื่ออนุมัติ PR ผ่าน LINE ได้เลย</p>
-      <button class="btn" onclick="genLineCode()">🔗 สร้างรหัสเชื่อม LINE</button>
-      <div id="pf-line-result" class="hide" style="margin-top:10px;padding:12px;background:#F7FBFF;border-radius:8px;text-align:center">
-        <div class="muted" style="font-size:12px">รหัสเชื่อม (มีอายุ 5 นาที)</div>
-        <div id="pf-line-code" style="font-size:30px;font-weight:700;letter-spacing:6px;color:var(--navy);margin:4px 0">------</div>
-        <div class="muted" style="font-size:12px">พิมพ์ <b>เชื่อม รหัส</b> ส่งให้บอทใน LINE เช่น <b>เชื่อม 123456</b></div>
-      </div>
-    </div>
     <div style="display:flex;gap:8px;margin-top:10px">
       <button class="btn" onclick="saveProfile()">💾 บันทึก</button>
       <button class="btn ghost" onclick="closeProfile()">ปิด</button>
@@ -321,20 +311,8 @@ async function boot(){
 async function logout(){ await sb.auth.signOut(); location.replace(PORTAL_URL); }
 
 /* ---------- โปรไฟล์ (ชื่อจริง-นามสกุล) ---------- */
-function openProfile(){ $('pf-first').value=ME.first||''; $('pf-last').value=ME.last||''; $('pf-line-result').classList.add('hide'); $('profile-modal').classList.remove('hide'); }
+function openProfile(){ $('pf-first').value=ME.first||''; $('pf-last').value=ME.last||''; $('profile-modal').classList.remove('hide'); }
 function closeProfile(){ $('profile-modal').classList.add('hide'); }
-async function genLineCode(){
-  if(!ME || !ME.id){ toast('กรุณาเข้าสู่ระบบก่อน',true); return; }
-  const code = String(Math.floor(100000 + Math.random()*900000));
-  const expires_at = new Date(Date.now() + 5*60*1000).toISOString();
-  const { error } = await sb.from('line_link_codes').insert({
-    code, profile_id: ME.id, role: ME.role, display_name: ME.name, expires_at
-  });
-  if(error){ toast('สร้างรหัสไม่ได้: '+error.message, true); return; }
-  $('pf-line-code').textContent = code;
-  $('pf-line-result').classList.remove('hide');
-  toast('สร้างรหัสแล้ว — ส่งให้บอทใน 5 นาที ✅');
-}
 async function saveProfile(){
   const first=$('pf-first').value.trim(), last=$('pf-last').value.trim();
   if(!first && !last){toast('กรอกชื่อหรือนามสกุล',true);return;}
