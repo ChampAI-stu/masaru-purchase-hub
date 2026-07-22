@@ -909,14 +909,9 @@ $('portalBtn').addEventListener('click', () => {
   window.location.href = 'index.html';   // กลับหน้ารวม Portal (แท็บเดิม)
 });
 
-// โชว์ปุ่ม "หน้ารวม" เฉพาะบัญชีที่เข้าได้มากกว่า 1 เว็บ
+// โชว์ปุ่ม "หน้ารวม" ให้ทุกคนเสมอ
 async function updatePortalBtn(roles){
-  $('portalBtn').style.display = 'none';
-  try{
-    const { data } = await sb.from('portal_apps').select('roles').eq('active', true);
-    const count = (data||[]).filter(a => (a.roles||[]).some(r => roles.includes(r))).length;
-    if(count > 1) $('portalBtn').style.display = '';
-  }catch(e){ /* เงียบไว้ ถ้าโหลดไม่ได้ก็ไม่โชว์ */ }
+  $('portalBtn').style.display = '';
 }
 
 function enterApp(session){
@@ -924,13 +919,15 @@ function enterApp(session){
   const roles = (Array.isArray(meta.user_roles) && meta.user_roles.length)
     ? meta.user_roles
     : (meta.user_role ? [meta.user_role] : []);
-  // อนุญาตเฉพาะบัญชีที่มีสิทธิ์ purchase/marketing
-  if(!roles.includes('purchase') && !roles.includes('marketing')){
+  const isExec = roles.includes('pr_exec') || roles.includes('executive');
+  // อนุญาตเฉพาะบัญชีที่มีสิทธิ์ purchase/marketing/ผู้บริหาร
+  if(!roles.includes('purchase') && !roles.includes('marketing') && !isExec){
     location.replace('index.html');   // ไม่มีสิทธิ์ → กลับหน้ารวม HUB
     return;
   }
-  // มี purchase → แก้ไขได้ ; ไม่มีก็เป็น marketing (ดูอย่างเดียว)
-  currentRole = roles.includes('purchase') ? 'purchase' : 'marketing';
+  // มี purchase → แก้ไขได้ ; ผู้บริหาร/การตลาด → ดูอย่างเดียว
+  currentRole = roles.includes('purchase') ? 'purchase'
+              : (isExec ? 'executive' : 'marketing');
   $('loginScreen').style.display='none';
   $('app').style.display='block';
   updatePortalBtn(roles);   // โชว์ปุ่มหน้ารวมเฉพาะคนที่เข้าได้หลายเว็บ
@@ -945,6 +942,8 @@ function enterApp(session){
     $('editAnnounceBtn').style.display='block';
     $('addTripBtn').style.display='block';
     $('delOldBtn').style.display='block';
+  } else if(currentRole === 'executive'){
+    $('rolePill').textContent = '👑 ผู้บริหาร';
   } else {
     $('rolePill').textContent = '👁️ ฝ่ายการตลาด';
   }
@@ -1710,7 +1709,14 @@ async function loadPlan(){
     sb.from('receipt_trips').select('*').order('plan_date',{ascending:false}).order('created_at',{ascending:true}),
     sb.from('receipt_items').select('*').order('created_at',{ascending:true})
   ]);
-  if(e1 || e2){ console.error(e1||e2); return; }
+  if(e1 || e2){
+    console.error(e1||e2);
+    $('planContent').innerHTML = `<div style="padding:44px 20px;text-align:center;color:var(--muted)">
+      <div style="font-size:40px;margin-bottom:8px">🚫</div>
+      โหลดแผนรับสินค้าไม่สำเร็จ<br>
+      <span style="font-size:13px">${((e1||e2).message)||'ไม่มีสิทธิ์เข้าถึงข้อมูล (RLS)'}</span></div>`;
+    return;
+  }
   const byTrip = {};
   (items||[]).forEach(it => { (byTrip[it.trip_id] = byTrip[it.trip_id] || []).push(it); });
   allTrips = (trips||[]).map(t => ({ ...t, items: byTrip[t.id] || [] }));
