@@ -159,8 +159,9 @@ async function loadApps(){
   }catch(e){ return APPS_FALLBACK; }
 }
 
-const ROLE_LABEL = { purchase:'จัดซื้อ', marketing:'การตลาด', pr_manager:'หัวหน้า (อนุมัติ)', pr_exec:'ผู้บริหาร (อนุมัติ)' };
-const ALLOWED = ['purchase','marketing','pr_manager','pr_exec'];   // บทบาทที่เข้าหน้ารวมได้
+const ROLE_LABEL = { purchase:'จัดซื้อ', marketing:'การตลาด', pr_manager:'หัวหน้า (อนุมัติ)', pr_exec:'ผู้บริหาร', executive:'ผู้บริหาร' };
+const ALLOWED = ['purchase','marketing','pr_manager','pr_exec','executive'];   // บทบาทที่เข้าหน้ารวมได้
+const isExecRole = r => r==='pr_exec' || r==='executive';   // ผู้บริหาร = เห็นทุกระบบ
 
 // อ่านบทบาททั้งหมดของบัญชี (รองรับทั้งแบบ array ใหม่ และ single เดิม)
 function getRoles(session){
@@ -205,8 +206,10 @@ async function showHub(session){
   $('appGrid').innerHTML = '<div class="empty-apps">กำลังโหลดรายการระบบ...</div>';
 
   // ดึงรายการเว็บจากตาราง portal_apps แล้วกรองตามบทบาท (มี role ไหนตรงก็เห็น)
+  // ผู้บริหาร → เห็นทุกระบบทั้งหมด (ไม่ต้องกรอง)
   const all = await loadApps();
-  const apps = all.filter(a => (a.roles||[]).some(r => roles.includes(r)));
+  const isExec = roles.some(isExecRole);
+  const apps = isExec ? all : all.filter(a => (a.roles||[]).some(r => roles.includes(r)));
 
   // มีเว็บเดียว → พาเข้าเว็บนั้นเลย ไม่ต้องเห็นหน้าเลือก
   if(apps.length === 1){
