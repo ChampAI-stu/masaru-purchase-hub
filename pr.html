@@ -186,7 +186,7 @@
         <div id="pr-searchbar" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px">
           <div style="position:relative;flex:1;min-width:220px">
             <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted)">🔍</span>
-            <input id="pr-search" type="text" placeholder="ค้นหา เลข PR / ผู้ขอซื้อ / แผนก / เลข PO / หมายเหตุ"
+            <input id="pr-search" type="text" placeholder="ค้นหา เลข PR / ผู้ขอซื้อ / แผนก / เลข PO / SKU / ชื่อสินค้า"
               oninput="doPRSearch()" autocomplete="off"
               style="width:100%;padding:9px 34px 9px 32px;border:1px solid var(--line);border-radius:9px;font-family:inherit;font-size:14px"/>
             <button id="pr-search-clear" onclick="clearPRSearch()" title="ล้าง"
@@ -846,7 +846,7 @@ async function delPR(id, num){
 let PR_ALL=[], PR_PAGE=1; const PR_PER=15;
 let PR_SEARCH='', PR_STATUS='';
 async function loadPRs(){
-  const {data,error}=await sb.from('pr').select('*, pr_items(count)').order('created_at',{ascending:false});
+  const {data,error}=await sb.from('pr').select('*, pr_items(sku,product_name)').order('created_at',{ascending:false});
   if(error){toast(error.message,true);return;}
   PR_ALL=data; renderPRPage();
 }
@@ -967,7 +967,8 @@ function renderPRPage(){
   const view = PR_ALL.filter(p=>{
     if(st && p.status!==st) return false;
     if(!q) return true;
-    const hay = [p.pr_number,p.requester,p.department,p.po_number,p.note,p.pr_date]
+    const skuText = (p.pr_items||[]).map(it=>`${it.sku||''} ${it.product_name||''}`).join(' ');
+    const hay = [p.pr_number,p.requester,p.department,p.po_number,p.note,p.pr_date,skuText]
       .map(x=>String(x==null?'':x).toLowerCase()).join(' ');
     return hay.includes(q);
   });
@@ -997,15 +998,23 @@ function renderPRPage(){
   const data=view.slice(start, start+PR_PER);
   const stMap={draft:['st-draft','ยังไม่ส่ง'],checked:['st-checked','รอหัวหน้า'],mgr_approved:['st-mgr_approved','รอผู้บริหาร'],approved:['st-approved','อนุมัติ'],rejected:['st-rejected','ตีกลับ']};
   $('pr-list').innerHTML = data.length ? data.map(p=>{
-    const a=p.ai_result||{}; const cnt=(p.pr_items&&p.pr_items[0]?.count)||0;
+    const a=p.ai_result||{}; const cnt=(p.pr_items||[]).length;
     const [sc,sl]=stMap[p.status]||stMap.draft;
     const chk = a.fail? `<span class="badge b-fail">🔴 ${a.fail}</span>` : a.warn? `<span class="badge b-warn">⚠️ ${a.warn}</span>` : `<span class="badge b-pass">✅</span>`;
     const isDup=dupNums.has(p.pr_number);
     const rowStyle=isDup?'cursor:pointer;background:#FEF2F2':'cursor:pointer';
     const dupTag=isDup?` <span class="badge b-fail" title="เลขนี้ซ้ำกับใบอื่น">⚠️ เลขซ้ำ</span>`:'';
+    // ถ้ากำลังค้นหา แล้วคำค้นตรงกับ SKU/ชื่อสินค้าในใบนี้ → โชว์ว่าเจอ SKU ไหน
+    let skuHit='';
+    if(q){
+      const hits=[...new Set((p.pr_items||[])
+        .filter(it=> String(it.sku||'').toLowerCase().includes(q) || String(it.product_name||'').toLowerCase().includes(q))
+        .map(it=>it.sku).filter(Boolean))];
+      if(hits.length) skuHit=`<div style="margin-top:3px;font-size:12px;color:var(--blue)">🔎 ${hits.slice(0,4).map(s=>`<b>${s}</b>`).join(', ')}${hits.length>4?` +${hits.length-4}`:''}</div>`;
+    }
     return `<tr style="${rowStyle}" onclick="viewPR('${p.id}')">
       <td><b>${p.pr_number}</b>${dupTag}</td><td>${p.pr_date||''}</td><td>${p.requester||''}</td>
-      <td>${cnt} รายการ</td><td class="right">${fmt(p.total_cny)}</td><td class="right">${fmt(p.total_thb)}</td>
+      <td>${cnt} รายการ${skuHit}</td><td class="right">${fmt(p.total_cny)}</td><td class="right">${fmt(p.total_thb)}</td>
       <td>${chk}</td><td>${p.po_number?`<b>${p.po_number}</b>`:'<span class="muted">-</span>'}</td><td><span class="pill ${sc}">${sl}</span></td>
       <td><button class="btn sm ghost" onclick="event.stopPropagation();viewPR('${p.id}')">เปิด</button>${ME.role==='จัดซื้อ'?`<button class="btn sm" style="background:var(--red);margin-left:6px" onclick="event.stopPropagation();delPR('${p.id}','${p.pr_number}')">ลบ</button>`:''}</td></tr>`;
   }).join('') : (filtering ? `<tr><td colspan="10" class="empty" style="padding:26px">🔍 ไม่พบใบขอซื้อที่ตรงกับเงื่อนไข</td></tr>` : '');
