@@ -727,8 +727,10 @@ function renderCheck(res, summary){
 /* ========================================================================
    บันทึก PR
 ======================================================================== */
+let SAVING=false;   // กันกดปุ่มบันทึกซ้ำ/รัว (double-submit)
 async function savePR(){
   if(!requireEditor())return;
+  if(SAVING){ toast('กำลังบันทึก… รอสักครู่',true); return; }
   const items=collectItems();
   if(!items.length){toast('ไม่มีรายการ',true);return;}
   if(!CURRENT_CHECK){toast('กรุณากดตรวจสอบก่อนบันทึก',true);return;}
@@ -738,6 +740,8 @@ async function savePR(){
     const ok = await confirmSubmitWarn($('h-prno').value.trim(), nFail, nWarn, 'save');
     if(!ok) return;   // ยกเลิก — ไม่บันทึก
   }
+  SAVING=true; const _saveBtn=$('btn-save'); if(_saveBtn) _saveBtn.disabled=true; let _done=false;
+  try{
   const rate=parseFloat($('h-rate').value)||0;
   let tcny=0,tthb=0; items.forEach(i=>{tcny+=i.total_cny;tthb+=i.total_thb;});
   const header={ pr_number:$('h-prno').value.trim(), pr_date:$('h-date').value,
@@ -786,11 +790,14 @@ async function savePR(){
   $('edit-banner').classList.add('hide'); EDIT_ID=null;
   CURRENT_CHECK=null; await genPRNumber(); addRow(); recalcGrand();
   showTab('list'); loadPRs();
+  _done=true;
+  } catch(err){ toast('บันทึกไม่ได้: '+((err&&err.message)||err),true); }
+  finally { SAVING=false; if(!_done && _saveBtn) _saveBtn.disabled=false; }
 }
 
 async function editPR(id){
   const {data:p}=await sb.from('pr').select('*').eq('id',id).single();
-  const {data:items}=await sb.from('pr_items').select('*').eq('pr_id',id).order('seq');
+  let {data:items}=await sb.from('pr_items').select('*').eq('pr_id',id).order('seq'); items=dedupeItems(items);
   EDIT_ID=id;
   showTab('create');
   $('edit-banner').classList.remove('hide');
@@ -868,9 +875,18 @@ function renderPRPage(){
     <button class="btn ghost sm" ${PR_PAGE>=pages?'disabled':''} onclick="gotoPRPage(${PR_PAGE+1})">ถัดไป ›</button>`;
 }
 
+function dedupeItems(arr){
+  const seen=new Set(); const out=[];
+  (arr||[]).forEach(it=>{
+    const key = (it.seq!=null? 's'+it.seq
+                 : (it.sku||'')+'|'+(it.supplier||'')+'|'+it.unit_price+'|'+it.order_qty);
+    if(seen.has(key)) return; seen.add(key); out.push(it);
+  });
+  return out;
+}
 async function viewPR(id){
   const {data:p}=await sb.from('pr').select('*').eq('id',id).single();
-  const {data:items}=await sb.from('pr_items').select('*').eq('pr_id',id).order('seq');
+  let {data:items}=await sb.from('pr_items').select('*').eq('pr_id',id).order('seq'); items=dedupeItems(items);
   const a=p.ai_result||{};
   const sg = p.signatures||{};
   const SLOT={'จัดซื้อ':'requester','หัวหน้า':'reviewer','ผู้บริหาร':'approver'};
@@ -1101,7 +1117,7 @@ function esc(s){return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<
 
 async function printPR(id){
   const {data:p}=await sb.from('pr').select('*').eq('id',id).single();
-  const {data:items}=await sb.from('pr_items').select('*').eq('pr_id',id).order('seq');
+  let {data:items}=await sb.from('pr_items').select('*').eq('pr_id',id).order('seq'); items=dedupeItems(items);
   const rows = items.map(it=>`<tr>
     <td class="c">${it.seq}</td>
     <td><b>${esc(it.sku)}</b></td>
