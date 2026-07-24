@@ -429,15 +429,16 @@ async function enterApp(user){
 
   const isManager = isApprover(role);
   const isExec = role==='ผู้บริหาร';
-  // ผู้บริหาร: เห็นทุกแท็บเหมือนจัดซื้อ (ดูอย่างเดียว แต่กดอนุมัติได้) ; หัวหน้า: เห็นแค่รายการ
-  const showAllTabs = !isManager || isExec;
+  // PR: ทุก role (จัดซื้อ/หัวหน้า/ผู้บริหาร) เห็นทุกแท็บเหมือนกัน — แต่แก้ไข/บันทึกได้เฉพาะจัดซื้อ (ดู requireEditor)
+  const showAllTabs = true;
   document.querySelector('[data-tab="create"]').style.display = showAllTabs?'':'none';
   document.querySelector('[data-tab="master"]').style.display = showAllTabs?'':'none';
-  document.querySelector('[data-tab="history"]').style.display = '';  // ประวัติราคา: ทุก role ดูได้ (จัดซื้อ/หัวหน้า/ผู้บริหาร)
+  document.querySelector('[data-tab="history"]').style.display = '';  // ประวัติราคา: ทุก role ดูได้
   showTab('list');
 
   await loadPRs();
-  if(!isManager || isExec){
+  // เตรียมฟอร์มสร้าง + โหลดข้อมูลกลางให้ทุก role (role ที่ไม่ใช่จัดซื้อจะกดบันทึกไม่ได้)
+  {
     $('h-date').value = new Date().toISOString().slice(0,10);
     if(ME.name && ME.name!==ME.email) $('h-requester').value = ME.name;
     await loadMaster();
