@@ -119,6 +119,7 @@
     <button data-tab="list" class="active" onclick="showTab('list')">📋 รายการ PR</button>
     <button data-tab="create" onclick="showTab('create')">➕ สร้าง PR</button>
     <button data-tab="master" onclick="showTab('master')">🗄️ ข้อมูลกลาง</button>
+    <button data-tab="history" onclick="showTab('history')">📜 ประวัติการอัพเดต</button>
   </nav>
 
   <main>
@@ -231,6 +232,42 @@
             <thead><tr><th>รหัสสินค้า</th><th>ชื่อสินค้า</th><th>Supplier</th>
               <th class="right">ราคามาตรฐาน (¥)</th><th></th></tr></thead>
             <tbody id="master-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    <section id="tab-history" class="hide">
+      <div class="panel">
+        <h2>📜 ประวัติการอัพเดตราคา — สรุปรวมทั้งหมด</h2>
+        <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
+          <div class="fld grow"><label>ค้นหา</label>
+            <input id="hist-search" placeholder="🔍 รหัสสินค้า / supplier / ผู้แก้..." oninput="renderHistory()"/></div>
+          <div class="fld"><label>ช่วงเวลา</label>
+            <select id="hist-range" onchange="renderHistory()">
+              <option value="all">ทั้งหมด</option>
+              <option value="7">7 วันล่าสุด</option>
+              <option value="30">30 วันล่าสุด</option>
+              <option value="90">90 วันล่าสุด</option>
+            </select></div>
+          <div class="fld"><label>ทิศทางราคา</label>
+            <select id="hist-dir" onchange="renderHistory()">
+              <option value="all">ทั้งหมด</option>
+              <option value="up">ราคาขึ้น</option>
+              <option value="down">ราคาลง</option>
+              <option value="new">ตั้งราคาใหม่</option>
+            </select></div>
+          <button class="btn ghost sm" onclick="loadHistory()">🔄 รีเฟรช</button>
+          <button class="btn gold sm" onclick="exportHistory()">📥 ส่งออก Excel</button>
+          <span id="hist-info" class="muted" style="font-size:13px"></span>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="scroll">
+          <table>
+            <thead><tr>
+              <th>วันเวลา</th><th>รหัสสินค้า</th><th>Supplier</th>
+              <th class="right">ราคาเดิม</th><th class="right">ราคาใหม่</th>
+              <th class="right">เปลี่ยน</th><th>โดย</th></tr></thead>
+            <tbody id="hist-rows"></tbody>
           </table>
         </div>
       </div>
@@ -394,6 +431,7 @@ async function enterApp(user){
   const showAllTabs = !isManager || isExec;
   document.querySelector('[data-tab="create"]').style.display = showAllTabs?'':'none';
   document.querySelector('[data-tab="master"]').style.display = showAllTabs?'':'none';
+  document.querySelector('[data-tab="history"]').style.display = showAllTabs?'':'none';
   showTab('list');
 
   await loadPRs();
@@ -413,11 +451,75 @@ async function enterApp(user){
 boot();
 
 function showTab(t){
-  ['list','create','master'].forEach(x=>{
-    $('tab-'+x).classList.toggle('hide', x!==t);
-    document.querySelector('[data-tab="'+x+'"]').classList.toggle('active', x===t);
+  ['list','create','master','history'].forEach(x=>{
+    const sec=$('tab-'+x), btn=document.querySelector('[data-tab="'+x+'"]');
+    if(sec) sec.classList.toggle('hide', x!==t);
+    if(btn) btn.classList.toggle('active', x===t);
+  });
+  if(t==='history') loadHistory();
+}
+/* ========================================================================
+   ประวัติการอัพเดตราคา — สรุปรวมทั้งหมด
+======================================================================== */
+let HISTORY_ALL=[];
+async function loadHistory(){
+  const tb=$('hist-rows'); if(tb) tb.innerHTML='<tr><td colspan="7" class="muted" style="padding:14px">กำลังโหลด…</td></tr>';
+  const {data,error}=await sb.from('sku_price_history').select('*').order('changed_at',{ascending:false}).limit(3000);
+  if(error){
+    HISTORY_ALL=[];
+    if(tb) tb.innerHTML=`<tr><td colspan="7" class="muted" style="padding:14px">ยังโหลดประวัติไม่ได้: ${esc(error.message)}<br>ถ้ายังไม่ได้สร้างตาราง <b>sku_price_history</b> ให้รันไฟล์ add_price_history.sql ก่อนครับ</td></tr>`;
+    $('hist-info').textContent=''; return;
+  }
+  HISTORY_ALL=data||[]; renderHistory();
+}
+function filterHistory(){
+  const q=($('hist-search').value||'').trim().toLowerCase();
+  const range=$('hist-range').value, dir=$('hist-dir').value, now=Date.now();
+  return HISTORY_ALL.filter(h=>{
+    if(q){ const hay=((h.sku||'')+' '+(h.supplier||'')+' '+(h.changed_by||'')).toLowerCase(); if(!hay.includes(q)) return false; }
+    if(range!=='all' && (now-new Date(h.changed_at).getTime() > (+range)*864e5)) return false;
+    const o=h.old_price, n=Number(h.new_price);
+    if(dir==='new' && o!=null) return false;
+    if(dir==='up'   && !(o!=null && n>Number(o))) return false;
+    if(dir==='down' && !(o!=null && n<Number(o))) return false;
+    return true;
   });
 }
+function renderHistory(){
+  const rows=filterHistory(); const tb=$('hist-rows');
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="7" class="muted" style="padding:14px">— ไม่มีข้อมูลตามเงื่อนไข —</td></tr>'; $('hist-info').textContent=''; return; }
+  tb.innerHTML=rows.map(h=>{
+    const dt=new Date(h.changed_at).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'});
+    const o=(h.old_price==null)?null:Number(h.old_price), n=Number(h.new_price);
+    let chg,cls;
+    if(o==null){ chg='ตั้งราคาใหม่'; cls=''; }
+    else if(n>o){ chg='▲ +'+fmt(n-o); cls='ph-up'; }
+    else if(n<o){ chg='▼ -'+fmt(o-n); cls='ph-down'; }
+    else { chg='—'; cls=''; }
+    return `<tr><td style="white-space:nowrap">${dt}</td><td><b>${esc(h.sku||'')}</b></td><td>${esc(h.supplier||'')}</td>
+      <td class="right">${o==null?'<span class="muted">-</span>':fmt(o)}</td>
+      <td class="right"><b>${fmt(n)}</b></td>
+      <td class="right ${cls}">${chg}</td><td>${esc(h.changed_by||'')||'<span class="muted">-</span>'}</td></tr>`;
+  }).join('');
+  $('hist-info').textContent='แสดง '+rows.length+' รายการ (ทั้งหมด '+HISTORY_ALL.length+')';
+}
+function exportHistory(){
+  const rows=filterHistory();
+  if(!rows.length){ toast('ไม่มีข้อมูลให้ส่งออก',true); return; }
+  const out=rows.map(h=>({
+    'วันเวลา': new Date(h.changed_at).toLocaleString('th-TH'),
+    'รหัสสินค้า': h.sku||'', 'Supplier': h.supplier||'',
+    'ราคาเดิม': h.old_price==null?'':Number(h.old_price),
+    'ราคาใหม่': Number(h.new_price),
+    'เปลี่ยน(¥)': h.old_price==null?'':(Number(h.new_price)-Number(h.old_price)),
+    'โดย': h.changed_by||''
+  }));
+  const ws=XLSX.utils.json_to_sheet(out);
+  ws['!cols']=[{wch:20},{wch:16},{wch:18},{wch:12},{wch:12},{wch:12},{wch:22}];
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'price_history');
+  XLSX.writeFile(wb,'MASARU_ประวัติการอัพเดตราคา.xlsx'); toast('ส่งออกแล้ว 📥');
+}
+
 
 /* ========================================================================
    ข้อมูลกลาง (MASTER)
