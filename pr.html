@@ -57,27 +57,6 @@
   .st-mgr_approved{background:#DBEAFE;color:#1E40AF}
   .st-approved{background:#D1FAE5;color:#065F46}
   .st-rejected{background:#FEE2E2;color:#991B1B}
-  /* ===== Dashboard tab ===== */
-  .dash-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:18px}
-  .dash-kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 17px;position:relative;overflow:hidden}
-  .dash-kpi .lbl{font-size:13px;color:var(--muted);font-weight:600;margin-bottom:6px}
-  .dash-kpi .val{font-size:26px;font-weight:700;line-height:1.1}
-  .dash-kpi .unit{font-size:13px;color:var(--muted);font-weight:600;margin-left:3px}
-  .dash-kpi .tag{position:absolute;top:13px;right:15px;font-size:20px;opacity:.32}
-  .dash-kpi.action{background:linear-gradient(135deg,#1A2942,#22345A);border:none}
-  .dash-kpi.action .lbl{color:#AFC4E6} .dash-kpi.action .val{color:#fff}
-  .dash-statusbar{display:flex;height:26px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
-  .dash-statusbar > div{display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;min-width:0}
-  .dash-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:13px}
-  .dash-legend .dot{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:middle}
-  .dash-bars{display:flex;align-items:flex-end;gap:10px;height:180px;padding-top:10px}
-  .dash-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
-  .dash-col .bar{width:70%;max-width:46px;background:linear-gradient(180deg,#3A5A8C,#1A2942);border-radius:6px 6px 0 0}
-  .dash-col .bv{font-size:11px;color:var(--muted);margin-bottom:4px;white-space:nowrap}
-  .dash-col .bl{font-size:12px;color:var(--ink);margin-top:6px;font-weight:600}
-  .dash-grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-  @media(max-width:820px){.dash-grid2{grid-template-columns:1fr}}
-  .dash-empty{padding:30px;text-align:center;color:var(--muted)}
   .ai-card{border:2px solid var(--navy);border-radius:14px;overflow:hidden;margin-top:6px}
   .ai-head{background:var(--navy);color:#fff;padding:13px 18px;display:flex;align-items:center;gap:10px;font-weight:700}
   .ai-head .robot{font-size:20px}
@@ -102,6 +81,16 @@
   .sig-done{padding:9px 11px;border:1px solid var(--green);border-radius:8px;background:#ECFDF5;color:var(--green);font-weight:600}
   .sig-lock{padding:9px 11px;border:1px dashed var(--line);border-radius:8px;background:#FEF3C7;color:#92400E}
   .boot-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1F3864,#2E75B6);color:#fff;font-size:16px;flex-direction:column;gap:14px}
+.ph-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:9999;padding:16px}
+.ph-card{background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:82vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.ph-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff}
+.ph-head h3{margin:0;font-size:16px}
+.ph-body{padding:14px 18px}
+.ph-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.ph-row:last-child{border-bottom:0}
+.ph-date{font-size:13px;color:#64748b}
+.ph-price{white-space:nowrap;font-variant-numeric:tabular-nums}
+.ph-up{color:var(--red)} .ph-down{color:#16a34a}
 </style>
 </head>
 <body>
@@ -128,81 +117,16 @@
 
   <nav class="tabs">
     <button data-tab="list" class="active" onclick="showTab('list')">📋 รายการ PR</button>
-    <button data-tab="dashboard" class="hide" onclick="showTab('dashboard')">📊 Dashboard</button>
     <button data-tab="create" onclick="showTab('create')">➕ สร้าง PR</button>
     <button data-tab="master" onclick="showTab('master')">🗄️ ข้อมูลกลาง</button>
   </nav>
 
   <main>
 
-    <!-- ===== TAB: Dashboard (หัวหน้า/ผู้บริหาร) ===== -->
-    <section id="tab-dashboard" class="hide">
-      <div class="dash-kpis" id="dash-kpis"></div>
-
-      <div class="panel">
-        <h2>⏳ รออนุมัติของคุณ <span class="muted" id="dash-pend-count" style="font-weight:400;font-size:13px"></span></h2>
-        <div class="scroll"><table>
-          <thead><tr>
-            <th>เลข PR</th><th>วันที่</th><th>ผู้ขอซื้อ</th><th>แผนก</th>
-            <th class="right">มูลค่า (฿)</th><th>ตรวจ AI</th><th></th>
-          </tr></thead>
-          <tbody id="dash-pend"></tbody>
-        </table></div>
-      </div>
-
-      <div class="panel">
-        <h2>📊 สถานะใบขอซื้อทั้งหมด</h2>
-        <div class="dash-statusbar" id="dash-statusbar"></div>
-        <div class="dash-legend" id="dash-legend"></div>
-      </div>
-
-      <div class="panel">
-        <h2>💰 มูลค่าที่อนุมัติสมบูรณ์ — รายเดือน <span class="muted" style="font-weight:400;font-size:13px">(บาท)</span></h2>
-        <div class="dash-bars" id="dash-bars"></div>
-      </div>
-
-      <div class="dash-grid2">
-        <div class="panel">
-          <h2>🏆 ผู้ขอซื้อสูงสุด</h2>
-          <div class="scroll"><table>
-            <thead><tr><th>ผู้ขอซื้อ</th><th class="right">จำนวน PR</th><th class="right">มูลค่ารวม (฿)</th></tr></thead>
-            <tbody id="dash-req"></tbody>
-          </table></div>
-        </div>
-        <div class="panel">
-          <h2>🏢 แผนกที่ขอซื้อสูงสุด</h2>
-          <div class="scroll"><table>
-            <thead><tr><th>แผนก</th><th class="right">จำนวน PR</th><th class="right">มูลค่ารวม (฿)</th></tr></thead>
-            <tbody id="dash-dept"></tbody>
-          </table></div>
-        </div>
-      </div>
-    </section>
-
     <!-- ===== TAB: รายการ PR ===== -->
     <section id="tab-list">
       <div class="panel">
         <h2>📋 รายการใบขอซื้อ</h2>
-        <div id="pr-searchbar" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px">
-          <div style="position:relative;flex:1;min-width:220px">
-            <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted)">🔍</span>
-            <input id="pr-search" type="text" placeholder="ค้นหา เลข PR / ผู้ขอซื้อ / แผนก / เลข PO / SKU / ชื่อสินค้า"
-              oninput="doPRSearch()" autocomplete="off"
-              style="width:100%;padding:9px 34px 9px 32px;border:1px solid var(--line);border-radius:9px;font-family:inherit;font-size:14px"/>
-            <button id="pr-search-clear" onclick="clearPRSearch()" title="ล้าง"
-              style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;font-size:16px;color:var(--muted)">✕</button>
-          </div>
-          <select id="pr-filter-status" onchange="doPRSearch()"
-            style="padding:9px 12px;border:1px solid var(--line);border-radius:9px;font-family:inherit;font-size:14px;background:#fff">
-            <option value="">ทุกสถานะ</option>
-            <option value="draft">ยังไม่ส่ง</option>
-            <option value="checked">รอหัวหน้าอนุมัติ</option>
-            <option value="mgr_approved">รอผู้บริหารอนุมัติ</option>
-            <option value="approved">อนุมัติสมบูรณ์</option>
-            <option value="rejected">ตีกลับ</option>
-          </select>
-          <span class="muted" id="pr-search-count" style="font-size:13px"></span>
-        </div>
         <div id="pr-dup-warn" class="hide" style="margin-bottom:12px;padding:11px 14px;border-left:4px solid var(--red);background:#FEF2F2;border-radius:8px;color:#991B1B;font-size:14px"></div>
         <div class="scroll">
           <table>
@@ -278,7 +202,7 @@
     <section id="tab-master" class="hide">
       <div class="panel">
         <h2>🗄️ ข้อมูลกลาง (Master) — ราคามาตรฐาน</h2>
-        <div class="row" style="align-items:flex-end">
+        <div class="row" id="master-tools" style="align-items:flex-end">
           <div class="fld"><label>นำเข้าจาก Excel / CSV</label>
             <input type="file" id="file-master" accept=".xlsx,.xls,.csv" onchange="importMaster(event)"/></div>
           <button class="btn gold sm" onclick="downloadTemplate()">📥 โหลดเทมเพลต</button>
@@ -328,6 +252,15 @@
   </div>
 </div>
 
+<div class="ph-overlay" id="ph-modal" onclick="if(event.target===this)closePriceHistory()">
+  <div class="ph-card">
+    <div class="ph-head">
+      <h3>📈 ประวัติราคา — <span id="ph-title"></span></h3>
+      <button class="btn sm ghost" onclick="closePriceHistory()">✕ ปิด</button>
+    </div>
+    <div class="ph-body" id="ph-body"></div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -351,8 +284,35 @@ let sb = null, MASTER = {}, MASTER_ALL = [], CURRENT_CHECK = null, ME = null, RT
 const $ = id => document.getElementById(id);
 const fmt = n => (Number(n)||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
 const isApprover = r => r==='หัวหน้า' || r==='ผู้บริหาร';
+// เฉพาะจัดซื้อเท่านั้นที่แก้ไขข้อมูลได้ ; role อื่น (เช่น ผู้บริหาร) ดูอย่างเดียว
+function canEdit(){ return !!(ME && ME.role==='จัดซื้อ'); }
+function requireEditor(){ if(!canEdit()){ toast('บทบาทนี้ดูอย่างเดียว แก้ไขไม่ได้',true); return false; } return true; }
 
 function toast(msg, err){const t=$('toast');t.textContent=msg;t.className='toast show'+(err?' err':'');setTimeout(()=>t.className='toast',2600);}
+function closePriceHistory(){ const m=$('ph-modal'); if(m) m.style.display='none'; }
+async function showPriceHistory(id){
+  const r = MASTER_ALL.find(x=>String(x.id)===String(id)); if(!r) return;
+  $('ph-title').textContent = r.sku + (r.supplier?(' · '+r.supplier):'');
+  const box=$('ph-body'); box.innerHTML='<div class=\"muted\" style=\"padding:12px\">กำลังโหลด…</div>';
+  $('ph-modal').style.display='flex';
+  const {data,error}=await sb.from('sku_price_history')
+    .select('*').eq('sku', r.sku).eq('supplier', r.supplier||'')
+    .order('changed_at',{ascending:false});
+  const cur = `<div style=\"padding:4px 0 12px;border-bottom:1px solid var(--line);margin-bottom:8px\">ราคาปัจจุบัน: <b style=\"font-size:17px\">${fmt(r.standard_price)}</b> ¥</div>`;
+  if(error){
+    box.innerHTML = `<div class=\"muted\" style=\"padding:12px\">ยังดูประวัติไม่ได้: ${esc(error.message)}<br><br>ถ้ายังไม่ได้สร้างตาราง <b>sku_price_history</b> ให้รันไฟล์ SQL ที่แนบก่อนครับ</div>`;
+    return;
+  }
+  if(!data || !data.length){ box.innerHTML = cur + '<div class=\"muted\" style=\"padding:10px 0\">ยังไม่มีประวัติการเปลี่ยนราคา — ระบบจะเริ่มบันทึกตั้งแต่ครั้งถัดไปที่ราคาถูกแก้</div>'; return; }
+  box.innerHTML = cur + data.map(h=>{
+    const dt=new Date(h.changed_at).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'});
+    const oldp=(h.old_price==null)?null:Number(h.old_price), newp=Number(h.new_price);
+    const dir=(oldp==null)?'':(newp>oldp?'ph-up':(newp<oldp?'ph-down':''));
+    const change=(oldp==null)?'ตั้งราคาเริ่มต้น':`${fmt(oldp)} → <b>${fmt(newp)}</b>`;
+    const who=h.changed_by?`<div class=\"ph-date\">โดย ${esc(h.changed_by)}</div>`:'';
+    return `<div class=\"ph-row\"><div><div class=\"ph-date\">${dt}</div>${who}</div><div class=\"ph-price ${dir}\">${change} ¥</div></div>`;
+  }).join('');
+}
 
 /* ---------- แปลง user_roles (array) -> บทบาทใน PR ตามลำดับความสำคัญ ---------- */
 function prRoleFromMeta(user){
@@ -360,7 +320,7 @@ function prRoleFromMeta(user){
   const roles = (Array.isArray(m.user_roles) && m.user_roles.length)
     ? m.user_roles
     : (m.user_role ? [m.user_role] : []);
-  if(roles.includes('pr_exec') || roles.includes('executive')) return 'ผู้บริหาร';   // ผู้บริหารมาก่อน
+  if(roles.includes('pr_exec'))    return 'ผู้บริหาร';   // ผู้บริหารมาก่อน
   if(roles.includes('pr_manager')) return 'หัวหน้า';     // หัวหน้ามาก่อนจัดซื้อ (หัวหน้าจัดซื้อ = หัวหน้าใน PR)
   if(roles.includes('purchase'))   return 'จัดซื้อ';
   return null;                                            // ไม่มีสิทธิ์ใน PR
@@ -368,9 +328,17 @@ function prRoleFromMeta(user){
 
 function goPortal(){ window.location.href = PORTAL_URL; }   // กลับหน้ารวม (แท็บเดิม)
 
-// โชว์ปุ่ม "หน้ารวม" ให้ทุกคนเสมอ
+// โชว์ปุ่ม "หน้ารวม" เฉพาะบัญชีที่เข้าได้มากกว่า 1 เว็บ
 async function updatePortalBtn(user){
-  $('portalBtn').style.display = '';
+  $('portalBtn').style.display = 'none';
+  const m = user && user.app_metadata ? user.app_metadata : {};
+  const roles = (Array.isArray(m.user_roles) && m.user_roles.length)
+    ? m.user_roles : (m.user_role ? [m.user_role] : []);
+  try{
+    const { data } = await sb.from('portal_apps').select('roles').eq('active', true);
+    const count = (data||[]).filter(a => (a.roles||[]).some(r => roles.includes(r))).length;
+    if(count > 1) $('portalBtn').style.display = '';
+  }catch(e){ /* เงียบไว้ */ }
 }
 
 /* ---------- BOOT: ใช้ session ร่วมจาก Portal (ไม่มีหน้า login ของตัวเอง) ---------- */
@@ -421,13 +389,15 @@ async function enterApp(user){
   if(!first && !last) setTimeout(()=>{ toast('ยังไม่ได้ตั้งชื่อ-นามสกุล — กดปุ่ม 👤 โปรไฟล์'); }, 800);
 
   const isManager = isApprover(role);
-  document.querySelector('[data-tab="create"]').style.display = isManager?'none':'';
-  document.querySelector('[data-tab="master"]').style.display = isManager?'none':'';
-  document.querySelector('[data-tab="dashboard"]').classList.toggle('hide', !isManager);
+  const isExec = role==='ผู้บริหาร';
+  // ผู้บริหาร: เห็นทุกแท็บเหมือนจัดซื้อ (ดูอย่างเดียว แต่กดอนุมัติได้) ; หัวหน้า: เห็นแค่รายการ
+  const showAllTabs = !isManager || isExec;
+  document.querySelector('[data-tab="create"]').style.display = showAllTabs?'':'none';
+  document.querySelector('[data-tab="master"]').style.display = showAllTabs?'':'none';
   showTab('list');
 
   await loadPRs();
-  if(!isManager){
+  if(!isManager || isExec){
     $('h-date').value = new Date().toISOString().slice(0,10);
     if(ME.name && ME.name!==ME.email) $('h-requester').value = ME.name;
     await loadMaster();
@@ -443,11 +413,10 @@ async function enterApp(user){
 boot();
 
 function showTab(t){
-  ['dashboard','list','create','master'].forEach(x=>{
+  ['list','create','master'].forEach(x=>{
     $('tab-'+x).classList.toggle('hide', x!==t);
     document.querySelector('[data-tab="'+x+'"]').classList.toggle('active', x===t);
   });
-  if(t==='dashboard') renderDashboard();
 }
 
 /* ========================================================================
@@ -477,11 +446,13 @@ function renderMaster(){
     <td class="m-sup">${r.supplier?esc(r.supplier):'<span class="muted">-</span>'}</td>
     <td class="right m-price">${fmt(r.standard_price)}</td>
     <td style="white-space:nowrap">
-      <button class="btn sm ghost" onclick="editMasterRow('${r.id}')">✏️ แก้ไข</button>
+      <button class="btn sm ghost" onclick="showPriceHistory('${r.id}')">📈 ประวัติ</button>
+      <button class="btn sm ghost" style="margin-left:5px" onclick="editMasterRow('${r.id}')">✏️ แก้ไข</button>
       <button class="btn sm" style="background:var(--red);margin-left:5px" onclick="delSkuById('${r.id}')">ลบ</button>
     </td></tr>`).join('') || `<tr><td colspan="5" class="muted" style="text-align:center;padding:18px">— ไม่พบรายการที่ค้นหา —</td></tr>`;
 }
 function editMasterRow(id){
+  if(!requireEditor())return;
   const r=MASTER_ALL.find(x=>String(x.id)===String(id)); if(!r)return;
   const tr=document.querySelector(`#master-rows tr[data-id="${id}"]`); if(!tr)return;
   tr.querySelector('.m-name').innerHTML=`<input class="ed-name" value="${esc(r.product_name||'')}" style="width:100%;padding:5px 7px;border:1px solid var(--line);border-radius:6px"/>`;
@@ -492,6 +463,7 @@ function editMasterRow(id){
     <button class="btn sm ghost" style="margin-left:5px" onclick="renderMaster()">ยกเลิก</button>`;
 }
 async function saveMasterRow(id){
+  if(!requireEditor())return;
   const tr=document.querySelector(`#master-rows tr[data-id="${id}"]`); if(!tr)return;
   const upd={
     product_name: tr.querySelector('.ed-name').value.trim(),
@@ -512,6 +484,7 @@ function mEntry(sku, supplier){
 }
 function openAddSku(){ $('add-sku').classList.toggle('hide'); }
 async function saveSku(){
+  if(!requireEditor())return;
   const row={ sku:$('m-sku').value.trim(), product_name:$('m-name').value.trim(),
     supplier:$('m-sup').value.trim(), standard_price:parseFloat($('m-price').value)||0 };
   if(!row.sku){toast('ใส่รหัสสินค้าก่อน',true);return;}
@@ -521,6 +494,7 @@ async function saveSku(){
   toast('บันทึก SKU แล้ว'); loadMaster();
 }
 async function delSkuById(id){
+  if(!requireEditor())return;
   if(!confirm('ลบรายการนี้?'))return;
   await sb.from('sku_master').delete().eq('id',id); toast('ลบแล้ว'); loadMaster();
 }
@@ -540,6 +514,7 @@ function downloadTemplate(){
   toast('โหลดเทมเพลตแล้ว 📥');
 }
 async function importMaster(e){
+  if(!requireEditor()){ e.target.value=''; return; }
   const f=e.target.files[0]; if(!f)return;
   const buf=await f.arrayBuffer();
   const wb=XLSX.read(buf,{type:'array'});
@@ -753,6 +728,7 @@ function renderCheck(res, summary){
    บันทึก PR
 ======================================================================== */
 async function savePR(){
+  if(!requireEditor())return;
   const items=collectItems();
   if(!items.length){toast('ไม่มีรายการ',true);return;}
   if(!CURRENT_CHECK){toast('กรุณากดตรวจสอบก่อนบันทึก',true);return;}
@@ -844,144 +820,18 @@ async function delPR(id, num){
   toast('ลบ '+num+' แล้ว 🗑️'); $('pr-detail').innerHTML=''; loadPRs();
 }
 let PR_ALL=[], PR_PAGE=1; const PR_PER=15;
-let PR_SEARCH='', PR_STATUS='';
 async function loadPRs(){
-  const {data,error}=await sb.from('pr').select('*, pr_items(sku,product_name)').order('created_at',{ascending:false});
+  const {data,error}=await sb.from('pr').select('*, pr_items(count)').order('created_at',{ascending:false});
   if(error){toast(error.message,true);return;}
   PR_ALL=data; renderPRPage();
 }
 function gotoPRPage(n){ PR_PAGE=n; renderPRPage(); window.scrollTo({top:0,behavior:'smooth'}); }
-
-/* ========================================================================
-   Dashboard (แท็บสำหรับหัวหน้า/ผู้บริหาร) — ใช้ข้อมูลจาก PR_ALL ที่โหลดไว้แล้ว
-======================================================================== */
-const DASH_STATUS = {
-  draft:        {label:'ยังไม่ส่ง',        cls:'st-draft',        color:'#94A3B8'},
-  checked:      {label:'รอหัวหน้าอนุมัติ',  cls:'st-checked',      color:'#B7791F'},
-  mgr_approved: {label:'รอผู้บริหารอนุมัติ', cls:'st-mgr_approved', color:'#3A5A8C'},
-  approved:     {label:'อนุมัติสมบูรณ์',    cls:'st-approved',     color:'#1E7145'},
-  rejected:     {label:'ตีกลับ',           cls:'st-rejected',     color:'#D0212B'},
-};
-const DASH_MONTH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-const fmt0 = n => (Number(n)||0).toLocaleString('th-TH');
-function dashEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-function dashAiFail(p){ const r=p.ai_result||{}; return Number(r.fail)||0; }
-
-function renderDashboard(){
-  if(!ME || !isApprover(ME.role)) return;             // เฉพาะหัวหน้า/ผู้บริหาร
-  if($('tab-dashboard').classList.contains('hide')) return;  // เรนเดอร์เฉพาะตอนเปิดอยู่
-  const prs = PR_ALL || [];
-  const myStatus = ME.role==='หัวหน้า' ? 'checked' : 'mgr_approved';
-
-  const byStatus={draft:0,checked:0,mgr_approved:0,approved:0,rejected:0};
-  let approvedValue=0, pendingValue=0, aiFlagged=0;
-  prs.forEach(p=>{
-    byStatus[p.status]=(byStatus[p.status]||0)+1;
-    if(p.status==='approved') approvedValue+=Number(p.total_thb)||0;
-    if(p.status===myStatus)   pendingValue+=Number(p.total_thb)||0;
-    if(dashAiFail(p)>0 && p.status!=='approved' && p.status!=='rejected') aiFlagged++;
-  });
-  const pending = prs.filter(p=>p.status===myStatus);
-
-  $('dash-kpis').innerHTML=`
-    <div class="dash-kpi action">
-      <div class="lbl">รออนุมัติของคุณ (${dashEsc(ME.role)})</div>
-      <div class="val">${fmt0(pending.length)}<span class="unit">ใบ</span></div><span class="tag">✍️</span></div>
-    <div class="dash-kpi">
-      <div class="lbl">มูลค่าที่รอคุณอนุมัติ</div>
-      <div class="val">${fmt0(Math.round(pendingValue))}<span class="unit">฿</span></div><span class="tag">⏳</span></div>
-    <div class="dash-kpi">
-      <div class="lbl">PR ทั้งหมด</div>
-      <div class="val">${fmt0(prs.length)}<span class="unit">ใบ</span></div><span class="tag">📄</span></div>
-    <div class="dash-kpi">
-      <div class="lbl">อนุมัติสมบูรณ์แล้ว</div>
-      <div class="val" style="color:var(--green)">${fmt0(byStatus.approved)}<span class="unit">ใบ</span></div><span class="tag">✅</span></div>
-    <div class="dash-kpi">
-      <div class="lbl">มูลค่าอนุมัติสะสม</div>
-      <div class="val" style="color:var(--green)">${fmt0(Math.round(approvedValue))}<span class="unit">฿</span></div><span class="tag">💰</span></div>
-    <div class="dash-kpi">
-      <div class="lbl">ถูกตีกลับ</div>
-      <div class="val" style="color:var(--red)">${fmt0(byStatus.rejected)}<span class="unit">ใบ</span></div><span class="tag">↩️</span></div>
-    <div class="dash-kpi">
-      <div class="lbl">รอดำเนินการ + AI เตือน</div>
-      <div class="val" style="color:var(--amber)">${fmt0(aiFlagged)}<span class="unit">ใบ</span></div><span class="tag">🤖</span></div>`;
-
-  // รออนุมัติของคุณ — กดเปิดใบได้เลย (viewPR + สลับไปแท็บรายการ)
-  $('dash-pend-count').textContent = pending.length ? `(${pending.length} ใบ)` : '';
-  $('dash-pend').innerHTML = pending.length ? pending.map(p=>{
-    const nf=dashAiFail(p);
-    return `<tr>
-      <td><b>${dashEsc(p.pr_number)}</b></td><td>${dashEsc(p.pr_date)}</td>
-      <td>${dashEsc(p.requester)}</td><td>${dashEsc(p.department)}</td>
-      <td class="right">${fmt(p.total_thb)}</td>
-      <td>${nf>0?`<span class="badge b-fail">🔴 ${nf}</span>`:`<span class="badge b-pass">✅</span>`}</td>
-      <td><button class="btn sm ghost" onclick="showTab('list');viewPR('${p.id}')">เปิดใบ</button></td>
-    </tr>`;
-  }).join('') : `<tr><td colspan="7" class="dash-empty">🎉 ไม่มีใบขอซื้อที่รอคุณอนุมัติ</td></tr>`;
-
-  // สถานะทั้งหมด
-  const order=['draft','checked','mgr_approved','approved','rejected'];
-  const total=prs.length||1;
-  $('dash-statusbar').innerHTML = order.map(k=>{
-    const n=byStatus[k]||0; if(!n) return '';
-    const pct=n/total*100;
-    return `<div style="flex:${n};background:${DASH_STATUS[k].color}" title="${DASH_STATUS[k].label}: ${n}">${pct>7?n:''}</div>`;
-  }).join('') || '<div style="flex:1;background:var(--line);color:var(--muted)">ยังไม่มีข้อมูล</div>';
-  $('dash-legend').innerHTML = order.map(k=>
-    `<span><span class="dot" style="background:${DASH_STATUS[k].color}"></span>${DASH_STATUS[k].label} <b>${byStatus[k]||0}</b></span>`).join('');
-
-  // มูลค่าอนุมัติรายเดือน
-  const mMap={};
-  prs.filter(p=>p.status==='approved' && p.pr_date).forEach(p=>{
-    const key=String(p.pr_date).slice(0,7);
-    mMap[key]=(mMap[key]||0)+(Number(p.total_thb)||0);
-  });
-  const mKeys=Object.keys(mMap).sort().slice(-12);
-  const maxV=Math.max(1, ...mKeys.map(k=>mMap[k]));
-  $('dash-bars').innerHTML = mKeys.length ? mKeys.map(k=>{
-    const [y,m]=k.split('-'); const v=mMap[k];
-    const h=Math.max(4, Math.round(v/maxV*140));
-    return `<div class="dash-col" title="${fmt(v)} ฿">
-      <div class="bv">${fmt0(Math.round(v))}</div>
-      <div class="bar" style="height:${h}px"></div>
-      <div class="bl">${DASH_MONTH[parseInt(m,10)-1]} ${String(Number(y)+543).slice(-2)}</div></div>`;
-  }).join('') : '<div class="dash-empty" style="width:100%">ยังไม่มีใบที่อนุมัติสมบูรณ์</div>';
-
-  // Top ผู้ขอซื้อ / แผนก
-  function agg(field){
-    const map={};
-    prs.forEach(p=>{ const key=((p[field]||'—').trim())||'—';
-      if(!map[key]) map[key]={n:0,v:0}; map[key].n++; map[key].v+=Number(p.total_thb)||0; });
-    return Object.entries(map).sort((a,b)=>b[1].n-a[1].n).slice(0,8);
-  }
-  const rowsOf = arr => arr.length ? arr.map(([k,o])=>
-    `<tr><td>${dashEsc(k)}</td><td class="right">${fmt0(o.n)}</td><td class="right">${fmt(o.v)}</td></tr>`).join('')
-    : '<tr><td colspan="3" class="dash-empty">ยังไม่มีข้อมูล</td></tr>';
-  $('dash-req').innerHTML  = rowsOf(agg('requester'));
-  $('dash-dept').innerHTML = rowsOf(agg('department'));
-}
 function renderPRPage(){
-  // ── กรองตามคำค้น + สถานะ ──
-  const q = (PR_SEARCH||'').trim().toLowerCase();
-  const st = PR_STATUS||'';
-  const view = PR_ALL.filter(p=>{
-    if(st && p.status!==st) return false;
-    if(!q) return true;
-    const skuText = (p.pr_items||[]).map(it=>`${it.sku||''} ${it.product_name||''}`).join(' ');
-    const hay = [p.pr_number,p.requester,p.department,p.po_number,p.note,p.pr_date,skuText]
-      .map(x=>String(x==null?'':x).toLowerCase()).join(' ');
-    return hay.includes(q);
-  });
-  const total=view.length;
+  const total=PR_ALL.length;
   const pages=Math.max(1, Math.ceil(total/PR_PER));
   if(PR_PAGE>pages) PR_PAGE=pages;
   if(PR_PAGE<1) PR_PAGE=1;
-  const filtering = !!(q || st);
-  // สถานะ empty / ตัวนับผลค้นหา
-  $('pr-list-empty').classList.toggle('hide', total>0 || filtering);
-  const cntEl=$('pr-search-count');
-  if(cntEl) cntEl.textContent = filtering ? `พบ ${total} ใบ (จากทั้งหมด ${PR_ALL.length})` : '';
-  const clr=$('pr-search-clear'); if(clr) clr.style.display = q ? 'block' : 'none';
+  $('pr-list-empty').classList.toggle('hide', total>0);
   // ── ตรวจเลข PR ซ้ำ (จากทั้งหมด ไม่ใช่แค่หน้านี้) ──
   const numCount={};
   PR_ALL.forEach(p=>{ if(p.pr_number) numCount[p.pr_number]=(numCount[p.pr_number]||0)+1; });
@@ -995,45 +845,27 @@ function renderPRPage(){
     } else warnBox.classList.add('hide');
   }
   const start=(PR_PAGE-1)*PR_PER;
-  const data=view.slice(start, start+PR_PER);
+  const data=PR_ALL.slice(start, start+PR_PER);
   const stMap={draft:['st-draft','ยังไม่ส่ง'],checked:['st-checked','รอหัวหน้า'],mgr_approved:['st-mgr_approved','รอผู้บริหาร'],approved:['st-approved','อนุมัติ'],rejected:['st-rejected','ตีกลับ']};
-  $('pr-list').innerHTML = data.length ? data.map(p=>{
-    const a=p.ai_result||{}; const cnt=(p.pr_items||[]).length;
+  $('pr-list').innerHTML=data.map(p=>{
+    const a=p.ai_result||{}; const cnt=(p.pr_items&&p.pr_items[0]?.count)||0;
     const [sc,sl]=stMap[p.status]||stMap.draft;
     const chk = a.fail? `<span class="badge b-fail">🔴 ${a.fail}</span>` : a.warn? `<span class="badge b-warn">⚠️ ${a.warn}</span>` : `<span class="badge b-pass">✅</span>`;
     const isDup=dupNums.has(p.pr_number);
     const rowStyle=isDup?'cursor:pointer;background:#FEF2F2':'cursor:pointer';
     const dupTag=isDup?` <span class="badge b-fail" title="เลขนี้ซ้ำกับใบอื่น">⚠️ เลขซ้ำ</span>`:'';
-    // ถ้ากำลังค้นหา แล้วคำค้นตรงกับ SKU/ชื่อสินค้าในใบนี้ → โชว์ว่าเจอ SKU ไหน
-    let skuHit='';
-    if(q){
-      const hits=[...new Set((p.pr_items||[])
-        .filter(it=> String(it.sku||'').toLowerCase().includes(q) || String(it.product_name||'').toLowerCase().includes(q))
-        .map(it=>it.sku).filter(Boolean))];
-      if(hits.length) skuHit=`<div style="margin-top:3px;font-size:12px;color:var(--blue)">🔎 ${hits.slice(0,4).map(s=>`<b>${s}</b>`).join(', ')}${hits.length>4?` +${hits.length-4}`:''}</div>`;
-    }
     return `<tr style="${rowStyle}" onclick="viewPR('${p.id}')">
       <td><b>${p.pr_number}</b>${dupTag}</td><td>${p.pr_date||''}</td><td>${p.requester||''}</td>
-      <td>${cnt} รายการ${skuHit}</td><td class="right">${fmt(p.total_cny)}</td><td class="right">${fmt(p.total_thb)}</td>
+      <td>${cnt} รายการ</td><td class="right">${fmt(p.total_cny)}</td><td class="right">${fmt(p.total_thb)}</td>
       <td>${chk}</td><td>${p.po_number?`<b>${p.po_number}</b>`:'<span class="muted">-</span>'}</td><td><span class="pill ${sc}">${sl}</span></td>
       <td><button class="btn sm ghost" onclick="event.stopPropagation();viewPR('${p.id}')">เปิด</button>${ME.role==='จัดซื้อ'?`<button class="btn sm" style="background:var(--red);margin-left:6px" onclick="event.stopPropagation();delPR('${p.id}','${p.pr_number}')">ลบ</button>`:''}</td></tr>`;
-  }).join('') : (filtering ? `<tr><td colspan="10" class="empty" style="padding:26px">🔍 ไม่พบใบขอซื้อที่ตรงกับเงื่อนไข</td></tr>` : '');
+  }).join('');
   const pager=$('pr-pager');
   if(total<=PR_PER){ pager.innerHTML=''; }
   else pager.innerHTML=`
     <button class="btn ghost sm" ${PR_PAGE<=1?'disabled':''} onclick="gotoPRPage(${PR_PAGE-1})">‹ ก่อนหน้า</button>
-    <span class="muted">หน้า ${PR_PAGE}/${pages} · ${filtering?`ผลค้นหา ${total} ใบ`:`ทั้งหมด ${total} ใบ`}</span>
+    <span class="muted">หน้า ${PR_PAGE}/${pages} · ทั้งหมด ${total} ใบ</span>
     <button class="btn ghost sm" ${PR_PAGE>=pages?'disabled':''} onclick="gotoPRPage(${PR_PAGE+1})">ถัดไป ›</button>`;
-  renderDashboard();
-}
-function doPRSearch(){
-  PR_SEARCH = $('pr-search').value;
-  PR_STATUS = $('pr-filter-status').value;
-  PR_PAGE = 1;
-  renderPRPage();
-}
-function clearPRSearch(){
-  $('pr-search').value=''; PR_SEARCH=''; PR_PAGE=1; renderPRPage(); $('pr-search').focus();
 }
 
 async function viewPR(id){
