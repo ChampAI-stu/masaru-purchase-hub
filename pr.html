@@ -433,7 +433,7 @@ async function enterApp(user){
   const showAllTabs = !isManager || isExec;
   document.querySelector('[data-tab="create"]').style.display = showAllTabs?'':'none';
   document.querySelector('[data-tab="master"]').style.display = showAllTabs?'':'none';
-  document.querySelector('[data-tab="history"]').style.display = showAllTabs?'':'none';
+  document.querySelector('[data-tab="history"]').style.display = '';  // ประวัติราคา: ทุก role ดูได้ (จัดซื้อ/หัวหน้า/ผู้บริหาร)
   showTab('list');
 
   await loadPRs();
