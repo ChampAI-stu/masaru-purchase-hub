@@ -128,6 +128,26 @@
     <section id="tab-list">
       <div class="panel">
         <h2>📋 รายการใบขอซื้อ</h2>
+        <div id="pr-searchbar" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px">
+          <div style="position:relative;flex:1;min-width:220px">
+            <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted)">🔍</span>
+            <input id="pr-search" type="text" placeholder="ค้นหา เลข PR / ผู้ขอซื้อ / แผนก / เลข PO / SKU / ชื่อสินค้า"
+              oninput="doPRSearch()" autocomplete="off"
+              style="width:100%;padding:9px 34px 9px 32px;border:1px solid var(--line);border-radius:9px;font-family:inherit;font-size:14px"/>
+            <button id="pr-search-clear" onclick="clearPRSearch()" title="ล้าง"
+              style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;font-size:16px;color:var(--muted)">✕</button>
+          </div>
+          <select id="pr-filter-status" onchange="doPRSearch()"
+            style="padding:9px 12px;border:1px solid var(--line);border-radius:9px;font-family:inherit;font-size:14px;background:#fff">
+            <option value="">ทุกสถานะ</option>
+            <option value="draft">ยังไม่ส่ง</option>
+            <option value="checked">รอหัวหน้าอนุมัติ</option>
+            <option value="mgr_approved">รอผู้บริหารอนุมัติ</option>
+            <option value="approved">อนุมัติสมบูรณ์</option>
+            <option value="rejected">ตีกลับ</option>
+          </select>
+          <span class="muted" id="pr-search-count" style="font-size:13px"></span>
+        </div>
         <div id="pr-dup-warn" class="hide" style="margin-bottom:12px;padding:11px 14px;border-left:4px solid var(--red);background:#FEF2F2;border-radius:8px;color:#991B1B;font-size:14px"></div>
         <div class="scroll">
           <table>
@@ -332,24 +352,24 @@ function closePriceHistory(){ const m=$('ph-modal'); if(m) m.style.display='none
 async function showPriceHistory(id){
   const r = MASTER_ALL.find(x=>String(x.id)===String(id)); if(!r) return;
   $('ph-title').textContent = r.sku + (r.supplier?(' · '+r.supplier):'');
-  const box=$('ph-body'); box.innerHTML='<div class=\"muted\" style=\"padding:12px\">กำลังโหลด…</div>';
+  const box=$('ph-body'); box.innerHTML='<div class="muted" style="padding:12px">กำลังโหลด…</div>';
   $('ph-modal').style.display='flex';
   const {data,error}=await sb.from('sku_price_history')
     .select('*').eq('sku', r.sku).eq('supplier', r.supplier||'')
     .order('changed_at',{ascending:false});
-  const cur = `<div style=\"padding:4px 0 12px;border-bottom:1px solid var(--line);margin-bottom:8px\">ราคาปัจจุบัน: <b style=\"font-size:17px\">${fmt(r.standard_price)}</b> ¥</div>`;
+  const cur = `<div style="padding:4px 0 12px;border-bottom:1px solid var(--line);margin-bottom:8px">ราคาปัจจุบัน: <b style="font-size:17px">${fmt(r.standard_price)}</b> ¥</div>`;
   if(error){
-    box.innerHTML = `<div class=\"muted\" style=\"padding:12px\">ยังดูประวัติไม่ได้: ${esc(error.message)}<br><br>ถ้ายังไม่ได้สร้างตาราง <b>sku_price_history</b> ให้รันไฟล์ SQL ที่แนบก่อนครับ</div>`;
+    box.innerHTML = `<div class="muted" style="padding:12px">ยังดูประวัติไม่ได้: ${esc(error.message)}<br><br>ถ้ายังไม่ได้สร้างตาราง <b>sku_price_history</b> ให้รันไฟล์ SQL ที่แนบก่อนครับ</div>`;
     return;
   }
-  if(!data || !data.length){ box.innerHTML = cur + '<div class=\"muted\" style=\"padding:10px 0\">ยังไม่มีประวัติการเปลี่ยนราคา — ระบบจะเริ่มบันทึกตั้งแต่ครั้งถัดไปที่ราคาถูกแก้</div>'; return; }
+  if(!data || !data.length){ box.innerHTML = cur + '<div class="muted" style="padding:10px 0">ยังไม่มีประวัติการเปลี่ยนราคา — ระบบจะเริ่มบันทึกตั้งแต่ครั้งถัดไปที่ราคาถูกแก้</div>'; return; }
   box.innerHTML = cur + data.map(h=>{
     const dt=new Date(h.changed_at).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'});
     const oldp=(h.old_price==null)?null:Number(h.old_price), newp=Number(h.new_price);
     const dir=(oldp==null)?'':(newp>oldp?'ph-up':(newp<oldp?'ph-down':''));
     const change=(oldp==null)?'ตั้งราคาเริ่มต้น':`${fmt(oldp)} → <b>${fmt(newp)}</b>`;
-    const who=h.changed_by?`<div class=\"ph-date\">โดย ${esc(h.changed_by)}</div>`:'';
-    return `<div class=\"ph-row\"><div><div class=\"ph-date\">${dt}</div>${who}</div><div class=\"ph-price ${dir}\">${change} ¥</div></div>`;
+    const who=h.changed_by?`<div class="ph-date">โดย ${esc(h.changed_by)}</div>`:'';
+    return `<div class="ph-row"><div><div class="ph-date">${dt}</div>${who}</div><div class="ph-price ${dir}">${change} ¥</div></div>`;
   }).join('');
 }
 
@@ -359,7 +379,7 @@ function prRoleFromMeta(user){
   const roles = (Array.isArray(m.user_roles) && m.user_roles.length)
     ? m.user_roles
     : (m.user_role ? [m.user_role] : []);
-  if(roles.includes('pr_exec'))    return 'ผู้บริหาร';   // ผู้บริหารมาก่อน
+  if(roles.includes('pr_exec') || roles.includes('executive')) return 'ผู้บริหาร';   // ผู้บริหารมาก่อน
   if(roles.includes('pr_manager')) return 'หัวหน้า';     // หัวหน้ามาก่อนจัดซื้อ (หัวหน้าจัดซื้อ = หัวหน้าใน PR)
   if(roles.includes('purchase'))   return 'จัดซื้อ';
   return null;                                            // ไม่มีสิทธิ์ใน PR
@@ -932,18 +952,44 @@ async function delPR(id, num){
   toast('ลบ '+num+' แล้ว 🗑️'); $('pr-detail').innerHTML=''; loadPRs();
 }
 let PR_ALL=[], PR_PAGE=1; const PR_PER=15;
+let PR_SEARCH='', PR_STATUS='';
 async function loadPRs(){
-  const {data,error}=await sb.from('pr').select('*, pr_items(count)').order('created_at',{ascending:false});
+  const {data,error}=await sb.from('pr').select('*, pr_items(sku,product_name)').order('created_at',{ascending:false});
   if(error){toast(error.message,true);return;}
   PR_ALL=data; renderPRPage();
 }
 function gotoPRPage(n){ PR_PAGE=n; renderPRPage(); window.scrollTo({top:0,behavior:'smooth'}); }
+function doPRSearch(){
+  PR_SEARCH = $('pr-search').value;
+  PR_STATUS = $('pr-filter-status').value;
+  PR_PAGE = 1;
+  renderPRPage();
+}
+function clearPRSearch(){
+  $('pr-search').value=''; PR_SEARCH=''; PR_PAGE=1; renderPRPage(); $('pr-search').focus();
+}
 function renderPRPage(){
-  const total=PR_ALL.length;
+  // ── กรองตามคำค้น + สถานะ ──
+  const q = (PR_SEARCH||'').trim().toLowerCase();
+  const st = PR_STATUS||'';
+  const view = PR_ALL.filter(p=>{
+    if(st && p.status!==st) return false;
+    if(!q) return true;
+    const skuText = (p.pr_items||[]).map(it=>`${it.sku||''} ${it.product_name||''}`).join(' ');
+    const hay = [p.pr_number,p.requester,p.department,p.po_number,p.note,p.pr_date,skuText]
+      .map(x=>String(x==null?'':x).toLowerCase()).join(' ');
+    return hay.includes(q);
+  });
+  const total=view.length;
   const pages=Math.max(1, Math.ceil(total/PR_PER));
   if(PR_PAGE>pages) PR_PAGE=pages;
   if(PR_PAGE<1) PR_PAGE=1;
-  $('pr-list-empty').classList.toggle('hide', total>0);
+  const filtering = !!(q || st);
+  // สถานะ empty / ตัวนับผลค้นหา
+  $('pr-list-empty').classList.toggle('hide', total>0 || filtering);
+  const cntEl=$('pr-search-count');
+  if(cntEl) cntEl.textContent = filtering ? `พบ ${total} ใบ (จากทั้งหมด ${PR_ALL.length})` : '';
+  const clr=$('pr-search-clear'); if(clr) clr.style.display = q ? 'block' : 'none';
   // ── ตรวจเลข PR ซ้ำ (จากทั้งหมด ไม่ใช่แค่หน้านี้) ──
   const numCount={};
   PR_ALL.forEach(p=>{ if(p.pr_number) numCount[p.pr_number]=(numCount[p.pr_number]||0)+1; });
@@ -957,26 +1003,34 @@ function renderPRPage(){
     } else warnBox.classList.add('hide');
   }
   const start=(PR_PAGE-1)*PR_PER;
-  const data=PR_ALL.slice(start, start+PR_PER);
+  const data=view.slice(start, start+PR_PER);
   const stMap={draft:['st-draft','ยังไม่ส่ง'],checked:['st-checked','รอหัวหน้า'],mgr_approved:['st-mgr_approved','รอผู้บริหาร'],approved:['st-approved','อนุมัติ'],rejected:['st-rejected','ตีกลับ']};
-  $('pr-list').innerHTML=data.map(p=>{
-    const a=p.ai_result||{}; const cnt=(p.pr_items&&p.pr_items[0]?.count)||0;
+  $('pr-list').innerHTML = data.length ? data.map(p=>{
+    const a=p.ai_result||{}; const cnt=(p.pr_items||[]).length;
     const [sc,sl]=stMap[p.status]||stMap.draft;
     const chk = a.fail? `<span class="badge b-fail">🔴 ${a.fail}</span>` : a.warn? `<span class="badge b-warn">⚠️ ${a.warn}</span>` : `<span class="badge b-pass">✅</span>`;
     const isDup=dupNums.has(p.pr_number);
     const rowStyle=isDup?'cursor:pointer;background:#FEF2F2':'cursor:pointer';
     const dupTag=isDup?` <span class="badge b-fail" title="เลขนี้ซ้ำกับใบอื่น">⚠️ เลขซ้ำ</span>`:'';
+    // ถ้ากำลังค้นหา แล้วคำค้นตรงกับ SKU/ชื่อสินค้าในใบนี้ → โชว์ว่าเจอ SKU ไหน
+    let skuHit='';
+    if(q){
+      const hits=[...new Set((p.pr_items||[])
+        .filter(it=> String(it.sku||'').toLowerCase().includes(q) || String(it.product_name||'').toLowerCase().includes(q))
+        .map(it=>it.sku).filter(Boolean))];
+      if(hits.length) skuHit=`<div style="margin-top:3px;font-size:12px;color:var(--blue)">🔎 ${hits.slice(0,4).map(s=>`<b>${esc(s)}</b>`).join(', ')}${hits.length>4?` +${hits.length-4}`:''}</div>`;
+    }
     return `<tr style="${rowStyle}" onclick="viewPR('${p.id}')">
       <td><b>${p.pr_number}</b>${dupTag}</td><td>${p.pr_date||''}</td><td>${p.requester||''}</td>
-      <td>${cnt} รายการ</td><td class="right">${fmt(p.total_cny)}</td><td class="right">${fmt(p.total_thb)}</td>
+      <td>${cnt} รายการ${skuHit}</td><td class="right">${fmt(p.total_cny)}</td><td class="right">${fmt(p.total_thb)}</td>
       <td>${chk}</td><td>${p.po_number?`<b>${p.po_number}</b>`:'<span class="muted">-</span>'}</td><td><span class="pill ${sc}">${sl}</span></td>
       <td><button class="btn sm ghost" onclick="event.stopPropagation();viewPR('${p.id}')">เปิด</button>${ME.role==='จัดซื้อ'?`<button class="btn sm" style="background:var(--red);margin-left:6px" onclick="event.stopPropagation();delPR('${p.id}','${p.pr_number}')">ลบ</button>`:''}</td></tr>`;
-  }).join('');
+  }).join('') : (filtering ? `<tr><td colspan="10" class="empty" style="padding:26px">🔍 ไม่พบใบขอซื้อที่ตรงกับเงื่อนไข</td></tr>` : '');
   const pager=$('pr-pager');
   if(total<=PR_PER){ pager.innerHTML=''; }
   else pager.innerHTML=`
     <button class="btn ghost sm" ${PR_PAGE<=1?'disabled':''} onclick="gotoPRPage(${PR_PAGE-1})">‹ ก่อนหน้า</button>
-    <span class="muted">หน้า ${PR_PAGE}/${pages} · ทั้งหมด ${total} ใบ</span>
+    <span class="muted">หน้า ${PR_PAGE}/${pages} · ${filtering?`ผลค้นหา ${total} ใบ`:`ทั้งหมด ${total} ใบ`}</span>
     <button class="btn ghost sm" ${PR_PAGE>=pages?'disabled':''} onclick="gotoPRPage(${PR_PAGE+1})">ถัดไป ›</button>`;
 }
 
