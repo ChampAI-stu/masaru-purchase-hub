@@ -297,7 +297,12 @@ async function enterApp(session){
   $('rolePill').textContent='บทบาท: '+({purchase:'จัดซื้อ (แก้ข้อมูลส่งออก/เอกสารได้)',executive:'ผู้บริหาร (ดูอย่างเดียว)'}[currentRole]);
   if(!canEdit)document.body.classList.add('view-only');
   $('boot').style.display='none';$('app').style.display='block';
-  await loadAll();go('dashboard');
+  await loadAll();bindDoc();go('dashboard');
+}
+/* ผูกช่องหัวเอกสาร/ผู้ส่ง/ผู้รับ ให้ตัวอย่างเอกสารอัปเดตสดเมื่อพิมพ์ */
+let docBound=false;
+function bindDoc(){ if(docBound)return; const c=$('tab-invpl'); if(!c)return; docBound=true;
+  c.addEventListener('input',e=>{ const t=e.target; if(t&&typeof t.id==='string'&&t.id.indexOf('f_')===0) renderDoc(); });
 }
 
 /* ===== DATA LAYER ===== */
@@ -479,8 +484,6 @@ function initInvPl(){
 function newShipmentForm(){
   $('loadShipment').value='';['f_invno','f_sname','f_stel','f_scomp','f_saddr','f_cname','f_caddr'].forEach(i=>$(i).value='');
   $('f_date').value=new Date().toISOString().slice(0,10);$('f_term').value='EXW';$('f_logi').value=0;$('f_cur').value='RMB';
-  $('f_cname').value='LIKESHOP MALL CO., LTD.';
-  $('f_caddr').value='475/4-5 Thahan Bok Rd, Bo Phlap Subdistrict, Mueang Nakhon Pathom District, Nakhon Pathom Province 73000. THAILAND';
   curItems=[];renderLines();renderDoc();
 }
 function loadShipmentToForm(){
