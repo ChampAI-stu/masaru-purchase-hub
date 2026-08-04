@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MASARU · ต้นทุน + INV/PL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --navy:#1A2942; --navy-2:#22345A; --blue:#3A5A8C; --gold:#D0212B; --red:#D0212B;
+    --green:#1E7145; --amber:#B7791F; --bg:#F4F6FA; --card:#fff; --line:#E2E8F0;
+    --ink:#1E293B; --mut:#64748B; --rowLight:#EEF3FA; --rowLighter:#F8FAFD;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+  button{font-family:inherit;cursor:pointer}
+  input,select,textarea{font-family:inherit;font-size:14px}
+
+  #boot{min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--mut)}
+  #app{display:none}
+
+  .topbar{background:var(--navy);padding:0 24px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20}
+  .topbar-left{display:flex;align-items:center;gap:12px}
+  .topbar-left .brand{color:#fff;font-size:17px;font-weight:700;letter-spacing:.5px}
+  .topbar-left .brand b{color:var(--gold)}
+  .topbar-left .divider{color:#ffffff44;font-size:16px}
+  .topbar-left .page{color:#fff;font-size:15px;font-weight:600}
+  .topbar-right{display:flex;align-items:center;gap:12px}
+  .role-pill{background:#ffffff1a;color:#fff;font-size:12px;padding:4px 12px;border-radius:20px;border:1px solid #ffffff33;font-weight:500;white-space:nowrap}
+  .logout-btn{background:transparent;border:1px solid #ffffff33;color:#ffffffcc;font-size:13px;padding:6px 14px;border-radius:8px}
+  .logout-btn:hover{background:#ffffff14}
+
+  .tabs{display:flex;gap:2px;background:var(--navy-2);padding:0 12px;flex-wrap:wrap}
+  .tabs button{background:transparent;border:0;color:#cbd6e8;padding:12px 16px;cursor:pointer;font-size:14px;border-bottom:3px solid transparent;font-weight:600}
+  .tabs button.active{color:#fff;border-bottom-color:var(--gold)}
+  .tabs button:hover{color:#fff}
+
+  main{padding:18px;max-width:1200px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
+  .card h2{margin:0 0 12px;font-size:16px;color:var(--navy);border-left:4px solid var(--gold);padding-left:10px}
+  .card h3{margin:16px 0 8px;font-size:14px;color:var(--blue)}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .row>div{flex:1;min-width:150px}
+  label{display:block;font-size:12px;color:var(--mut);margin-bottom:3px;font-weight:600}
+  input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px}
+  textarea{resize:vertical;min-height:60px}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px #3A5A8C22}
+  button.btn{background:var(--navy);color:#fff;border:0;padding:9px 16px;border-radius:8px;font-size:14px;font-weight:600}
+  button.btn:hover{background:#162a4d}
+  button.btn.gold{background:var(--gold)}
+  button.btn.green{background:var(--green)}
+  button.btn.red{background:var(--red)}
+  button.btn.ghost{background:#e5e7eb;color:#374151}
+  button.mini{padding:4px 9px;font-size:12px;border-radius:6px;border:0;cursor:pointer;font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+  thead th{background:var(--navy);color:#BDD7EE;font-weight:600}
+  tbody tr:nth-child(even){background:var(--rowLighter)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+  .kpi{background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;border-radius:12px;padding:14px 16px}
+  .kpi .lbl{font-size:12px;color:#bdd7ee}
+  .kpi .val{font-size:24px;font-weight:700;margin-top:4px}
+  .kpi.gold{background:linear-gradient(135deg,#D0212B,#a5121b)}
+  .kpi.green{background:linear-gradient(135deg,var(--green),#155c37)}
+  .pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
+  .pill.up{background:#fde2e2;color:var(--red)}
+  .pill.down{background:#e2efda;color:var(--green)}
+  .pill.flat{background:#eef;color:#555}
+  .pill.pending{background:#fff3cc;color:#7a5c00}
+  .pill.notified{background:#dbeafe;color:#1e40af}
+  .pill.done{background:#e2efda;color:var(--green)}
+  .muted{color:var(--mut);font-size:12px}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .toolbar .sp{flex:1}
+  .empty{padding:24px;text-align:center;color:var(--mut)}
+  .tag{background:#eef2ff;color:var(--navy);padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700}
+  dialog{border:0;border-radius:12px;padding:0;max-width:640px;width:92%;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+  dialog::backdrop{background:rgba(0,0,0,.4)}
+  .dlg-head{background:var(--navy);color:#fff;padding:14px 18px;font-weight:700;display:flex;align-items:center}
+  .dlg-body{padding:18px;max-height:70vh;overflow:auto}
+  .dlg-foot{padding:12px 18px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end}
+  .x{margin-left:auto;background:transparent;border:0;color:#fff;font-size:20px;cursor:pointer}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .chartbox{position:relative;height:280px}
+  .note{background:#fff5f5;border-left:4px solid var(--gold);padding:8px 12px;border-radius:6px;font-size:13px;margin-bottom:12px}
+  body.view-only .edit-only{display:none!important}
+
+  #docPreview{background:#fff;color:#000;font-family:"Times New Roman","Sarabun",serif}
+  .doc{width:210mm;margin:0 auto;padding:10mm;font-size:12px}
+  .doc h2.title{text-align:center;font-size:20px;margin:0 0 8px;letter-spacing:2px}
+  .doc .hdr td{border:0;padding:2px 4px;font-size:12px}
+  .doc table.items{width:100%;border-collapse:collapse;margin-top:6px}
+  .doc table.items th,.doc table.items td{border:1px solid #000;padding:4px 6px;font-size:11px}
+  .doc table.items th{background:#dbe5f1;text-align:center;color:#000}
+  .doc .rmark{white-space:pre-line;font-size:10px}
+  .doc .sig{margin-top:30px;text-align:right}
+  .doc .goldline{height:3px;background:var(--gold);margin:6px 0}
+  @media print{body *{visibility:hidden}#docPreview,#docPreview *{visibility:visible}#docPreview{position:absolute;left:0;top:0;width:100%}.doc{width:100%;padding:0}.no-print{display:none!important}}
+</style>
+</head>
+<body>
+<div id="boot">กำลังโหลดระบบ...</div>
+
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="brand"><b>MASARU</b></span>
+      <span class="divider">|</span>
+      <span class="page">ต้นทุน + INV/PL</span>
+    </div>
+    <div class="topbar-right no-print">
+      <span class="role-pill" id="rolePill">—</span>
+      <button class="logout-btn" id="portalBtn" title="กลับหน้ารวม">🏠 หน้ารวม</button>
+      <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
+    </div>
+  </div>
+
+  <div class="tabs no-print">
+    <button data-tab="dashboard" class="active" onclick="go('dashboard')">📊 Dashboard</button>
+    <button data-tab="sku" onclick="go('sku')">📦 SKU สินค้า</button>
+    <button data-tab="cost" onclick="go('cost')">💰 ต้นทุน / ราคาขึ้นลง</button>
+    <button data-tab="ship" onclick="go('ship')">🚚 ค่าขนส่ง</button>
+    <button data-tab="invpl" onclick="go('invpl')">📄 ออก INV + PL</button>
+    <button data-tab="requests" onclick="go('requests')">🔔 คำขอข้อมูลต้นทุน</button>
+  </div>
+
+  <main>
+    <!-- DASHBOARD -->
+    <section id="tab-dashboard">
+      <div class="card"><h2>ภาพรวม</h2><div class="kpis" id="kpiWrap"></div></div>
+      <div class="card">
+        <h2>แนวโน้มราคาต่อหน่วย (Unit Price) รายสินค้า</h2>
+        <div class="toolbar"><label style="margin:0">เลือกสินค้า:</label>
+          <select id="dashSku" style="max-width:260px" onchange="drawPriceChart()"></select>
+          <span class="sp"></span><span class="muted">หน่วย: RMB</span></div>
+        <div class="chartbox"><canvas id="priceChart"></canvas></div>
+      </div>
+      <div class="row">
+        <div class="card"><h2>มูลค่าประหยัดสะสม (ราคาลด × จำนวนสั่ง)</h2><div class="chartbox"><canvas id="saveChart"></canvas></div></div>
+        <div class="card"><h2>ต้นทุนค่าขนส่ง / CBM</h2><div class="chartbox"><canvas id="shipChart"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- SKU -->
+    <section id="tab-sku" style="display:none">
+      <div class="card">
+        <div class="toolbar">
+          <h2 style="margin:0;border:0;padding:0">📦 ทะเบียนสินค้า (SKU Master)</h2><span class="sp"></span>
+          <input id="skuSearch" placeholder="ค้นหา SKU / ชื่อ / Brand" style="max-width:240px" oninput="renderSkuTable()">
+          <button class="btn edit-only" onclick="openSku()">+ เพิ่มสินค้า</button>
+          <button class="btn ghost edit-only" onclick="document.getElementById('skuImport').click()">นำเข้า Excel</button>
+          <input type="file" id="skuImport" accept=".xlsx,.xls,.csv" style="display:none" onchange="importSku(this)">
+          <button class="btn ghost" onclick="exportSkuTemplate()">โหลดเทมเพลต</button>
+          <button class="btn gold edit-only" id="seedBtn" style="display:none" onclick="seedSample()">โหลดตัวอย่าง PO2607014</button>
+        </div>
+        <div class="note">ป้อนข้อมูลสินค้าครั้งเดียว ระบบต้นทุน + การออก INV/PL ดึงไปใช้อัตโนมัติ · ช่องขนาดกล่อง/CBM/kg ต่อกล่อง ใช้ทำ Packing List</div>
+        <div id="skuTable"></div>
+      </div>
+    </section>
+
+    <!-- COST -->
+    <section id="tab-cost" style="display:none">
+      <div class="card">
+        <div class="toolbar">
+          <h2 style="margin:0;border:0;padding:0">💰 บันทึกต้นทุน / การขึ้นลงราคา</h2><span class="sp"></span>
+          <select id="costFilter" style="max-width:220px" onchange="renderCostTable()"><option value="">— ทุกสินค้า —</option></select>
+          <button class="btn edit-only" onclick="openCost()">+ บันทึกราคา</button>
+        </div>
+        <div class="note">ทุกครั้งที่ได้ราคาใหม่จาก supplier ให้บันทึก 1 แถว (วันที่ + ราคา/หน่วย + จำนวนสั่ง) ระบบคำนวณ %ขึ้นลง และมูลค่าประหยัดให้อัตโนมัติ</div>
+        <div id="costKpi" class="kpis" style="margin-bottom:14px"></div>
+        <div id="costTable"></div>
+      </div>
+    </section>
+
+    <!-- SHIP -->
+    <section id="tab-ship" style="display:none">
+      <div class="card">
+        <div class="toolbar"><h2 style="margin:0;border:0;padding:0">🚚 ต้นทุนค่าขนส่ง (Logistics)</h2><span class="sp"></span>
+          <button class="btn edit-only" onclick="openShipCost()">+ บันทึกค่าขนส่ง</button></div>
+        <div class="note">ผูกค่าขนส่งกับชิปเมนต์ (Invoice No.) ระบบคำนวณ บาท/CBM และ บาท/Kg ให้ เทียบความคุ้มค่าแต่ละรอบ</div>
+        <div id="shipKpi" class="kpis" style="margin-bottom:14px"></div>
+        <div id="shipTable"></div>
+      </div>
+    </section>
+
+    <!-- INV+PL -->
+    <section id="tab-invpl" style="display:none">
+      <div class="row no-print">
+        <div class="card" style="flex:1.1">
+          <h2>📄 ข้อมูลเอกสาร (Invoice + Packing List)</h2>
+          <div class="toolbar">
+            <select id="loadShipment" style="max-width:260px" onchange="loadShipmentToForm()"><option value="">— เอกสารบันทึกไว้ —</option></select>
+            <button class="btn ghost mini edit-only" onclick="newShipmentForm()">สร้างใหม่</button>
+          </div>
+          <div class="grid2">
+            <div><label>Invoice / PO No.</label><input id="f_invno" placeholder="PO2607014"></div>
+            <div><label>วันที่</label><input id="f_date" type="date"></div>
+          </div>
+          <h3>ผู้ส่ง (Sender)</h3>
+          <div class="grid2"><div><label>Sender Name</label><input id="f_sname"></div><div><label>Tel</label><input id="f_stel"></div></div>
+          <div><label>Company</label><input id="f_scomp"></div>
+          <div><label>Address</label><textarea id="f_saddr"></textarea></div>
+          <h3>ผู้รับ (Consignee)</h3>
+          <div><label>Consignee Name</label><input id="f_cname"></div>
+          <div><label>Address</label><textarea id="f_caddr"></textarea></div>
+          <h3>เงื่อนไข</h3>
+          <div class="grid3">
+            <div><label>TERM</label><input id="f_term" placeholder="EXW"></div>
+            <div><label>ค่าขนส่ง (Logistics)</label><input id="f_logi" type="number" step="0.01" value="0"></div>
+            <div><label>สกุลเงิน</label><select id="f_cur"><option>RMB</option><option>USD</option><option>THB</option></select></div>
+          </div>
+          <h3>รายการสินค้า</h3>
+          <div class="toolbar">
+            <input id="addSkuInput" list="skuList" placeholder="พิมพ์ SKU แล้ว Enter — ข้อมูลเด้งอัตโนมัติ" style="flex:1" onkeydown="if(event.key==='Enter'){addLineBySku();event.preventDefault();}">
+            <datalist id="skuList"></datalist>
+            <button class="btn gold" onclick="addLineBySku()">+ เพิ่มรายการ</button>
+          </div>
+          <div id="lineItems"></div>
+          <div class="toolbar" style="margin-top:12px">
+            <button class="btn green edit-only" onclick="saveShipment()">💾 บันทึกเอกสาร</button>
+            <span class="sp"></span>
+            <button class="btn" onclick="renderDoc();window.print()">🖨️ พิมพ์ / PDF</button>
+            <button class="btn gold" onclick="exportInvPlExcel()">⬇️ Export Excel</button>
+          </div>
+        </div>
+        <div class="card" style="flex:1;min-width:340px">
+          <h2>ตัวอย่างเอกสาร</h2>
+          <div class="muted" style="margin-bottom:8px">อัปเดตทันทีเมื่อกรอก · ปุ่มพิมพ์ได้ทั้ง INVOICE และ PACKING LIST</div>
+          <div id="docPreview" style="border:1px solid #ddd;overflow:auto;max-height:640px"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- REQUESTS -->
+    <section id="tab-requests" style="display:none">
+      <div class="card">
+        <div class="toolbar"><h2 style="margin:0;border:0;padding:0">🔔 คำขอข้อมูลต้นทุน</h2><span class="sp"></span>
+          <button class="btn" onclick="openReq()">+ มีคนขอข้อมูล</button></div>
+        <div class="note">เมื่อมีคนขอข้อมูลต้นทุน (ฝ่ายขาย/บัญชี) บันทึกที่นี่ · กด “แจ้งอัตโนมัติ” สร้างข้อความสรุปต้นทุนล่าสุดพร้อมส่งต่อ (ต่อบอท LINE ได้)</div>
+        <div id="reqTable"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- DIALOGS -->
+<dialog id="skuDlg"><form method="dialog">
+  <div class="dlg-head">ข้อมูลสินค้า (SKU)<button class="x" onclick="skuDlg.close()">×</button></div>
+  <div class="dlg-body">
+    <div class="grid2"><div><label>SKU *</label><input id="s_sku"></div><div><label>Brand</label><input id="s_brand" placeholder="IKOMAX"></div></div>
+    <div class="grid2"><div><label>ชื่อสินค้า (EN)</label><input id="s_en"></div><div><label>ชื่อสินค้า (ไทย)</label><input id="s_th"></div></div>
+    <div class="grid2"><div><label>Model</label><input id="s_model"></div><div><label>HS Code</label><input id="s_hs"></div></div>
+    <div class="grid2"><div><label>Component</label><textarea id="s_comp"></textarea></div><div><label>Specification</label><textarea id="s_spec"></textarea></div></div>
+    <h3>ข้อมูลบรรจุ (ใช้ทำ Packing List)</h3>
+    <div class="grid3"><div><label>หน่วย</label><input id="s_unit" placeholder="Set / PCS"></div><div><label>จำนวน/กล่อง</label><input id="s_perctn" type="number"></div><div><label>น้ำหนัก/กล่อง (Kg)</label><input id="s_wctn" type="number" step="0.01"></div></div>
+    <div class="grid2"><div><label>ขนาดกล่อง</label><input id="s_box" placeholder="65x44x40 Cm"></div><div><label>CBM/กล่อง</label><input id="s_cbm" type="number" step="0.0001"></div></div>
+    <div><label>Shipping Mark เริ่มต้น</label><input id="s_mark"></div>
+    <input type="hidden" id="s_editid">
+  </div>
+  <div class="dlg-foot"><button class="btn ghost" onclick="skuDlg.close()">ยกเลิก</button><button class="btn green" onclick="saveSku();return false">บันทึก</button></div>
+</form></dialog>
+
+<dialog id="costDlg"><form method="dialog">
+  <div class="dlg-head">บันทึกราคาต้นทุน<button class="x" onclick="costDlg.close()">×</button></div>
+  <div class="dlg-body">
+    <div><label>สินค้า (SKU) *</label><select id="c_sku"></select></div>
+    <div class="grid2"><div><label>วันที่มีผล *</label><input id="c_date" type="date"></div><div><label>ราคา/หน่วย *</label><input id="c_price" type="number" step="0.0001"></div></div>
+    <div class="grid3"><div><label>สกุลเงิน</label><select id="c_cur"><option>RMB</option><option>USD</option><option>THB</option></select></div><div><label>จำนวนที่สั่ง (PCS)</label><input id="c_qty" type="number"></div><div><label>PO / Ref</label><input id="c_po"></div></div>
+    <div><label>Supplier</label><input id="c_sup"></div>
+    <div><label>หมายเหตุ</label><input id="c_note"></div>
+    <input type="hidden" id="c_editid">
+  </div>
+  <div class="dlg-foot"><button class="btn ghost" onclick="costDlg.close()">ยกเลิก</button><button class="btn green" onclick="saveCost();return false">บันทึก</button></div>
+</form></dialog>
+
+<dialog id="shipDlg"><form method="dialog">
+  <div class="dlg-head">บันทึกค่าขนส่ง<button class="x" onclick="shipDlg.close()">×</button></div>
+  <div class="dlg-body">
+    <div class="grid2"><div><label>Invoice / Ref *</label><input id="sh_ref"></div><div><label>วันที่</label><input id="sh_date" type="date"></div></div>
+    <div class="grid3"><div><label>ค่าขนส่ง (บาท) *</label><input id="sh_cost" type="number" step="0.01"></div><div><label>รวม CBM</label><input id="sh_cbm" type="number" step="0.01"></div><div><label>รวม Kg</label><input id="sh_kg" type="number" step="0.01"></div></div>
+    <div class="grid2"><div><label>ผู้ให้บริการ</label><input id="sh_carrier"></div><div><label>โหมด</label><select id="sh_mode"><option>Sea</option><option>Land</option><option>Air</option></select></div></div>
+    <div><label>หมายเหตุ</label><input id="sh_note"></div>
+    <input type="hidden" id="sh_editid">
+  </div>
+  <div class="dlg-foot"><button class="btn ghost" onclick="shipDlg.close()">ยกเลิก</button><button class="btn green" onclick="saveShipCost();return false">บันทึก</button></div>
+</form></dialog>
+
+<dialog id="reqDlg"><form method="dialog">
+  <div class="dlg-head">คำขอข้อมูลต้นทุน<button class="x" onclick="reqDlg.close()">×</button></div>
+  <div class="dlg-body">
+    <div class="grid2"><div><label>ผู้ขอ *</label><input id="r_by"></div><div><label>แผนก</label><input id="r_dept"></div></div>
+    <div><label>ขอข้อมูล SKU</label><select id="r_sku"><option value="">— ทั้งหมด —</option></select></div>
+    <div><label>เหตุผล / รายละเอียด</label><textarea id="r_reason"></textarea></div>
+  </div>
+  <div class="dlg-foot"><button class="btn ghost" onclick="reqDlg.close()">ยกเลิก</button><button class="btn green" onclick="saveReq();return false">บันทึก</button></div>
+</form></dialog>
+
+<dialog id="notifyDlg"><form method="dialog">
+  <div class="dlg-head">ข้อความแจ้งต้นทุนอัตโนมัติ<button class="x" onclick="notifyDlg.close()">×</button></div>
+  <div class="dlg-body"><div class="muted" style="margin-bottom:6px">คัดลอกส่ง LINE/อีเมล หรือส่งเข้าบอท LINE ได้</div>
+    <textarea id="notifyText" style="min-height:220px;font-family:monospace;font-size:12px"></textarea></div>
+  <div class="dlg-foot"><button class="btn ghost" onclick="notifyDlg.close()">ปิด</button><button class="btn gold" onclick="copyNotify();return false">คัดลอกข้อความ</button></div>
+</form></dialog>
+
+<script>
+/* ===== Supabase (โปรเจกต์เดียวกับ portal/PR/board) ===== */
+const SUPABASE_URL = 'https://ykeplonjemxcqnrzznhm.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_xTe43UOuDChtOsmY_BCsPg_FMJNE7Ma';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+const money = n => Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2});
+
+let db = {products:[],costs:[],shipcosts:[],shipments:[],requests:[]};
+let currentRole = 'view';
+let canEdit = false;
+
+/* ===== AUTH GUARD (ใช้ session ร่วมจาก HUB) ===== */
+$('logoutBtn').addEventListener('click', async () => { await sb.auth.signOut(); location.replace('index.html'); });
+$('portalBtn').addEventListener('click', () => { window.location.href = 'index.html'; });
+sb.auth.onAuthStateChange((event, session) => { if(event==='SIGNED_OUT' || !session) location.replace('index.html'); });
+
+(async () => {
+  const { data } = await sb.auth.getSession();
+  if(data.session) enterApp(data.session);
+  else location.replace('index.html');
+})();
+
+async function enterApp(session){
+  const meta = session.user?.app_metadata || {};
+  const roles = (Array.isArray(meta.user_roles) && meta.user_roles.length) ? meta.user_roles
+              : (meta.user_role ? [meta.user_role] : []);
+  const isExec = roles.includes('pr_exec') || roles.includes('executive');
+  // ต้นทุนเป็นข้อมูลลับ: จัดซื้อ (แก้ไข) / ผู้บริหาร (ดูอย่างเดียว) เท่านั้น
+  if(!roles.includes('purchase') && !isExec){ location.replace('index.html'); return; }
+  currentRole = roles.includes('purchase') ? 'purchase' : 'executive';
+  canEdit = currentRole === 'purchase';
+  const label = {purchase:'จัดซื้อ (แก้ไขได้)', executive:'ผู้บริหาร (ดูอย่างเดียว)'}[currentRole];
+  $('rolePill').textContent = 'บทบาท: ' + label;
+  if(!canEdit) document.body.classList.add('view-only');
+  $('boot').style.display='none';
+  $('app').style.display='block';
+  await loadAll();
+  go('dashboard');
+}
+
+/* ===== DATA LAYER (Supabase) ===== */
+async function fetchTable(name, order){
+  let q = sb.from(name).select('*'); if(order) q = q.order(order);
+  const { data, error } = await q;
+  if(error){ console.error('load '+name, error.message); return []; }
+  return data || [];
+}
+async function loadAll(){
+  const [p,c,s,sh,r] = await Promise.all([
+    fetchTable('products','sku'), fetchTable('costs','date'),
+    fetchTable('shipcosts','date'), fetchTable('shipments','date'),
+    fetchTable('cost_requests','created_at')]);
+  db = {products:p, costs:c, shipcosts:s, shipments:sh, requests:r};
+  if($('seedBtn')) $('seedBtn').style.display = db.products.length ? 'none' : '';
+}
+async function reload(name){
+  const map={products:['products','sku'],costs:['costs','date'],shipcosts:['shipcosts','date'],shipments:['shipments','date'],requests:['cost_requests','created_at']};
+  const [tbl,ord]=map[name]; db[name]=await fetchTable(tbl,ord);
+}
+async function dbWrite(fn, okmsg){
+  try{ const { error } = await fn(); if(error) throw error; return true; }
+  catch(e){ alert('บันทึกไม่สำเร็จ: '+(e.message||e)); return false; }
+}
+function prod(sku){ return db.products.find(p=>p.sku===sku); }
+
+/* ===== NAV ===== */
+function go(t){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
+  ['dashboard','sku','cost','ship','invpl','requests'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
+  if(t==='dashboard')renderDashboard();
+  if(t==='sku')renderSkuTable();
+  if(t==='cost')renderCostTable();
+  if(t==='ship')renderShipTable();
+  if(t==='invpl')initInvPl();
+  if(t==='requests')renderReq();
+}
+
+/* ===== SKU ===== */
+function renderSkuTable(){
+  fillSkuSelects();
+  const q=($('skuSearch').value||'').toLowerCase();
+  const list=db.products.filter(p=>!q||((p.sku||'')+(p.name_en||'')+(p.name_th||'')+(p.brand||'')+(p.model||'')).toLowerCase().includes(q));
+  if(!list.length){$('skuTable').innerHTML='<div class="empty">ยังไม่มีสินค้า'+(canEdit?' — กด “เพิ่มสินค้า” หรือ “โหลดตัวอย่าง PO2607014”':'')+'</div>';return;}
+  let h='<table><thead><tr><th>SKU</th><th>Brand</th><th>ชื่อ (EN / ไทย)</th><th>Model</th><th>หน่วย/กล่อง</th><th>ขนาดกล่อง</th><th>CBM</th><th>Kg/กล่อง</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
+  list.forEach(p=>{h+=`<tr><td><b>${esc(p.sku)}</b></td><td><span class="tag">${esc(p.brand||'')}</span></td>
+    <td>${esc(p.name_en||'')}<br><span class="muted">${esc(p.name_th||'')}</span></td><td>${esc(p.model||'')}</td>
+    <td>${p.per_ctn||''} ${esc(p.unit||'')}</td><td>${esc(p.box_size||'')}</td><td>${p.cbm_ctn||''}</td><td>${p.w_ctn||''}</td>`+
+    (canEdit?`<td class="no-print"><button class="mini btn" onclick="openSku('${p.id}')">แก้</button> <button class="mini btn red" onclick="delSku('${p.id}')">ลบ</button></td>`:'')+`</tr>`;});
+  $('skuTable').innerHTML=h+'</tbody></table>';
+}
+function openSku(id){
+  const p=id?db.products.find(x=>x.id===id):{};
+  $('s_sku').value=p.sku||'';$('s_brand').value=p.brand||'';$('s_en').value=p.name_en||'';$('s_th').value=p.name_th||'';
+  $('s_model').value=p.model||'';$('s_hs').value=p.hs||'';$('s_comp').value=p.component||'';$('s_spec').value=p.spec||'';
+  $('s_unit').value=p.unit||'';$('s_perctn').value=p.per_ctn||'';$('s_wctn').value=p.w_ctn||'';$('s_box').value=p.box_size||'';
+  $('s_cbm').value=p.cbm_ctn||'';$('s_mark').value=p.mark||'';$('s_editid').value=id||'';
+  $('skuDlg').showModal();
+}
+async function saveSku(){
+  const sku=$('s_sku').value.trim(); if(!sku)return alert('กรุณากรอก SKU');
+  const rec={sku,brand:$('s_brand').value.trim(),name_en:$('s_en').value.trim(),name_th:$('s_th').value.trim(),
+    model:$('s_model').value.trim(),hs:$('s_hs').value.trim(),component:$('s_comp').value,spec:$('s_spec').value,
+    unit:$('s_unit').value.trim(),per_ctn:+$('s_perctn').value||null,w_ctn:+$('s_wctn').value||null,
+    box_size:$('s_box').value.trim(),cbm_ctn:+$('s_cbm').value||null,mark:$('s_mark').value.trim()};
+  const id=$('s_editid').value;
+  const ok=await dbWrite(()=> id ? sb.from('products').update(rec).eq('id',id) : sb.from('products').insert(rec));
+  if(ok){await reload('products');$('skuDlg').close();renderSkuTable();}
+}
+async function delSku(id){ if(!confirm('ลบสินค้านี้?'))return;
+  const ok=await dbWrite(()=>sb.from('products').delete().eq('id',id)); if(ok){await reload('products');renderSkuTable();} }
+function fillSkuSelects(){
+  const opts=db.products.map(p=>`<option value="${esc(p.sku)}">${esc(p.sku)} — ${esc(p.name_en||p.name_th||'')}</option>`).join('');
+  ['c_sku'].forEach(id=>{if($(id))$(id).innerHTML=opts;});
+  if($('r_sku'))$('r_sku').innerHTML='<option value="">— ทั้งหมด —</option>'+opts;
+  if($('costFilter'))$('costFilter').innerHTML='<option value="">— ทุกสินค้า —</option>'+opts;
+  if($('dashSku'))$('dashSku').innerHTML=opts;
+  if($('skuList'))$('skuList').innerHTML=db.products.map(p=>`<option value="${esc(p.sku)}">`).join('');
+}
+
+/* ===== COST ===== */
+function costsBySku(sku){return db.costs.filter(c=>c.sku===sku).sort((a,b)=>String(a.date).localeCompare(String(b.date)));}
+function costAnalysis(){
+  const out=[];
+  db.products.forEach(p=>{let prev=null;costsBySku(p.sku).forEach(c=>{
+    const pct=prev?((c.price-prev.price)/prev.price*100):null;
+    const saving=prev?((prev.price-c.price)*(c.qty||0)):0;
+    out.push({...c,name:p.name_en,pct,saving,prevPrice:prev?prev.price:null});prev=c;});});
+  return out;
+}
+function renderCostTable(){
+  fillSkuSelects();
+  const flt=$('costFilter').value;
+  const an=costAnalysis().filter(c=>!flt||c.sku===flt).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const totalSave=costAnalysis().reduce((s,c)=>s+(c.cur==='RMB'?c.saving:0),0);
+  const nUp=an.filter(c=>c.pct>0).length,nDown=an.filter(c=>c.pct<0).length;
+  $('costKpi').innerHTML=`<div class="kpi green"><div class="lbl">มูลค่าประหยัดสะสม (RMB)</div><div class="val">${money(totalSave)}</div></div>
+    <div class="kpi gold"><div class="lbl">ครั้งราคาลด</div><div class="val">${nDown}</div></div>
+    <div class="kpi"><div class="lbl">ครั้งราคาขึ้น</div><div class="val">${nUp}</div></div>
+    <div class="kpi"><div class="lbl">รายการราคาทั้งหมด</div><div class="val">${db.costs.length}</div></div>`;
+  if(!an.length){$('costTable').innerHTML='<div class="empty">ยังไม่มีข้อมูลราคา</div>';return;}
+  let h='<table><thead><tr><th>วันที่</th><th>SKU</th><th>ราคา/หน่วย</th><th>เทียบครั้งก่อน</th><th>จำนวน</th><th>มูลค่าประหยัด</th><th>PO/Ref</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
+  an.forEach(c=>{let pill='<span class="pill flat">แรกเข้า</span>';
+    if(c.pct>0)pill=`<span class="pill up">▲ ${c.pct.toFixed(1)}%</span>`;
+    else if(c.pct<0)pill=`<span class="pill down">▼ ${Math.abs(c.pct).toFixed(1)}%</span>`;
+    else if(c.pct===0)pill='<span class="pill flat">คงที่</span>';
+    h+=`<tr><td>${c.date}</td><td><b>${esc(c.sku)}</b></td><td>${money(c.price)} ${esc(c.cur)}</td>
+      <td>${pill}${c.prevPrice!=null?`<br><span class="muted">จาก ${money(c.prevPrice)}</span>`:''}</td><td>${money(c.qty)}</td>
+      <td>${c.saving>0?'<b style="color:var(--green)">'+money(c.saving)+'</b>':(c.saving<0?'<span style="color:var(--red)">'+money(c.saving)+'</span>':'-')}</td>
+      <td>${esc(c.po||'')}</td>`+(canEdit?`<td class="no-print"><button class="mini btn" onclick="openCost('${c.id}')">แก้</button> <button class="mini btn red" onclick="delCost('${c.id}')">ลบ</button></td>`:'')+`</tr>`;});
+  $('costTable').innerHTML=h+'</tbody></table>';
+}
+function openCost(id){
+  fillSkuSelects();
+  const c=id?db.costs.find(x=>x.id===id):{cur:'RMB',date:new Date().toISOString().slice(0,10)};
+  $('c_sku').value=c.sku||(db.products[0]&&db.products[0].sku)||'';$('c_date').value=c.date||'';
+  $('c_price').value=c.price||'';$('c_cur').value=c.cur||'RMB';$('c_qty').value=c.qty||'';
+  $('c_po').value=c.po||'';$('c_sup').value=c.sup||'';$('c_note').value=c.note||'';$('c_editid').value=id||'';
+  $('costDlg').showModal();
+}
+async function saveCost(){
+  if(!$('c_sku').value)return alert('เลือกสินค้า');
+  if(!$('c_date').value||!$('c_price').value)return alert('กรอกวันที่และราคา');
+  const rec={sku:$('c_sku').value,date:$('c_date').value,price:+$('c_price').value,cur:$('c_cur').value,
+    qty:+$('c_qty').value||0,po:$('c_po').value.trim(),sup:$('c_sup').value.trim(),note:$('c_note').value.trim()};
+  const id=$('c_editid').value;
+  const ok=await dbWrite(()=> id ? sb.from('costs').update(rec).eq('id',id) : sb.from('costs').insert(rec));
+  if(ok){await reload('costs');$('costDlg').close();renderCostTable();}
+}
+async function delCost(id){ if(!confirm('ลบราคานี้?'))return;
+  const ok=await dbWrite(()=>sb.from('costs').delete().eq('id',id)); if(ok){await reload('costs');renderCostTable();} }
+
+/* ===== SHIPPING ===== */
+function renderShipTable(){
+  const list=[...db.shipcosts].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  const tot=list.reduce((s,x)=>s+ +x.cost,0), totCbm=list.reduce((s,x)=>s+(+x.cbm||0),0);
+  $('shipKpi').innerHTML=`<div class="kpi"><div class="lbl">ค่าขนส่งรวม (บาท)</div><div class="val">${money(tot)}</div></div>
+    <div class="kpi gold"><div class="lbl">เฉลี่ย บาท/CBM</div><div class="val">${money(totCbm?tot/totCbm:0)}</div></div>
+    <div class="kpi"><div class="lbl">รวม CBM</div><div class="val">${money(totCbm)}</div></div>
+    <div class="kpi"><div class="lbl">จำนวนชิปเมนต์</div><div class="val">${list.length}</div></div>`;
+  if(!list.length){$('shipTable').innerHTML='<div class="empty">ยังไม่มีข้อมูลค่าขนส่ง</div>';return;}
+  let h='<table><thead><tr><th>วันที่</th><th>Invoice/Ref</th><th>ค่าขนส่ง</th><th>CBM</th><th>Kg</th><th>บาท/CBM</th><th>บาท/Kg</th><th>ผู้ให้บริการ</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
+  list.forEach(x=>{const pcbm=x.cbm?(+x.cost/+x.cbm):0,pkg=x.kg?(+x.cost/+x.kg):0;
+    h+=`<tr><td>${x.date||''}</td><td><b>${esc(x.ref)}</b></td><td>${money(x.cost)}</td><td>${money(x.cbm)}</td><td>${money(x.kg)}</td>
+      <td>${money(pcbm)}</td><td>${money(pkg)}</td><td>${esc(x.carrier||'')} <span class="muted">${esc(x.mode||'')}</span></td>`+
+      (canEdit?`<td class="no-print"><button class="mini btn" onclick="openShipCost('${x.id}')">แก้</button> <button class="mini btn red" onclick="delShipCost('${x.id}')">ลบ</button></td>`:'')+`</tr>`;});
+  $('shipTable').innerHTML=h+'</tbody></table>';
+}
+function openShipCost(id){
+  const x=id?db.shipcosts.find(s=>s.id===id):{date:new Date().toISOString().slice(0,10),mode:'Sea'};
+  $('sh_ref').value=x.ref||'';$('sh_date').value=x.date||'';$('sh_cost').value=x.cost||'';$('sh_cbm').value=x.cbm||'';
+  $('sh_kg').value=x.kg||'';$('sh_carrier').value=x.carrier||'';$('sh_mode').value=x.mode||'Sea';$('sh_note').value=x.note||'';$('sh_editid').value=id||'';
+  $('shipDlg').showModal();
+}
+async function saveShipCost(){
+  if(!$('sh_ref').value||!$('sh_cost').value)return alert('กรอก Invoice/Ref และค่าขนส่ง');
+  const rec={ref:$('sh_ref').value.trim(),date:$('sh_date').value||null,cost:+$('sh_cost').value,cbm:+$('sh_cbm').value||null,
+    kg:+$('sh_kg').value||null,carrier:$('sh_carrier').value.trim(),mode:$('sh_mode').value,note:$('sh_note').value.trim()};
+  const id=$('sh_editid').value;
+  const ok=await dbWrite(()=> id ? sb.from('shipcosts').update(rec).eq('id',id) : sb.from('shipcosts').insert(rec));
+  if(ok){await reload('shipcosts');$('shipDlg').close();renderShipTable();}
+}
+async function delShipCost(id){ if(!confirm('ลบ?'))return;
+  const ok=await dbWrite(()=>sb.from('shipcosts').delete().eq('id',id)); if(ok){await reload('shipcosts');renderShipTable();} }
+
+/* ===== INV + PL ===== */
+let curItems=[];
+function initInvPl(){
+  fillSkuSelects();
+  $('loadShipment').innerHTML='<option value="">— เอกสารบันทึกไว้ —</option>'+db.shipments.map(s=>`<option value="${s.id}">${esc(s.invno)} · ${s.date||''}</option>`).join('');
+  if(db.shipments[0]){$('loadShipment').value=db.shipments[0].id;loadShipmentToForm();}else newShipmentForm();
+}
+function newShipmentForm(){
+  $('loadShipment').value='';
+  ['f_invno','f_sname','f_stel','f_scomp','f_saddr','f_cname','f_caddr'].forEach(i=>$(i).value='');
+  $('f_date').value=new Date().toISOString().slice(0,10);$('f_term').value='EXW';$('f_logi').value=0;$('f_cur').value='RMB';
+  $('f_cname').value='LIKESHOP MALL CO., LTD.';
+  $('f_caddr').value='475/4-5 Thahan Bok Rd, Bo Phlap Subdistrict, Mueang Nakhon Pathom District, Nakhon Pathom Province 73000. THAILAND';
+  curItems=[];renderLines();renderDoc();
+}
+function loadShipmentToForm(){
+  const id=$('loadShipment').value; if(!id){newShipmentForm();return;}
+  const s=db.shipments.find(x=>x.id===id);
+  $('f_invno').value=s.invno;$('f_date').value=s.date||'';$('f_sname').value=s.sname||'';$('f_stel').value=s.stel||'';
+  $('f_scomp').value=s.scomp||'';$('f_saddr').value=s.saddr||'';$('f_cname').value=s.cname||'';$('f_caddr').value=s.caddr||'';
+  $('f_term').value=s.term||'';$('f_logi').value=s.logi||0;$('f_cur').value=s.cur||'RMB';
+  curItems=JSON.parse(JSON.stringify(s.items||[]));renderLines();renderDoc();
+}
+function addLineBySku(){
+  const sku=$('addSkuInput').value.trim(); if(!sku)return;
+  const p=prod(sku);
+  if(!p){ if(!confirm('ไม่พบ SKU "'+sku+'" ในทะเบียน จะเพิ่มเป็นรายการว่างไหม?'))return; }
+  const last=p?db.costs.filter(c=>c.sku===sku).sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0]:null;
+  curItems.push({sku,price:last?last.price:0,qty:0,ctn:0,gw:0,mark:(p&&p.mark?p.mark:'')});
+  $('addSkuInput').value='';renderLines();renderDoc();
+}
+function renderLines(){
+  if(!curItems.length){$('lineItems').innerHTML='<div class="empty">ยังไม่มีรายการ — พิมพ์ SKU ด้านบนเพื่อเพิ่ม</div>';return;}
+  let h='<table><thead><tr><th>SKU</th><th>ราคา</th><th>จำนวน(PCS)</th><th>Cartons</th><th>GW(Kg)</th><th>Shipping Mark</th><th></th></tr></thead><tbody>';
+  curItems.forEach((it,i)=>{const p=prod(it.sku);
+    h+=`<tr><td><b>${esc(it.sku)}</b>${p?'':' <span class="pill up">ไม่พบ</span>'}<br><span class="muted">${p?esc(p.name_en||''):''}</span></td>
+      <td><input style="width:80px" type="number" step="0.01" value="${it.price}" onchange="updItem(${i},'price',this.value)"></td>
+      <td><input style="width:90px" type="number" value="${it.qty}" onchange="updItem(${i},'qty',this.value)"></td>
+      <td><input style="width:70px" type="number" value="${it.ctn}" onchange="updItem(${i},'ctn',this.value)"></td>
+      <td><input style="width:80px" type="number" step="0.01" value="${it.gw}" onchange="updItem(${i},'gw',this.value)"></td>
+      <td><input style="width:130px" value="${esc(it.mark||'')}" onchange="updItem(${i},'mark',this.value)"></td>
+      <td><button class="mini btn red" onclick="curItems.splice(${i},1);renderLines();renderDoc()">✕</button></td></tr>`;});
+  $('lineItems').innerHTML=h+'</tbody></table>';
+}
+function updItem(i,k,v){curItems[i][k]=(k==='mark'||k==='sku')?v:(+v||0);
+  if(k==='qty'){const p=prod(curItems[i].sku);if(p&&p.per_ctn&&!curItems[i].ctn)curItems[i].ctn=Math.ceil(v/p.per_ctn);}
+  renderLines();renderDoc();}
+function formData(){return {invno:$('f_invno').value,date:$('f_date').value,sname:$('f_sname').value,stel:$('f_stel').value,
+  scomp:$('f_scomp').value,saddr:$('f_saddr').value,cname:$('f_cname').value,caddr:$('f_caddr').value,
+  term:$('f_term').value,logi:+$('f_logi').value||0,cur:$('f_cur').value,items:curItems};}
+async function saveShipment(){
+  const d=formData(); if(!d.invno)return alert('กรอก Invoice/PO No.');
+  const rec={invno:d.invno,date:d.date||null,sname:d.sname,stel:d.stel,scomp:d.scomp,saddr:d.saddr,
+    cname:d.cname,caddr:d.caddr,term:d.term,logi:d.logi,cur:d.cur,items:d.items};
+  const id=$('loadShipment').value;
+  const ok=await dbWrite(()=> id ? sb.from('shipments').update(rec).eq('id',id) : sb.from('shipments').insert(rec));
+  if(ok){await reload('shipments');initInvPl();alert('บันทึกเอกสารแล้ว');}
+}
+function fmtDate(d){if(!d)return'';return new Date(d).toLocaleDateString('en-GB');}
+function renderDoc(){
+  const d=formData();
+  const totalGW=d.items.reduce((s,i)=>s+(+i.gw||0),0), totalCtn=d.items.reduce((s,i)=>s+(+i.ctn||0),0);
+  const totalPrice=d.items.reduce((s,i)=>s+(+i.price*+i.qty),0);
+  const rowInv=d.items.map(it=>{const p=prod(it.sku)||{};
+    const remark=`BRAND ：${p.brand||''}\nMODEL：${p.model||it.sku}\n\n${p.name_en||''} : ${it.sku}\n${p.name_th||''}`;
+    return `<tr><td>${esc(p.name_en||it.sku)}<br>${esc(p.model||it.sku)}</td><td style="white-space:pre-line">${esc(p.component||'')}</td>
+      <td>${esc(p.spec||'')}</td><td style="text-align:right">${money(it.price)}</td><td style="text-align:right">${money(it.qty)}</td>
+      <td style="text-align:right">${money(it.price*it.qty)}</td><td style="text-align:right">${money(it.gw)}</td><td class="rmark">${esc(remark)}</td></tr>`;}).join('');
+  const rowPl=d.items.map((it,idx)=>{const p=prod(it.sku)||{};
+    const dim=`${it.ctn||0} Cartons*${p.per_ctn||''}= ${money(it.qty)} ${p.unit||'Pcs'}\nBoxes Size: ${p.box_size||''}\n${money((it.ctn||0)*(p.cbm_ctn||0))} CBM\n1 Cartons = ${p.per_ctn||''} ${p.unit||''} = ${p.w_ctn||''} Kg`;
+    return `<tr><td style="text-align:center">${idx+1}</td><td>${esc(p.name_en||it.sku)}<br>${esc(p.name_th||'')}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||it.sku)}</td>
+      <td style="white-space:pre-line">${esc(dim)}</td><td style="text-align:right">${money(it.gw)}</td><td style="white-space:pre-line">${esc(it.mark||'')}</td></tr>`;}).join('');
+  const hdr=(refLabel)=>`<table class="hdr"><tr><td style="width:60%"><b>Sender Name :</b> ${esc(d.sname)}<br><b>Company :</b> ${esc(d.scomp)}<br><b>Address :</b> ${esc(d.saddr)}<br><b>Tel :</b> ${esc(d.stel)}<br><b>Consignee :</b> ${esc(d.cname)}<br><b>Address :</b> ${esc(d.caddr)}</td>
+      <td style="vertical-align:top"><b>Date :</b> ${fmtDate(d.date)}<br><b>${refLabel} :</b> ${esc(d.invno)}<br><b>Gross Weight :</b> ${money(totalGW)} Kg<br><b>Total Package :</b> ${money(totalCtn)} Cartons<br><b>TERM :</b> ${esc(d.term)}</td></tr></table>`;
+  $('docPreview').innerHTML=`<div class="doc"><h2 class="title">INVOICE</h2><div class="goldline"></div>${hdr('Invoice No')}
+    <table class="items"><thead><tr><th>DESCRIPTION</th><th>COMPONENT</th><th>Specification</th><th>Unit Price</th><th>Qty (PCS)</th><th>Total/${esc(d.cur)}</th><th>GW (Kg)</th><th>Remark</th></tr></thead><tbody>${rowInv}
+      <tr><td colspan="3" style="text-align:right"><b>Logistics costs</b></td><td></td><td></td><td style="text-align:right">${money(d.logi)}</td><td></td><td></td></tr>
+      <tr><td colspan="5" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(totalPrice+d.logi)}</b></td><td></td><td></td></tr></tbody></table>
+    <div style="page-break-after:always"></div><h2 class="title">PACKING LIST</h2><div class="goldline"></div>${hdr('Reference Invoice No')}
+    <table class="items"><thead><tr><th>ITEM</th><th>DESCRIPTION OF GOODS</th><th>Dimension</th><th>GW (Kg)</th><th>Shipping Mark</th></tr></thead><tbody>${rowPl}</tbody></table>
+    <div class="sig">Signature and Company Stamp<br><br>________________________</div></div>`;
+}
+function exportInvPlExcel(){
+  const d=formData();const rows=[];
+  rows.push(['INVOICE']);rows.push(['Sender Name',d.sname,'','Date',fmtDate(d.date)]);
+  rows.push(['Company',d.scomp,'','Invoice No',d.invno]);rows.push(['Address',d.saddr,'','Gross Weight',d.items.reduce((s,i)=>s+ +i.gw,0)]);
+  rows.push(['Consignee',d.cname,'','Total Package',d.items.reduce((s,i)=>s+ +i.ctn,0)]);rows.push(['Address',d.caddr,'','TERM',d.term]);rows.push([]);
+  rows.push(['DESCRIPTION','COMPONENT','Specification','Unit Price','Qty (PCS)','Total Price/'+d.cur,'GW (Kg)','Remark']);
+  d.items.forEach(it=>{const p=prod(it.sku)||{};rows.push([p.name_en||it.sku,p.component||'',p.spec||'',it.price,it.qty,it.price*it.qty,it.gw,`BRAND：${p.brand||''} MODEL：${p.model||it.sku} ${p.name_th||''}`]);});
+  rows.push(['','','Logistics costs','','','',d.logi]);rows.push(['','','','','Total',d.items.reduce((s,i)=>s+i.price*i.qty,0)+d.logi]);rows.push([]);rows.push([]);
+  rows.push(['PACKING LIST']);rows.push(['ITEM No.','DESCRIPTION OF GOODS','Dimension','GW (Kg)','Shipping Mark']);
+  d.items.forEach((it,i)=>{const p=prod(it.sku)||{};rows.push([i+1,`${p.name_en||it.sku} / ${p.name_th||''} / ${p.brand||''} ${p.model||it.sku}`,`${it.ctn} Ctn*${p.per_ctn||''}=${it.qty} ${p.unit||''}; Box ${p.box_size||''}; ${((it.ctn||0)*(p.cbm_ctn||0)).toFixed(2)} CBM; ${p.w_ctn||''}Kg/Ctn`,it.gw,it.mark||'']);});
+  const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:28},{wch:22},{wch:32},{wch:12},{wch:12},{wch:14},{wch:10},{wch:30}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,(d.invno||'INV_PL').slice(0,28));XLSX.writeFile(wb,`${d.invno||'INV_PL'}_INV_PL.xlsx`);
+}
+
+/* ===== SKU IMPORT / TEMPLATE ===== */
+function exportSkuTemplate(){
+  const rows=[['sku','brand','name_en','name_th','model','hs','component','spec','unit','per_ctn','w_ctn','box_size','cbm_ctn','mark'],
+    ['KSCB-120','IKOMAX','PULSE REPAIR CHARGER','เครื่องชาร์จแบตเตอรี่','KSCB-120','','1*Body 1*Packing Box 1*Manual','English description','Set',20,15.28,'65x44x40 Cm',0.1144,'LIKESHOP/GTL']];
+  const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'SKU');XLSX.writeFile(wb,'SKU_template.xlsx');
+}
+function importSku(inp){
+  const f=inp.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=async e=>{const wb=XLSX.read(e.target.result,{type:'array'});const js=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    const recs=js.filter(r=>r.sku).map(r=>({sku:String(r.sku).trim(),brand:r.brand||'',name_en:r.name_en||'',name_th:r.name_th||'',model:r.model||'',hs:r.hs||'',component:r.component||'',spec:r.spec||'',unit:r.unit||'',per_ctn:+r.per_ctn||null,w_ctn:+r.w_ctn||null,box_size:r.box_size||'',cbm_ctn:+r.cbm_ctn||null,mark:r.mark||''}));
+    if(!recs.length){alert('ไม่พบข้อมูล');return;}
+    const ok=await dbWrite(()=>sb.from('products').upsert(recs,{onConflict:'sku'}));
+    if(ok){await reload('products');renderSkuTable();alert('นำเข้า/อัปเดต '+recs.length+' รายการ');}
+    inp.value='';};
+  rd.readAsArrayBuffer(f);
+}
+
+/* ===== REQUESTS + AUTO NOTIFY ===== */
+function renderReq(){
+  fillSkuSelects();
+  const list=[...db.requests].sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+  if(!list.length){$('reqTable').innerHTML='<div class="empty">ยังไม่มีคำขอ</div>';return;}
+  let h='<table><thead><tr><th>วันที่</th><th>ผู้ขอ</th><th>SKU</th><th>เหตุผล</th><th>สถานะ</th><th class="no-print">จัดการ</th></tr></thead><tbody>';
+  list.forEach(r=>{h+=`<tr><td>${String(r.created_at||'').slice(0,10)}</td><td>${esc(r.requested_by)}<br><span class="muted">${esc(r.dept||'')}</span></td>
+    <td>${esc(r.sku||'ทั้งหมด')}</td><td>${esc(r.reason||'')}</td>
+    <td><span class="pill ${r.status}">${({pending:'รอดำเนินการ',notified:'แจ้งแล้ว',done:'เสร็จ'})[r.status]||r.status}</span></td>
+    <td class="no-print"><button class="mini btn gold" onclick="autoNotify('${r.id}')">แจ้งอัตโนมัติ</button>
+      ${canEdit?`<button class="mini btn green" onclick="reqStatus('${r.id}','done')">เสร็จ</button> <button class="mini btn red" onclick="delReq('${r.id}')">ลบ</button>`:''}</td></tr>`;});
+  $('reqTable').innerHTML=h+'</tbody></table>';
+}
+function openReq(){fillSkuSelects();['r_by','r_dept','r_reason'].forEach(i=>$(i).value='');$('r_sku').value='';$('reqDlg').showModal();}
+async function saveReq(){
+  if(!$('r_by').value)return alert('กรอกผู้ขอ');
+  const rec={requested_by:$('r_by').value.trim(),dept:$('r_dept').value.trim(),sku:$('r_sku').value||null,reason:$('r_reason').value.trim(),status:'pending'};
+  const ok=await dbWrite(()=>sb.from('cost_requests').insert(rec));
+  if(ok){await reload('requests');$('reqDlg').close();renderReq();}
+}
+async function reqStatus(id,st){ const ok=await dbWrite(()=>sb.from('cost_requests').update({status:st}).eq('id',id)); if(ok){await reload('requests');renderReq();} }
+async function delReq(id){ if(!confirm('ลบคำขอนี้?'))return; const ok=await dbWrite(()=>sb.from('cost_requests').delete().eq('id',id)); if(ok){await reload('requests');renderReq();} }
+async function autoNotify(id){
+  const r=db.requests.find(x=>x.id===id);
+  const skus=r.sku?[r.sku]:db.products.map(p=>p.sku);
+  let msg=`📋 ข้อมูลต้นทุนล่าสุด (MASARU)\nถึง: ${r.requested_by} (${r.dept||'-'})\nวันที่แจ้ง: ${new Date().toLocaleDateString('th-TH')}\n────────────\n`;
+  skus.forEach(sku=>{const p=prod(sku)||{};const list=costsBySku(sku);
+    if(!list.length){msg+=`• ${sku}: ไม่มีข้อมูลราคา\n`;return;}
+    const latest=list[list.length-1],prev=list.length>1?list[list.length-2]:null;
+    const chg=prev?((latest.price-prev.price)/prev.price*100):0;
+    const arrow=chg>0?`▲${chg.toFixed(1)}%`:(chg<0?`▼${Math.abs(chg).toFixed(1)}%`:'คงที่');
+    msg+=`• ${sku} (${p.name_en||''})\n   ราคาล่าสุด: ${money(latest.price)} ${latest.cur} (${latest.date}) ${prev?arrow:'แรกเข้า'}\n`;});
+  msg+=`────────────\n*ข้อมูลลับเฉพาะภายใน — ห้ามเปิดเผยแก่บุคคลภายนอก*`;
+  $('notifyText').value=msg;$('notifyDlg').showModal();
+  await dbWrite(()=>sb.from('cost_requests').update({status:'notified'}).eq('id',id));
+  await reload('requests');renderReq();
+}
+function copyNotify(){navigator.clipboard.writeText($('notifyText').value);alert('คัดลอกแล้ว');}
+
+/* ===== SEED (ตัวอย่าง PO2607014) ===== */
+async function seedSample(){
+  if(db.products.length && db.shipments.some(s=>s.invno==='PO2607014')){alert('มีข้อมูลตัวอย่างอยู่แล้ว');return;}
+  if(!confirm('เพิ่มสินค้า KSCB-120/110 + เอกสาร PO2607014 + ราคาจริง เข้า Supabase?'))return;
+  const box={box_size:'65x44x40 Cm',cbm_ctn:0.1144,w_ctn:15.28,per_ctn:20,unit:'Set',brand:'IKOMAX',name_en:'PULSE REPAIR CHARGER',name_th:'เครื่องชาร์จแบตเตอรี่',component:'1*Body\n1*Packing Box\n1*Manual',spec:'English description',mark:'LIKESHOP/GTL',hs:''};
+  await dbWrite(()=>sb.from('products').upsert([{sku:'KSCB-120',model:'KSCB-120',...box},{sku:'KSCB-110',model:'KSCB-110',...box}],{onConflict:'sku'}));
+  await dbWrite(()=>sb.from('costs').insert([
+    {sku:'KSCB-120',date:'2026-07-13',price:39,cur:'RMB',qty:8000,po:'PO2607014',sup:'Renqiu Danfan'},
+    {sku:'KSCB-110',date:'2026-07-13',price:31,cur:'RMB',qty:4500,po:'PO2607014',sup:'Renqiu Danfan'}]));
+  await dbWrite(()=>sb.from('shipments').insert({invno:'PO2607014',date:'2026-07-13',sname:'Li Wei',stel:'18831768579',
+    scomp:'Renqiu Danfan Electric Appliance Co., Ltd.',saddr:'Changfeng Town Industrial Zone, Renqiu City, Cangzhou City, Hebei Province',
+    cname:'LIKESHOP MALL CO., LTD.',caddr:'475/4-5 Thahan Bok Rd, Bo Phlap Subdistrict, Mueang Nakhon Pathom District, Nakhon Pathom Province 73000. THAILAND',
+    term:'EXW',logi:0,cur:'RMB',items:[{sku:'KSCB-120',price:39,qty:8000,ctn:400,gw:6112,mark:'LIKESHOP/GTL\n(PO 19406)'},{sku:'KSCB-110',price:31,qty:4500,ctn:225,gw:3438,mark:'LIKESHOP/GTL\n(PO 19406)'}]}));
+  await loadAll();renderSkuTable();alert('เพิ่มข้อมูลตัวอย่างแล้ว');
+}
+
+/* ===== DASHBOARD CHARTS ===== */
+let charts={};
+function destroy(k){if(charts[k]){charts[k].destroy();delete charts[k];}}
+function renderDashboard(){
+  fillSkuSelects();
+  const totalSave=costAnalysis().reduce((s,c)=>s+(c.cur==='RMB'?c.saving:0),0);
+  const shipTot=db.shipcosts.reduce((s,x)=>s+ +x.cost,0), shipCbm=db.shipcosts.reduce((s,x)=>s+(+x.cbm||0),0);
+  $('kpiWrap').innerHTML=`<div class="kpi"><div class="lbl">จำนวน SKU</div><div class="val">${db.products.length}</div></div>
+    <div class="kpi green"><div class="lbl">ประหยัดสะสม (RMB)</div><div class="val">${money(totalSave)}</div></div>
+    <div class="kpi gold"><div class="lbl">ค่าขนส่งรวม (บาท)</div><div class="val">${money(shipTot)}</div></div>
+    <div class="kpi"><div class="lbl">เฉลี่ย บาท/CBM</div><div class="val">${money(shipCbm?shipTot/shipCbm:0)}</div></div>
+    <div class="kpi"><div class="lbl">คำขอค้าง</div><div class="val">${db.requests.filter(r=>r.status==='pending').length}</div></div>`;
+  drawPriceChart();drawSaveChart();drawShipChart();
+}
+function drawPriceChart(){destroy('price');const sku=$('dashSku').value;if(!sku)return;const list=costsBySku(sku);
+  charts.price=new Chart($('priceChart'),{type:'line',data:{labels:list.map(c=>c.date),datasets:[{label:sku+' (RMB)',data:list.map(c=>c.price),borderColor:'#3A5A8C',backgroundColor:'rgba(58,90,140,.15)',fill:true,tension:.2,pointRadius:5}]},options:{responsive:true,maintainAspectRatio:false}});}
+function drawSaveChart(){destroy('save');const bySku={};costAnalysis().forEach(c=>{if(c.saving>0)bySku[c.sku]=(bySku[c.sku]||0)+c.saving;});const labels=Object.keys(bySku);
+  charts.save=new Chart($('saveChart'),{type:'bar',data:{labels,datasets:[{label:'ประหยัดสะสม (RMB)',data:labels.map(l=>bySku[l]),backgroundColor:'#1E7145'}]},options:{responsive:true,maintainAspectRatio:false}});}
+function drawShipChart(){destroy('ship');const list=[...db.shipcosts].sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  charts.ship=new Chart($('shipChart'),{type:'bar',data:{labels:list.map(x=>x.ref),datasets:[{label:'บาท/CBM',data:list.map(x=>x.cbm?(+x.cost/+x.cbm):0),backgroundColor:'#D0212B'}]},options:{responsive:true,maintainAspectRatio:false}});}
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+</script>
+</body>
+</html>
