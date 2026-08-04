@@ -145,7 +145,7 @@
           <input type="file" id="expImport" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExport(this)">
           <button class="btn gold edit-only" id="seedBtn" style="display:none" onclick="seedSample()">โหลดตัวอย่าง PO2607014</button>
         </div>
-        <div class="note">รายการ SKU + ราคาต้นทุน มาจากระบบกลาง <b>sku_master</b> (แก้ราคาที่ระบบ PR › ข้อมูลกลาง) · ที่นี่กรอกเฉพาะ <b>ข้อมูลสำหรับใบขนสินค้า</b> — ชื่อ EN/TH, Brand/Model, ขนาดกล่อง, CBM, น้ำหนัก/กล่อง และ <b>รูปสินค้า</b></div>
+        <div class="note">รายการ SKU + ราคาต้นทุน มาจากระบบกลาง <b>sku_master</b> (แก้ราคาที่ระบบ PR › ข้อมูลกลาง) · ที่นี่กรอกเฉพาะ <b>ข้อมูลสำหรับใบขนสินค้า</b> — ชื่อ EN/TH, Brand/Model, ขนาดกล่อง, CBM, น้ำหนัก/กล่อง · <b>รูปสินค้า</b> แนบตอนออกใบ INV (ชั่วคราว ล้างได้)</div>
         <div id="skuTable"></div>
       </div>
     </section>
@@ -195,8 +195,11 @@
             <button class="btn gold" onclick="addLineBySku()">+ เพิ่มรายการ</button>
           </div>
           <div id="lineItems"></div>
+          <input type="file" id="lineImgFile" accept="image/*" style="display:none" onchange="onLineImg(this)">
           <div class="toolbar" style="margin-top:12px">
-            <button class="btn green edit-only" onclick="saveShipment()">💾 บันทึกเอกสาร</button><span class="sp"></span>
+            <button class="btn green edit-only" onclick="saveShipment()">💾 บันทึกเอกสาร</button>
+            <button class="btn ghost" onclick="clearAllImages()" title="ล้างรูปในเอกสารนี้เพื่อคืนพื้นที่ DB">🧹 ล้างรูป</button>
+            <span class="sp"></span>
             <button class="btn" onclick="renderDoc();window.print()">🖨️ พิมพ์ / PDF</button>
             <button class="btn gold" onclick="exportInvPlExcel()">⬇️ Export Excel</button>
           </div>
@@ -233,11 +236,7 @@
     <div class="grid3"><div><label>หน่วย</label><input id="e_unit" placeholder="Set / PCS"></div><div><label>จำนวน/กล่อง</label><input id="e_perctn" type="number"></div><div><label>น้ำหนัก/กล่อง (Kg)</label><input id="e_wctn" type="number" step="0.01"></div></div>
     <div class="grid2"><div><label>ขนาดกล่อง</label><input id="e_box" placeholder="65x44x40 Cm"></div><div><label>CBM/กล่อง</label><input id="e_cbm" type="number" step="0.0001"></div></div>
     <div><label>Shipping Mark เริ่มต้น</label><input id="e_mark"></div>
-    <h3>รูปสินค้า (แสดงในใบ INV)</h3>
-    <input type="file" id="e_picfile" accept="image/*" onchange="onPicPick(this)">
-    <img id="picPreview">
-    <div style="margin-top:6px"><button type="button" class="btn ghost mini" onclick="clearPic()">ลบรูป</button></div>
-    <input type="hidden" id="e_pic">
+    <div class="muted" style="margin-top:8px">📷 รูปสินค้า: ไปแนบตอนออกใบ INV (แท็บ “ออก INV + PL”) แนบเฉพาะบิลนั้น ล้างได้ ไม่เก็บถาวร</div>
   </div>
   <div class="dlg-foot"><button class="btn ghost" onclick="expDlg.close()">ยกเลิก</button><button class="btn green edit-only" onclick="saveExport();return false">บันทึก</button></div>
 </form></dialog>
@@ -334,7 +333,7 @@ function buildProducts(){
       current_stock: best?best.current_stock:null,
       name_en:e.name_en||'', name_th:e.name_th||'', brand:e.brand||'', model:e.model||'', hs:e.hs||'',
       component:e.component||'', spec:e.spec||'', unit:e.unit||'', per_ctn:e.per_ctn||null,
-      w_ctn:e.w_ctn||null, box_size:e.box_size||'', cbm_ctn:e.cbm_ctn||null, mark:e.mark||'', picture:e.picture||''};
+      w_ctn:e.w_ctn||null, box_size:e.box_size||'', cbm_ctn:e.cbm_ctn||null, mark:e.mark||''};
   }).sort((a,b)=>a.sku.localeCompare(b.sku));
 }
 async function reloadExport(){ const exp=await fetchTable('sku_export_info','sku'); db.expMap={}; exp.forEach(e=>db.expMap[e.sku]=e); buildProducts(); }
@@ -363,12 +362,11 @@ function renderSkuTable(){
   const q=($('skuSearch').value||'').toLowerCase();
   const list=db.products.filter(p=>!q||((p.sku||'')+(p.name_en||'')+(p.name_th||'')+(p.product_name||'')+(p.brand||'')+(p.model||'')).toLowerCase().includes(q));
   if(!list.length){$('skuTable').innerHTML='<div class="empty">ไม่พบสินค้า (ดึงจาก sku_master + sku_export_info)</div>';return;}
-  let h='<table><thead><tr><th>รูป</th><th>SKU</th><th>ชื่อ (กลาง / EN / ไทย)</th><th>Brand·Model</th><th>ต้นทุน (¥)</th><th>ขนาดกล่อง·CBM·Kg</th><th class="no-print">จัดการ</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th>SKU</th><th>ชื่อ (กลาง / EN / ไทย)</th><th>Brand·Model</th><th>ต้นทุน (¥)</th><th>ขนาดกล่อง·CBM·Kg</th><th class="no-print">จัดการ</th></tr></thead><tbody>';
   list.forEach(p=>{
     const priceTxt=p.price!=null?money(p.price)+(p.supplier?` <span class="muted">(${esc(p.supplier)})</span>`:''):'<span class="muted">—</span>';
     const packed=(p.box_size||p.cbm_ctn||p.w_ctn)?`${esc(p.box_size||'')} · ${p.cbm_ctn||'-'} · ${p.w_ctn||'-'}`:'<span class="muted">ยังไม่กรอก</span>';
-    h+=`<tr><td>${p.picture?`<img class="thumb" src="${p.picture}">`:'<span class="muted">—</span>'}</td>
-      <td><b>${esc(p.sku)}</b></td>
+    h+=`<tr><td><b>${esc(p.sku)}</b></td>
       <td>${esc(p.product_name||'')}<br><span class="muted">${esc(p.name_en||'')} / ${esc(p.name_th||'')}</span></td>
       <td>${esc(p.brand||'')} ${esc(p.model||'')}</td><td>${priceTxt}</td><td>${packed}</td>
       <td class="no-print"><button class="mini btn" onclick="openExport('${esc(p.sku)}')">${canEdit?'แก้ข้อมูลส่งออก':'ดู'}</button></td></tr>`;});
@@ -382,7 +380,6 @@ function openExport(sku){
   $('e_model').value=e.model||'';$('e_hs').value=e.hs||'';$('e_comp').value=e.component||'';$('e_spec').value=e.spec||'';
   $('e_unit').value=e.unit||'';$('e_perctn').value=e.per_ctn||'';$('e_wctn').value=e.w_ctn||'';$('e_box').value=e.box_size||'';
   $('e_cbm').value=e.cbm_ctn||'';$('e_mark').value=e.mark||'';
-  setPic(e.picture||'');
   $('expDlg').showModal();
 }
 async function saveExport(){
@@ -390,18 +387,20 @@ async function saveExport(){
   const rec={sku,brand:$('e_brand').value.trim(),name_en:$('e_en').value.trim(),name_th:$('e_th').value.trim(),
     model:$('e_model').value.trim(),hs:$('e_hs').value.trim(),component:$('e_comp').value,spec:$('e_spec').value,
     unit:$('e_unit').value.trim(),per_ctn:+$('e_perctn').value||null,w_ctn:+$('e_wctn').value||null,
-    box_size:$('e_box').value.trim(),cbm_ctn:+$('e_cbm').value||null,mark:$('e_mark').value.trim(),picture:$('e_pic').value||null};
+    box_size:$('e_box').value.trim(),cbm_ctn:+$('e_cbm').value||null,mark:$('e_mark').value.trim()};
   const ok=await dbWrite(()=>sb.from('sku_export_info').upsert(rec,{onConflict:'sku'}));
   if(ok){await reloadExport();$('expDlg').close();renderSkuTable();}
 }
-/* image */
-function onPicPick(inp){const f=inp.files[0];if(!f)return;
-  const r=new FileReader();r.onload=ev=>{const img=new Image();img.onload=()=>{
-    const max=340;let w=img.width,h=img.height;if(w>max){h=Math.round(h*max/w);w=max;}
-    const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
-    setPic(c.toDataURL('image/jpeg',0.82));};img.src=ev.target.result;};r.readAsDataURL(f);}
-function setPic(d){$('e_pic').value=d||'';const el=$('picPreview');if(d){el.src=d;el.style.display='block';}else{el.style.display='none';}}
-function clearPic(){setPic('');$('e_picfile').value='';}
+/* image — แนบชั่วคราวรายบรรทัดในใบ INV (ไม่เก็บถาวรราย SKU) */
+let attachIdx=-1;
+function downscaleImg(file,cb){const r=new FileReader();r.onload=ev=>{const img=new Image();img.onload=()=>{
+  const max=340;let w=img.width,h=img.height;if(w>max){h=Math.round(h*max/w);w=max;}
+  const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+  cb(c.toDataURL('image/jpeg',0.82));};img.src=ev.target.result;};r.readAsDataURL(file);}
+function attachLineImage(i){attachIdx=i;$('lineImgFile').click();}
+function onLineImg(inp){const f=inp.files[0];if(!f||attachIdx<0)return;downscaleImg(f,d=>{curItems[attachIdx].pic=d;inp.value='';attachIdx=-1;renderLines();renderDoc();});}
+function clearLineImage(i){curItems[i].pic='';renderLines();renderDoc();}
+function clearAllImages(){if(!curItems.some(it=>it.pic))return;if(!confirm('ล้างรูปทั้งหมดในเอกสารนี้? (บันทึกทับเพื่อคืนพื้นที่ DB)'))return;curItems.forEach(it=>it.pic='');renderLines();renderDoc();}
 
 function fillSkuSelects(){
   const opts=db.products.map(p=>`<option value="${esc(p.sku)}">${esc(p.sku)} — ${esc(p.name_en||p.product_name||'')}</option>`).join('');
@@ -501,9 +500,11 @@ function addLineBySku(){
 }
 function renderLines(){
   if(!curItems.length){$('lineItems').innerHTML='<div class="empty">ยังไม่มีรายการ — พิมพ์ SKU ด้านบน</div>';return;}
-  let h='<table><thead><tr><th>SKU</th><th>ราคา</th><th>จำนวน(PCS)</th><th>Cartons</th><th>GW(Kg)</th><th>Shipping Mark</th><th></th></tr></thead><tbody>';
+  let h='<table><thead><tr><th>SKU</th><th>รูป</th><th>ราคา</th><th>จำนวน(PCS)</th><th>Cartons</th><th>GW(Kg)</th><th>Shipping Mark</th><th></th></tr></thead><tbody>';
   curItems.forEach((it,i)=>{const p=prod(it.sku);
+    const picCell=it.pic?`<img class="thumb" src="${it.pic}"><br><button class="mini btn red" onclick="clearLineImage(${i})">ลบรูป</button>`:`<button class="mini btn ghost" onclick="attachLineImage(${i})">📷 แนบ</button>`;
     h+=`<tr><td><b>${esc(it.sku)}</b>${p?'':' <span class="pill up">ไม่พบ</span>'}<br><span class="muted">${p?esc(p.name_en||p.product_name||''):''}</span></td>
+      <td style="text-align:center">${picCell}</td>
       <td><input style="width:80px" type="number" step="0.01" value="${it.price}" onchange="updItem(${i},'price',this.value)"></td>
       <td><input style="width:90px" type="number" value="${it.qty}" onchange="updItem(${i},'qty',this.value)"></td>
       <td><input style="width:70px" type="number" value="${it.ctn}" onchange="updItem(${i},'ctn',this.value)"></td>
@@ -531,7 +532,7 @@ function renderDoc(){
   const totalGW=d.items.reduce((s,i)=>s+(+i.gw||0),0), totalCtn=d.items.reduce((s,i)=>s+(+i.ctn||0),0), totalPrice=d.items.reduce((s,i)=>s+(+i.price*+i.qty),0);
   const rowInv=d.items.map(it=>{const p=prod(it.sku)||{};
     const remark=`BRAND ：${p.brand||''}\nMODEL：${p.model||it.sku}\n\n${p.name_en||''} : ${it.sku}\n${p.name_th||''}`;
-    const pic=p.picture?`<img class="pic" src="${p.picture}">`:'';
+    const pic=it.pic?`<img class="pic" src="${it.pic}">`:'';
     return `<tr><td>${esc(p.name_en||p.product_name||it.sku)}<br>${esc(p.model||it.sku)}</td><td style="text-align:center">${pic}</td>
       <td style="white-space:pre-line">${esc(p.component||'')}</td><td>${esc(p.spec||'')}</td>
       <td style="text-align:right">${money(it.price)}</td><td style="text-align:right">${money(it.qty)}</td>
