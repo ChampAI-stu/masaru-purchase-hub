@@ -159,8 +159,13 @@
     <section id="tab-cost" style="display:none">
       <div class="card">
         <div class="toolbar"><h2 style="margin:0;border:0;padding:0">💰 ต้นทุน / การขึ้นลงราคา</h2><span class="sp"></span>
-          <input id="costSearch" placeholder="ค้นหา SKU / Supplier" style="max-width:220px" oninput="renderCostTable()">
-          <select id="costFilter" style="max-width:200px" onchange="renderCostTable()"><option value="">— ทุกสินค้า —</option></select>
+          <input id="costSearch" placeholder="ค้นหา SKU / Supplier" style="max-width:200px" oninput="renderCostTable()">
+          <select id="costMonth" style="max-width:150px" onchange="renderCostTable()"><option value="">— ทุกเดือน —</option></select>
+          <span class="muted">ช่วง</span>
+          <input id="costFrom" type="date" style="max-width:150px" onchange="renderCostTable()" title="ตั้งแต่วันที่">
+          <input id="costTo" type="date" style="max-width:150px" onchange="renderCostTable()" title="ถึงวันที่">
+          <select id="costChange" style="max-width:140px" onchange="renderCostTable()"><option value="">ขึ้น + ลด</option><option value="up">▲ ขึ้นราคา</option><option value="down">▼ ลดราคา</option></select>
+          <button class="btn ghost mini" onclick="clearCostFilter()">ล้างตัวกรอง</button>
           <button class="btn gold" onclick="exportCostSummary()">⬇️ ดึงสรุป (Excel)</button></div>
         <div class="note">อ่านจากประวัติกลาง <b>sku_price_history</b> (ระบบ log อัตโนมัติเมื่อแก้ราคาใน PR) · “ส่วนต่างที่ลด” = ราคาเดิม − ราคาใหม่ ต่อหน่วย (¥) — ยังไม่คูณจำนวนสั่ง</div>
         <div id="costKpi" class="kpis" style="margin-bottom:14px"></div>
@@ -489,7 +494,6 @@ function clearAllImages(){if(!curItems.some(it=>it.pic))return;if(!confirm('ล�
 function fillSkuSelects(){
   const opts=db.products.map(p=>`<option value="${esc(p.sku)}">${esc(p.sku)} — ${esc(p.name_en||p.product_name||'')}</option>`).join('');
   if($('r_sku'))$('r_sku').innerHTML='<option value="">— ทั้งหมด —</option>'+opts;
-  if($('costFilter'))$('costFilter').innerHTML='<option value="">— ทุกสินค้า —</option>'+opts;
   if($('dashSku'))$('dashSku').innerHTML=opts;
   if($('skuList'))$('skuList').innerHTML=db.products.map(p=>`<option value="${esc(p.sku)}">`).join('');
 }
@@ -502,20 +506,40 @@ function histRows(){
     const saveUnit=(oldp!=null&&oldp>newp)?(oldp-newp):0;
     return{...h,oldp,newp,pct,saveUnit};});
 }
-function renderCostTable(){
-  const flt=$('costFilter').value;     // อ่านค่าที่เลือกก่อน
-  fillSkuSelects();                    // (สร้าง options ใหม่)
-  $('costFilter').value=flt;           // คืนค่าที่เลือกไว้
+function fillCostMonths(){
+  const sel=$('costMonth'); if(!sel)return; const cur=sel.value;
+  const months=[...new Set(db.hist.map(h=>String(h.changed_at||'').slice(0,7)).filter(Boolean))].sort().reverse();
+  sel.innerHTML='<option value="">— ทุกเดือน —</option>'+months.map(m=>`<option${m===cur?' selected':''}>${m}</option>`).join('');
+}
+function filteredHist(){
   const q=($('costSearch').value||'').toLowerCase();
-  const rows=histRows().filter(h=>(!flt||h.sku===flt)&&(!q||((h.sku||'')+(h.supplier||'')).toLowerCase().includes(q))).sort((a,b)=>String(b.changed_at).localeCompare(String(a.changed_at)));
-  const all=histRows();
-  const totalSave=all.reduce((s,h)=>s+h.saveUnit,0);
-  const nDown=all.filter(h=>h.pct!=null&&h.pct<0).length, nUp=all.filter(h=>h.pct!=null&&h.pct>0).length;
-  $('costKpi').innerHTML=`<div class="kpi green"><div class="lbl">ส่วนต่างที่ลดได้ (¥/หน่วย สะสม)</div><div class="val">${money(totalSave)}</div></div>
+  const m=$('costMonth')?$('costMonth').value:'';
+  const from=$('costFrom')?$('costFrom').value:'';
+  const to=$('costTo')?$('costTo').value:'';
+  const ch=$('costChange')?$('costChange').value:'';
+  return histRows().filter(h=>{
+    const d=String(h.changed_at||'').slice(0,10);
+    if(q && !((h.sku||'')+(h.supplier||'')).toLowerCase().includes(q))return false;
+    if(m && d.slice(0,7)!==m)return false;
+    if(from && d<from)return false;
+    if(to && d>to)return false;
+    if(ch==='up' && !(h.pct!=null&&h.pct>0))return false;
+    if(ch==='down' && !(h.pct!=null&&h.pct<0))return false;
+    return true;
+  });
+}
+function clearCostFilter(){['costSearch','costMonth','costFrom','costTo','costChange'].forEach(id=>{if($(id))$(id).value='';});renderCostTable();}
+function renderCostTable(){
+  fillCostMonths();
+  const set=filteredHist();
+  const rows=set.slice().sort((a,b)=>String(b.changed_at).localeCompare(String(a.changed_at)));
+  const totalSave=set.reduce((s,h)=>s+h.saveUnit,0);
+  const nDown=set.filter(h=>h.pct!=null&&h.pct<0).length, nUp=set.filter(h=>h.pct!=null&&h.pct>0).length;
+  $('costKpi').innerHTML=`<div class="kpi green"><div class="lbl">ส่วนต่างที่ลดได้ (¥/หน่วย)</div><div class="val">${money(totalSave)}</div></div>
     <div class="kpi gold"><div class="lbl">ครั้งราคาลด</div><div class="val">${nDown}</div></div>
     <div class="kpi"><div class="lbl">ครั้งราคาขึ้น</div><div class="val">${nUp}</div></div>
-    <div class="kpi"><div class="lbl">รายการประวัติทั้งหมด</div><div class="val">${db.hist.length}</div></div>`;
-  if(!rows.length){$('costTable').innerHTML='<div class="empty">ยังไม่มีประวัติราคา (sku_price_history) — จะเริ่มบันทึกเมื่อมีการแก้ราคาใน PR</div>';return;}
+    <div class="kpi"><div class="lbl">รายการ (ตามตัวกรอง)</div><div class="val">${set.length}</div></div>`;
+  if(!rows.length){$('costTable').innerHTML='<div class="empty">ไม่มีรายการตามตัวกรอง</div>';return;}
   let h='<table><thead><tr><th>วันที่เปลี่ยน</th><th>SKU</th><th>Supplier</th><th>ราคาเดิม→ใหม่</th><th>%เปลี่ยน</th><th>ลดได้/หน่วย (¥)</th></tr></thead><tbody>';
   rows.forEach(r=>{let pill='<span class="pill flat">—</span>';
     if(r.pct>0)pill=`<span class="pill up">▲ ${r.pct.toFixed(1)}%</span>`;
@@ -527,12 +551,12 @@ function renderCostTable(){
   $('costTable').innerHTML=h+'</tbody></table>';
 }
 function exportCostSummary(){
-  const all=histRows();
-  if(!all.length && !db.products.length){alert('ยังไม่มีข้อมูล');return;}
-  // ชีท 1: สรุปรายสินค้า
+  const all=filteredHist();
+  if(!all.length){alert('ไม่มีข้อมูลตามตัวกรอง');return;}
+  // ชีท 1: สรุปรายสินค้า (ตามตัวกรอง)
   const bySku={}; all.forEach(h=>{(bySku[h.sku]=bySku[h.sku]||[]).push(h);});
   const sum=[['SKU','ชื่อสินค้า','Supplier ล่าสุด','ราคาปัจจุบัน (¥)','ราคาต่ำสุด','ราคาสูงสุด','จำนวนครั้งเปลี่ยน','ลดได้รวม/หน่วย (¥)','ขึ้นราคา(ครั้ง)','ลดราคา(ครั้ง)']];
-  const skus=[...new Set([...Object.keys(bySku),...db.products.map(p=>p.sku)])].sort();
+  const skus=Object.keys(bySku).sort();
   skus.forEach(sku=>{
     const list=(bySku[sku]||[]).slice().sort((a,b)=>String(a.changed_at).localeCompare(String(b.changed_at)));
     const p=prod(sku)||{};
@@ -544,7 +568,7 @@ function exportCostSummary(){
     sum.push([sku, p.name_en||p.product_name||'', latest?latest.supplier||'':(p.supplier||''), cur,
       prices.length?Math.min(...prices):'', prices.length?Math.max(...prices):'', list.length, save, up, down]);
   });
-  // ชีท 2: ประวัติทั้งหมด
+  // ชีท 2: ประวัติ (ตามตัวกรอง)
   const det=[['วันที่เปลี่ยน','SKU','Supplier','ราคาเดิม','ราคาใหม่','%เปลี่ยน','ลดได้/หน่วย (¥)']];
   all.slice().sort((a,b)=>String(b.changed_at).localeCompare(String(a.changed_at))).forEach(h=>{
     det.push([String(h.changed_at||'').slice(0,10),h.sku,h.supplier||'',h.oldp==null?'':h.oldp,h.newp,
