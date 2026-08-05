@@ -338,9 +338,14 @@
       <div><label>ส่งออกมาวันที่</label><input id="t_exp" type="date"></div>
       <div><label>วันที่เข้า (ถึงไทย)</label><input id="t_arr" type="date"></div>
     </div>
+    <div class="grid3">
+      <div><label>B/L No.</label><input id="t_bl"></div>
+      <div><label>Vessel No.</label><input id="t_vessel"></div>
+      <div><label>Container No.</label><input id="t_container"></div>
+    </div>
     <h3>การจ่ายเงิน</h3>
     <div class="grid3">
-      <div><label>เลขที่ดราฟใบขน</label><input id="t_draft"></div>
+      <div><label>เลขที่ใบขน</label><input id="t_draft"></div>
       <div><label>ค่าภาษี (บาท)</label><input id="t_tax" type="number" step="0.01"></div>
       <div><label>วันที่จ่ายภาษีจริง</label><input id="t_taxdate" type="date"></div>
     </div>
@@ -742,6 +747,7 @@ function openTrack(id){
   $('t_co').value=g('import_company');$('t_start').value=g('start_date');$('t_resp').value=g('responsible');
   $('t_prod').value=g('product_list');$('t_mor').value=g('mor_status');$('t_op').value=g('op_status');
   $('t_ship').value=g('shipping');$('t_exp').value=g('export_date');$('t_arr').value=g('arrival_date');
+  $('t_bl').value=g('bl_no');$('t_vessel').value=g('vessel_no');$('t_container').value=g('container_no');
   $('t_draft').value=g('draft_bill_no');$('t_tax').value=g('tax_amount');$('t_taxdate').value=g('tax_pay_date');
   $('t_shipcost').value=g('ship_cost');$('t_shipdue').value=g('ship_due');$('t_billing').value=g('billing');
   $('t_taxpaid').checked=!!t.tax_paid;$('t_shippaid').checked=!!t.ship_paid;
@@ -755,6 +761,7 @@ async function saveTrack(){
     import_company:$('t_co').value||null,start_date:$('t_start').value||null,responsible:$('t_resp').value.trim()||null,
     product_list:$('t_prod').value.trim()||null,mor_status:$('t_mor').value||null,op_status:$('t_op').value||null,
     shipping:$('t_ship').value||null,export_date:$('t_exp').value||null,arrival_date:$('t_arr').value||null,
+    bl_no:$('t_bl').value.trim()||null,vessel_no:$('t_vessel').value.trim()||null,container_no:$('t_container').value.trim()||null,
     draft_bill_no:$('t_draft').value.trim()||null,tax_amount:+$('t_tax').value||null,tax_pay_date:$('t_taxdate').value||null,
     ship_cost:+$('t_shipcost').value||null,ship_due:$('t_shipdue').value||null,billing:$('t_billing').value.trim()||null,
     tax_paid:$('t_taxpaid').checked,ship_paid:$('t_shippaid').checked,
@@ -766,11 +773,11 @@ async function saveTrack(){
 }
 async function delTrack(id){if(!confirm('ลบรายการนี้?'))return;const ok=await dbWrite(()=>sb.from('shipment_tracking').delete().eq('id',id));if(ok){await reload('tracking');renderTrack();}}
 function exportTrack(){
-  const rows=[['เดือน','อินวอยซ์','PO JST','บริษัทนำเข้า','วันที่เริ่ม','ผู้รับผิดชอบ','รายการสินค้า','ยื่นสมอ.','ดำเนินการ','ขนส่ง','ส่งออกวันที่','วันที่เข้า','เลขดราฟใบขน','ค่าภาษี','จ่ายภาษีแล้ว','วันจ่ายภาษี','ค่าขนส่ง','จ่ายขนส่งแล้ว','กำหนดชำระขนส่ง','ใบวางบิล','บช.แจ้งจ่ายภาษี','บช.ใบเสร็จ+ใบขน04','บช.วางบิลขนส่ง','คุณวุฒิบช.ส่ง','จัดซื้อชุดพร้อม','หมายเหตุ']];
+  const rows=[['เดือน','อินวอยซ์','PO JST','บริษัทนำเข้า','วันที่เริ่ม','ผู้รับผิดชอบ','รายการสินค้า','ยื่นสมอ.','ดำเนินการ','ขนส่ง','ส่งออกวันที่','วันที่เข้า','B/L No.','Vessel No.','Container No.','เลขที่ใบขน','ค่าภาษี','จ่ายภาษีแล้ว','วันจ่ายภาษี','ค่าขนส่ง','จ่ายขนส่งแล้ว','กำหนดชำระขนส่ง','ใบวางบิล','บช.แจ้งจ่ายภาษี','บช.ใบเสร็จ+ใบขน04','บช.วางบิลขนส่ง','คุณวุฒิบช.ส่ง','จัดซื้อชุดพร้อม','หมายเหตุ']];
   const yn=b=>b?'✓':'';
   db.tracking.slice().sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||''))).forEach(t=>{
     rows.push([t.period||'',t.invoice_no||'',t.jst_po||'',t.import_company||'',t.start_date||'',t.responsible||'',t.product_list||'',
-      t.mor_status||'',t.op_status||'',t.shipping||'',t.export_date||'',t.arrival_date||'',t.draft_bill_no||'',
+      t.mor_status||'',t.op_status||'',t.shipping||'',t.export_date||'',t.arrival_date||'',t.bl_no||'',t.vessel_no||'',t.container_no||'',t.draft_bill_no||'',
       t.tax_amount||'',yn(t.tax_paid),t.tax_pay_date||'',t.ship_cost||'',yn(t.ship_paid),t.ship_due||'',t.billing||'',
       yn(t.doc_acc_tax),yn(t.doc_acc_receipt),yn(t.doc_acc_billing),yn(t.doc_quality),yn(t.doc_purchase),t.note||'']);});
   const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=rows[0].map(()=>({wch:16}));
