@@ -122,6 +122,7 @@
     <button data-tab="cost" onclick="go('cost')">💰 ต้นทุน / ราคาขึ้นลง</button>
     <button data-tab="ship" onclick="go('ship')">🚚 ค่าขนส่ง</button>
     <button data-tab="track" onclick="go('track')">📋 ตาราง Shipment</button>
+    <button data-tab="parties" onclick="go('parties')">🏢 ผู้ขาย/ผู้ซื้อ</button>
     <button data-tab="invpl" onclick="go('invpl')">📄 ออก INV + PL</button>
   </div>
 
@@ -197,6 +198,23 @@
       </div>
     </section>
 
+    <section id="tab-parties" style="display:none">
+      <div class="row">
+        <div class="card" style="flex:1">
+          <div class="toolbar"><h2 style="margin:0;border:0;padding:0">🏭 ผู้ขาย (Vender)</h2><span class="sp"></span>
+            <button class="btn edit-only" onclick="openParty('vender')">+ เพิ่มผู้ขาย</button></div>
+          <div class="note">บันทึกข้อมูลผู้ขายไว้ล่วงหน้า → ตอนออกบิลเลือกจาก dropdown ได้เลย ไม่ต้องพิมพ์ซ้ำ</div>
+          <div id="venderTable"></div>
+        </div>
+        <div class="card" style="flex:1">
+          <div class="toolbar"><h2 style="margin:0;border:0;padding:0">🏬 ผู้ซื้อ (Consignee)</h2><span class="sp"></span>
+            <button class="btn edit-only" onclick="openParty('consignee')">+ เพิ่มผู้ซื้อ</button></div>
+          <div class="note">บันทึกข้อมูลผู้ซื้อ (บริษัทในเครือ/ลูกค้า) ไว้เลือกใช้ตอนออกบิล</div>
+          <div id="consTable"></div>
+        </div>
+      </div>
+    </section>
+
     <section id="tab-invpl" style="display:none">
       <div class="row no-print">
         <div class="card" style="flex:1.1">
@@ -207,15 +225,18 @@
             <button class="btn red mini edit-only" onclick="deleteShipment()">🗑️ ลบใบนี้</button>
           </div>
           <div class="grid2"><div><label>Invoice / PO No.</label><input id="f_invno" placeholder="PO2607014"></div><div><label>วันที่</label><input id="f_date" type="date"></div></div>
-          <h3>ผู้ส่ง (Sender)</h3>
-          <div class="grid2"><div><label>Sender Name</label><input id="f_sname"></div><div><label>Tel</label><input id="f_stel"></div></div>
+          <h3>ผู้ขาย (Vender)</h3>
+          <select id="f_vender_sel" onchange="applyVender()" style="margin-bottom:8px"><option value="">— เลือกผู้ขายที่บันทึกไว้ —</option></select>
+          <div class="grid2"><div><label>Vender Name</label><input id="f_sname"></div><div><label>Tel</label><input id="f_stel"></div></div>
           <div><label>Company</label><input id="f_scomp"></div>
           <div><label>Address</label><textarea id="f_saddr"></textarea></div>
-          <h3>ผู้รับ (Consignee)</h3>
+          <h3>ผู้ซื้อ (Consignee)</h3>
+          <select id="f_cons_sel" onchange="applyConsignee()" style="margin-bottom:8px"><option value="">— เลือกผู้ซื้อที่บันทึกไว้ —</option></select>
           <div><label>Consignee Name</label><input id="f_cname"></div>
           <div><label>Address</label><textarea id="f_caddr"></textarea></div>
           <h3>เงื่อนไข</h3>
-          <div class="grid3"><div><label>TERM</label><input id="f_term" placeholder="EXW"></div><div><label>ค่าขนส่ง</label><input id="f_logi" type="number" step="0.01" value="0"></div><div><label>สกุลเงิน</label><select id="f_cur"><option>RMB</option><option>USD</option><option>THB</option></select></div></div>
+          <div class="grid2"><div><label>TERM</label><input id="f_term" placeholder="EXW"></div><div><label>PORT</label><input id="f_port" placeholder="เช่น Bangkok / Laem Chabang"></div></div>
+          <div class="grid2"><div><label>ค่าขนส่ง</label><input id="f_logi" type="number" step="0.01" value="0"></div><div><label>สกุลเงิน</label><select id="f_cur"><option>RMB</option><option>USD</option><option>THB</option></select></div></div>
           <h3>รายการสินค้า</h3>
           <div class="toolbar">
             <input id="addSkuInput" list="skuList" placeholder="พิมพ์ SKU แล้ว Enter — ข้อมูล+ราคา+รูป เด้งอัตโนมัติ" style="flex:1" onkeydown="if(event.key==='Enter'){addLineBySku();event.preventDefault();}">
@@ -283,6 +304,17 @@
   <div class="dlg-foot"><button class="btn ghost" onclick="shipDlg.close()">ยกเลิก</button><button class="btn green" onclick="saveShipCost();return false">บันทึก</button></div>
 </form></dialog>
 
+<dialog id="partyDlg"><form method="dialog">
+  <div class="dlg-head" id="partyTitle">ข้อมูล<button class="x" onclick="partyDlg.close()">×</button></div>
+  <div class="dlg-body">
+    <div class="grid2"><div><label>ชื่อ (Name) *</label><input id="p_name"></div><div><label>Tel</label><input id="p_tel"></div></div>
+    <div><label>Company</label><input id="p_company"></div>
+    <div><label>Address</label><textarea id="p_address"></textarea></div>
+    <input type="hidden" id="p_kind"><input type="hidden" id="p_editid">
+  </div>
+  <div class="dlg-foot"><button class="btn ghost" onclick="partyDlg.close()">ยกเลิก</button><button class="btn green edit-only" onclick="saveParty();return false">บันทึก</button></div>
+</form></dialog>
+
 <dialog id="trkDlg" style="max-width:760px"><form method="dialog">
   <div class="dlg-head">รายการติดตามการนำเข้า<button class="x" onclick="trkDlg.close()">×</button></div>
   <div class="dlg-body">
@@ -343,7 +375,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 const money=n=>Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2});
 
-let db={master:[],hist:[],expMap:{},shipcosts:[],shipments:[],products:[],tracking:[]};
+let db={master:[],hist:[],expMap:{},shipcosts:[],shipments:[],products:[],tracking:[],parties:[]};
 let currentRole='view', canEdit=false;
 
 /* ===== AUTH GUARD (session ร่วมจาก HUB) ===== */
@@ -378,12 +410,12 @@ async function fetchTable(name,order){
   return data||[];
 }
 async function loadAll(){
-  const[master,hist,exp,shipcosts,shipments,tracking]=await Promise.all([
+  const[master,hist,exp,shipcosts,shipments,tracking,parties]=await Promise.all([
     fetchTable('sku_master','sku'), fetchTable('sku_price_history','changed_at'),
     fetchTable('sku_export_info','sku'), fetchTable('shipcosts','date'),
     fetchTable('shipments','date'),
-    fetchTable('shipment_tracking','start_date')]);
-  db.master=master; db.hist=hist; db.shipcosts=shipcosts; db.shipments=shipments; db.tracking=tracking;
+    fetchTable('shipment_tracking','start_date'), fetchTable('inv_parties','name')]);
+  db.master=master; db.hist=hist; db.shipcosts=shipcosts; db.shipments=shipments; db.tracking=tracking; db.parties=parties;
   db.expMap={}; exp.forEach(e=>db.expMap[e.sku]=e);
   buildProducts();
   if($('seedBtn'))$('seedBtn').style.display=db.products.length?'none':'';
@@ -409,7 +441,7 @@ function buildProducts(){
 }
 async function reloadExport(){ const exp=await fetchTable('sku_export_info','sku'); db.expMap={}; exp.forEach(e=>db.expMap[e.sku]=e); buildProducts(); }
 async function reload(name){
-  const map={shipcosts:['shipcosts','date'],shipments:['shipments','date'],tracking:['shipment_tracking','start_date']};
+  const map={shipcosts:['shipcosts','date'],shipments:['shipments','date'],tracking:['shipment_tracking','start_date'],parties:['inv_parties','name']};
   const[t,o]=map[name]; db[name]=await fetchTable(t,o);
 }
 async function dbWrite(fn){ try{const{error}=await fn(); if(error)throw error; return true;}catch(e){alert('บันทึกไม่สำเร็จ: '+(e.message||e));return false;} }
@@ -418,12 +450,13 @@ function prod(sku){return db.products.find(p=>p.sku===sku);}
 /* ===== NAV ===== */
 function go(t){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
-  ['dashboard','sku','cost','ship','track','invpl'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
+  ['dashboard','sku','cost','ship','track','parties','invpl'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
   if(t==='dashboard')renderDashboard();
   if(t==='sku')renderSkuTable();
   if(t==='cost')renderCostTable();
   if(t==='ship')renderShipTable();
   if(t==='track')renderTrack();
+  if(t==='parties')renderParties();
   if(t==='invpl')initInvPl();
 }
 
@@ -600,6 +633,51 @@ async function saveShipCost(){
 }
 async function delShipCost(id){if(!confirm('ลบ?'))return;const ok=await dbWrite(()=>sb.from('shipcosts').delete().eq('id',id));if(ok){await reload('shipcosts');renderShipTable();}}
 
+/* ===== PARTIES (ผู้ขาย / ผู้ซื้อ) ===== */
+function partiesOf(kind){return db.parties.filter(p=>p.kind===kind).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));}
+function renderParties(){
+  const mk=(list,kind)=>{
+    if(!list.length)return '<div class="empty">ยังไม่มีข้อมูล'+(canEdit?' — กด “เพิ่ม”':'')+'</div>';
+    let h='<table><thead><tr><th>ชื่อ</th><th>Company</th><th>Tel</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
+    list.forEach(p=>{h+=`<tr><td><b>${esc(p.name||'')}</b><br><span class="muted">${esc((p.address||'').slice(0,60))}</span></td>
+      <td>${esc(p.company||'')}</td><td>${esc(p.tel||'')}</td>`+
+      (canEdit?`<td class="no-print" style="white-space:nowrap"><button class="mini btn" onclick="openParty('${kind}','${p.id}')">แก้</button> <button class="mini btn red" onclick="delParty('${p.id}')">ลบ</button></td>`:'')+`</tr>`;});
+    return h+'</tbody></table>';
+  };
+  $('venderTable').innerHTML=mk(partiesOf('vender'),'vender');
+  $('consTable').innerHTML=mk(partiesOf('consignee'),'consignee');
+}
+function openParty(kind,id){
+  const p=id?db.parties.find(x=>x.id===id):{};
+  $('partyTitle').firstChild.textContent = (kind==='vender'?'ข้อมูลผู้ขาย (Vender)':'ข้อมูลผู้ซื้อ (Consignee)');
+  $('p_name').value=p.name||'';$('p_tel').value=p.tel||'';$('p_company').value=p.company||'';$('p_address').value=p.address||'';
+  $('p_kind').value=id?p.kind:kind;$('p_editid').value=id||'';
+  $('partyDlg').showModal();
+}
+async function saveParty(){
+  const name=$('p_name').value.trim(); if(!name)return alert('กรอกชื่อ');
+  const rec={kind:$('p_kind').value,name,tel:$('p_tel').value.trim()||null,company:$('p_company').value.trim()||null,address:$('p_address').value.trim()||null};
+  const id=$('p_editid').value;
+  const ok=await dbWrite(()=> id?sb.from('inv_parties').update(rec).eq('id',id):sb.from('inv_parties').insert(rec));
+  if(ok){await reload('parties');$('partyDlg').close();renderParties();}
+}
+async function delParty(id){if(!confirm('ลบข้อมูลนี้?'))return;const ok=await dbWrite(()=>sb.from('inv_parties').delete().eq('id',id));if(ok){await reload('parties');renderParties();}}
+function fillPartySelects(){
+  const opt=list=>'<option value="">— เลือก —</option>'+list.map(p=>`<option value="${p.id}">${esc(p.name)}${p.company?' — '+esc(p.company):''}</option>`).join('');
+  if($('f_vender_sel'))$('f_vender_sel').innerHTML=opt(partiesOf('vender'));
+  if($('f_cons_sel'))$('f_cons_sel').innerHTML=opt(partiesOf('consignee'));
+}
+function applyVender(){
+  const p=db.parties.find(x=>x.id===$('f_vender_sel').value); if(!p)return;
+  $('f_sname').value=p.name||'';$('f_stel').value=p.tel||'';$('f_scomp').value=p.company||'';$('f_saddr').value=p.address||'';
+  renderDoc();
+}
+function applyConsignee(){
+  const p=db.parties.find(x=>x.id===$('f_cons_sel').value); if(!p)return;
+  $('f_cname').value=p.name||'';$('f_caddr').value=p.address||'';
+  renderDoc();
+}
+
 /* ===== SHIPMENT TRACKING (ตารางติดตามการนำเข้า) ===== */
 const IMPORT_CO=['LIKESHOP','MASARU','DAIKI','PHONLAWUT','คุณวุฒิ'];
 const MOR_ST=['ยื่นสมอ.ผ่านแล้ว','อยู่ระหว่างยื่นสมอ','อยู่ระหว่างยื่นสมอ.แท่นชาร์จ','อยู่ระหว่างยื่นสมอ.สายชาร์จ','ไม่ต้องยื่นสมอ.'];
@@ -703,11 +781,13 @@ function exportTrack(){
 let curItems=[];
 function initInvPl(){
   fillSkuSelects();
+  fillPartySelects();
   $('loadShipment').innerHTML='<option value="">— เอกสารบันทึกไว้ —</option>'+db.shipments.map(s=>`<option value="${s.id}">${esc(s.invno)} · ${s.date||''}</option>`).join('');
   if(db.shipments[0]){$('loadShipment').value=db.shipments[0].id;loadShipmentToForm();}else newShipmentForm();
 }
 function newShipmentForm(){
-  $('loadShipment').value='';['f_invno','f_sname','f_stel','f_scomp','f_saddr','f_cname','f_caddr'].forEach(i=>$(i).value='');
+  $('loadShipment').value='';['f_invno','f_sname','f_stel','f_scomp','f_saddr','f_cname','f_caddr','f_port'].forEach(i=>$(i).value='');
+  if($('f_vender_sel'))$('f_vender_sel').value='';if($('f_cons_sel'))$('f_cons_sel').value='';
   $('f_date').value=new Date().toISOString().slice(0,10);$('f_term').value='EXW';$('f_logi').value=0;$('f_cur').value='RMB';
   curItems=[];renderLines();renderDoc();
 }
@@ -716,7 +796,7 @@ function loadShipmentToForm(){
   const s=db.shipments.find(x=>x.id===id);
   $('f_invno').value=s.invno;$('f_date').value=s.date||'';$('f_sname').value=s.sname||'';$('f_stel').value=s.stel||'';
   $('f_scomp').value=s.scomp||'';$('f_saddr').value=s.saddr||'';$('f_cname').value=s.cname||'';$('f_caddr').value=s.caddr||'';
-  $('f_term').value=s.term||'';$('f_logi').value=s.logi||0;$('f_cur').value=s.cur||'RMB';
+  $('f_term').value=s.term||'';$('f_port').value=s.port||'';$('f_logi').value=s.logi||0;$('f_cur').value=s.cur||'RMB';
   curItems=JSON.parse(JSON.stringify(s.items||[]));renderLines();renderDoc();
 }
 function addLineBySku(){
@@ -748,10 +828,10 @@ function updItem(i,k,v){curItems[i][k]=(k==='mark'||k==='sku')?v:(+v||0);
   renderLines();renderDoc();}
 function formData(){return{invno:$('f_invno').value,date:$('f_date').value,sname:$('f_sname').value,stel:$('f_stel').value,
   scomp:$('f_scomp').value,saddr:$('f_saddr').value,cname:$('f_cname').value,caddr:$('f_caddr').value,
-  term:$('f_term').value,logi:+$('f_logi').value||0,cur:$('f_cur').value,items:curItems};}
+  term:$('f_term').value,port:$('f_port').value,logi:+$('f_logi').value||0,cur:$('f_cur').value,items:curItems};}
 async function saveShipment(){
   const d=formData();if(!d.invno)return alert('กรอก Invoice/PO No.');
-  const rec={invno:d.invno,date:d.date||null,sname:d.sname,stel:d.stel,scomp:d.scomp,saddr:d.saddr,cname:d.cname,caddr:d.caddr,term:d.term,logi:d.logi,cur:d.cur,items:d.items};
+  const rec={invno:d.invno,date:d.date||null,sname:d.sname,stel:d.stel,scomp:d.scomp,saddr:d.saddr,cname:d.cname,caddr:d.caddr,term:d.term,port:d.port||null,logi:d.logi,cur:d.cur,items:d.items};
   const id=$('loadShipment').value;
   let shipmentId=id, ok=false;
   if(id){ ok=await dbWrite(()=>sb.from('shipments').update(rec).eq('id',id)); }
@@ -813,8 +893,8 @@ function renderDoc(){
     const dim=`${it.ctn||0} Cartons*${p.per_ctn||''}= ${money(it.qty)} ${p.unit||'Pcs'}\nBoxes Size: ${p.box_size||''}\n${money((it.ctn||0)*(p.cbm_ctn||0))} CBM\n1 Cartons = ${p.per_ctn||''} ${p.unit||''} = ${p.w_ctn||''} Kg`;
     return `<tr><td style="text-align:center">${idx+1}</td><td>${esc(p.name_en||it.sku)}<br>${esc(p.name_th||'')}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||it.sku)}</td>
       <td style="white-space:pre-line">${esc(dim)}</td><td style="text-align:right">${money(it.gw)}</td><td style="white-space:pre-line">${esc(it.mark||'')}</td></tr>`;}).join('');
-  const hdr=lbl=>`<table class="hdr"><tr><td style="width:60%"><b>Sender Name :</b> ${esc(d.sname)}<br><b>Company :</b> ${esc(d.scomp)}<br><b>Address :</b> ${esc(d.saddr)}<br><b>Tel :</b> ${esc(d.stel)}<br><b>Consignee :</b> ${esc(d.cname)}<br><b>Address :</b> ${esc(d.caddr)}</td>
-    <td style="vertical-align:top"><b>Date :</b> ${fmtDate(d.date)}<br><b>${lbl} :</b> ${esc(d.invno)}<br><b>Gross Weight :</b> ${money(totalGW)} Kg<br><b>Total Package :</b> ${money(totalCtn)} Cartons<br><b>TERM :</b> ${esc(d.term)}</td></tr></table>`;
+  const hdr=lbl=>`<table class="hdr"><tr><td style="width:60%"><b>Vender Name :</b> ${esc(d.sname)}<br><b>Company :</b> ${esc(d.scomp)}<br><b>Address :</b> ${esc(d.saddr)}<br><b>Tel :</b> ${esc(d.stel)}<br><b>Consignee :</b> ${esc(d.cname)}<br><b>Address :</b> ${esc(d.caddr)}</td>
+    <td style="vertical-align:top"><b>Date :</b> ${fmtDate(d.date)}<br><b>${lbl} :</b> ${esc(d.invno)}<br><b>Gross Weight :</b> ${money(totalGW)} Kg<br><b>Total Package :</b> ${money(totalCtn)} Cartons<br><b>TERM :</b> ${esc(d.term)}${d.port?`<br><b>PORT :</b> ${esc(d.port)}`:''}</td></tr></table>`;
   $('docPreview').innerHTML=`<div class="doc"><section class="inv-page"><h2 class="title">INVOICE</h2><div class="goldline"></div>${hdr('Invoice No')}
     <table class="items"><colgroup><col style="width:13%"><col style="width:13%"><col style="width:12%"><col style="width:10%"><col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:7%"><col style="width:20%"></colgroup><thead><tr><th>DESCRIPTION</th><th>Picture</th><th>COMPONENT</th><th>Specification</th><th>Unit Price</th><th>Qty (PCS)</th><th>Total/${esc(d.cur)}</th><th>GW (Kg)</th><th>Remark</th></tr></thead><tbody>${rowInv}
       <tr><td colspan="4" style="text-align:right"><b>Logistics costs</b></td><td></td><td></td><td style="text-align:right">${money(d.logi)}</td><td></td><td></td></tr>
@@ -825,7 +905,7 @@ function renderDoc(){
 }
 function exportInvPlExcel(){
   const d=formData();const rows=[];
-  rows.push(['INVOICE']);rows.push(['Sender Name',d.sname,'','Date',fmtDate(d.date)]);
+  rows.push(['INVOICE']);rows.push(['Vender Name',d.sname,'','Date',fmtDate(d.date)]);
   rows.push(['Company',d.scomp,'','Invoice No',d.invno]);rows.push(['Address',d.saddr,'','Gross Weight',d.items.reduce((s,i)=>s+ +i.gw,0)]);
   rows.push(['Consignee',d.cname,'','Total Package',d.items.reduce((s,i)=>s+ +i.ctn,0)]);rows.push(['Address',d.caddr,'','TERM',d.term]);rows.push([]);
   rows.push(['DESCRIPTION','COMPONENT','Specification','Unit Price','Qty (PCS)','Total Price/'+d.cur,'GW (Kg)','Remark','(รูปอยู่ในไฟล์ PDF)']);
