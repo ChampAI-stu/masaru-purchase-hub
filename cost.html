@@ -849,7 +849,7 @@ function addLineBySku(){
   const sku=$('addSkuInput').value.trim();
   const p=sku?prod(sku):null;
   const bx=p?parseBox(p.box_size):{w:0,l:0,h:0};
-  curItems.push({sku,price:p&&p.price!=null?p.price:0,qty:0,ctn:0,nw:(p&&p.w_ctn?+p.w_ctn:0),gw:0,mark:(p&&p.mark?p.mark:''),pic:'',w:bx.w||0,l:bx.l||0,h:bx.h||0});
+  curItems.push({sku,price:p&&p.price!=null?p.price:0,qty:0,ctn:0,nw:0,gw:0,mark:(p&&p.mark?p.mark:''),pic:'',w:bx.w||0,l:bx.l||0,h:bx.h||0});
   $('addSkuInput').value='';renderLines();renderDoc();
 }
 function setLineSku(i,val){
@@ -857,8 +857,8 @@ function setLineSku(i,val){
   const p=prod(sku);
   if(p){ if(!curItems[i].price)curItems[i].price=p.price!=null?p.price:0; if(!curItems[i].mark)curItems[i].mark=p.mark||'';
     const bx=parseBox(p.box_size); if(!curItems[i].w&&bx.w)curItems[i].w=bx.w; if(!curItems[i].l&&bx.l)curItems[i].l=bx.l; if(!curItems[i].h&&bx.h)curItems[i].h=bx.h;
-    if(!curItems[i].nw&&p.w_ctn)curItems[i].nw=+p.w_ctn; }
-  curItems[i].gw=(+curItems[i].ctn||0)*(+curItems[i].nw||0);
+  }
+  curItems[i].gw=(+curItems[i].ctn||0)*(+((p&&p.w_ctn)||0));
   renderLines();renderDoc();
 }
 function renderLines(){
@@ -874,7 +874,7 @@ function renderLines(){
       <td><input style="width:90px" type="number" value="${it.qty}" onchange="updItem(${i},'qty',this.value)"></td>
       <td><input style="width:70px" type="number" value="${it.ctn}" onchange="updItem(${i},'ctn',this.value)"></td>
       <td><input style="width:80px" type="number" step="0.01" value="${it.nw||0}" onchange="updItem(${i},'nw',this.value)"></td>
-      <td style="text-align:right;white-space:nowrap"><b>${money((+it.ctn||0)*(+it.nw||0))}</b><br><span class="muted" style="font-size:10px">กล่อง×NW</span></td>
+      <td style="text-align:right;white-space:nowrap"><b>${money((+it.ctn||0)*(+((p&&p.w_ctn)||0)))}</b><br><span class="muted" style="font-size:10px">กล่อง×น้ำหนัก/กล่อง</span></td>
       <td><input style="width:60px" type="number" step="0.1" value="${it.w||0}" onchange="updItem(${i},'w',this.value)"></td>
       <td><input style="width:60px" type="number" step="0.1" value="${it.l||0}" onchange="updItem(${i},'l',this.value)"></td>
       <td><input style="width:60px" type="number" step="0.1" value="${it.h||0}" onchange="updItem(${i},'h',this.value)"></td>
@@ -885,7 +885,7 @@ function renderLines(){
 }
 function updItem(i,k,v){curItems[i][k]=(k==='mark'||k==='sku')?v:(+v||0);
   if(k==='qty'){const p=prod(curItems[i].sku);if(p&&p.per_ctn&&!curItems[i].ctn)curItems[i].ctn=Math.ceil(v/p.per_ctn);}
-  curItems[i].gw=(+curItems[i].ctn||0)*(+curItems[i].nw||0);   // GW = จำนวนกล่อง × NW(น้ำหนัก/กล่อง)
+  {const _p=prod(curItems[i].sku); curItems[i].gw=(+curItems[i].ctn||0)*(+((_p&&_p.w_ctn)||0));}   // GW = จำนวนกล่อง × น้ำหนัก/กล่องของ SKU
   renderLines();renderDoc();}
 function formData(){return{invno:$('f_invno').value,date:$('f_date').value,sname:$('f_sname').value,stel:$('f_stel').value,
   scomp:$('f_scomp').value,saddr:$('f_saddr').value,cname:$('f_cname').value,caddr:$('f_caddr').value,
