@@ -91,8 +91,9 @@
   .doc h2.title{text-align:center;font-size:20px;margin:0 0 8px;letter-spacing:2px}
   .doc .hdr td{border:0;padding:2px 4px;font-size:12px}
   .doc table.items{width:100%;border-collapse:collapse;margin-top:6px;table-layout:fixed}
-  .doc table.items th,.doc table.items td{border:1px solid #000;padding:4px 6px;font-size:11px;word-break:break-word;overflow-wrap:anywhere}
-  .doc table.items th{background:#dbe5f1;text-align:center;color:#000}
+  .doc table.items th,.doc table.items td{border:1px solid #000;padding:4px 6px;font-size:11px}
+  .doc table.items td{word-break:break-word;overflow-wrap:anywhere;vertical-align:top}
+  .doc table.items th{background:#dbe5f1;text-align:center;color:#000;font-size:10px;padding:3px 4px;white-space:normal;word-break:keep-all;overflow-wrap:normal;line-height:1.15}
   .doc table.items tr{page-break-inside:avoid;break-inside:avoid}
   .doc thead{display:table-header-group}
   .doc .rmark{white-space:pre-line;font-size:10px}
@@ -564,11 +565,11 @@ function renderDoc(){
   const hdr=lbl=>`<table class="hdr"><tr><td style="width:60%"><b>Sender Name :</b> ${esc(d.sname)}<br><b>Company :</b> ${esc(d.scomp)}<br><b>Address :</b> ${esc(d.saddr)}<br><b>Tel :</b> ${esc(d.stel)}<br><b>Consignee :</b> ${esc(d.cname)}<br><b>Address :</b> ${esc(d.caddr)}</td>
     <td style="vertical-align:top"><b>Date :</b> ${fmtDate(d.date)}<br><b>${lbl} :</b> ${esc(d.invno)}<br><b>Gross Weight :</b> ${money(totalGW)} Kg<br><b>Total Package :</b> ${money(totalCtn)} Cartons<br><b>TERM :</b> ${esc(d.term)}</td></tr></table>`;
   $('docPreview').innerHTML=`<div class="doc"><section class="inv-page"><h2 class="title">INVOICE</h2><div class="goldline"></div>${hdr('Invoice No')}
-    <table class="items"><thead><tr><th>DESCRIPTION</th><th>Picture</th><th>COMPONENT</th><th>Specification</th><th>Unit Price</th><th>Qty (PCS)</th><th>Total/${esc(d.cur)}</th><th>GW (Kg)</th><th>Remark</th></tr></thead><tbody>${rowInv}
+    <table class="items"><colgroup><col style="width:13%"><col style="width:13%"><col style="width:12%"><col style="width:10%"><col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:7%"><col style="width:20%"></colgroup><thead><tr><th>DESCRIPTION</th><th>Picture</th><th>COMPONENT</th><th>Specification</th><th>Unit Price</th><th>Qty (PCS)</th><th>Total/${esc(d.cur)}</th><th>GW (Kg)</th><th>Remark</th></tr></thead><tbody>${rowInv}
       <tr><td colspan="4" style="text-align:right"><b>Logistics costs</b></td><td></td><td></td><td style="text-align:right">${money(d.logi)}</td><td></td><td></td></tr>
       <tr><td colspan="6" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(totalPrice+d.logi)}</b></td><td></td><td></td></tr></tbody></table></section>
     <section class="pl-page"><h2 class="title">PACKING LIST</h2><div class="goldline"></div>${hdr('Reference Invoice No')}
-    <table class="items"><thead><tr><th>ITEM</th><th>DESCRIPTION OF GOODS</th><th>Dimension</th><th>GW (Kg)</th><th>Shipping Mark</th></tr></thead><tbody>${rowPl}</tbody></table>
+    <table class="items"><colgroup><col style="width:7%"><col style="width:33%"><col style="width:30%"><col style="width:10%"><col style="width:20%"></colgroup><thead><tr><th>ITEM</th><th>DESCRIPTION OF GOODS</th><th>Dimension</th><th>GW (Kg)</th><th>Shipping Mark</th></tr></thead><tbody>${rowPl}</tbody></table>
     <div class="sig">Signature and Company Stamp<br><br>________________________</div></section></div>`;
 }
 function exportInvPlExcel(){
