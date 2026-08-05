@@ -652,7 +652,7 @@ function renderTrack(){
     const taxCell=(+t.tax_amount?money(t.tax_amount):'-')+(t.tax_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.tax_amount)?' <span class="pill pending">ค้าง</span>':''));
     const shpCell=(+t.ship_cost?money(t.ship_cost):'-')+(t.ship_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.ship_cost)?' <span class="pill pending">ค้าง</span>':''));
     const dc=docCount(t);
-    h+=`<tr><td><b>${esc(t.invoice_no||'')}</b><br><span class="muted">${esc(t.start_date||'')}</span></td>
+    h+=`<tr><td><b>${esc(t.invoice_no||'')}</b>${t.shipment_id?` <button class="mini btn" onclick="openInvoiceFromTrack('${t.shipment_id}')" title="เปิดใบ INV จริง">📄 ใบ</button>`:''}<br><span class="muted">${esc(t.start_date||'')}</span></td>
       <td>${esc(t.jst_po||'')}</td><td>${tag(t.import_company,coColor(t.import_company))}</td>
       <td style="min-width:150px">${esc(t.product_list||'')}</td>
       <td>${tag(t.mor_status,morColor(t.mor_status))}</td><td>${tag(t.op_status,opColor(t.op_status))}</td>
@@ -761,8 +761,42 @@ async function saveShipment(){
   const d=formData();if(!d.invno)return alert('กรอก Invoice/PO No.');
   const rec={invno:d.invno,date:d.date||null,sname:d.sname,stel:d.stel,scomp:d.scomp,saddr:d.saddr,cname:d.cname,caddr:d.caddr,term:d.term,logi:d.logi,cur:d.cur,items:d.items};
   const id=$('loadShipment').value;
-  const ok=await dbWrite(()=> id?sb.from('shipments').update(rec).eq('id',id):sb.from('shipments').insert(rec));
-  if(ok){await reload('shipments');initInvPl();alert('บันทึกเอกสารแล้ว');}
+  let shipmentId=id, ok=false;
+  if(id){ ok=await dbWrite(()=>sb.from('shipments').update(rec).eq('id',id)); }
+  else{
+    try{ const {data,error}=await sb.from('shipments').insert(rec).select('id').single();
+      if(error)throw error; shipmentId=data.id; ok=true; }
+    catch(e){ alert('บันทึกไม่สำเร็จ: '+(e.message||e)); ok=false; }
+  }
+  if(!ok)return;
+  await reload('shipments');
+  const linked=await upsertTrackingFromInvoice(d,shipmentId);   // ผูกเข้าตาราง Shipment + แนบใบจริง
+  await reload('tracking');
+  initInvPl();
+  alert('บันทึกเอกสารแล้ว'+(linked?' + บันทึกในตาราง Shipment (แนบใบ INV จริง)':''));
+}
+function invProductList(items){return (items||[]).map(it=>{const p=prod(it.sku)||{};return `${it.sku}${it.qty?(' = '+money(it.qty)+' '+(p.unit||'ชุด')):''}`;}).join('\n');}
+function guessCo(t){t=(t||'').toUpperCase();for(const c of IMPORT_CO){if(t.includes(String(c).toUpperCase()))return c;}return '';}
+async function upsertTrackingFromInvoice(d,shipmentId){
+  const plist=invProductList(d.items);
+  const co=guessCo((d.cname||'')+' '+(d.scomp||''));
+  const existing=db.tracking.find(t=>t.invoice_no && t.invoice_no===d.invno);
+  if(existing){
+    const patch={shipment_id:shipmentId};
+    if(!existing.start_date && d.date)patch.start_date=d.date;
+    if(!existing.product_list && plist)patch.product_list=plist;
+    if(!existing.import_company && co)patch.import_company=co;
+    return await dbWrite(()=>sb.from('shipment_tracking').update(patch).eq('id',existing.id));
+  }
+  return await dbWrite(()=>sb.from('shipment_tracking').insert({
+    invoice_no:d.invno, start_date:d.date||null, product_list:plist||null,
+    import_company:co||null, op_status:'กำลังผลิต', shipment_id:shipmentId}));
+}
+function openInvoiceFromTrack(sid){
+  if(!sid)return;
+  if(!db.shipments.find(s=>s.id===sid)){alert('ไม่พบใบ INV ที่ผูกไว้ (อาจถูกลบ)');return;}
+  go('invpl');
+  const sel=$('loadShipment'); if(sel){sel.value=sid; loadShipmentToForm();}
 }
 async function deleteShipment(){
   const id=$('loadShipment').value;
