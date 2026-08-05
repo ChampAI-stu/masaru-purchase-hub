@@ -938,13 +938,24 @@ function fmtDate(d){if(!d)return'';return new Date(d).toLocaleDateString('en-GB'
 function renderDoc(){
   const d=formData();
   const totalGW=d.items.reduce((s,i)=>s+(+i.gw||0),0), totalCtn=d.items.reduce((s,i)=>s+(+i.ctn||0),0), totalPrice=d.items.reduce((s,i)=>s+(+i.price*+i.qty),0);
-  const rowInv=d.items.map(it=>{const p=prod(it.sku)||{};
-    const remark=`BRAND ：${p.brand||''}\nMODEL：${p.model||it.sku}\n\n${p.name_en||''} : ${it.sku}\n${p.name_th||''}`;
-    const pic=it.pic?`<img class="pic" src="${esc(it.pic)}">`:'';
-    return `<tr><td>${esc(p.name_en||p.product_name||it.sku)}<br>${esc(p.model||it.sku)}</td><td style="text-align:center">${pic}</td>
+  // Invoice: รวมแถวที่ SKU เดียวกัน (บวก Qty/Total/GW) — Packing List ยังแยกทุกบรรทัด
+  const invGroups=[]; const gi={};
+  d.items.forEach((it,idx)=>{
+    const key=it.sku?('sku:'+it.sku):('__blank'+idx);
+    if(gi[key]==null){gi[key]=invGroups.length;invGroups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:0,total:0,pic:it.pic||'',mixed:false});}
+    const g=invGroups[gi[key]];
+    if((+it.price||0)!==g.price)g.mixed=true;
+    g.qty+=+it.qty||0; g.gw+=+it.gw||0; g.total+=(+it.price||0)*(+it.qty||0);
+    if(!g.pic&&it.pic)g.pic=it.pic;
+  });
+  const rowInv=invGroups.map(g=>{const p=prod(g.sku)||{};
+    const remark=`BRAND ：${p.brand||''}\nMODEL：${p.model||g.sku}\n\n${p.name_en||''} : ${g.sku}\n${p.name_th||''}`;
+    const pic=g.pic?`<img class="pic" src="${esc(g.pic)}">`:'';
+    const up=(g.mixed&&g.qty)?(g.total/g.qty):g.price;   // ถ้าราคาต่อหน่วยต่างกัน ใช้เฉลี่ยถ่วงน้ำหนัก
+    return `<tr><td>${esc(p.name_en||p.product_name||g.sku)}<br>${esc(p.model||g.sku)}</td><td style="text-align:center">${pic}</td>
       <td style="white-space:pre-line">${esc(p.component||'')}</td><td>${esc(p.spec||'')}</td>
-      <td style="text-align:right">${money(it.price)}</td><td style="text-align:right">${money(it.qty)}</td>
-      <td style="text-align:right">${money(it.price*it.qty)}</td><td style="text-align:right">${money(it.gw)}</td><td class="rmark">${esc(remark)}</td></tr>`;}).join('');
+      <td style="text-align:right">${money(up)}</td><td style="text-align:right">${money(g.qty)}</td>
+      <td style="text-align:right">${money(g.total)}</td><td style="text-align:right">${money(g.gw)}</td><td class="rmark">${esc(remark)}</td></tr>`;}).join('');
   const rowPl=d.items.map((it,idx)=>{const p=prod(it.sku)||{};
     const _cbm=lineCbmCtn(it)||(+p.cbm_ctn||0); const _box=(it.w&&it.l&&it.h)?`${it.w}x${it.l}x${it.h} Cm`:(p.box_size||'');
     const dim=`${it.ctn||0} Cartons*${p.per_ctn||''}= ${money(it.qty)} ${p.unit||'Pcs'}\nBoxes Size: ${_box}\n${money((it.ctn||0)*_cbm)} CBM\n1 Cartons = ${p.per_ctn||''} ${p.unit||''} = ${p.w_ctn||''} Kg`;
