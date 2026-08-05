@@ -410,6 +410,7 @@ function downscaleImg(file,cb){const r=new FileReader();r.onload=ev=>{const img=
 function attachLineImage(i){attachIdx=i;$('lineImgFile').click();}
 function onLineImg(inp){const f=inp.files[0];if(!f||attachIdx<0)return;downscaleImg(f,d=>{curItems[attachIdx].pic=d;inp.value='';attachIdx=-1;renderLines();renderDoc();});}
 function clearLineImage(i){curItems[i].pic='';renderLines();renderDoc();}
+function setLineImageUrl(i,url){url=(url||'').trim();if(!url)return;curItems[i].pic=url;renderLines();renderDoc();}
 function clearAllImages(){if(!curItems.some(it=>it.pic))return;if(!confirm('ล้างรูปทั้งหมดในเอกสารนี้? (บันทึกทับเพื่อคืนพื้นที่ DB)'))return;curItems.forEach(it=>it.pic='');renderLines();renderDoc();}
 
 function fillSkuSelects(){
@@ -511,7 +512,9 @@ function renderLines(){
   if(!curItems.length){$('lineItems').innerHTML='<div class="empty">ยังไม่มีรายการ — พิมพ์ SKU ด้านบน</div>';return;}
   let h='<table><thead><tr><th>SKU</th><th>รูป</th><th>ราคา</th><th>จำนวน(PCS)</th><th>Cartons</th><th>GW(Kg)</th><th>Shipping Mark</th><th></th></tr></thead><tbody>';
   curItems.forEach((it,i)=>{const p=prod(it.sku);
-    const picCell=it.pic?`<img class="thumb" src="${it.pic}"><br><button class="mini btn red" onclick="clearLineImage(${i})">ลบรูป</button>`:`<button class="mini btn ghost" onclick="attachLineImage(${i})">📷 แนบ</button>`;
+    const picCell=it.pic
+      ?`<img class="thumb" src="${esc(it.pic)}"><br><button class="mini btn red" onclick="clearLineImage(${i})">ลบรูป</button>`
+      :`<input style="width:130px;font-size:11px" placeholder="วางลิงก์รูป (URL)" onchange="setLineImageUrl(${i},this.value)"><br><button class="mini btn ghost" style="margin-top:3px" onclick="attachLineImage(${i})">📷 อัปโหลดแทน</button>`;
     h+=`<tr><td><b>${esc(it.sku)}</b>${p?'':' <span class="pill up">ไม่พบ</span>'}<br><span class="muted">${p?esc(p.name_en||p.product_name||''):''}</span></td>
       <td style="text-align:center">${picCell}</td>
       <td><input style="width:80px" type="number" step="0.01" value="${it.price}" onchange="updItem(${i},'price',this.value)"></td>
@@ -549,7 +552,7 @@ function renderDoc(){
   const totalGW=d.items.reduce((s,i)=>s+(+i.gw||0),0), totalCtn=d.items.reduce((s,i)=>s+(+i.ctn||0),0), totalPrice=d.items.reduce((s,i)=>s+(+i.price*+i.qty),0);
   const rowInv=d.items.map(it=>{const p=prod(it.sku)||{};
     const remark=`BRAND ：${p.brand||''}\nMODEL：${p.model||it.sku}\n\n${p.name_en||''} : ${it.sku}\n${p.name_th||''}`;
-    const pic=it.pic?`<img class="pic" src="${it.pic}">`:'';
+    const pic=it.pic?`<img class="pic" src="${esc(it.pic)}">`:'';
     return `<tr><td>${esc(p.name_en||p.product_name||it.sku)}<br>${esc(p.model||it.sku)}</td><td style="text-align:center">${pic}</td>
       <td style="white-space:pre-line">${esc(p.component||'')}</td><td>${esc(p.spec||'')}</td>
       <td style="text-align:right">${money(it.price)}</td><td style="text-align:right">${money(it.qty)}</td>
