@@ -410,10 +410,19 @@ function bindDoc(){ if(docBound)return; const c=$('tab-invpl'); if(!c)return; do
 
 /* ===== DATA LAYER ===== */
 async function fetchTable(name,order){
-  let q=sb.from(name).select('*'); if(order)q=q.order(order);
-  const{data,error}=await q;
-  if(error){console.warn('load '+name,error.message);return[];}
-  return data||[];
+  const all=[]; const size=1000; let from=0;
+  while(true){
+    let q=sb.from(name).select('*'); if(order)q=q.order(order);
+    q=q.range(from,from+size-1);
+    const{data,error}=await q;
+    if(error){console.warn('load '+name,error.message);break;}
+    if(!data||!data.length)break;
+    all.push(...data);
+    if(data.length<size)break;   // หน้าสุดท้าย
+    from+=size;
+    if(from>200000)break;        // กันวนไม่รู้จบ
+  }
+  return all;
 }
 async function loadAll(){
   const[master,hist,exp,shipcosts,shipments,tracking,parties]=await Promise.all([
