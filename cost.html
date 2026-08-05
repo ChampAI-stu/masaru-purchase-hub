@@ -258,7 +258,7 @@
       <div class="card">
         <div class="toolbar"><h2 style="margin:0;border:0;padding:0">📊 สรุปภาษี/จ่ายเงินรายเดือน</h2><span class="sp"></span>
           <span class="muted">เดือน</span>
-          <select id="sumMonth" style="max-width:150px" onchange="renderSummary()"></select>
+          <input id="sumMonth" list="sumMonthList" type="text" placeholder="เช่น 2026-05" style="max-width:150px" onchange="renderSummary()"><datalist id="sumMonthList"></datalist>
           <button class="btn gold" onclick="exportSummary()">⬇️ Export Excel</button></div>
         <div class="note">ดึงจากตาราง Shipment (เลือกเดือนจากช่อง period) · กรอก <b>จำนวนรวม/มูลค่า</b> ในฟอร์มแต่ละรายการเพื่อให้ยอดสรุปตรง · ช่อง “ยอดที่บัญชีขอ” และ “หมายเหตุ” แก้ในหน้านี้ได้เลย</div>
         <div id="summaryWrap" style="overflow-x:auto"></div>
@@ -773,10 +773,10 @@ function exportTrack(){
 }
 
 /* ===== สรุปภาษี/จ่ายเงินรายเดือน ===== */
-function fillSummaryMonths(){
-  const sel=$('sumMonth'); if(!sel)return; const cur=sel.value;
+function fillSummaryMonthList(){
+  const dl=$('sumMonthList'); if(!dl)return;
   const months=[...new Set(db.tracking.map(t=>t.period).filter(Boolean))].sort().reverse();
-  sel.innerHTML=months.length?months.map(m=>`<option${m===cur?' selected':''}>${esc(m)}</option>`).join(''):'<option value="">— ยังไม่มีข้อมูล —</option>';
+  dl.innerHTML=months.map(m=>`<option value="${esc(m)}">`).join('');
 }
 function budgetOf(period,company){const b=db.budget.find(x=>x.period===period&&x.company===company);return b?b:null;}
 async function saveBudget(period,company,val){
@@ -793,71 +793,65 @@ async function saveBudgetNote(period,val){
   await reload('budget');
 }
 function renderSummary(){
-  fillSummaryMonths();
-  const m=$('sumMonth').value;
+  fillSummaryMonthList();
+  const m=($('sumMonth').value||'').trim();
+  if(!m){$('summaryWrap').innerHTML='<div class="empty">พิมพ์หรือเลือกเดือน (เช่น 2026-05) เพื่อดูสรุป</div>';return;}
   const cos=IMPORT_CO;
-  const rowsT=db.tracking.filter(t=>t.period===m).sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||'')));
-  if(!m){$('summaryWrap').innerHTML='<div class="empty">ยังไม่มีข้อมูลเดือนใด — เพิ่มรายการในตาราง Shipment แล้วระบุ “เดือน (period)”</div>';return;}
-  // หัวตาราง 2 ชั้น
-  let h='<table style="min-width:1200px;font-size:12px"><thead>';
-  h+=`<tr><th colspan="3" style="background:#1a2942">หัวข้อ</th>`;
-  cos.forEach(c=>h+=`<th colspan="2" style="background:#2E75B6">${esc(c)}</th>`);
-  h+=`<th colspan="7" style="background:#1a2942">รายละเอียด</th></tr>`;
-  h+='<tr><th>รหัสใบจัดซื้อ</th><th>SKU / รายการ</th><th>คาดวันจ่ายภาษี</th>';
-  cos.forEach(()=>h+='<th>จำนวน</th><th>ราคา</th>');
-  h+='<th>ผู้รับผิดชอบ</th><th>ส่งออกวันที่</th><th>สถานะ</th><th>วันที่เข้า</th><th>ยอดภาษี</th><th>วันจ่ายจริง</th><th>ขนส่ง</th></tr></thead><tbody>';
-  const tot={}; cos.forEach(c=>tot[c]=0);
-  rowsT.forEach(t=>{
-    h+=`<tr><td style="white-space:pre-line">${esc(t.jst_po||'')}</td><td style="white-space:pre-line;max-width:220px">${esc(t.product_list||'')}</td><td>${esc(t.tax_due_date||'')}</td>`;
-    cos.forEach(c=>{
-      const hit=t.import_company===c;
-      if(hit&&t.sum_amount!=null)tot[c]+=+t.sum_amount||0;
-      h+=`<td style="text-align:right">${hit&&t.sum_qty!=null?money(t.sum_qty):''}</td><td style="text-align:right">${hit&&t.sum_amount!=null?money(t.sum_amount):''}</td>`;
-    });
-    h+=`<td>${esc(t.responsible||'')}</td><td>${esc(t.export_date||'')}</td>
-      <td><span style="background:${opColor(t.op_status)};color:#fff;padding:2px 7px;border-radius:10px;white-space:nowrap">${esc(t.op_status||'-')}</span></td>
-      <td>${esc(t.arrival_date||'')}</td><td style="text-align:right">${t.tax_amount!=null?money(t.tax_amount):''}</td>
-      <td>${esc(t.tax_pay_date||'')}</td><td>${esc(t.shipping||'')}</td></tr>`;
+  const all=db.tracking.filter(t=>t.period===m).sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||'')));
+  const cell=t=>`
+    <td style="white-space:pre-line">${esc(t.jst_po||'')}</td>
+    <td style="white-space:pre-line;max-width:220px">${esc(t.product_list||'')}</td>
+    <td>${esc(t.tax_due_date||'')}</td>
+    <td style="text-align:right">${t.sum_qty!=null?money(t.sum_qty):''}</td>
+    <td style="text-align:right">${t.sum_amount!=null?money(t.sum_amount):''}</td>
+    <td>${esc(t.responsible||'')}</td><td>${esc(t.export_date||'')}</td>
+    <td><span style="background:${opColor(t.op_status)};color:#fff;padding:2px 7px;border-radius:10px;white-space:nowrap">${esc(t.op_status||'-')}</span></td>
+    <td>${esc(t.arrival_date||'')}</td><td style="text-align:right">${t.tax_amount!=null?money(t.tax_amount):''}</td>
+    <td>${esc(t.tax_pay_date||'')}</td><td>${esc(t.shipping||'')}</td>`;
+  let html=''; let grand=0;
+  cos.forEach(c=>{
+    const rows=all.filter(t=>t.import_company===c);
+    const subtotal=rows.reduce((s,t)=>s+(+t.sum_amount||0),0); grand+=subtotal;
+    const b=budgetOf(m,c); const req=b&&b.amount!=null?+b.amount:0; const rem=subtotal-req;
+    html+=`<div style="margin-bottom:20px">
+      <div style="background:#2E75B6;color:#fff;padding:9px 14px;border-radius:8px 8px 0 0;font-weight:700;font-size:14px">🏢 ${esc(c)}</div>
+      <div style="overflow-x:auto;border:1px solid var(--line);border-top:0;border-radius:0 0 8px 8px">
+      <table style="min-width:900px;font-size:12px;margin:0"><thead><tr>
+        <th>รหัสใบจัดซื้อ</th><th>SKU / รายการ</th><th>คาดวันจ่ายภาษี</th><th>จำนวน</th><th>ราคา</th>
+        <th>ผู้รับผิดชอบ</th><th>ส่งออกวันที่</th><th>สถานะ</th><th>วันที่เข้า</th><th>ยอดภาษี</th><th>วันจ่ายจริง</th><th>ขนส่ง</th>
+      </tr></thead><tbody>`;
+    if(!rows.length) html+=`<tr><td colspan="12" class="muted" style="padding:10px">— ไม่มีรายการเดือนนี้ —</td></tr>`;
+    rows.forEach(t=>html+=`<tr>${cell(t)}</tr>`);
+    html+=`<tr style="background:#EAF1FB;font-weight:700"><td colspan="4" style="text-align:right">ผลรวม</td><td style="text-align:right">${money(subtotal)}</td><td colspan="7"></td></tr>`;
+    html+=`<tr style="background:#F7FBFF"><td colspan="4" style="text-align:right">ยอดที่บัญชีขอ</td><td style="text-align:right">${canEdit?`<input type="number" step="0.01" value="${req||''}" style="width:110px;text-align:right;padding:3px 5px;border:1px solid var(--line);border-radius:6px" onchange="saveBudget('${esc(m)}','${esc(c)}',this.value)">`:money(req)}</td><td colspan="7"></td></tr>`;
+    html+=`<tr style="font-weight:700"><td colspan="4" style="text-align:right">ยอดคงเหลือ</td><td style="text-align:right;color:${rem<0?'#C00000':'#1E7145'}">${money(rem)}</td><td colspan="7"></td></tr>`;
+    html+='</tbody></table></div></div>';
   });
-  // แถวสรุป
-  const spanRight=7;
-  const budgetRow=c=>{const b=budgetOf(m,c);return b&&b.amount!=null?b.amount:'';};
-  h+=`<tr style="background:#EAF1FB;font-weight:700"><td colspan="3" style="text-align:right">ผลรวม</td>`;
-  cos.forEach(c=>h+=`<td></td><td style="text-align:right">${money(tot[c])}</td>`);
-  h+=`<td colspan="${spanRight}"></td></tr>`;
-  h+=`<tr style="background:#F7FBFF"><td colspan="3" style="text-align:right">ยอดที่ทางบัญชีขอ</td>`;
-  cos.forEach(c=>h+=`<td></td><td style="text-align:right">${canEdit?`<input type="number" step="0.01" value="${budgetRow(c)}" style="width:100px;text-align:right;padding:3px 5px;border:1px solid var(--line);border-radius:6px" onchange="saveBudget('${esc(m)}','${esc(c)}',this.value)">`:money(budgetRow(c)||0)}</td>`);
-  h+=`<td colspan="${spanRight}"></td></tr>`;
-  h+=`<tr style="font-weight:700"><td colspan="3" style="text-align:right">ยอดคงเหลือ</td>`;
-  let grand=0;
-  cos.forEach(c=>{const b=budgetOf(m,c);const req=b&&b.amount!=null?+b.amount:0;const rem=tot[c]-req;grand+=tot[c];h+=`<td></td><td style="text-align:right;color:${rem<0?'#C00000':'#1E7145'}">${money(rem)}</td>`;});
-  h+=`<td colspan="${spanRight}"></td></tr>`;
-  const totalCols=3+cos.length*2+spanRight;
-  h+=`<tr style="background:#1a2942;color:#fff;font-weight:700"><td colspan="3" style="text-align:right">ยอดรวมทั้งหมด</td><td colspan="${cos.length*2}" style="text-align:center;font-size:16px">${money(grand)}</td><td colspan="${spanRight}"></td></tr>`;
+  html+=`<div style="background:#1a2942;color:#fff;padding:12px 16px;border-radius:8px;font-weight:700;display:flex;justify-content:space-between;align-items:center"><span>ยอดรวมทั้งหมด (ทุกบริษัท)</span><span style="font-size:17px">${money(grand)}</span></div>`;
   const noteB=budgetOf(m,'__NOTE__');
-  h+=`<tr><td colspan="3" style="text-align:right">หมายเหตุ</td><td colspan="${totalCols-3}">${canEdit?`<input value="${esc(noteB&&noteB.note?noteB.note:'')}" style="width:100%;padding:4px 6px;border:1px solid var(--line);border-radius:6px" onchange="saveBudgetNote('${esc(m)}',this.value)">`:esc(noteB&&noteB.note?noteB.note:'')}</td></tr>`;
-  h+='</tbody></table>';
-  $('summaryWrap').innerHTML=h;
+  html+=`<div style="margin-top:12px"><label>หมายเหตุ</label>${canEdit?`<input value="${esc(noteB&&noteB.note?noteB.note:'')}" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:8px" onchange="saveBudgetNote('${esc(m)}',this.value)">`:`<div>${esc(noteB&&noteB.note?noteB.note:'-')}</div>`}</div>`;
+  $('summaryWrap').innerHTML=html;
 }
 function exportSummary(){
-  const m=$('sumMonth').value; if(!m){alert('เลือกเดือนก่อน');return;}
+  const m=($('sumMonth').value||'').trim(); if(!m){alert('เลือก/พิมพ์เดือนก่อน');return;}
   const cos=IMPORT_CO;
-  const head1=['หัวข้อ','',''],head2=['รหัสใบจัดซื้อ','SKU / รายการ','คาดวันจ่ายภาษี'];
-  cos.forEach(c=>{head1.push(c,'');head2.push('จำนวน','ราคา');});
-  head1.push('รายละเอียด','','','','','','');head2.push('ผู้รับผิดชอบ','ส่งออกวันที่','สถานะ','วันที่เข้า','ยอดภาษี','วันจ่ายจริง','ขนส่ง');
-  const rows=[head1,head2];
-  const tot={};cos.forEach(c=>tot[c]=0);
-  db.tracking.filter(t=>t.period===m).sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||''))).forEach(t=>{
-    const r=[t.jst_po||'',t.product_list||'',t.tax_due_date||''];
-    cos.forEach(c=>{const hit=t.import_company===c;if(hit&&t.sum_amount!=null)tot[c]+=+t.sum_amount||0;r.push(hit&&t.sum_qty!=null?+t.sum_qty:'',hit&&t.sum_amount!=null?+t.sum_amount:'');});
-    r.push(t.responsible||'',t.export_date||'',t.op_status||'',t.arrival_date||'',t.tax_amount||'',t.tax_pay_date||'',t.shipping||'');
-    rows.push(r);
+  const head=['รหัสใบจัดซื้อ','SKU / รายการ','คาดวันจ่ายภาษี','จำนวน','ราคา','ผู้รับผิดชอบ','ส่งออกวันที่','สถานะ','วันที่เข้า','ยอดภาษี','วันจ่ายจริง','ขนส่ง'];
+  const rows=[]; let grand=0;
+  const all=db.tracking.filter(t=>t.period===m).sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||'')));
+  cos.forEach(c=>{
+    const list=all.filter(t=>t.import_company===c);
+    const subtotal=list.reduce((s,t)=>s+(+t.sum_amount||0),0); grand+=subtotal;
+    const b=budgetOf(m,c); const req=b&&b.amount!=null?+b.amount:0;
+    rows.push(['🏢 '+c]); rows.push(head);
+    if(!list.length) rows.push(['— ไม่มีรายการ —']);
+    list.forEach(t=>rows.push([t.jst_po||'',t.product_list||'',t.tax_due_date||'',t.sum_qty!=null?+t.sum_qty:'',t.sum_amount!=null?+t.sum_amount:'',t.responsible||'',t.export_date||'',t.op_status||'',t.arrival_date||'',t.tax_amount||'',t.tax_pay_date||'',t.shipping||'']));
+    rows.push(['','','ผลรวม','',subtotal]);
+    rows.push(['','','ยอดที่บัญชีขอ','',req]);
+    rows.push(['','','ยอดคงเหลือ','',subtotal-req]);
+    rows.push([]);
   });
-  const rSum=['','','ผลรวม'];cos.forEach(c=>rSum.push('',tot[c]));rows.push(rSum);
-  const rReq=['','','ยอดที่บัญชีขอ'];let grand=0;cos.forEach(c=>{const b=budgetOf(m,c);rReq.push('',b&&b.amount!=null?+b.amount:0);});rows.push(rReq);
-  const rRem=['','','ยอดคงเหลือ'];cos.forEach(c=>{const b=budgetOf(m,c);const req=b&&b.amount!=null?+b.amount:0;grand+=tot[c];rRem.push('',tot[c]-req);});rows.push(rRem);
-  rows.push(['','','ยอดรวมทั้งหมด',grand]);
-  const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=rows[1].map(()=>({wch:14}));
+  rows.push(['ยอดรวมทั้งหมด','',grand]);
+  const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=head.map(()=>({wch:15}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'สรุป '+m);XLSX.writeFile(wb,'สรุปรายเดือน_'+m+'.xlsx');
 }
 
