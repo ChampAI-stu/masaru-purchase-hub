@@ -126,7 +126,6 @@
   <div class="tabs no-print">
     <button data-tab="dashboard" class="active" onclick="go('dashboard')">📊 Dashboard</button>
     <button data-tab="sku" onclick="go('sku')">📦 สินค้า + ข้อมูลส่งออก</button>
-    <button data-tab="cost" onclick="go('cost')">💰 ต้นทุน / ราคาขึ้นลง</button>
     <button data-tab="ship" onclick="go('ship')">🚚 ค่าขนส่ง</button>
     <button data-tab="track" onclick="go('track')">📋 ตาราง Shipment</button>
     <button data-tab="parties" onclick="go('parties')">🏢 ผู้ขาย/ผู้ซื้อ</button>
@@ -164,22 +163,6 @@
       </div>
     </section>
 
-    <section id="tab-cost" style="display:none">
-      <div class="card">
-        <div class="toolbar"><h2 style="margin:0;border:0;padding:0">💰 ต้นทุน / การขึ้นลงราคา</h2><span class="sp"></span>
-          <input id="costSearch" placeholder="ค้นหา SKU / Supplier" style="max-width:200px" oninput="renderCostTable()">
-          <select id="costMonth" style="max-width:150px" onchange="renderCostTable()"><option value="">— ทุกเดือน —</option></select>
-          <span class="muted">ช่วง</span>
-          <input id="costFrom" type="date" style="max-width:150px" onchange="renderCostTable()" title="ตั้งแต่วันที่">
-          <input id="costTo" type="date" style="max-width:150px" onchange="renderCostTable()" title="ถึงวันที่">
-          <select id="costChange" style="max-width:140px" onchange="renderCostTable()"><option value="">ขึ้น + ลด</option><option value="up">▲ ขึ้นราคา</option><option value="down">▼ ลดราคา</option></select>
-          <button class="btn ghost mini" onclick="clearCostFilter()">ล้างตัวกรอง</button>
-          <button class="btn gold" onclick="exportCostSummary()">⬇️ ดึงสรุป (Excel)</button></div>
-        <div class="note">อ่านจากประวัติกลาง <b>sku_price_history</b> (ระบบ log อัตโนมัติเมื่อแก้ราคาใน PR) · “ส่วนต่างที่ลด” = ราคาเดิม − ราคาใหม่ ต่อหน่วย (CNY) — ยังไม่คูณจำนวนสั่ง</div>
-        <div id="costKpi" class="kpis" style="margin-bottom:14px"></div>
-        <div id="costTable"></div>
-      </div>
-    </section>
 
     <section id="tab-ship" style="display:none">
       <div class="card">
@@ -519,10 +502,9 @@ function prod(sku){return db.products.find(p=>p.sku===sku);}
 /* ===== NAV ===== */
 function go(t){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
-  ['dashboard','sku','cost','ship','track','parties','invpl','summary'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
+  ['dashboard','sku','ship','track','parties','invpl','summary'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
   if(t==='dashboard')renderDashboard();
   if(t==='sku')renderSkuTable();
-  if(t==='cost')renderCostTable();
   if(t==='ship')renderShipTable();
   if(t==='track')renderTrack();
   if(t==='parties')renderParties();
@@ -614,81 +596,7 @@ function histRows(){
     const saveUnit=(oldp!=null&&oldp>newp)?(oldp-newp):0;
     return{...h,oldp,newp,pct,saveUnit};});
 }
-function fillCostMonths(){
-  const sel=$('costMonth'); if(!sel)return; const cur=sel.value;
-  const months=[...new Set(db.hist.map(h=>String(h.changed_at||'').slice(0,7)).filter(Boolean))].sort().reverse();
-  sel.innerHTML='<option value="">— ทุกเดือน —</option>'+months.map(m=>`<option${m===cur?' selected':''}>${m}</option>`).join('');
-}
-function filteredHist(){
-  const q=($('costSearch').value||'').toLowerCase();
-  const m=$('costMonth')?$('costMonth').value:'';
-  const from=$('costFrom')?$('costFrom').value:'';
-  const to=$('costTo')?$('costTo').value:'';
-  const ch=$('costChange')?$('costChange').value:'';
-  return histRows().filter(h=>{
-    const d=String(h.changed_at||'').slice(0,10);
-    if(q && !((h.sku||'')+(h.supplier||'')).toLowerCase().includes(q))return false;
-    if(m && d.slice(0,7)!==m)return false;
-    if(from && d<from)return false;
-    if(to && d>to)return false;
-    if(ch==='up' && !(h.pct!=null&&h.pct>0))return false;
-    if(ch==='down' && !(h.pct!=null&&h.pct<0))return false;
-    return true;
-  });
-}
-function clearCostFilter(){['costSearch','costMonth','costFrom','costTo','costChange'].forEach(id=>{if($(id))$(id).value='';});renderCostTable();}
-function renderCostTable(){
-  fillCostMonths();
-  const set=filteredHist();
-  const rows=set.slice().sort((a,b)=>String(b.changed_at).localeCompare(String(a.changed_at)));
-  const totalSave=set.reduce((s,h)=>s+h.saveUnit,0);
-  const nDown=set.filter(h=>h.pct!=null&&h.pct<0).length, nUp=set.filter(h=>h.pct!=null&&h.pct>0).length;
-  $('costKpi').innerHTML=`<div class="kpi green"><div class="lbl">ส่วนต่างที่ลดได้ (CNY/หน่วย)</div><div class="val">${money(totalSave)}</div></div>
-    <div class="kpi gold"><div class="lbl">ครั้งราคาลด</div><div class="val">${nDown}</div></div>
-    <div class="kpi"><div class="lbl">ครั้งราคาขึ้น</div><div class="val">${nUp}</div></div>
-    <div class="kpi"><div class="lbl">รายการ (ตามตัวกรอง)</div><div class="val">${set.length}</div></div>`;
-  if(!rows.length){$('costTable').innerHTML='<div class="empty">ไม่มีรายการตามตัวกรอง</div>';return;}
-  let h='<table><thead><tr><th>วันที่เปลี่ยน</th><th>SKU</th><th>Supplier</th><th>ราคาเดิม→ใหม่</th><th>%เปลี่ยน</th><th>ลดได้/หน่วย (CNY)</th></tr></thead><tbody>';
-  rows.forEach(r=>{let pill='<span class="pill flat">—</span>';
-    if(r.pct>0)pill=`<span class="pill up">▲ ${r.pct.toFixed(1)}%</span>`;
-    else if(r.pct<0)pill=`<span class="pill down">▼ ${Math.abs(r.pct).toFixed(1)}%</span>`;
-    else if(r.pct===0)pill='<span class="pill flat">คงที่</span>';
-    h+=`<tr><td>${String(r.changed_at||'').slice(0,10)}</td><td><b>${esc(r.sku)}</b></td><td>${esc(r.supplier||'')}</td>
-      <td>${r.oldp!=null?money(r.oldp):'-'} → ${money(r.newp)}</td><td>${pill}</td>
-      <td>${r.saveUnit>0?'<b style="color:var(--green)">'+money(r.saveUnit)+'</b>':'-'}</td></tr>`;});
-  $('costTable').innerHTML=h+'</tbody></table>';
-}
-function exportCostSummary(){
-  const all=filteredHist();
-  if(!all.length){alert('ไม่มีข้อมูลตามตัวกรอง');return;}
-  // ชีท 1: สรุปรายสินค้า (ตามตัวกรอง)
-  const bySku={}; all.forEach(h=>{(bySku[h.sku]=bySku[h.sku]||[]).push(h);});
-  const sum=[['SKU','ชื่อสินค้า','Supplier ล่าสุด','ราคาปัจจุบัน (CNY)','ราคาต่ำสุด','ราคาสูงสุด','จำนวนครั้งเปลี่ยน','ลดได้รวม/หน่วย (CNY)','ขึ้นราคา(ครั้ง)','ลดราคา(ครั้ง)']];
-  const skus=Object.keys(bySku).sort();
-  skus.forEach(sku=>{
-    const list=(bySku[sku]||[]).slice().sort((a,b)=>String(a.changed_at).localeCompare(String(b.changed_at)));
-    const p=prod(sku)||{};
-    const prices=list.map(x=>x.newp).filter(v=>v!=null);
-    const latest=list.length?list[list.length-1]:null;
-    const cur=p.price!=null?p.price:(latest?latest.newp:'');
-    const save=list.reduce((s,x)=>s+x.saveUnit,0);
-    const up=list.filter(x=>x.pct!=null&&x.pct>0).length, down=list.filter(x=>x.pct!=null&&x.pct<0).length;
-    sum.push([sku, p.name_en||p.product_name||'', latest?latest.supplier||'':(p.supplier||''), cur,
-      prices.length?Math.min(...prices):'', prices.length?Math.max(...prices):'', list.length, save, up, down]);
-  });
-  // ชีท 2: ประวัติ (ตามตัวกรอง)
-  const det=[['วันที่เปลี่ยน','SKU','Supplier','ราคาเดิม','ราคาใหม่','%เปลี่ยน','ลดได้/หน่วย (CNY)']];
-  all.slice().sort((a,b)=>String(b.changed_at).localeCompare(String(a.changed_at))).forEach(h=>{
-    det.push([String(h.changed_at||'').slice(0,10),h.sku,h.supplier||'',h.oldp==null?'':h.oldp,h.newp,
-      h.pct==null?'':h.pct.toFixed(1)+'%', h.saveUnit>0?h.saveUnit:'']);
-  });
-  const wb=XLSX.utils.book_new();
-  const ws1=XLSX.utils.aoa_to_sheet(sum); ws1['!cols']=[{wch:16},{wch:26},{wch:20},{wch:14},{wch:11},{wch:11},{wch:14},{wch:16},{wch:12},{wch:12}];
-  const ws2=XLSX.utils.aoa_to_sheet(det); ws2['!cols']=[{wch:13},{wch:16},{wch:22},{wch:10},{wch:10},{wch:10},{wch:14}];
-  XLSX.utils.book_append_sheet(wb,ws1,'สรุปรายสินค้า');
-  XLSX.utils.book_append_sheet(wb,ws2,'ประวัติทั้งหมด');
-  XLSX.writeFile(wb,'สรุปต้นทุน_'+new Date().toISOString().slice(0,10)+'.xlsx');
-}
+
 function renderShipTable(){
   const list=[...db.shipcosts].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   const tot=list.reduce((s,x)=>s+ +x.cost,0), totCbm=list.reduce((s,x)=>s+(+x.cbm||0),0);
