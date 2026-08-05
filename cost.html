@@ -121,6 +121,7 @@
     <button data-tab="sku" onclick="go('sku')">📦 สินค้า + ข้อมูลส่งออก</button>
     <button data-tab="cost" onclick="go('cost')">💰 ต้นทุน / ราคาขึ้นลง</button>
     <button data-tab="ship" onclick="go('ship')">🚚 ค่าขนส่ง</button>
+    <button data-tab="track" onclick="go('track')">📋 ตาราง Shipment</button>
     <button data-tab="invpl" onclick="go('invpl')">📄 ออก INV + PL</button>
     <button data-tab="requests" onclick="go('requests')">🔔 คำขอข้อมูลต้นทุน</button>
   </div>
@@ -174,6 +175,21 @@
         <div class="note">ผูกค่าขนส่งกับชิปเมนต์ (Invoice No.) · ระบบคำนวณ บาท/CBM และ บาท/Kg เทียบความคุ้มค่าแต่ละรอบ</div>
         <div id="shipKpi" class="kpis" style="margin-bottom:14px"></div>
         <div id="shipTable"></div>
+      </div>
+    </section>
+
+    <section id="tab-track" style="display:none">
+      <div class="card">
+        <div class="toolbar">
+          <h2 style="margin:0;border:0;padding:0">📋 ตารางติดตามการนำเข้า / Shipment</h2><span class="sp"></span>
+          <input id="trkSearch" placeholder="ค้นหา อินวอยซ์ / PO / สินค้า" style="max-width:220px" oninput="renderTrack()">
+          <select id="trkCo" style="max-width:150px" onchange="renderTrack()"><option value="">— ทุกบริษัท —</option></select>
+          <select id="trkOp" style="max-width:180px" onchange="renderTrack()"><option value="">— ทุกสถานะ —</option></select>
+          <button class="btn edit-only" onclick="openTrack()">+ เพิ่มรายการ</button>
+          <button class="btn gold" onclick="exportTrack()">⬇️ Export Excel</button>
+        </div>
+        <div id="trkKpi" class="kpis" style="margin-bottom:14px"></div>
+        <div style="overflow-x:auto"><div id="trkTable"></div></div>
       </div>
     </section>
 
@@ -271,6 +287,58 @@
   <div class="dlg-foot"><button class="btn ghost" onclick="reqDlg.close()">ยกเลิก</button><button class="btn green" onclick="saveReq();return false">บันทึก</button></div>
 </form></dialog>
 
+<dialog id="trkDlg" style="max-width:760px"><form method="dialog">
+  <div class="dlg-head">รายการติดตามการนำเข้า<button class="x" onclick="trkDlg.close()">×</button></div>
+  <div class="dlg-body">
+    <div class="grid3">
+      <div><label>เดือน (period) เช่น 2025-12</label><input id="t_period"></div>
+      <div><label>เลขอินวอยซ์</label><input id="t_inv" placeholder="LS/PO2512001"></div>
+      <div><label>PO ในระบบ JST</label><input id="t_jst"></div>
+    </div>
+    <div class="grid3">
+      <div><label>บริษัทที่นำเข้า</label><select id="t_co"></select></div>
+      <div><label>วันที่เริ่มใช้</label><input id="t_start" type="date"></div>
+      <div><label>ผู้รับผิดชอบ</label><input id="t_resp"></div>
+    </div>
+    <div><label>รายการสินค้า</label><textarea id="t_prod" placeholder="SCWS-705 = 856 ชุด"></textarea></div>
+    <div class="grid2">
+      <div><label>สถานะยื่นสมอ.</label><select id="t_mor"></select></div>
+      <div><label>สถานะการดำเนินการ</label><select id="t_op"></select></div>
+    </div>
+    <div class="grid3">
+      <div><label>บริษัทขนส่ง</label><select id="t_ship"></select></div>
+      <div><label>ส่งออกมาวันที่</label><input id="t_exp" type="date"></div>
+      <div><label>วันที่เข้า (ถึงไทย)</label><input id="t_arr" type="date"></div>
+    </div>
+    <h3>การจ่ายเงิน</h3>
+    <div class="grid3">
+      <div><label>เลขที่ดราฟใบขน</label><input id="t_draft"></div>
+      <div><label>ค่าภาษี (บาท)</label><input id="t_tax" type="number" step="0.01"></div>
+      <div><label>วันที่จ่ายภาษีจริง</label><input id="t_taxdate" type="date"></div>
+    </div>
+    <div class="grid3">
+      <div><label>ค่าขนส่ง (บาท)</label><input id="t_shipcost" type="number" step="0.01"></div>
+      <div><label>กำหนดชำระค่าขนส่ง</label><input id="t_shipdue" type="date"></div>
+      <div><label>ใบวางบิล</label><input id="t_billing"></div>
+    </div>
+    <div class="row" style="gap:18px;margin-top:6px">
+      <label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="t_taxpaid" style="width:auto"> จ่ายค่าภาษีแล้ว</label>
+      <label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="t_shippaid" style="width:auto"> จ่ายค่าขนส่งแล้ว</label>
+    </div>
+    <h3>สถานะเอกสาร</h3>
+    <div class="grid2" style="font-size:13px">
+      <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="t_d1" style="width:auto"> บัญชีแจ้งจ่ายค่าภาษี</label>
+      <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="t_d2" style="width:auto"> บัญชีแนบใบเสร็จกรมศุลฯ+ใบขน04</label>
+      <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="t_d3" style="width:auto"> บัญชีใบวางบิลค่าขนส่ง</label>
+      <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="t_d4" style="width:auto"> คุณวุฒิ *บช ส่งให้</label>
+      <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="t_d5" style="width:auto"> จัดซื้อ *ชุดพร้อมใบขน04+ใบเสร็จ</label>
+    </div>
+    <div style="margin-top:8px"><label>หมายเหตุ</label><input id="t_note"></div>
+    <input type="hidden" id="t_editid">
+  </div>
+  <div class="dlg-foot"><button class="btn ghost" onclick="trkDlg.close()">ยกเลิก</button><button class="btn green edit-only" onclick="saveTrack();return false">บันทึก</button></div>
+</form></dialog>
+
 <dialog id="notifyDlg"><form method="dialog">
   <div class="dlg-head">ข้อความแจ้งต้นทุนอัตโนมัติ<button class="x" onclick="notifyDlg.close()">×</button></div>
   <div class="dlg-body"><div class="muted" style="margin-bottom:6px">คัดลอกส่ง LINE/อีเมล หรือส่งเข้าบอท LINE ได้</div>
@@ -286,7 +354,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 const money=n=>Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2});
 
-let db={master:[],hist:[],expMap:{},shipcosts:[],shipments:[],requests:[],products:[]};
+let db={master:[],hist:[],expMap:{},shipcosts:[],shipments:[],requests:[],products:[],tracking:[]};
 let currentRole='view', canEdit=false;
 
 /* ===== AUTH GUARD (session ร่วมจาก HUB) ===== */
@@ -321,11 +389,12 @@ async function fetchTable(name,order){
   return data||[];
 }
 async function loadAll(){
-  const[master,hist,exp,shipcosts,shipments,requests]=await Promise.all([
+  const[master,hist,exp,shipcosts,shipments,requests,tracking]=await Promise.all([
     fetchTable('sku_master','sku'), fetchTable('sku_price_history','changed_at'),
     fetchTable('sku_export_info','sku'), fetchTable('shipcosts','date'),
-    fetchTable('shipments','date'), fetchTable('cost_requests','created_at')]);
-  db.master=master; db.hist=hist; db.shipcosts=shipcosts; db.shipments=shipments; db.requests=requests;
+    fetchTable('shipments','date'), fetchTable('cost_requests','created_at'),
+    fetchTable('shipment_tracking','start_date')]);
+  db.master=master; db.hist=hist; db.shipcosts=shipcosts; db.shipments=shipments; db.requests=requests; db.tracking=tracking;
   db.expMap={}; exp.forEach(e=>db.expMap[e.sku]=e);
   buildProducts();
   if($('seedBtn'))$('seedBtn').style.display=db.products.length?'none':'';
@@ -351,7 +420,7 @@ function buildProducts(){
 }
 async function reloadExport(){ const exp=await fetchTable('sku_export_info','sku'); db.expMap={}; exp.forEach(e=>db.expMap[e.sku]=e); buildProducts(); }
 async function reload(name){
-  const map={shipcosts:['shipcosts','date'],shipments:['shipments','date'],requests:['cost_requests','created_at']};
+  const map={shipcosts:['shipcosts','date'],shipments:['shipments','date'],requests:['cost_requests','created_at'],tracking:['shipment_tracking','start_date']};
   const[t,o]=map[name]; db[name]=await fetchTable(t,o);
 }
 async function dbWrite(fn){ try{const{error}=await fn(); if(error)throw error; return true;}catch(e){alert('บันทึกไม่สำเร็จ: '+(e.message||e));return false;} }
@@ -360,11 +429,12 @@ function prod(sku){return db.products.find(p=>p.sku===sku);}
 /* ===== NAV ===== */
 function go(t){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
-  ['dashboard','sku','cost','ship','invpl','requests'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
+  ['dashboard','sku','cost','ship','track','invpl','requests'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
   if(t==='dashboard')renderDashboard();
   if(t==='sku')renderSkuTable();
   if(t==='cost')renderCostTable();
   if(t==='ship')renderShipTable();
+  if(t==='track')renderTrack();
   if(t==='invpl')initInvPl();
   if(t==='requests')renderReq();
 }
@@ -513,6 +583,105 @@ async function saveShipCost(){
   if(ok){await reload('shipcosts');$('shipDlg').close();renderShipTable();}
 }
 async function delShipCost(id){if(!confirm('ลบ?'))return;const ok=await dbWrite(()=>sb.from('shipcosts').delete().eq('id',id));if(ok){await reload('shipcosts');renderShipTable();}}
+
+/* ===== SHIPMENT TRACKING (ตารางติดตามการนำเข้า) ===== */
+const IMPORT_CO=['LIKESHOP','MASARU','DAIKI','PHONLAWUT','คุณวุฒิ'];
+const MOR_ST=['ยื่นสมอ.ผ่านแล้ว','อยู่ระหว่างยื่นสมอ','อยู่ระหว่างยื่นสมอ.แท่นชาร์จ','อยู่ระหว่างยื่นสมอ.สายชาร์จ','ไม่ต้องยื่นสมอ.'];
+const OP_ST=['กำลังผลิต','อยู่ระหว่างส่งไปโกดังจีน','อยู่ระหว่างส่งมาไทย','ถึงไทยแล้ว/สำเร็จ','ยกเลิก ทำไม่ได้'];
+const SHIP_CO=['GTL','NEXT','GLT Logistics'];
+function coColor(s){return {'LIKESHOP':'#C00000','MASARU':'#2E75B6','DAIKI':'#1E7145','PHONLAWUT':'#B7791F','คุณวุฒิ':'#8a5a00'}[s]||'#64748B';}
+function morColor(s){return {'ยื่นสมอ.ผ่านแล้ว':'#1E7145','ไม่ต้องยื่นสมอ.':'#B7791F'}[s]||'#2E75B6';}
+function opColor(s){return {'กำลังผลิต':'#374151','อยู่ระหว่างส่งไปโกดังจีน':'#1E7145','อยู่ระหว่างส่งมาไทย':'#8a5a00','ถึงไทยแล้ว/สำเร็จ':'#4B2E83','ยกเลิก ทำไม่ได้':'#C00000'}[s]||'#64748B';}
+function shipColor(s){return {'GTL':'#C0398A','GLT Logistics':'#C0398A','NEXT':'#2E75B6'}[s]||'#64748B';}
+function tag(s,c){return s?`<span style="background:${c};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;white-space:nowrap">${esc(s)}</span>`:'<span class="muted">—</span>';}
+function docCount(r){return ['doc_acc_tax','doc_acc_receipt','doc_acc_billing','doc_quality','doc_purchase'].filter(k=>r[k]).length;}
+function opt(arr,cur){return arr.map(o=>`<option${o===cur?' selected':''}>${esc(o)}</option>`).join('');}
+
+function fillTrackFilters(){
+  const cos=[...new Set(db.tracking.map(t=>t.import_company).filter(Boolean))];
+  if($('trkCo'))$('trkCo').innerHTML='<option value="">— ทุกบริษัท —</option>'+[...new Set([...IMPORT_CO,...cos])].map(c=>`<option>${esc(c)}</option>`).join('');
+  if($('trkOp'))$('trkOp').innerHTML='<option value="">— ทุกสถานะ —</option>'+OP_ST.map(c=>`<option>${esc(c)}</option>`).join('');
+}
+function renderTrack(){
+  const co0=$('trkCo')?$('trkCo').value:'', op0=$('trkOp')?$('trkOp').value:'';
+  fillTrackFilters();
+  if($('trkCo'))$('trkCo').value=co0; if($('trkOp'))$('trkOp').value=op0;
+  const q=($('trkSearch').value||'').toLowerCase();
+  let list=db.tracking.filter(t=>
+    (!co0||t.import_company===co0)&&(!op0||t.op_status===op0)&&
+    (!q||((t.invoice_no||'')+(t.jst_po||'')+(t.product_list||'')+(t.responsible||'')).toLowerCase().includes(q)));
+  list=list.slice().sort((a,b)=>String(b.start_date||'').localeCompare(String(a.start_date||'')));
+  // KPI
+  const tax=db.tracking.reduce((s,t)=>s+(+t.tax_amount||0),0);
+  const shp=db.tracking.reduce((s,t)=>s+(+t.ship_cost||0),0);
+  const prod=db.tracking.filter(t=>t.op_status==='กำลังผลิต').length;
+  const arrived=db.tracking.filter(t=>t.op_status==='ถึงไทยแล้ว/สำเร็จ').length;
+  const taxUnpaid=db.tracking.filter(t=>(+t.tax_amount||0)>0&&!t.tax_paid).length;
+  $('trkKpi').innerHTML=`<div class="kpi"><div class="lbl">ทั้งหมด (รายการ)</div><div class="val">${db.tracking.length}</div></div>
+    <div class="kpi"><div class="lbl">กำลังผลิต</div><div class="val">${prod}</div></div>
+    <div class="kpi green"><div class="lbl">ถึงไทย/สำเร็จ</div><div class="val">${arrived}</div></div>
+    <div class="kpi gold"><div class="lbl">ค่าภาษีค้างจ่าย</div><div class="val">${taxUnpaid}</div></div>
+    <div class="kpi"><div class="lbl">ยอดภาษีรวม (บาท)</div><div class="val">${money(tax)}</div></div>`;
+  if(!list.length){$('trkTable').innerHTML='<div class="empty">ยังไม่มีรายการ'+(canEdit?' — กด “เพิ่มรายการ”':'')+'</div>';return;}
+  let h='<table style="min-width:1100px"><thead><tr><th>อินวอยซ์</th><th>PO JST</th><th>บริษัท</th><th>รายการสินค้า</th><th>ยื่นสมอ.</th><th>ดำเนินการ</th><th>ขนส่ง</th><th>ค่าภาษี</th><th>ค่าขนส่ง</th><th>เอกสาร</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
+  list.forEach(t=>{
+    const taxCell=(+t.tax_amount?money(t.tax_amount):'-')+(t.tax_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.tax_amount)?' <span class="pill pending">ค้าง</span>':''));
+    const shpCell=(+t.ship_cost?money(t.ship_cost):'-')+(t.ship_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.ship_cost)?' <span class="pill pending">ค้าง</span>':''));
+    const dc=docCount(t);
+    h+=`<tr><td><b>${esc(t.invoice_no||'')}</b><br><span class="muted">${esc(t.start_date||'')}</span></td>
+      <td>${esc(t.jst_po||'')}</td><td>${tag(t.import_company,coColor(t.import_company))}</td>
+      <td style="min-width:150px">${esc(t.product_list||'')}</td>
+      <td>${tag(t.mor_status,morColor(t.mor_status))}</td><td>${tag(t.op_status,opColor(t.op_status))}</td>
+      <td>${tag(t.shipping,shipColor(t.shipping))}</td><td style="white-space:nowrap">${taxCell}</td><td style="white-space:nowrap">${shpCell}</td>
+      <td style="text-align:center"><span class="pill ${dc===5?'done':(dc?'notified':'pending')}">${dc}/5</span></td>`+
+      (canEdit?`<td class="no-print" style="white-space:nowrap"><button class="mini btn" onclick="openTrack('${t.id}')">แก้</button> <button class="mini btn red" onclick="delTrack('${t.id}')">ลบ</button></td>`:'')+`</tr>`;});
+  $('trkTable').innerHTML=h+'</tbody></table>';
+}
+function openTrack(id){
+  $('t_co').innerHTML='<option value=""></option>'+opt(IMPORT_CO,'');
+  $('t_mor').innerHTML='<option value=""></option>'+opt(MOR_ST,'');
+  $('t_op').innerHTML='<option value=""></option>'+opt(OP_ST,'');
+  $('t_ship').innerHTML='<option value=""></option>'+opt(SHIP_CO,'');
+  const t=id?db.tracking.find(x=>x.id===id):{};
+  const g=(k,d='')=>t[k]!=null?t[k]:d;
+  $('t_period').value=g('period');$('t_inv').value=g('invoice_no');$('t_jst').value=g('jst_po');
+  $('t_co').value=g('import_company');$('t_start').value=g('start_date');$('t_resp').value=g('responsible');
+  $('t_prod').value=g('product_list');$('t_mor').value=g('mor_status');$('t_op').value=g('op_status');
+  $('t_ship').value=g('shipping');$('t_exp').value=g('export_date');$('t_arr').value=g('arrival_date');
+  $('t_draft').value=g('draft_bill_no');$('t_tax').value=g('tax_amount');$('t_taxdate').value=g('tax_pay_date');
+  $('t_shipcost').value=g('ship_cost');$('t_shipdue').value=g('ship_due');$('t_billing').value=g('billing');
+  $('t_taxpaid').checked=!!t.tax_paid;$('t_shippaid').checked=!!t.ship_paid;
+  $('t_d1').checked=!!t.doc_acc_tax;$('t_d2').checked=!!t.doc_acc_receipt;$('t_d3').checked=!!t.doc_acc_billing;
+  $('t_d4').checked=!!t.doc_quality;$('t_d5').checked=!!t.doc_purchase;
+  $('t_note').value=g('note');$('t_editid').value=id||'';
+  $('trkDlg').showModal();
+}
+async function saveTrack(){
+  const rec={period:$('t_period').value.trim()||null,invoice_no:$('t_inv').value.trim()||null,jst_po:$('t_jst').value.trim()||null,
+    import_company:$('t_co').value||null,start_date:$('t_start').value||null,responsible:$('t_resp').value.trim()||null,
+    product_list:$('t_prod').value.trim()||null,mor_status:$('t_mor').value||null,op_status:$('t_op').value||null,
+    shipping:$('t_ship').value||null,export_date:$('t_exp').value||null,arrival_date:$('t_arr').value||null,
+    draft_bill_no:$('t_draft').value.trim()||null,tax_amount:+$('t_tax').value||null,tax_pay_date:$('t_taxdate').value||null,
+    ship_cost:+$('t_shipcost').value||null,ship_due:$('t_shipdue').value||null,billing:$('t_billing').value.trim()||null,
+    tax_paid:$('t_taxpaid').checked,ship_paid:$('t_shippaid').checked,
+    doc_acc_tax:$('t_d1').checked,doc_acc_receipt:$('t_d2').checked,doc_acc_billing:$('t_d3').checked,
+    doc_quality:$('t_d4').checked,doc_purchase:$('t_d5').checked,note:$('t_note').value.trim()||null};
+  const id=$('t_editid').value;
+  const ok=await dbWrite(()=> id?sb.from('shipment_tracking').update(rec).eq('id',id):sb.from('shipment_tracking').insert(rec));
+  if(ok){await reload('tracking');$('trkDlg').close();renderTrack();}
+}
+async function delTrack(id){if(!confirm('ลบรายการนี้?'))return;const ok=await dbWrite(()=>sb.from('shipment_tracking').delete().eq('id',id));if(ok){await reload('tracking');renderTrack();}}
+function exportTrack(){
+  const rows=[['เดือน','อินวอยซ์','PO JST','บริษัทนำเข้า','วันที่เริ่ม','ผู้รับผิดชอบ','รายการสินค้า','ยื่นสมอ.','ดำเนินการ','ขนส่ง','ส่งออกวันที่','วันที่เข้า','เลขดราฟใบขน','ค่าภาษี','จ่ายภาษีแล้ว','วันจ่ายภาษี','ค่าขนส่ง','จ่ายขนส่งแล้ว','กำหนดชำระขนส่ง','ใบวางบิล','บช.แจ้งจ่ายภาษี','บช.ใบเสร็จ+ใบขน04','บช.วางบิลขนส่ง','คุณวุฒิบช.ส่ง','จัดซื้อชุดพร้อม','หมายเหตุ']];
+  const yn=b=>b?'✓':'';
+  db.tracking.slice().sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||''))).forEach(t=>{
+    rows.push([t.period||'',t.invoice_no||'',t.jst_po||'',t.import_company||'',t.start_date||'',t.responsible||'',t.product_list||'',
+      t.mor_status||'',t.op_status||'',t.shipping||'',t.export_date||'',t.arrival_date||'',t.draft_bill_no||'',
+      t.tax_amount||'',yn(t.tax_paid),t.tax_pay_date||'',t.ship_cost||'',yn(t.ship_paid),t.ship_due||'',t.billing||'',
+      yn(t.doc_acc_tax),yn(t.doc_acc_receipt),yn(t.doc_acc_billing),yn(t.doc_quality),yn(t.doc_purchase),t.note||'']);});
+  const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=rows[0].map(()=>({wch:16}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Shipment');XLSX.writeFile(wb,'ตาราง_Shipment_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
 
 /* ===== INV + PL ===== */
 let curItems=[];
