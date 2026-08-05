@@ -247,7 +247,7 @@
       <div class="card">
         <div class="toolbar"><h2 style="margin:0;border:0;padding:0">📊 สรุปภาษี/จ่ายเงินรายเดือน</h2><span class="sp"></span>
           <span class="muted">เดือน</span>
-          <input id="sumMonth" list="sumMonthList" type="text" placeholder="เช่น 2026-05" style="max-width:150px" onchange="renderSummary()"><datalist id="sumMonthList"></datalist>
+          <input id="sumMonth" type="month" style="max-width:170px" onchange="renderSummary()">
           <button class="btn gold" onclick="exportSummary()">⬇️ Export Excel</button></div>
         <div class="note">ดึงจากตาราง Shipment (เลือกเดือนจากช่อง period) · กรอก <b>จำนวนรวม/มูลค่า</b> ในฟอร์มแต่ละรายการเพื่อให้ยอดสรุปตรง · ช่อง “ยอดที่บัญชีขอ” และ “หมายเหตุ” แก้ในหน้านี้ได้เลย</div>
         <div id="summaryWrap" style="overflow-x:auto"></div>
@@ -300,7 +300,7 @@
   <div class="dlg-head">รายการติดตามการนำเข้า<button class="x" onclick="trkDlg.close()">×</button></div>
   <div class="dlg-body">
     <div class="grid3">
-      <div><label>เดือน (period) เช่น 2025-12</label><input id="t_period"></div>
+      <div><label>เดือน (period)</label><input id="t_period" type="month"></div>
       <div><label>เลขอินวอยซ์</label><input id="t_inv" placeholder="LS/PO2512001"></div>
       <div><label>PO ในระบบ JST</label><input id="t_jst"></div>
     </div>
@@ -742,7 +742,7 @@ async function saveBudgetNote(period,val){
   await reload('budget');
 }
 function renderSummary(){
-  fillSummaryMonthList();
+  if(!$('sumMonth').value)$('sumMonth').value=new Date().toISOString().slice(0,7);   // ค่าเริ่มต้น = เดือนปัจจุบัน
   const m=($('sumMonth').value||'').trim();
   if(!m){$('summaryWrap').innerHTML='<div class="empty">พิมพ์หรือเลือกเดือน (เช่น 2026-05) เพื่อดูสรุป</div>';return;}
   const all=db.tracking.filter(t=>t.period===m).sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||'')));
