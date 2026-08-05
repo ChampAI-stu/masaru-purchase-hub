@@ -131,6 +131,7 @@
     <button data-tab="track" onclick="go('track')">📋 ตาราง Shipment</button>
     <button data-tab="parties" onclick="go('parties')">🏢 ผู้ขาย/ผู้ซื้อ</button>
     <button data-tab="invpl" onclick="go('invpl')">📄 ออก INV + PL</button>
+    <button data-tab="summary" onclick="go('summary')">📊 สรุปรายเดือน</button>
   </div>
 
   <main>
@@ -270,6 +271,16 @@
       </div>
     </section>
 
+    <section id="tab-summary" style="display:none">
+      <div class="card">
+        <div class="toolbar"><h2 style="margin:0;border:0;padding:0">📊 สรุปภาษี/จ่ายเงินรายเดือน</h2><span class="sp"></span>
+          <span class="muted">เดือน</span>
+          <select id="sumMonth" style="max-width:150px" onchange="renderSummary()"></select>
+          <button class="btn gold" onclick="exportSummary()">⬇️ Export Excel</button></div>
+        <div class="note">ดึงจากตาราง Shipment (เลือกเดือนจากช่อง period) · กรอก <b>จำนวนรวม/มูลค่า</b> ในฟอร์มแต่ละรายการเพื่อให้ยอดสรุปตรง · ช่อง “ยอดที่บัญชีขอ” และ “หมายเหตุ” แก้ในหน้านี้ได้เลย</div>
+        <div id="summaryWrap" style="overflow-x:auto"></div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -339,6 +350,11 @@
       <div><label>ผู้รับผิดชอบ</label><input id="t_resp"></div>
     </div>
     <div><label>รายการสินค้า</label><textarea id="t_prod" placeholder="SCWS-705 = 856 ชุด"></textarea></div>
+    <div class="grid3">
+      <div><label>จำนวนรวม (สำหรับสรุป)</label><input id="t_qty" type="number" step="1"></div>
+      <div><label>มูลค่าสินค้า/ราคา (สำหรับสรุป)</label><input id="t_amount" type="number" step="0.01"></div>
+      <div><label>คาดวันที่จ่ายภาษี</label><input id="t_taxdue" type="date"></div>
+    </div>
     <div class="grid2">
       <div><label>สถานะยื่นสมอ.</label><select id="t_mor"></select></div>
       <div><label>สถานะการดำเนินการ</label><select id="t_op"></select></div>
@@ -418,7 +434,7 @@ function comboSet(id,val){
 }
 function comboVal(id){const inp=$(id);return inp?(inp.dataset.val||''):'';}
 
-let db={master:[],hist:[],expMap:{},shipcosts:[],shipments:[],products:[],tracking:[],parties:[]};
+let db={master:[],hist:[],expMap:{},shipcosts:[],shipments:[],products:[],tracking:[],parties:[],budget:[]};
 let currentRole='view', canEdit=false;
 
 /* ===== AUTH GUARD (session ร่วมจาก HUB) ===== */
@@ -468,6 +484,7 @@ async function loadAll(){
     fetchTable('shipments','date'),
     fetchTable('shipment_tracking','start_date'), fetchTable('inv_parties','name')]);
   db.master=master; db.hist=hist; db.shipcosts=shipcosts; db.shipments=shipments; db.tracking=tracking; db.parties=parties;
+  db.budget=await fetchTable('acct_budget','period');
   db.expMap={}; exp.forEach(e=>db.expMap[e.sku]=e);
   buildProducts();
   if($('seedBtn'))$('seedBtn').style.display=db.products.length?'none':'';
@@ -493,7 +510,7 @@ function buildProducts(){
 }
 async function reloadExport(){ const exp=await fetchTable('sku_export_info','sku'); db.expMap={}; exp.forEach(e=>db.expMap[e.sku]=e); buildProducts(); }
 async function reload(name){
-  const map={shipcosts:['shipcosts','date'],shipments:['shipments','date'],tracking:['shipment_tracking','start_date'],parties:['inv_parties','name']};
+  const map={shipcosts:['shipcosts','date'],shipments:['shipments','date'],tracking:['shipment_tracking','start_date'],parties:['inv_parties','name'],budget:['acct_budget','period']};
   const[t,o]=map[name]; db[name]=await fetchTable(t,o);
 }
 async function dbWrite(fn){ try{const{error}=await fn(); if(error)throw error; return true;}catch(e){alert('บันทึกไม่สำเร็จ: '+(e.message||e));return false;} }
@@ -502,7 +519,7 @@ function prod(sku){return db.products.find(p=>p.sku===sku);}
 /* ===== NAV ===== */
 function go(t){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
-  ['dashboard','sku','cost','ship','track','parties','invpl'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
+  ['dashboard','sku','cost','ship','track','parties','invpl','summary'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
   if(t==='dashboard')renderDashboard();
   if(t==='sku')renderSkuTable();
   if(t==='cost')renderCostTable();
@@ -510,6 +527,7 @@ function go(t){
   if(t==='track')renderTrack();
   if(t==='parties')renderParties();
   if(t==='invpl')initInvPl();
+  if(t==='summary')renderSummary();
 }
 
 /* ===== SKU + EXPORT INFO ===== */
@@ -806,6 +824,7 @@ function openTrack(id){
   $('t_period').value=g('period');$('t_inv').value=g('invoice_no');$('t_jst').value=g('jst_po');
   $('t_co').value=g('import_company');$('t_start').value=g('start_date');$('t_resp').value=g('responsible');
   $('t_prod').value=g('product_list');$('t_mor').value=g('mor_status');$('t_op').value=g('op_status');
+  $('t_qty').value=g('sum_qty');$('t_amount').value=g('sum_amount');$('t_taxdue').value=g('tax_due_date');
   $('t_ship').value=g('shipping');$('t_exp').value=g('export_date');$('t_arr').value=g('arrival_date');
   $('t_bl').value=g('bl_no');$('t_vessel').value=g('vessel_no');$('t_container').value=g('container_no');
   $('t_draft').value=g('draft_bill_no');$('t_tax').value=g('tax_amount');$('t_taxdate').value=g('tax_pay_date');
@@ -820,6 +839,7 @@ async function saveTrack(){
   const rec={period:$('t_period').value.trim()||null,invoice_no:$('t_inv').value.trim()||null,jst_po:$('t_jst').value.trim()||null,
     import_company:$('t_co').value||null,start_date:$('t_start').value||null,responsible:$('t_resp').value.trim()||null,
     product_list:$('t_prod').value.trim()||null,mor_status:$('t_mor').value||null,op_status:$('t_op').value||null,
+    sum_qty:+$('t_qty').value||null,sum_amount:+$('t_amount').value||null,tax_due_date:$('t_taxdue').value||null,
     shipping:$('t_ship').value||null,export_date:$('t_exp').value||null,arrival_date:$('t_arr').value||null,
     bl_no:$('t_bl').value.trim()||null,vessel_no:$('t_vessel').value.trim()||null,container_no:$('t_container').value.trim()||null,
     draft_bill_no:$('t_draft').value.trim()||null,tax_amount:+$('t_tax').value||null,tax_pay_date:$('t_taxdate').value||null,
@@ -842,6 +862,95 @@ function exportTrack(){
       yn(t.doc_acc_tax),yn(t.doc_acc_receipt),yn(t.doc_acc_billing),yn(t.doc_quality),yn(t.doc_purchase),t.note||'']);});
   const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=rows[0].map(()=>({wch:16}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Shipment');XLSX.writeFile(wb,'ตาราง_Shipment_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+/* ===== สรุปภาษี/จ่ายเงินรายเดือน ===== */
+function fillSummaryMonths(){
+  const sel=$('sumMonth'); if(!sel)return; const cur=sel.value;
+  const months=[...new Set(db.tracking.map(t=>t.period).filter(Boolean))].sort().reverse();
+  sel.innerHTML=months.length?months.map(m=>`<option${m===cur?' selected':''}>${esc(m)}</option>`).join(''):'<option value="">— ยังไม่มีข้อมูล —</option>';
+}
+function budgetOf(period,company){const b=db.budget.find(x=>x.period===period&&x.company===company);return b?b:null;}
+async function saveBudget(period,company,val){
+  const amount=val===''?null:(+val||0);
+  const ex=budgetOf(period,company);
+  if(ex) await dbWrite(()=>sb.from('acct_budget').update({amount}).eq('id',ex.id));
+  else   await dbWrite(()=>sb.from('acct_budget').insert({period,company,amount}));
+  await reload('budget'); renderSummary();
+}
+async function saveBudgetNote(period,val){
+  const ex=budgetOf(period,'__NOTE__');
+  if(ex) await dbWrite(()=>sb.from('acct_budget').update({note:val||null}).eq('id',ex.id));
+  else   await dbWrite(()=>sb.from('acct_budget').insert({period,company:'__NOTE__',note:val||null}));
+  await reload('budget');
+}
+function renderSummary(){
+  fillSummaryMonths();
+  const m=$('sumMonth').value;
+  const cos=IMPORT_CO;
+  const rowsT=db.tracking.filter(t=>t.period===m).sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||'')));
+  if(!m){$('summaryWrap').innerHTML='<div class="empty">ยังไม่มีข้อมูลเดือนใด — เพิ่มรายการในตาราง Shipment แล้วระบุ “เดือน (period)”</div>';return;}
+  // หัวตาราง 2 ชั้น
+  let h='<table style="min-width:1200px;font-size:12px"><thead>';
+  h+=`<tr><th colspan="3" style="background:#1a2942">หัวข้อ</th>`;
+  cos.forEach(c=>h+=`<th colspan="2" style="background:#2E75B6">${esc(c)}</th>`);
+  h+=`<th colspan="7" style="background:#1a2942">รายละเอียด</th></tr>`;
+  h+='<tr><th>รหัสใบจัดซื้อ</th><th>SKU / รายการ</th><th>คาดวันจ่ายภาษี</th>';
+  cos.forEach(()=>h+='<th>จำนวน</th><th>ราคา</th>');
+  h+='<th>ผู้รับผิดชอบ</th><th>ส่งออกวันที่</th><th>สถานะ</th><th>วันที่เข้า</th><th>ยอดภาษี</th><th>วันจ่ายจริง</th><th>ขนส่ง</th></tr></thead><tbody>';
+  const tot={}; cos.forEach(c=>tot[c]=0);
+  rowsT.forEach(t=>{
+    h+=`<tr><td style="white-space:pre-line">${esc(t.jst_po||'')}</td><td style="white-space:pre-line;max-width:220px">${esc(t.product_list||'')}</td><td>${esc(t.tax_due_date||'')}</td>`;
+    cos.forEach(c=>{
+      const hit=t.import_company===c;
+      if(hit&&t.sum_amount!=null)tot[c]+=+t.sum_amount||0;
+      h+=`<td style="text-align:right">${hit&&t.sum_qty!=null?money(t.sum_qty):''}</td><td style="text-align:right">${hit&&t.sum_amount!=null?money(t.sum_amount):''}</td>`;
+    });
+    h+=`<td>${esc(t.responsible||'')}</td><td>${esc(t.export_date||'')}</td>
+      <td><span style="background:${opColor(t.op_status)};color:#fff;padding:2px 7px;border-radius:10px;white-space:nowrap">${esc(t.op_status||'-')}</span></td>
+      <td>${esc(t.arrival_date||'')}</td><td style="text-align:right">${t.tax_amount!=null?money(t.tax_amount):''}</td>
+      <td>${esc(t.tax_pay_date||'')}</td><td>${esc(t.shipping||'')}</td></tr>`;
+  });
+  // แถวสรุป
+  const spanRight=7;
+  const budgetRow=c=>{const b=budgetOf(m,c);return b&&b.amount!=null?b.amount:'';};
+  h+=`<tr style="background:#EAF1FB;font-weight:700"><td colspan="3" style="text-align:right">ผลรวม</td>`;
+  cos.forEach(c=>h+=`<td></td><td style="text-align:right">${money(tot[c])}</td>`);
+  h+=`<td colspan="${spanRight}"></td></tr>`;
+  h+=`<tr style="background:#F7FBFF"><td colspan="3" style="text-align:right">ยอดที่ทางบัญชีขอ</td>`;
+  cos.forEach(c=>h+=`<td></td><td style="text-align:right">${canEdit?`<input type="number" step="0.01" value="${budgetRow(c)}" style="width:100px;text-align:right;padding:3px 5px;border:1px solid var(--line);border-radius:6px" onchange="saveBudget('${esc(m)}','${esc(c)}',this.value)">`:money(budgetRow(c)||0)}</td>`);
+  h+=`<td colspan="${spanRight}"></td></tr>`;
+  h+=`<tr style="font-weight:700"><td colspan="3" style="text-align:right">ยอดคงเหลือ</td>`;
+  let grand=0;
+  cos.forEach(c=>{const b=budgetOf(m,c);const req=b&&b.amount!=null?+b.amount:0;const rem=tot[c]-req;grand+=tot[c];h+=`<td></td><td style="text-align:right;color:${rem<0?'#C00000':'#1E7145'}">${money(rem)}</td>`;});
+  h+=`<td colspan="${spanRight}"></td></tr>`;
+  const totalCols=3+cos.length*2+spanRight;
+  h+=`<tr style="background:#1a2942;color:#fff;font-weight:700"><td colspan="3" style="text-align:right">ยอดรวมทั้งหมด</td><td colspan="${cos.length*2}" style="text-align:center;font-size:16px">${money(grand)}</td><td colspan="${spanRight}"></td></tr>`;
+  const noteB=budgetOf(m,'__NOTE__');
+  h+=`<tr><td colspan="3" style="text-align:right">หมายเหตุ</td><td colspan="${totalCols-3}">${canEdit?`<input value="${esc(noteB&&noteB.note?noteB.note:'')}" style="width:100%;padding:4px 6px;border:1px solid var(--line);border-radius:6px" onchange="saveBudgetNote('${esc(m)}',this.value)">`:esc(noteB&&noteB.note?noteB.note:'')}</td></tr>`;
+  h+='</tbody></table>';
+  $('summaryWrap').innerHTML=h;
+}
+function exportSummary(){
+  const m=$('sumMonth').value; if(!m){alert('เลือกเดือนก่อน');return;}
+  const cos=IMPORT_CO;
+  const head1=['หัวข้อ','',''],head2=['รหัสใบจัดซื้อ','SKU / รายการ','คาดวันจ่ายภาษี'];
+  cos.forEach(c=>{head1.push(c,'');head2.push('จำนวน','ราคา');});
+  head1.push('รายละเอียด','','','','','','');head2.push('ผู้รับผิดชอบ','ส่งออกวันที่','สถานะ','วันที่เข้า','ยอดภาษี','วันจ่ายจริง','ขนส่ง');
+  const rows=[head1,head2];
+  const tot={};cos.forEach(c=>tot[c]=0);
+  db.tracking.filter(t=>t.period===m).sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||''))).forEach(t=>{
+    const r=[t.jst_po||'',t.product_list||'',t.tax_due_date||''];
+    cos.forEach(c=>{const hit=t.import_company===c;if(hit&&t.sum_amount!=null)tot[c]+=+t.sum_amount||0;r.push(hit&&t.sum_qty!=null?+t.sum_qty:'',hit&&t.sum_amount!=null?+t.sum_amount:'');});
+    r.push(t.responsible||'',t.export_date||'',t.op_status||'',t.arrival_date||'',t.tax_amount||'',t.tax_pay_date||'',t.shipping||'');
+    rows.push(r);
+  });
+  const rSum=['','','ผลรวม'];cos.forEach(c=>rSum.push('',tot[c]));rows.push(rSum);
+  const rReq=['','','ยอดที่บัญชีขอ'];let grand=0;cos.forEach(c=>{const b=budgetOf(m,c);rReq.push('',b&&b.amount!=null?+b.amount:0);});rows.push(rReq);
+  const rRem=['','','ยอดคงเหลือ'];cos.forEach(c=>{const b=budgetOf(m,c);const req=b&&b.amount!=null?+b.amount:0;grand+=tot[c];rRem.push('',tot[c]-req);});rows.push(rRem);
+  rows.push(['','','ยอดรวมทั้งหมด',grand]);
+  const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=rows[1].map(()=>({wch:14}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'สรุป '+m);XLSX.writeFile(wb,'สรุปรายเดือน_'+m+'.xlsx');
 }
 
 /* ===== INV + PL ===== */
