@@ -102,6 +102,12 @@
   .doc .sig{margin-top:30px;text-align:right}
   .doc .goldline{height:3px;background:var(--gold);margin:6px 0}
   @media print{body *{visibility:hidden}#docPreview,#docPreview *{visibility:visible}#docPreview{position:absolute;left:0;top:0;width:100%}.doc{width:100%;padding:0}.no-print{display:none!important}}
+  .combo{position:relative}
+  .combo-input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;background:#fff}
+  .combo-list{position:absolute;z-index:60;left:0;right:0;top:calc(100% + 2px);background:#fff;border:1px solid var(--line);border-radius:8px;max-height:240px;overflow:auto;box-shadow:0 10px 28px #0002;display:none}
+  .combo-opt{padding:8px 11px;cursor:pointer;font-size:14px}
+  .combo-opt:hover{background:#EAF1FB}
+  .combo-empty{padding:8px 11px;color:var(--muted);font-size:13px}
 </style>
 </head>
 <body>
@@ -221,7 +227,7 @@
         <div class="card" style="flex:1 1 100%">
           <h2>📄 ข้อมูลเอกสาร (Invoice + Packing List)</h2>
           <div class="toolbar">
-            <select id="loadShipment" style="max-width:260px" onchange="loadShipmentToForm()"><option value="">— เอกสารบันทึกไว้ —</option></select>
+            <div class="combo" style="max-width:260px;flex:1"><input id="loadShipment" class="combo-input" placeholder="— ค้นหา/เลือกเอกสาร —"><div id="loadShipment_list" class="combo-list"></div></div>
             <button class="btn ghost mini edit-only" onclick="newShipmentForm()">สร้างใหม่</button>
             <button class="btn red mini edit-only" onclick="deleteShipment()">🗑️ ลบใบนี้</button>
           </div>
@@ -229,12 +235,12 @@
             <div style="display:flex;gap:6px"><input id="f_invno" placeholder="PO2607014" style="flex:1"><button class="btn ghost mini edit-only" type="button" onclick="regenInvNo()" title="ออกเลขใหม่ตามวันที่">🔄</button></div></div>
             <div><label>วันที่</label><input id="f_date" type="date" onchange="onDateChange()"></div></div>
           <h3>ผู้ขาย (Vender)</h3>
-          <select id="f_vender_sel" onchange="applyVender()" style="margin-bottom:8px"><option value="">— เลือกผู้ขายที่บันทึกไว้ —</option></select>
+          <div class="combo" style="margin-bottom:8px"><input id="f_vender_sel" class="combo-input" placeholder="— ค้นหา/เลือกผู้ขายที่บันทึกไว้ —"><div id="f_vender_sel_list" class="combo-list"></div></div>
           <div class="grid2"><div><label>Vender Name</label><input id="f_sname"></div><div><label>Tel</label><input id="f_stel"></div></div>
           <div><label>Company</label><input id="f_scomp"></div>
           <div><label>Address</label><textarea id="f_saddr"></textarea></div>
           <h3>ผู้ซื้อ (Consignee)</h3>
-          <select id="f_cons_sel" onchange="applyConsignee()" style="margin-bottom:8px"><option value="">— เลือกผู้ซื้อที่บันทึกไว้ —</option></select>
+          <div class="combo" style="margin-bottom:8px"><input id="f_cons_sel" class="combo-input" placeholder="— ค้นหา/เลือกผู้ซื้อที่บันทึกไว้ —"><div id="f_cons_sel_list" class="combo-list"></div></div>
           <div><label>Consignee Name</label><input id="f_cname"></div>
           <div><label>Address</label><textarea id="f_caddr"></textarea></div>
           <h3>เงื่อนไข</h3>
@@ -383,6 +389,34 @@ const SUPABASE_KEY='sb_publishable_xTe43UOuDChtOsmY_BCsPg_FMJNE7Ma';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 const money=n=>Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2});
+const COMBOS={};
+function comboInit(id,items,onSelect,ph){
+  const inp=$(id); if(!inp)return;
+  COMBOS[id]={items:items||[],onSelect};
+  if(ph)inp.placeholder=ph;
+  inp.setAttribute('autocomplete','off');
+  inp.oninput=()=>comboOpen(id);
+  inp.onfocus=()=>comboOpen(id);
+  inp.onblur=()=>setTimeout(()=>comboClose(id),160);
+  const cur=inp.dataset.val||''; const it=COMBOS[id].items.find(x=>x.id===cur); inp.value=it?it.label:'';
+}
+function comboOpen(id){
+  const c=COMBOS[id],inp=$(id),list=$(id+'_list'); if(!c||!list)return;
+  const q=inp.value.toLowerCase().trim();
+  const items=c.items.filter(x=>String(x.label).toLowerCase().includes(q));
+  list.innerHTML=items.length?items.map(x=>`<div class="combo-opt" data-id="${esc(x.id)}">${esc(x.label)}</div>`).join(''):'<div class="combo-empty">— ไม่พบ —</div>';
+  list.style.display='block';
+  list.querySelectorAll('.combo-opt').forEach(el=>el.onmousedown=e=>{e.preventDefault();const v=el.getAttribute('data-id');comboSet(id,v);comboClose(id,true);if(c.onSelect)c.onSelect(v);});
+}
+function comboClose(id,keep){
+  const c=COMBOS[id],inp=$(id),list=$(id+'_list'); if(list)list.style.display='none';
+  if(!keep&&c&&inp){const it=c.items.find(x=>x.id===(inp.dataset.val||''));inp.value=it?it.label:'';}
+}
+function comboSet(id,val){
+  const c=COMBOS[id]||{items:[]},inp=$(id); if(!inp)return;
+  inp.dataset.val=val||''; const it=c.items.find(x=>x.id===val); inp.value=it?it.label:'';
+}
+function comboVal(id){const inp=$(id);return inp?(inp.dataset.val||''):'';}
 
 let db={master:[],hist:[],expMap:{},shipcosts:[],shipments:[],products:[],tracking:[],parties:[]};
 let currentRole='view', canEdit=false;
@@ -681,17 +715,17 @@ async function saveParty(){
 }
 async function delParty(id){if(!confirm('ลบข้อมูลนี้?'))return;const ok=await dbWrite(()=>sb.from('inv_parties').delete().eq('id',id));if(ok){await reload('parties');renderParties();}}
 function fillPartySelects(){
-  const opt=list=>'<option value="">— เลือก —</option>'+list.map(p=>`<option value="${p.id}">${esc(p.nickname?p.nickname+' — '+p.name:p.name)}</option>`).join('');
-  if($('f_vender_sel'))$('f_vender_sel').innerHTML=opt(partiesOf('vender'));
-  if($('f_cons_sel'))$('f_cons_sel').innerHTML=opt(partiesOf('consignee'));
+  const mk=list=>list.map(p=>({id:p.id,label:p.nickname?p.nickname+' — '+p.name:p.name}));
+  if($('f_vender_sel'))comboInit('f_vender_sel', mk(partiesOf('vender')), ()=>applyVender(), '— ค้นหา/เลือกผู้ขายที่บันทึกไว้ —');
+  if($('f_cons_sel'))comboInit('f_cons_sel', mk(partiesOf('consignee')), ()=>applyConsignee(), '— ค้นหา/เลือกผู้ซื้อที่บันทึกไว้ —');
 }
 function applyVender(){
-  const p=db.parties.find(x=>x.id===$('f_vender_sel').value); if(!p)return;
+  const p=db.parties.find(x=>x.id===comboVal('f_vender_sel')); if(!p)return;
   $('f_sname').value=p.name||'';$('f_stel').value=p.tel||'';$('f_scomp').value=p.company||'';$('f_saddr').value=p.address||'';
   renderDoc();
 }
 function applyConsignee(){
-  const p=db.parties.find(x=>x.id===$('f_cons_sel').value); if(!p)return;
+  const p=db.parties.find(x=>x.id===comboVal('f_cons_sel')); if(!p)return;
   $('f_cname').value=p.name||'';$('f_caddr').value=p.address||'';
   renderDoc();
 }
@@ -802,7 +836,7 @@ let curItems=[];
 function initInvPl(){
   fillSkuSelects();
   fillPartySelects();
-  $('loadShipment').innerHTML='<option value="">— เอกสารบันทึกไว้ —</option>'+db.shipments.map(s=>`<option value="${s.id}">${esc(s.invno)} · ${s.date||''}</option>`).join('');
+  comboInit('loadShipment', db.shipments.map(s=>({id:s.id,label:s.invno+' · '+(s.date||'')})), ()=>loadShipmentToForm(), '— ค้นหา/เลือกเอกสาร —');
   newShipmentForm();   // เริ่มเป็นบิลใหม่เปล่าทุกครั้งที่เข้าหน้านี้ (เลือกจาก dropdown ถ้าจะเปิดใบเก่า)
 }
 let autoInvNo='';   // เลขที่ระบบออกให้ล่าสุด (ใช้เช็คว่าผู้ใช้แก้เองหรือยัง)
@@ -822,14 +856,14 @@ function onDateChange(){
   renderDoc();
 }
 function newShipmentForm(){
-  $('loadShipment').value='';['f_invno','f_sname','f_stel','f_scomp','f_saddr','f_cname','f_caddr','f_port'].forEach(i=>$(i).value='');
-  if($('f_vender_sel'))$('f_vender_sel').value='';if($('f_cons_sel'))$('f_cons_sel').value='';
+  comboSet('loadShipment','');['f_invno','f_sname','f_stel','f_scomp','f_saddr','f_cname','f_caddr','f_port'].forEach(i=>$(i).value='');
+  comboSet('f_vender_sel','');comboSet('f_cons_sel','');
   $('f_date').value=new Date().toISOString().slice(0,10);$('f_term').value='EXW';$('f_logi').value=0;$('f_cur').value='CNY';
   autoInvNo=nextInvNo($('f_date').value); $('f_invno').value=autoInvNo;   // ออกเลขอัตโนมัติ
   curItems=[];renderLines();renderDoc();
 }
 function loadShipmentToForm(){
-  const id=$('loadShipment').value;if(!id){newShipmentForm();return;}
+  const id=comboVal('loadShipment');if(!id){newShipmentForm();return;}
   const s=db.shipments.find(x=>x.id===id);
   $('f_invno').value=s.invno;$('f_date').value=s.date||'';$('f_sname').value=s.sname||'';$('f_stel').value=s.stel||'';
   $('f_scomp').value=s.scomp||'';$('f_saddr').value=s.saddr||'';$('f_cname').value=s.cname||'';$('f_caddr').value=s.caddr||'';
@@ -874,7 +908,7 @@ function formData(){return{invno:$('f_invno').value,date:$('f_date').value,sname
 async function saveShipment(){
   const d=formData();if(!d.invno)return alert('กรอก Invoice/PO No.');
   const rec={invno:d.invno,date:d.date||null,sname:d.sname,stel:d.stel,scomp:d.scomp,saddr:d.saddr,cname:d.cname,caddr:d.caddr,term:d.term,port:d.port||null,logi:d.logi,cur:d.cur,items:d.items};
-  const id=$('loadShipment').value;
+  const id=comboVal('loadShipment');
   let shipmentId=id, ok=false;
   if(id){ ok=await dbWrite(()=>sb.from('shipments').update(rec).eq('id',id)); }
   else{
@@ -910,10 +944,10 @@ function openInvoiceFromTrack(sid){
   if(!sid)return;
   if(!db.shipments.find(s=>s.id===sid)){alert('ไม่พบใบ INV ที่ผูกไว้ (อาจถูกลบ)');return;}
   go('invpl');
-  const sel=$('loadShipment'); if(sel){sel.value=sid; loadShipmentToForm();}
+  comboSet('loadShipment',sid); loadShipmentToForm();
 }
 async function deleteShipment(){
-  const id=$('loadShipment').value;
+  const id=comboVal('loadShipment');
   if(!id)return alert('ยังไม่ได้เลือกเอกสาร (เอกสารที่ยังไม่บันทึกไม่ต้องลบ กด “สร้างใหม่” ได้เลย)');
   const s=db.shipments.find(x=>x.id===id);
   if(!confirm(`ลบเอกสาร "${s?s.invno:''}" ถาวร?\n(ลบออกจากฐานข้อมูล กู้คืนไม่ได้)`))return;
