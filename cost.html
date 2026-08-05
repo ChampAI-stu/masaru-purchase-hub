@@ -530,6 +530,8 @@ function openExport(sku){
   $('e_cbm').value=e.cbm_ctn||'';$('e_mark').value=e.mark||'';
   $('expDlg').showModal();
 }
+function parseBox(s){const m=String(s||'').match(/([\d.]+)\s*[x×X]\s*([\d.]+)\s*[x×X]\s*([\d.]+)/);return m?{w:+m[1],l:+m[2],h:+m[3]}:{w:0,l:0,h:0};}
+function lineCbmCtn(it){const w=+it.w||0,l=+it.l||0,h=+it.h||0;return (w&&l&&h)?(w*l*h)/1e6:0;}
 function calcCbm(){
   const w=parseFloat($('e_bw').value), l=parseFloat($('e_bl').value), h=parseFloat($('e_bh').value);
   if(w>0&&l>0&&h>0){
@@ -846,18 +848,20 @@ function loadShipmentToForm(){
 function addLineBySku(){
   const sku=$('addSkuInput').value.trim();
   const p=sku?prod(sku):null;
-  curItems.push({sku,price:p&&p.price!=null?p.price:0,qty:0,ctn:0,gw:0,mark:(p&&p.mark?p.mark:''),pic:''});
+  const bx=p?parseBox(p.box_size):{w:0,l:0,h:0};
+  curItems.push({sku,price:p&&p.price!=null?p.price:0,qty:0,ctn:0,gw:0,mark:(p&&p.mark?p.mark:''),pic:'',w:bx.w||0,l:bx.l||0,h:bx.h||0});
   $('addSkuInput').value='';renderLines();renderDoc();
 }
 function setLineSku(i,val){
   const sku=(val||'').trim(); curItems[i].sku=sku;
   const p=prod(sku);
-  if(p){ if(!curItems[i].price)curItems[i].price=p.price!=null?p.price:0; if(!curItems[i].mark)curItems[i].mark=p.mark||''; }
+  if(p){ if(!curItems[i].price)curItems[i].price=p.price!=null?p.price:0; if(!curItems[i].mark)curItems[i].mark=p.mark||'';
+    const bx=parseBox(p.box_size); if(!curItems[i].w&&bx.w)curItems[i].w=bx.w; if(!curItems[i].l&&bx.l)curItems[i].l=bx.l; if(!curItems[i].h&&bx.h)curItems[i].h=bx.h; }
   renderLines();renderDoc();
 }
 function renderLines(){
   if(!curItems.length){$('lineItems').innerHTML='<div class="empty">ยังไม่มีรายการ — พิมพ์ SKU ด้านบน</div>';return;}
-  let h='<table style="min-width:760px"><thead><tr><th>SKU</th><th>รูป</th><th>ราคา</th><th>จำนวน(PCS)</th><th>Cartons</th><th>GW(Kg)</th><th>Shipping Mark</th><th></th></tr></thead><tbody>';
+  let h='<table style="min-width:1000px"><thead><tr><th>SKU</th><th>รูป</th><th>ราคา</th><th>จำนวน(PCS)</th><th>Cartons</th><th>GW(Kg)</th><th>กว้าง</th><th>ยาว</th><th>สูง</th><th>CBM/กล่อง</th><th>Shipping Mark</th><th></th></tr></thead><tbody>';
   curItems.forEach((it,i)=>{const p=prod(it.sku);
     const picCell=it.pic
       ?`<img class="thumb" src="${esc(it.pic)}"><br><button class="mini btn red" onclick="clearLineImage(${i})">ลบรูป</button>`
@@ -868,6 +872,10 @@ function renderLines(){
       <td><input style="width:90px" type="number" value="${it.qty}" onchange="updItem(${i},'qty',this.value)"></td>
       <td><input style="width:70px" type="number" value="${it.ctn}" onchange="updItem(${i},'ctn',this.value)"></td>
       <td><input style="width:80px" type="number" step="0.01" value="${it.gw}" onchange="updItem(${i},'gw',this.value)"></td>
+      <td><input style="width:60px" type="number" step="0.1" value="${it.w||0}" onchange="updItem(${i},'w',this.value)"></td>
+      <td><input style="width:60px" type="number" step="0.1" value="${it.l||0}" onchange="updItem(${i},'l',this.value)"></td>
+      <td><input style="width:60px" type="number" step="0.1" value="${it.h||0}" onchange="updItem(${i},'h',this.value)"></td>
+      <td style="text-align:right;white-space:nowrap">${lineCbmCtn(it)?lineCbmCtn(it).toFixed(4):'<span class=\"muted\">—</span>'}</td>
       <td><input style="width:130px" value="${esc(it.mark||'')}" onchange="updItem(${i},'mark',this.value)"></td>
       <td><button class="mini btn red" onclick="curItems.splice(${i},1);renderLines();renderDoc()">✕</button></td></tr>`;});
   $('lineItems').innerHTML=h+'</tbody></table>';
@@ -938,7 +946,8 @@ function renderDoc(){
       <td style="text-align:right">${money(it.price)}</td><td style="text-align:right">${money(it.qty)}</td>
       <td style="text-align:right">${money(it.price*it.qty)}</td><td style="text-align:right">${money(it.gw)}</td><td class="rmark">${esc(remark)}</td></tr>`;}).join('');
   const rowPl=d.items.map((it,idx)=>{const p=prod(it.sku)||{};
-    const dim=`${it.ctn||0} Cartons*${p.per_ctn||''}= ${money(it.qty)} ${p.unit||'Pcs'}\nBoxes Size: ${p.box_size||''}\n${money((it.ctn||0)*(p.cbm_ctn||0))} CBM\n1 Cartons = ${p.per_ctn||''} ${p.unit||''} = ${p.w_ctn||''} Kg`;
+    const _cbm=lineCbmCtn(it)||(+p.cbm_ctn||0); const _box=(it.w&&it.l&&it.h)?`${it.w}x${it.l}x${it.h} Cm`:(p.box_size||'');
+    const dim=`${it.ctn||0} Cartons*${p.per_ctn||''}= ${money(it.qty)} ${p.unit||'Pcs'}\nBoxes Size: ${_box}\n${money((it.ctn||0)*_cbm)} CBM\n1 Cartons = ${p.per_ctn||''} ${p.unit||''} = ${p.w_ctn||''} Kg`;
     return `<tr><td style="text-align:center">${idx+1}</td><td>${esc(p.name_en||it.sku)}<br>${esc(p.name_th||'')}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||it.sku)}</td>
       <td style="white-space:pre-line">${esc(dim)}</td><td style="text-align:right">${money(it.gw)}</td><td style="white-space:pre-line">${esc(it.mark||'')}</td></tr>`;}).join('');
   const hdr=lbl=>`<table class="hdr"><tr><td style="width:60%"><b>Vender Name :</b> ${esc(d.sname)}<br><b>Company :</b> ${esc(d.scomp)}<br><b>Address :</b> ${esc(d.saddr)}<br><b>Tel :</b> ${esc(d.stel)}<br><b>Consignee :</b> ${esc(d.cname)}<br><b>Address :</b> ${esc(d.caddr)}</td>
