@@ -225,7 +225,9 @@
             <button class="btn ghost mini edit-only" onclick="newShipmentForm()">สร้างใหม่</button>
             <button class="btn red mini edit-only" onclick="deleteShipment()">🗑️ ลบใบนี้</button>
           </div>
-          <div class="grid2"><div><label>Invoice / PO No.</label><input id="f_invno" placeholder="PO2607014"></div><div><label>วันที่</label><input id="f_date" type="date"></div></div>
+          <div class="grid2"><div><label>Invoice / PO No. <span class="muted" style="font-weight:400">(ออกอัตโนมัติ · แก้เองได้)</span></label>
+            <div style="display:flex;gap:6px"><input id="f_invno" placeholder="PO2607014" style="flex:1"><button class="btn ghost mini edit-only" type="button" onclick="regenInvNo()" title="ออกเลขใหม่ตามวันที่">🔄</button></div></div>
+            <div><label>วันที่</label><input id="f_date" type="date" onchange="onDateChange()"></div></div>
           <h3>ผู้ขาย (Vender)</h3>
           <select id="f_vender_sel" onchange="applyVender()" style="margin-bottom:8px"><option value="">— เลือกผู้ขายที่บันทึกไว้ —</option></select>
           <div class="grid2"><div><label>Vender Name</label><input id="f_sname"></div><div><label>Tel</label><input id="f_stel"></div></div>
@@ -803,10 +805,27 @@ function initInvPl(){
   $('loadShipment').innerHTML='<option value="">— เอกสารบันทึกไว้ —</option>'+db.shipments.map(s=>`<option value="${s.id}">${esc(s.invno)} · ${s.date||''}</option>`).join('');
   newShipmentForm();   // เริ่มเป็นบิลใหม่เปล่าทุกครั้งที่เข้าหน้านี้ (เลือกจาก dropdown ถ้าจะเปิดใบเก่า)
 }
+let autoInvNo='';   // เลขที่ระบบออกให้ล่าสุด (ใช้เช็คว่าผู้ใช้แก้เองหรือยัง)
+function nextInvNo(dateStr){
+  const d=dateStr?new Date(dateStr):new Date();
+  const yy=String(d.getFullYear()).slice(-2), mm=String(d.getMonth()+1).padStart(2,'0');
+  const prefix='PO'+yy+mm;                       // เช่น PO2607
+  const re=new RegExp('^'+prefix+'(\\d{3})$');
+  let max=0;
+  db.shipments.forEach(s=>{const m=String(s.invno||'').match(re);if(m){const n=+m[1];if(n>max)max=n;}});
+  return prefix+String(max+1).padStart(3,'0');    // เช่น PO2607014
+}
+function regenInvNo(){ autoInvNo=nextInvNo($('f_date').value); $('f_invno').value=autoInvNo; renderDoc(); }
+function onDateChange(){
+  // ถ้าเลขยังเป็นเลขที่ระบบออกให้ (ไม่ได้แก้เอง) ให้รันใหม่ตามเดือนของวันที่ใหม่
+  if($('f_invno').value===autoInvNo){ autoInvNo=nextInvNo($('f_date').value); $('f_invno').value=autoInvNo; }
+  renderDoc();
+}
 function newShipmentForm(){
   $('loadShipment').value='';['f_invno','f_sname','f_stel','f_scomp','f_saddr','f_cname','f_caddr','f_port'].forEach(i=>$(i).value='');
   if($('f_vender_sel'))$('f_vender_sel').value='';if($('f_cons_sel'))$('f_cons_sel').value='';
   $('f_date').value=new Date().toISOString().slice(0,10);$('f_term').value='EXW';$('f_logi').value=0;$('f_cur').value='CNY';
+  autoInvNo=nextInvNo($('f_date').value); $('f_invno').value=autoInvNo;   // ออกเลขอัตโนมัติ
   curItems=[];renderLines();renderDoc();
 }
 function loadShipmentToForm(){
