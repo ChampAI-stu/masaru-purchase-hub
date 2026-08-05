@@ -99,6 +99,7 @@
           <option value="purchase">จัดซื้อ</option>
           <option value="marketing">การตลาด</option>
           <option value="head_purchase">หัวหน้าจัดซื้อ</option>
+          <option value="shipping">ขนส่ง (Shipping)</option>
           <option value="executive">ผู้บริหาร</option>
         </select>
       </div>
@@ -159,8 +160,8 @@ async function loadApps(){
   }catch(e){ return APPS_FALLBACK; }
 }
 
-const ROLE_LABEL = { purchase:'จัดซื้อ', marketing:'การตลาด', pr_manager:'หัวหน้า (อนุมัติ)', pr_exec:'ผู้บริหาร', executive:'ผู้บริหาร' };
-const ALLOWED = ['purchase','marketing','pr_manager','pr_exec','executive'];   // บทบาทที่เข้าหน้ารวมได้
+const ROLE_LABEL = { purchase:'จัดซื้อ', marketing:'การตลาด', pr_manager:'หัวหน้า (อนุมัติ)', pr_exec:'ผู้บริหาร', executive:'ผู้บริหาร', shipping:'ขนส่ง (Shipping)' };
+const ALLOWED = ['purchase','marketing','pr_manager','pr_exec','executive','shipping'];   // บทบาทที่เข้าหน้ารวมได้
 const isExecRole = r => r==='pr_exec' || r==='executive';   // ผู้บริหาร = เห็นทุกระบบ
 
 // อ่านบทบาททั้งหมดของบัญชี (รองรับทั้งแบบ array ใหม่ และ single เดิม)
