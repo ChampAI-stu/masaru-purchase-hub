@@ -817,11 +817,16 @@ function loadShipmentToForm(){
   curItems=JSON.parse(JSON.stringify(s.items||[]));renderLines();renderDoc();
 }
 function addLineBySku(){
-  const sku=$('addSkuInput').value.trim();if(!sku)return;
-  const p=prod(sku);
-  if(!p){if(!confirm('ไม่พบ SKU "'+sku+'" จะเพิ่มเป็นรายการว่างไหม?'))return;}
-  curItems.push({sku,price:p&&p.price!=null?p.price:0,qty:0,ctn:0,gw:0,mark:(p&&p.mark?p.mark:'')});
+  const sku=$('addSkuInput').value.trim();
+  const p=sku?prod(sku):null;
+  curItems.push({sku,price:p&&p.price!=null?p.price:0,qty:0,ctn:0,gw:0,mark:(p&&p.mark?p.mark:''),pic:''});
   $('addSkuInput').value='';renderLines();renderDoc();
+}
+function setLineSku(i,val){
+  const sku=(val||'').trim(); curItems[i].sku=sku;
+  const p=prod(sku);
+  if(p){ if(!curItems[i].price)curItems[i].price=p.price!=null?p.price:0; if(!curItems[i].mark)curItems[i].mark=p.mark||''; }
+  renderLines();renderDoc();
 }
 function renderLines(){
   if(!curItems.length){$('lineItems').innerHTML='<div class="empty">ยังไม่มีรายการ — พิมพ์ SKU ด้านบน</div>';return;}
@@ -830,7 +835,7 @@ function renderLines(){
     const picCell=it.pic
       ?`<img class="thumb" src="${esc(it.pic)}"><br><button class="mini btn red" onclick="clearLineImage(${i})">ลบรูป</button>`
       :`<input style="width:130px;font-size:11px" placeholder="วางลิงก์รูป (URL)" onchange="setLineImageUrl(${i},this.value)"><br><button class="mini btn ghost" style="margin-top:3px" onclick="attachLineImage(${i})">📷 อัปโหลดแทน</button>`;
-    h+=`<tr><td><b>${esc(it.sku)}</b>${p?'':' <span class="pill up">ไม่พบ</span>'}<br><span class="muted">${p?esc(p.name_en||p.product_name||''):''}</span></td>
+    h+=`<tr><td><input list="skuList" value="${esc(it.sku||'')}" onchange="setLineSku(${i},this.value)" style="width:110px;font-weight:700" placeholder="รหัส SKU">${p?'':(it.sku?' <span class="pill up">ไม่พบ</span>':'')}<br><span class="muted">${p?esc(p.name_en||p.product_name||''):''}</span></td>
       <td style="text-align:center">${picCell}</td>
       <td><input style="width:80px" type="number" step="0.01" value="${it.price}" onchange="updItem(${i},'price',this.value)"></td>
       <td><input style="width:90px" type="number" value="${it.qty}" onchange="updItem(${i},'qty',this.value)"></td>
