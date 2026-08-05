@@ -158,7 +158,9 @@
     <section id="tab-cost" style="display:none">
       <div class="card">
         <div class="toolbar"><h2 style="margin:0;border:0;padding:0">💰 ต้นทุน / การขึ้นลงราคา</h2><span class="sp"></span>
-          <select id="costFilter" style="max-width:220px" onchange="renderCostTable()"><option value="">— ทุกสินค้า —</option></select></div>
+          <input id="costSearch" placeholder="ค้นหา SKU / Supplier" style="max-width:220px" oninput="renderCostTable()">
+          <select id="costFilter" style="max-width:200px" onchange="renderCostTable()"><option value="">— ทุกสินค้า —</option></select>
+          <button class="btn gold" onclick="exportCostSummary()">⬇️ ดึงสรุป (Excel)</button></div>
         <div class="note">อ่านจากประวัติกลาง <b>sku_price_history</b> (ระบบ log อัตโนมัติเมื่อแก้ราคาใน PR) · “ส่วนต่างที่ลด” = ราคาเดิม − ราคาใหม่ ต่อหน่วย (¥) — ยังไม่คูณจำนวนสั่ง</div>
         <div id="costKpi" class="kpis" style="margin-bottom:14px"></div>
         <div id="costTable"></div>
@@ -434,7 +436,8 @@ function renderCostTable(){
   const flt=$('costFilter').value;     // อ่านค่าที่เลือกก่อน
   fillSkuSelects();                    // (สร้าง options ใหม่)
   $('costFilter').value=flt;           // คืนค่าที่เลือกไว้
-  const rows=histRows().filter(h=>!flt||h.sku===flt).sort((a,b)=>String(b.changed_at).localeCompare(String(a.changed_at)));
+  const q=($('costSearch').value||'').toLowerCase();
+  const rows=histRows().filter(h=>(!flt||h.sku===flt)&&(!q||((h.sku||'')+(h.supplier||'')).toLowerCase().includes(q))).sort((a,b)=>String(b.changed_at).localeCompare(String(a.changed_at)));
   const all=histRows();
   const totalSave=all.reduce((s,h)=>s+h.saveUnit,0);
   const nDown=all.filter(h=>h.pct!=null&&h.pct<0).length, nUp=all.filter(h=>h.pct!=null&&h.pct>0).length;
@@ -453,8 +456,37 @@ function renderCostTable(){
       <td>${r.saveUnit>0?'<b style="color:var(--green)">'+money(r.saveUnit)+'</b>':'-'}</td></tr>`;});
   $('costTable').innerHTML=h+'</tbody></table>';
 }
-
-/* ===== SHIPPING ===== */
+function exportCostSummary(){
+  const all=histRows();
+  if(!all.length && !db.products.length){alert('ยังไม่มีข้อมูล');return;}
+  // ชีท 1: สรุปรายสินค้า
+  const bySku={}; all.forEach(h=>{(bySku[h.sku]=bySku[h.sku]||[]).push(h);});
+  const sum=[['SKU','ชื่อสินค้า','Supplier ล่าสุด','ราคาปัจจุบัน (¥)','ราคาต่ำสุด','ราคาสูงสุด','จำนวนครั้งเปลี่ยน','ลดได้รวม/หน่วย (¥)','ขึ้นราคา(ครั้ง)','ลดราคา(ครั้ง)']];
+  const skus=[...new Set([...Object.keys(bySku),...db.products.map(p=>p.sku)])].sort();
+  skus.forEach(sku=>{
+    const list=(bySku[sku]||[]).slice().sort((a,b)=>String(a.changed_at).localeCompare(String(b.changed_at)));
+    const p=prod(sku)||{};
+    const prices=list.map(x=>x.newp).filter(v=>v!=null);
+    const latest=list.length?list[list.length-1]:null;
+    const cur=p.price!=null?p.price:(latest?latest.newp:'');
+    const save=list.reduce((s,x)=>s+x.saveUnit,0);
+    const up=list.filter(x=>x.pct!=null&&x.pct>0).length, down=list.filter(x=>x.pct!=null&&x.pct<0).length;
+    sum.push([sku, p.name_en||p.product_name||'', latest?latest.supplier||'':(p.supplier||''), cur,
+      prices.length?Math.min(...prices):'', prices.length?Math.max(...prices):'', list.length, save, up, down]);
+  });
+  // ชีท 2: ประวัติทั้งหมด
+  const det=[['วันที่เปลี่ยน','SKU','Supplier','ราคาเดิม','ราคาใหม่','%เปลี่ยน','ลดได้/หน่วย (¥)']];
+  all.slice().sort((a,b)=>String(b.changed_at).localeCompare(String(a.changed_at))).forEach(h=>{
+    det.push([String(h.changed_at||'').slice(0,10),h.sku,h.supplier||'',h.oldp==null?'':h.oldp,h.newp,
+      h.pct==null?'':h.pct.toFixed(1)+'%', h.saveUnit>0?h.saveUnit:'']);
+  });
+  const wb=XLSX.utils.book_new();
+  const ws1=XLSX.utils.aoa_to_sheet(sum); ws1['!cols']=[{wch:16},{wch:26},{wch:20},{wch:14},{wch:11},{wch:11},{wch:14},{wch:16},{wch:12},{wch:12}];
+  const ws2=XLSX.utils.aoa_to_sheet(det); ws2['!cols']=[{wch:13},{wch:16},{wch:22},{wch:10},{wch:10},{wch:10},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws1,'สรุปรายสินค้า');
+  XLSX.utils.book_append_sheet(wb,ws2,'ประวัติทั้งหมด');
+  XLSX.writeFile(wb,'สรุปต้นทุน_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
 function renderShipTable(){
   const list=[...db.shipcosts].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   const tot=list.reduce((s,x)=>s+ +x.cost,0), totCbm=list.reduce((s,x)=>s+(+x.cbm||0),0);
