@@ -9,7 +9,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root{--navy:#1A2942;--navy-2:#22345A;--blue:#3A5A8C;--gold:#D0212B;--red:#D0212B;--green:#1E7145;
     --bg:#F4F6FA;--card:#fff;--line:#E2E8F0;--ink:#1E293B;--mut:#64748B;--rowLighter:#F8FAFD;}
@@ -94,8 +95,6 @@
   .doc table.items th{background:#dbe5f1;text-align:center;color:#000}
   .doc table.items tr{page-break-inside:avoid;break-inside:avoid}
   .doc thead{display:table-header-group}
-  .doc .inv-page{page-break-after:always;break-after:page}
-  .doc .pl-page{page-break-before:always;break-before:page}
   .doc .rmark{white-space:pre-line;font-size:10px}
   .doc .pic{max-width:80px;max-height:80px;object-fit:contain}
   .doc .sig{margin-top:30px;text-align:right}
@@ -582,26 +581,44 @@ function exportInvPlExcel(){
   const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:28},{wch:22},{wch:32},{wch:12},{wch:12},{wch:14},{wch:10},{wch:30}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,(d.invno||'INV_PL').slice(0,28));XLSX.writeFile(wb,`${d.invno||'INV_PL'}_INV_PL.xlsx`);
 }
-/* ===== สร้าง PDF จริง → เปิดในแท็บใหม่ (ตัวอ่าน PDF ของ browser มีปุ่มดาวน์โหลด/พิมพ์เอง) ===== */
+/* ===== สร้าง PDF จริง (เรนเดอร์ทีละหน้า A4) → เปิดในแท็บใหม่ ===== */
 async function savePdf(ev){
   renderDoc();
-  const el=document.querySelector('#docPreview .doc');
-  if(!el||!curItems.length){alert('ยังไม่มีรายการสินค้าในเอกสาร');return;}
+  if(!curItems.length){alert('ยังไม่มีรายการสินค้าในเอกสาร');return;}
+  const sections=document.querySelectorAll('#docPreview .doc section');
+  if(!sections.length){alert('ไม่มีเอกสาร');return;}
   const fname=(($('f_invno').value||'INV_PL').replace(/[^A-Za-z0-9_\-]/g,'_'))+'_INV_PL.pdf';
-  const btn=ev&&ev.target; const old=btn?btn.textContent:'';
+  const btn=ev&&ev.target,old=btn?btn.textContent:'';
   if(btn){btn.disabled=true;btn.textContent='⏳ กำลังสร้าง PDF...';}
-  // เปิดแท็บว่างทันทีระหว่าง user คลิก (กัน popup ถูกบล็อก) แล้วค่อยชี้ไปที่ไฟล์เมื่อสร้างเสร็จ
   const win=window.open('','_blank');
-  if(win){try{win.document.write('<title>กำลังสร้าง PDF...</title><body style="font-family:sans-serif;color:#333;padding:24px">⏳ กำลังสร้าง PDF กรุณารอสักครู่...</body>');}catch(e){}}
+  if(win)try{win.document.write('<title>กำลังสร้าง PDF...</title><body style="font-family:sans-serif;color:#333;padding:24px">⏳ กำลังสร้าง PDF กรุณารอสักครู่...</body>');}catch(e){}
   try{
-    const opt={margin:[8,8,8,8],image:{type:'jpeg',quality:0.95},
-      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
-      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-      pagebreak:{mode:['css','legacy'],before:'.pl-page',after:'.inv-page'}};
-    const blob=await html2pdf().set(opt).from(el).outputPdf('blob');
-    const url=URL.createObjectURL(blob);
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+    const pageW=210,pageH=297,margin=8,usableW=pageW-2*margin,usableH=pageH-2*margin;
+    let firstPage=true;
+    for(const sec of sections){
+      const canvas=await html2canvas(sec,{scale:2,useCORS:true,backgroundColor:'#ffffff'});
+      const pxPerMM=canvas.width/usableW;         // scale ภาพให้พอดีความกว้างหน้า
+      const fullH=canvas.height/pxPerMM;          // ความสูงจริงเป็น mm
+      if(fullH<=usableH){
+        if(!firstPage)pdf.addPage();firstPage=false;
+        pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',margin,margin,usableW,fullH);
+      }else{
+        // ยาวเกิน 1 หน้า → ตัดเป็นหลายหน้า
+        const pagePxH=Math.floor(usableH*pxPerMM);
+        for(let sY=0;sY<canvas.height;sY+=pagePxH){
+          const sliceH=Math.min(pagePxH,canvas.height-sY);
+          const slice=document.createElement('canvas');slice.width=canvas.width;slice.height=sliceH;
+          slice.getContext('2d').drawImage(canvas,0,sY,canvas.width,sliceH,0,0,canvas.width,sliceH);
+          if(!firstPage)pdf.addPage();firstPage=false;
+          pdf.addImage(slice.toDataURL('image/jpeg',0.95),'JPEG',margin,margin,usableW,sliceH/pxPerMM);
+        }
+      }
+    }
+    const url=URL.createObjectURL(pdf.output('blob'));
     if(win){win.location.href=url;}
-    else{ const a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();a.remove(); }
+    else{const a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();a.remove();}
     setTimeout(()=>URL.revokeObjectURL(url),60000);
   }catch(e){ if(win)try{win.close()}catch(_){}; alert('สร้าง PDF ไม่สำเร็จ: '+(e.message||e)); }
   finally{ if(btn){btn.disabled=false;btn.textContent=old;} }
