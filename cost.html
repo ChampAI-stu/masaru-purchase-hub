@@ -123,7 +123,6 @@
     <button data-tab="ship" onclick="go('ship')">🚚 ค่าขนส่ง</button>
     <button data-tab="track" onclick="go('track')">📋 ตาราง Shipment</button>
     <button data-tab="invpl" onclick="go('invpl')">📄 ออก INV + PL</button>
-    <button data-tab="requests" onclick="go('requests')">🔔 คำขอข้อมูลต้นทุน</button>
   </div>
 
   <main>
@@ -241,14 +240,6 @@
       </div>
     </section>
 
-    <section id="tab-requests" style="display:none">
-      <div class="card">
-        <div class="toolbar"><h2 style="margin:0;border:0;padding:0">🔔 คำขอข้อมูลต้นทุน</h2><span class="sp"></span>
-          <button class="btn" onclick="openReq()">+ มีคนขอข้อมูล</button></div>
-        <div class="note">เมื่อมีคนขอต้นทุน (ฝ่ายขาย/บัญชี) บันทึกที่นี่ · กด “แจ้งอัตโนมัติ” สร้างข้อความสรุปราคาล่าสุด (ต่อบอท LINE ได้)</div>
-        <div id="reqTable"></div>
-      </div>
-    </section>
   </main>
 </div>
 
@@ -263,7 +254,17 @@
     <div class="grid2"><div><label>Component</label><textarea id="e_comp"></textarea></div><div><label>Specification</label><textarea id="e_spec"></textarea></div></div>
     <h3>ข้อมูลบรรจุ (ใช้ทำ Packing List)</h3>
     <div class="grid3"><div><label>หน่วย</label><input id="e_unit" placeholder="Set / PCS"></div><div><label>จำนวน/กล่อง</label><input id="e_perctn" type="number"></div><div><label>น้ำหนัก/กล่อง (Kg)</label><input id="e_wctn" type="number" step="0.01"></div></div>
-    <div class="grid2"><div><label>ขนาดกล่อง</label><input id="e_box" placeholder="65x44x40 Cm"></div><div><label>CBM/กล่อง</label><input id="e_cbm" type="number" step="0.0001"></div></div>
+    <div class="grid2">
+      <div><label>ขนาดกล่อง (ซม.) — กว้าง × ยาว × สูง</label>
+        <div style="display:flex;gap:6px">
+          <input id="e_bw" type="number" step="0.1" placeholder="กว้าง" oninput="calcCbm()">
+          <input id="e_bl" type="number" step="0.1" placeholder="ยาว" oninput="calcCbm()">
+          <input id="e_bh" type="number" step="0.1" placeholder="สูง" oninput="calcCbm()">
+        </div>
+      </div>
+      <div><label>CBM/กล่อง (คำนวณอัตโนมัติ)</label><input id="e_cbm" type="number" step="0.000001" readonly style="background:#f1f5f9"></div>
+    </div>
+    <input type="hidden" id="e_box">
     <div><label>Shipping Mark เริ่มต้น</label><input id="e_mark"></div>
     <div class="muted" style="margin-top:8px">📷 รูปสินค้า: ไปแนบตอนออกใบ INV (แท็บ “ออก INV + PL”) แนบเฉพาะบิลนั้น ล้างได้ ไม่เก็บถาวร</div>
   </div>
@@ -280,16 +281,6 @@
     <input type="hidden" id="sh_editid">
   </div>
   <div class="dlg-foot"><button class="btn ghost" onclick="shipDlg.close()">ยกเลิก</button><button class="btn green" onclick="saveShipCost();return false">บันทึก</button></div>
-</form></dialog>
-
-<dialog id="reqDlg"><form method="dialog">
-  <div class="dlg-head">คำขอข้อมูลต้นทุน<button class="x" onclick="reqDlg.close()">×</button></div>
-  <div class="dlg-body">
-    <div class="grid2"><div><label>ผู้ขอ *</label><input id="r_by"></div><div><label>แผนก</label><input id="r_dept"></div></div>
-    <div><label>ขอข้อมูล SKU</label><select id="r_sku"><option value="">— ทั้งหมด —</option></select></div>
-    <div><label>เหตุผล / รายละเอียด</label><textarea id="r_reason"></textarea></div>
-  </div>
-  <div class="dlg-foot"><button class="btn ghost" onclick="reqDlg.close()">ยกเลิก</button><button class="btn green" onclick="saveReq();return false">บันทึก</button></div>
 </form></dialog>
 
 <dialog id="trkDlg" style="max-width:760px"><form method="dialog">
@@ -344,13 +335,6 @@
   <div class="dlg-foot"><button class="btn ghost" onclick="trkDlg.close()">ยกเลิก</button><button class="btn green edit-only" onclick="saveTrack();return false">บันทึก</button></div>
 </form></dialog>
 
-<dialog id="notifyDlg"><form method="dialog">
-  <div class="dlg-head">ข้อความแจ้งต้นทุนอัตโนมัติ<button class="x" onclick="notifyDlg.close()">×</button></div>
-  <div class="dlg-body"><div class="muted" style="margin-bottom:6px">คัดลอกส่ง LINE/อีเมล หรือส่งเข้าบอท LINE ได้</div>
-    <textarea id="notifyText" style="min-height:220px;font-family:monospace;font-size:12px"></textarea></div>
-  <div class="dlg-foot"><button class="btn ghost" onclick="notifyDlg.close()">ปิด</button><button class="btn gold" onclick="copyNotify();return false">คัดลอกข้อความ</button></div>
-</form></dialog>
-
 <script>
 /* ===== Supabase (โปรเจกต์เดียวกับ portal/PR/board) ===== */
 const SUPABASE_URL='https://ykeplonjemxcqnrzznhm.supabase.co';
@@ -359,7 +343,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 const money=n=>Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2});
 
-let db={master:[],hist:[],expMap:{},shipcosts:[],shipments:[],requests:[],products:[],tracking:[]};
+let db={master:[],hist:[],expMap:{},shipcosts:[],shipments:[],products:[],tracking:[]};
 let currentRole='view', canEdit=false;
 
 /* ===== AUTH GUARD (session ร่วมจาก HUB) ===== */
@@ -394,12 +378,12 @@ async function fetchTable(name,order){
   return data||[];
 }
 async function loadAll(){
-  const[master,hist,exp,shipcosts,shipments,requests,tracking]=await Promise.all([
+  const[master,hist,exp,shipcosts,shipments,tracking]=await Promise.all([
     fetchTable('sku_master','sku'), fetchTable('sku_price_history','changed_at'),
     fetchTable('sku_export_info','sku'), fetchTable('shipcosts','date'),
-    fetchTable('shipments','date'), fetchTable('cost_requests','created_at'),
+    fetchTable('shipments','date'),
     fetchTable('shipment_tracking','start_date')]);
-  db.master=master; db.hist=hist; db.shipcosts=shipcosts; db.shipments=shipments; db.requests=requests; db.tracking=tracking;
+  db.master=master; db.hist=hist; db.shipcosts=shipcosts; db.shipments=shipments; db.tracking=tracking;
   db.expMap={}; exp.forEach(e=>db.expMap[e.sku]=e);
   buildProducts();
   if($('seedBtn'))$('seedBtn').style.display=db.products.length?'none':'';
@@ -425,7 +409,7 @@ function buildProducts(){
 }
 async function reloadExport(){ const exp=await fetchTable('sku_export_info','sku'); db.expMap={}; exp.forEach(e=>db.expMap[e.sku]=e); buildProducts(); }
 async function reload(name){
-  const map={shipcosts:['shipcosts','date'],shipments:['shipments','date'],requests:['cost_requests','created_at'],tracking:['shipment_tracking','start_date']};
+  const map={shipcosts:['shipcosts','date'],shipments:['shipments','date'],tracking:['shipment_tracking','start_date']};
   const[t,o]=map[name]; db[name]=await fetchTable(t,o);
 }
 async function dbWrite(fn){ try{const{error}=await fn(); if(error)throw error; return true;}catch(e){alert('บันทึกไม่สำเร็จ: '+(e.message||e));return false;} }
@@ -434,14 +418,13 @@ function prod(sku){return db.products.find(p=>p.sku===sku);}
 /* ===== NAV ===== */
 function go(t){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
-  ['dashboard','sku','cost','ship','track','invpl','requests'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
+  ['dashboard','sku','cost','ship','track','invpl'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
   if(t==='dashboard')renderDashboard();
   if(t==='sku')renderSkuTable();
   if(t==='cost')renderCostTable();
   if(t==='ship')renderShipTable();
   if(t==='track')renderTrack();
   if(t==='invpl')initInvPl();
-  if(t==='requests')renderReq();
 }
 
 /* ===== SKU + EXPORT INFO ===== */
@@ -466,9 +449,19 @@ function openExport(sku){
   $('e_costinfo').innerHTML = p.price!=null ? `ต้นทุนกลาง: <b>${money(p.price)} ¥</b>${p.supplier?' · '+esc(p.supplier):''} <span class="muted">(แก้ราคาที่ระบบ PR)</span>` : '<span class="muted">ยังไม่มีราคาใน sku_master (แก้ที่ระบบ PR)</span>';
   $('e_brand').value=e.brand||p.brand||'';$('e_en').value=e.name_en||'';$('e_th').value=e.name_th||p.product_name||'';
   $('e_model').value=e.model||'';$('e_hs').value=e.hs||'';$('e_comp').value=e.component||'';$('e_spec').value=e.spec||'';
-  $('e_unit').value=e.unit||'';$('e_perctn').value=e.per_ctn||'';$('e_wctn').value=e.w_ctn||'';$('e_box').value=e.box_size||'';
+  $('e_unit').value=e.unit||'';$('e_perctn').value=e.per_ctn||'';$('e_wctn').value=e.w_ctn||'';
+  const dims=(String(e.box_size||'').match(/\d+(?:\.\d+)?/g)||[]);
+  $('e_bw').value=dims[0]||'';$('e_bl').value=dims[1]||'';$('e_bh').value=dims[2]||'';
+  $('e_box').value=e.box_size||'';
   $('e_cbm').value=e.cbm_ctn||'';$('e_mark').value=e.mark||'';
   $('expDlg').showModal();
+}
+function calcCbm(){
+  const w=parseFloat($('e_bw').value), l=parseFloat($('e_bl').value), h=parseFloat($('e_bh').value);
+  if(w>0&&l>0&&h>0){
+    $('e_cbm').value=Math.round(w*l*h/1e6*1e6)/1e6;   // (กว้าง×ยาว×สูง) ÷ 1,000,000
+    $('e_box').value=`${w}x${l}x${h} Cm`;
+  }else{ $('e_cbm').value=''; $('e_box').value=''; }
 }
 async function saveExport(){
   const sku=$('e_sku').value.trim(); if(!sku)return alert('ไม่พบ SKU');
@@ -493,7 +486,6 @@ function clearAllImages(){if(!curItems.some(it=>it.pic))return;if(!confirm('ล�
 
 function fillSkuSelects(){
   const opts=db.products.map(p=>`<option value="${esc(p.sku)}">${esc(p.sku)} — ${esc(p.name_en||p.product_name||'')}</option>`).join('');
-  if($('r_sku'))$('r_sku').innerHTML='<option value="">— ทั้งหมด —</option>'+opts;
   if($('dashSku'))$('dashSku').innerHTML=opts;
   if($('skuList'))$('skuList').innerHTML=db.products.map(p=>`<option value="${esc(p.sku)}">`).join('');
 }
@@ -902,43 +894,6 @@ function importExport(inp){const f=inp.files[0];if(!f)return;const rd=new FileRe
   rd.readAsArrayBuffer(f);
 }
 
-/* ===== REQUESTS + AUTO NOTIFY ===== */
-function renderReq(){
-  fillSkuSelects();
-  const list=[...db.requests].sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
-  if(!list.length){$('reqTable').innerHTML='<div class="empty">ยังไม่มีคำขอ</div>';return;}
-  let h='<table><thead><tr><th>วันที่</th><th>ผู้ขอ</th><th>SKU</th><th>เหตุผล</th><th>สถานะ</th><th class="no-print">จัดการ</th></tr></thead><tbody>';
-  list.forEach(r=>{h+=`<tr><td>${String(r.created_at||'').slice(0,10)}</td><td>${esc(r.requested_by)}<br><span class="muted">${esc(r.dept||'')}</span></td>
-    <td>${esc(r.sku||'ทั้งหมด')}</td><td>${esc(r.reason||'')}</td>
-    <td><span class="pill ${r.status}">${({pending:'รอดำเนินการ',notified:'แจ้งแล้ว',done:'เสร็จ'})[r.status]||r.status}</span></td>
-    <td class="no-print"><button class="mini btn gold" onclick="autoNotify('${r.id}')">แจ้งอัตโนมัติ</button>
-      ${canEdit?`<button class="mini btn green" onclick="reqStatus('${r.id}','done')">เสร็จ</button> <button class="mini btn red" onclick="delReq('${r.id}')">ลบ</button>`:''}</td></tr>`;});
-  $('reqTable').innerHTML=h+'</tbody></table>';
-}
-function openReq(){fillSkuSelects();['r_by','r_dept','r_reason'].forEach(i=>$(i).value='');$('r_sku').value='';$('reqDlg').showModal();}
-async function saveReq(){
-  if(!$('r_by').value)return alert('กรอกผู้ขอ');
-  const rec={requested_by:$('r_by').value.trim(),dept:$('r_dept').value.trim(),sku:$('r_sku').value||null,reason:$('r_reason').value.trim(),status:'pending'};
-  const ok=await dbWrite(()=>sb.from('cost_requests').insert(rec));
-  if(ok){await reload('requests');$('reqDlg').close();renderReq();}
-}
-async function reqStatus(id,st){const ok=await dbWrite(()=>sb.from('cost_requests').update({status:st}).eq('id',id));if(ok){await reload('requests');renderReq();}}
-async function delReq(id){if(!confirm('ลบคำขอนี้?'))return;const ok=await dbWrite(()=>sb.from('cost_requests').delete().eq('id',id));if(ok){await reload('requests');renderReq();}}
-async function autoNotify(id){
-  const r=db.requests.find(x=>x.id===id);
-  const skus=r.sku?[r.sku]:db.products.map(p=>p.sku);
-  let msg=`📋 ข้อมูลต้นทุนล่าสุด (MASARU)\nถึง: ${r.requested_by} (${r.dept||'-'})\nวันที่แจ้ง: ${new Date().toLocaleDateString('th-TH')}\n────────────\n`;
-  skus.forEach(sku=>{const p=prod(sku)||{};const hl=histBySku(sku);
-    const latest=p.price!=null?p.price:(hl.length?+hl[hl.length-1].new_price:null);
-    if(latest==null){msg+=`• ${sku}: ไม่มีข้อมูลราคา\n`;return;}
-    let chg='';if(hl.length){const last=hl[hl.length-1];const o=last.old_price==null?null:+last.old_price,nw=+last.new_price;
-      if(o!=null&&o!==0){const pc=(nw-o)/o*100;chg=pc>0?` ▲${pc.toFixed(1)}%`:(pc<0?` ▼${Math.abs(pc).toFixed(1)}%`:' คงที่');}}
-    msg+=`• ${sku} (${p.name_en||p.product_name||''})\n   ราคาล่าสุด: ${money(latest)} ¥${p.supplier?' · '+p.supplier:''}${chg}\n`;});
-  msg+=`────────────\n*ข้อมูลลับเฉพาะภายใน — ห้ามเปิดเผยแก่บุคคลภายนอก*`;
-  $('notifyText').value=msg;$('notifyDlg').showModal();
-  await dbWrite(()=>sb.from('cost_requests').update({status:'notified'}).eq('id',id));await reload('requests');renderReq();
-}
-function copyNotify(){navigator.clipboard.writeText($('notifyText').value);alert('คัดลอกแล้ว');}
 
 /* ===== SEED (ตัวอย่าง PO2607014) — เขียนเฉพาะ export-info + shipment (ราคาอยู่ที่ sku_master/PR) ===== */
 async function seedSample(){
@@ -964,7 +919,7 @@ function renderDashboard(){
     <div class="kpi green"><div class="lbl">ส่วนต่างลดได้ (¥/หน่วย)</div><div class="val">${money(totalSave)}</div></div>
     <div class="kpi gold"><div class="lbl">ค่าขนส่งรวม (บาท)</div><div class="val">${money(shipTot)}</div></div>
     <div class="kpi"><div class="lbl">เฉลี่ย บาท/CBM</div><div class="val">${money(shipCbm?shipTot/shipCbm:0)}</div></div>
-    <div class="kpi"><div class="lbl">คำขอค้าง</div><div class="val">${db.requests.filter(r=>r.status==='pending').length}</div></div>`;
+    <div class="kpi"><div class="lbl">Shipment กำลังผลิต</div><div class="val">${db.tracking.filter(t=>t.op_status==='กำลังผลิต').length}</div></div>`;
   drawPriceChart();drawSaveChart();drawShipChart();
 }
 function drawPriceChart(){destroy('price');const sku=$('dashSku').value;if(!sku)return;
