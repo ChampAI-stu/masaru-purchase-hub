@@ -126,7 +126,6 @@
   <div class="tabs no-print">
     <button data-tab="dashboard" class="active" onclick="go('dashboard')">📊 Dashboard</button>
     <button data-tab="sku" onclick="go('sku')">📦 สินค้า + ข้อมูลส่งออก</button>
-    <button data-tab="ship" onclick="go('ship')">🚚 ค่าขนส่ง</button>
     <button data-tab="track" onclick="go('track')">📋 ตาราง Shipment</button>
     <button data-tab="parties" onclick="go('parties')">🏢 ผู้ขาย/ผู้ซื้อ</button>
     <button data-tab="invpl" onclick="go('invpl')">📄 ออก INV + PL</button>
@@ -163,16 +162,6 @@
       </div>
     </section>
 
-
-    <section id="tab-ship" style="display:none">
-      <div class="card">
-        <div class="toolbar"><h2 style="margin:0;border:0;padding:0">🚚 ต้นทุนค่าขนส่ง (Logistics)</h2><span class="sp"></span>
-          <button class="btn edit-only" onclick="openShipCost()">+ บันทึกค่าขนส่ง</button></div>
-        <div class="note">ผูกค่าขนส่งกับชิปเมนต์ (Invoice No.) · ระบบคำนวณ บาท/CBM และ บาท/Kg เทียบความคุ้มค่าแต่ละรอบ</div>
-        <div id="shipKpi" class="kpis" style="margin-bottom:14px"></div>
-        <div id="shipTable"></div>
-      </div>
-    </section>
 
     <section id="tab-track" style="display:none">
       <div class="card">
@@ -293,18 +282,6 @@
     <div class="muted" style="margin-top:8px">📷 รูปสินค้า: ไปแนบตอนออกใบ INV (แท็บ “ออก INV + PL”) แนบเฉพาะบิลนั้น ล้างได้ ไม่เก็บถาวร</div>
   </div>
   <div class="dlg-foot"><button class="btn ghost" onclick="expDlg.close()">ยกเลิก</button><button class="btn green edit-only" onclick="saveExport();return false">บันทึก</button></div>
-</form></dialog>
-
-<dialog id="shipDlg"><form method="dialog">
-  <div class="dlg-head">บันทึกค่าขนส่ง<button class="x" onclick="shipDlg.close()">×</button></div>
-  <div class="dlg-body">
-    <div class="grid2"><div><label>Invoice / Ref *</label><input id="sh_ref"></div><div><label>วันที่</label><input id="sh_date" type="date"></div></div>
-    <div class="grid3"><div><label>ค่าขนส่ง (บาท) *</label><input id="sh_cost" type="number" step="0.01"></div><div><label>รวม CBM</label><input id="sh_cbm" type="number" step="0.01"></div><div><label>รวม Kg</label><input id="sh_kg" type="number" step="0.01"></div></div>
-    <div class="grid2"><div><label>ผู้ให้บริการ</label><input id="sh_carrier"></div><div><label>โหมด</label><select id="sh_mode"><option>Sea</option><option>Land</option><option>Air</option></select></div></div>
-    <div><label>หมายเหตุ</label><input id="sh_note"></div>
-    <input type="hidden" id="sh_editid">
-  </div>
-  <div class="dlg-foot"><button class="btn ghost" onclick="shipDlg.close()">ยกเลิก</button><button class="btn green" onclick="saveShipCost();return false">บันทึก</button></div>
 </form></dialog>
 
 <dialog id="partyDlg"><form method="dialog">
@@ -502,10 +479,9 @@ function prod(sku){return db.products.find(p=>p.sku===sku);}
 /* ===== NAV ===== */
 function go(t){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
-  ['dashboard','sku','ship','track','parties','invpl','summary'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
+  ['dashboard','sku','track','parties','invpl','summary'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
   if(t==='dashboard')renderDashboard();
   if(t==='sku')renderSkuTable();
-  if(t==='ship')renderShipTable();
   if(t==='track')renderTrack();
   if(t==='parties')renderParties();
   if(t==='invpl')initInvPl();
@@ -597,35 +573,9 @@ function histRows(){
     return{...h,oldp,newp,pct,saveUnit};});
 }
 
-function renderShipTable(){
-  const list=[...db.shipcosts].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
-  const tot=list.reduce((s,x)=>s+ +x.cost,0), totCbm=list.reduce((s,x)=>s+(+x.cbm||0),0);
-  $('shipKpi').innerHTML=`<div class="kpi"><div class="lbl">ค่าขนส่งรวม (บาท)</div><div class="val">${money(tot)}</div></div>
-    <div class="kpi gold"><div class="lbl">เฉลี่ย บาท/CBM</div><div class="val">${money(totCbm?tot/totCbm:0)}</div></div>
-    <div class="kpi"><div class="lbl">รวม CBM</div><div class="val">${money(totCbm)}</div></div>
-    <div class="kpi"><div class="lbl">จำนวนชิปเมนต์</div><div class="val">${list.length}</div></div>`;
-  if(!list.length){$('shipTable').innerHTML='<div class="empty">ยังไม่มีข้อมูลค่าขนส่ง</div>';return;}
-  let h='<table><thead><tr><th>วันที่</th><th>Invoice/Ref</th><th>ค่าขนส่ง</th><th>CBM</th><th>Kg</th><th>บาท/CBM</th><th>บาท/Kg</th><th>ผู้ให้บริการ</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
-  list.forEach(x=>{const pcbm=x.cbm?(+x.cost/+x.cbm):0,pkg=x.kg?(+x.cost/+x.kg):0;
-    h+=`<tr><td>${x.date||''}</td><td><b>${esc(x.ref)}</b></td><td>${money(x.cost)}</td><td>${money(x.cbm)}</td><td>${money(x.kg)}</td>
-      <td>${money(pcbm)}</td><td>${money(pkg)}</td><td>${esc(x.carrier||'')} <span class="muted">${esc(x.mode||'')}</span></td>`+
-      (canEdit?`<td class="no-print"><button class="mini btn" onclick="openShipCost('${x.id}')">แก้</button> <button class="mini btn red" onclick="delShipCost('${x.id}')">ลบ</button></td>`:'')+`</tr>`;});
-  $('shipTable').innerHTML=h+'</tbody></table>';
-}
-function openShipCost(id){const x=id?db.shipcosts.find(s=>s.id===id):{date:new Date().toISOString().slice(0,10),mode:'Sea'};
-  $('sh_ref').value=x.ref||'';$('sh_date').value=x.date||'';$('sh_cost').value=x.cost||'';$('sh_cbm').value=x.cbm||'';
-  $('sh_kg').value=x.kg||'';$('sh_carrier').value=x.carrier||'';$('sh_mode').value=x.mode||'Sea';$('sh_note').value=x.note||'';$('sh_editid').value=id||'';$('shipDlg').showModal();}
-async function saveShipCost(){
-  if(!$('sh_ref').value||!$('sh_cost').value)return alert('กรอก Invoice/Ref และค่าขนส่ง');
-  const rec={ref:$('sh_ref').value.trim(),date:$('sh_date').value||null,cost:+$('sh_cost').value,cbm:+$('sh_cbm').value||null,kg:+$('sh_kg').value||null,carrier:$('sh_carrier').value.trim(),mode:$('sh_mode').value,note:$('sh_note').value.trim()};
-  const id=$('sh_editid').value;
-  const ok=await dbWrite(()=> id?sb.from('shipcosts').update(rec).eq('id',id):sb.from('shipcosts').insert(rec));
-  if(ok){await reload('shipcosts');$('shipDlg').close();renderShipTable();}
-}
-async function delShipCost(id){if(!confirm('ลบ?'))return;const ok=await dbWrite(()=>sb.from('shipcosts').delete().eq('id',id));if(ok){await reload('shipcosts');renderShipTable();}}
-
 /* ===== PARTIES (ผู้ขาย / ผู้ซื้อ) ===== */
 function partiesOf(kind){return db.parties.filter(p=>p.kind===kind).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));}
+function consigneeNames(){return [...new Set(partiesOf('consignee').map(p=>p.name).filter(Boolean))];}
 function renderParties(){
   const mk=(list,kind)=>{
     if(!list.length)return '<div class="empty">ยังไม่มีข้อมูล'+(canEdit?' — กด “เพิ่ม”':'')+'</div>';
@@ -670,7 +620,6 @@ function applyConsignee(){
 }
 
 /* ===== SHIPMENT TRACKING (ตารางติดตามการนำเข้า) ===== */
-const IMPORT_CO=['LIKESHOP','MASARU','DAIKI','PHONLAWUT','คุณวุฒิ'];
 const MOR_ST=['ยื่นสมอ.ผ่านแล้ว','อยู่ระหว่างยื่นสมอ','อยู่ระหว่างยื่นสมอ.แท่นชาร์จ','อยู่ระหว่างยื่นสมอ.สายชาร์จ','ไม่ต้องยื่นสมอ.'];
 const OP_ST=['กำลังผลิต','อยู่ระหว่างส่งไปโกดังจีน','อยู่ระหว่างส่งมาไทย','ถึงไทยแล้ว/สำเร็จ','ยกเลิก ทำไม่ได้'];
 const SHIP_CO=['GTL','NEXT','GLT Logistics'];
@@ -684,7 +633,7 @@ function opt(arr,cur){return arr.map(o=>`<option${o===cur?' selected':''}>${esc(
 
 function fillTrackFilters(){
   const cos=[...new Set(db.tracking.map(t=>t.import_company).filter(Boolean))];
-  if($('trkCo'))$('trkCo').innerHTML='<option value="">— ทุกบริษัท —</option>'+[...new Set([...IMPORT_CO,...cos])].map(c=>`<option>${esc(c)}</option>`).join('');
+  if($('trkCo'))$('trkCo').innerHTML='<option value="">— ทุกบริษัท —</option>'+[...new Set([...consigneeNames(),...cos])].map(c=>`<option>${esc(c)}</option>`).join('');
   if($('trkOp'))$('trkOp').innerHTML='<option value="">— ทุกสถานะ —</option>'+OP_ST.map(c=>`<option>${esc(c)}</option>`).join('');
 }
 function renderTrack(){
@@ -723,7 +672,7 @@ function renderTrack(){
   $('trkTable').innerHTML=h+'</tbody></table>';
 }
 function openTrack(id){
-  $('t_co').innerHTML='<option value=""></option>'+opt(IMPORT_CO,'');
+  $('t_co').innerHTML='<option value=""></option>'+opt([...new Set([...consigneeNames(),...db.tracking.map(x=>x.import_company).filter(Boolean)])],'');
   $('t_mor').innerHTML='<option value=""></option>'+opt(MOR_ST,'');
   $('t_op').innerHTML='<option value=""></option>'+opt(OP_ST,'');
   $('shipCoList').innerHTML=[...new Set([...SHIP_CO,...db.tracking.map(t=>t.shipping).filter(Boolean)])].map(s=>`<option value="${esc(s)}">`).join('');
@@ -796,8 +745,8 @@ function renderSummary(){
   fillSummaryMonthList();
   const m=($('sumMonth').value||'').trim();
   if(!m){$('summaryWrap').innerHTML='<div class="empty">พิมพ์หรือเลือกเดือน (เช่น 2026-05) เพื่อดูสรุป</div>';return;}
-  const cos=IMPORT_CO;
   const all=db.tracking.filter(t=>t.period===m).sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||'')));
+  const cos=[...new Set(all.map(t=>t.import_company).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));
   const cell=t=>`
     <td style="white-space:pre-line">${esc(t.jst_po||'')}</td>
     <td style="white-space:pre-line;max-width:220px">${esc(t.product_list||'')}</td>
@@ -834,7 +783,7 @@ function renderSummary(){
 }
 function exportSummary(){
   const m=($('sumMonth').value||'').trim(); if(!m){alert('เลือก/พิมพ์เดือนก่อน');return;}
-  const cos=IMPORT_CO;
+  const cos=[...new Set(db.tracking.filter(t=>t.period===m).map(t=>t.import_company).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));
   const head=['รหัสใบจัดซื้อ','SKU / รายการ','คาดวันจ่ายภาษี','จำนวน','ราคา','ผู้รับผิดชอบ','ส่งออกวันที่','สถานะ','วันที่เข้า','ยอดภาษี','วันจ่ายจริง','ขนส่ง'];
   const rows=[]; let grand=0;
   const all=db.tracking.filter(t=>t.period===m).sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||'')));
@@ -948,10 +897,9 @@ async function saveShipment(){
   alert('บันทึกเอกสารแล้ว'+(linked?' + บันทึกในตาราง Shipment (แนบใบ INV จริง)':''));
 }
 function invProductList(items){return (items||[]).map(it=>{const p=prod(it.sku)||{};return `${it.sku}${it.qty?(' = '+money(it.qty)+' '+(p.unit||'ชุด')):''}`;}).join('\n');}
-function guessCo(t){t=(t||'').toUpperCase();for(const c of IMPORT_CO){if(t.includes(String(c).toUpperCase()))return c;}return '';}
 async function upsertTrackingFromInvoice(d,shipmentId){
   const plist=invProductList(d.items);
-  const co=guessCo((d.cname||'')+' '+(d.scomp||''));
+  const co=(d.cname||'').trim();
   const existing=db.tracking.find(t=>t.invoice_no && t.invoice_no===d.invno);
   if(existing){
     const patch={shipment_id:shipmentId};
