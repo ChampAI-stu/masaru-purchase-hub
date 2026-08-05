@@ -407,10 +407,11 @@ async function enterApp(session){
   const meta=session.user?.app_metadata||{};
   const roles=(Array.isArray(meta.user_roles)&&meta.user_roles.length)?meta.user_roles:(meta.user_role?[meta.user_role]:[]);
   const isExec=roles.includes('pr_exec')||roles.includes('executive');
-  if(!roles.includes('purchase')&&!isExec){location.replace('index.html');return;}
-  currentRole=roles.includes('purchase')?'purchase':'executive';
-  canEdit=currentRole==='purchase';
-  $('rolePill').textContent='บทบาท: '+({purchase:'จัดซื้อ (แก้ข้อมูลส่งออก/เอกสารได้)',executive:'ผู้บริหาร (ดูอย่างเดียว)'}[currentRole]);
+  const isShip=roles.includes('shipping');
+  if(!roles.includes('purchase')&&!isShip&&!isExec){location.replace('index.html');return;}
+  currentRole=roles.includes('purchase')?'purchase':(isShip?'shipping':'executive');
+  canEdit=(currentRole==='purchase'||currentRole==='shipping');   // shipping มีสิทธิ์เท่าจัดซื้อ
+  $('rolePill').textContent='บทบาท: '+({purchase:'จัดซื้อ (แก้ข้อมูลส่งออก/เอกสารได้)',shipping:'ขนส่ง/Shipping (สิทธิ์เท่าจัดซื้อ)',executive:'ผู้บริหาร (ดูอย่างเดียว)'}[currentRole]);
   if(!canEdit)document.body.classList.add('view-only');
   $('boot').style.display='none';$('app').style.display='block';
   await loadAll();bindDoc();go('dashboard');
@@ -494,7 +495,7 @@ function renderSkuTable(){
   const q=($('skuSearch').value||'').toLowerCase();
   const list=db.products.filter(p=>!q||((p.sku||'')+(p.name_en||'')+(p.name_th||'')+(p.product_name||'')+(p.brand||'')+(p.model||'')).toLowerCase().includes(q));
   if(!list.length){$('skuTable').innerHTML='<div class="empty">ไม่พบสินค้า (ดึงจาก sku_master + sku_export_info)</div>';return;}
-  let h='<table><thead><tr><th>SKU</th><th>Supplier</th><th>ต้นทุน (CNY)</th><th>สต็อก</th><th>ชื่อ (กลาง / EN / ไทย)</th><th>Brand·Model</th><th>ขนาดกล่อง·CBM·Kg</th><th class="no-print">จัดการ</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th>SKU</th><th>Supplier</th><th>ต้นทุน (CNY)</th><th>ชื่อ (กลาง / EN / ไทย)</th><th>Brand·Model</th><th>ขนาดกล่อง·CBM·Kg</th><th class="no-print">จัดการ</th></tr></thead><tbody>';
   list.forEach(p=>{
     const packed=(p.box_size||p.cbm_ctn||p.w_ctn)?`${esc(p.box_size||'')} · ${p.cbm_ctn||'-'} · ${p.w_ctn||'-'}`:'<span class="muted">ยังไม่กรอก</span>';
     const sups=(p.suppliers&&p.suppliers.length)?p.suppliers:[{supplier:'',price:null,product_name:'',stock:null}];
@@ -507,7 +508,6 @@ function renderSkuTable(){
         <td${bt}><b>${esc(p.sku)}</b></td>
         <td${bt}>${esc(sup.supplier||'')||'<span class="muted">—</span>'}</td>
         <td${bt}>${priceTxt}</td>
-        <td${bt}>${sup.stock!=null?money(sup.stock):'<span class="muted">—</span>'}</td>
         <td${bt}>${esc(nameMid)}<br><span class="muted">${esc(p.name_en||'')} / ${esc(p.name_th||'')}</span></td>
         <td${bt}>${esc(p.brand||'')} ${esc(p.model||'')}</td>
         <td${bt}>${packed}</td>
