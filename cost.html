@@ -132,11 +132,11 @@
       <div class="card">
         <h2>แนวโน้มราคาต่อหน่วย (จาก sku_price_history)</h2>
         <div class="toolbar"><label style="margin:0">เลือกสินค้า:</label>
-          <select id="dashSku" style="max-width:260px" onchange="drawPriceChart()"></select><span class="sp"></span><span class="muted">หน่วย: ¥</span></div>
+          <select id="dashSku" style="max-width:260px" onchange="drawPriceChart()"></select><span class="sp"></span><span class="muted">หน่วย: CNY</span></div>
         <div class="chartbox"><canvas id="priceChart"></canvas></div>
       </div>
       <div class="row">
-        <div class="card"><h2>ส่วนต่างราคาที่ลดได้ (¥/หน่วย สะสม)</h2><div class="chartbox"><canvas id="saveChart"></canvas></div></div>
+        <div class="card"><h2>ส่วนต่างราคาที่ลดได้ (CNY/หน่วย สะสม)</h2><div class="chartbox"><canvas id="saveChart"></canvas></div></div>
         <div class="card"><h2>ต้นทุนค่าขนส่ง / CBM</h2><div class="chartbox"><canvas id="shipChart"></canvas></div></div>
       </div>
     </section>
@@ -167,7 +167,7 @@
           <select id="costChange" style="max-width:140px" onchange="renderCostTable()"><option value="">ขึ้น + ลด</option><option value="up">▲ ขึ้นราคา</option><option value="down">▼ ลดราคา</option></select>
           <button class="btn ghost mini" onclick="clearCostFilter()">ล้างตัวกรอง</button>
           <button class="btn gold" onclick="exportCostSummary()">⬇️ ดึงสรุป (Excel)</button></div>
-        <div class="note">อ่านจากประวัติกลาง <b>sku_price_history</b> (ระบบ log อัตโนมัติเมื่อแก้ราคาใน PR) · “ส่วนต่างที่ลด” = ราคาเดิม − ราคาใหม่ ต่อหน่วย (¥) — ยังไม่คูณจำนวนสั่ง</div>
+        <div class="note">อ่านจากประวัติกลาง <b>sku_price_history</b> (ระบบ log อัตโนมัติเมื่อแก้ราคาใน PR) · “ส่วนต่างที่ลด” = ราคาเดิม − ราคาใหม่ ต่อหน่วย (CNY) — ยังไม่คูณจำนวนสั่ง</div>
         <div id="costKpi" class="kpis" style="margin-bottom:14px"></div>
         <div id="costTable"></div>
       </div>
@@ -472,7 +472,7 @@ function renderSkuTable(){
   const q=($('skuSearch').value||'').toLowerCase();
   const list=db.products.filter(p=>!q||((p.sku||'')+(p.name_en||'')+(p.name_th||'')+(p.product_name||'')+(p.brand||'')+(p.model||'')).toLowerCase().includes(q));
   if(!list.length){$('skuTable').innerHTML='<div class="empty">ไม่พบสินค้า (ดึงจาก sku_master + sku_export_info)</div>';return;}
-  let h='<table><thead><tr><th>SKU</th><th>ชื่อ (กลาง / EN / ไทย)</th><th>Brand·Model</th><th>ต้นทุน (¥)</th><th>ขนาดกล่อง·CBM·Kg</th><th class="no-print">จัดการ</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th>SKU</th><th>ชื่อ (กลาง / EN / ไทย)</th><th>Brand·Model</th><th>ต้นทุน (CNY)</th><th>ขนาดกล่อง·CBM·Kg</th><th class="no-print">จัดการ</th></tr></thead><tbody>';
   list.forEach(p=>{
     const priceTxt=p.price!=null?money(p.price)+(p.supplier?` <span class="muted">(${esc(p.supplier)})</span>`:''):'<span class="muted">—</span>';
     const packed=(p.box_size||p.cbm_ctn||p.w_ctn)?`${esc(p.box_size||'')} · ${p.cbm_ctn||'-'} · ${p.w_ctn||'-'}`:'<span class="muted">ยังไม่กรอก</span>';
@@ -485,7 +485,7 @@ function renderSkuTable(){
 function openExport(sku){
   const p=prod(sku)||{sku}; const e=db.expMap[sku]||{};
   $('e_sku').value=sku; $('e_sku').readOnly=true;
-  $('e_costinfo').innerHTML = p.price!=null ? `ต้นทุนกลาง: <b>${money(p.price)} ¥</b>${p.supplier?' · '+esc(p.supplier):''} <span class="muted">(แก้ราคาที่ระบบ PR)</span>` : '<span class="muted">ยังไม่มีราคาใน sku_master (แก้ที่ระบบ PR)</span>';
+  $('e_costinfo').innerHTML = p.price!=null ? `ต้นทุนกลาง: <b>${money(p.price)} CNY</b>${p.supplier?' · '+esc(p.supplier):''} <span class="muted">(แก้ราคาที่ระบบ PR)</span>` : '<span class="muted">ยังไม่มีราคาใน sku_master (แก้ที่ระบบ PR)</span>';
   $('e_brand').value=e.brand||p.brand||'';$('e_en').value=e.name_en||'';$('e_th').value=e.name_th||p.product_name||'';
   $('e_model').value=e.model||'';$('e_hs').value=e.hs||'';$('e_comp').value=e.component||'';$('e_spec').value=e.spec||'';
   $('e_unit').value=e.unit||'';$('e_perctn').value=e.per_ctn||'';$('e_wctn').value=e.w_ctn||'';
@@ -566,12 +566,12 @@ function renderCostTable(){
   const rows=set.slice().sort((a,b)=>String(b.changed_at).localeCompare(String(a.changed_at)));
   const totalSave=set.reduce((s,h)=>s+h.saveUnit,0);
   const nDown=set.filter(h=>h.pct!=null&&h.pct<0).length, nUp=set.filter(h=>h.pct!=null&&h.pct>0).length;
-  $('costKpi').innerHTML=`<div class="kpi green"><div class="lbl">ส่วนต่างที่ลดได้ (¥/หน่วย)</div><div class="val">${money(totalSave)}</div></div>
+  $('costKpi').innerHTML=`<div class="kpi green"><div class="lbl">ส่วนต่างที่ลดได้ (CNY/หน่วย)</div><div class="val">${money(totalSave)}</div></div>
     <div class="kpi gold"><div class="lbl">ครั้งราคาลด</div><div class="val">${nDown}</div></div>
     <div class="kpi"><div class="lbl">ครั้งราคาขึ้น</div><div class="val">${nUp}</div></div>
     <div class="kpi"><div class="lbl">รายการ (ตามตัวกรอง)</div><div class="val">${set.length}</div></div>`;
   if(!rows.length){$('costTable').innerHTML='<div class="empty">ไม่มีรายการตามตัวกรอง</div>';return;}
-  let h='<table><thead><tr><th>วันที่เปลี่ยน</th><th>SKU</th><th>Supplier</th><th>ราคาเดิม→ใหม่</th><th>%เปลี่ยน</th><th>ลดได้/หน่วย (¥)</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th>วันที่เปลี่ยน</th><th>SKU</th><th>Supplier</th><th>ราคาเดิม→ใหม่</th><th>%เปลี่ยน</th><th>ลดได้/หน่วย (CNY)</th></tr></thead><tbody>';
   rows.forEach(r=>{let pill='<span class="pill flat">—</span>';
     if(r.pct>0)pill=`<span class="pill up">▲ ${r.pct.toFixed(1)}%</span>`;
     else if(r.pct<0)pill=`<span class="pill down">▼ ${Math.abs(r.pct).toFixed(1)}%</span>`;
@@ -586,7 +586,7 @@ function exportCostSummary(){
   if(!all.length){alert('ไม่มีข้อมูลตามตัวกรอง');return;}
   // ชีท 1: สรุปรายสินค้า (ตามตัวกรอง)
   const bySku={}; all.forEach(h=>{(bySku[h.sku]=bySku[h.sku]||[]).push(h);});
-  const sum=[['SKU','ชื่อสินค้า','Supplier ล่าสุด','ราคาปัจจุบัน (¥)','ราคาต่ำสุด','ราคาสูงสุด','จำนวนครั้งเปลี่ยน','ลดได้รวม/หน่วย (¥)','ขึ้นราคา(ครั้ง)','ลดราคา(ครั้ง)']];
+  const sum=[['SKU','ชื่อสินค้า','Supplier ล่าสุด','ราคาปัจจุบัน (CNY)','ราคาต่ำสุด','ราคาสูงสุด','จำนวนครั้งเปลี่ยน','ลดได้รวม/หน่วย (CNY)','ขึ้นราคา(ครั้ง)','ลดราคา(ครั้ง)']];
   const skus=Object.keys(bySku).sort();
   skus.forEach(sku=>{
     const list=(bySku[sku]||[]).slice().sort((a,b)=>String(a.changed_at).localeCompare(String(b.changed_at)));
@@ -600,7 +600,7 @@ function exportCostSummary(){
       prices.length?Math.min(...prices):'', prices.length?Math.max(...prices):'', list.length, save, up, down]);
   });
   // ชีท 2: ประวัติ (ตามตัวกรอง)
-  const det=[['วันที่เปลี่ยน','SKU','Supplier','ราคาเดิม','ราคาใหม่','%เปลี่ยน','ลดได้/หน่วย (¥)']];
+  const det=[['วันที่เปลี่ยน','SKU','Supplier','ราคาเดิม','ราคาใหม่','%เปลี่ยน','ลดได้/หน่วย (CNY)']];
   all.slice().sort((a,b)=>String(b.changed_at).localeCompare(String(a.changed_at))).forEach(h=>{
     det.push([String(h.changed_at||'').slice(0,10),h.sku,h.supplier||'',h.oldp==null?'':h.oldp,h.newp,
       h.pct==null?'':h.pct.toFixed(1)+'%', h.saveUnit>0?h.saveUnit:'']);
@@ -1004,7 +1004,7 @@ function renderDashboard(){
   const totalSave=histRows().reduce((s,h)=>s+h.saveUnit,0);
   const shipTot=db.shipcosts.reduce((s,x)=>s+ +x.cost,0), shipCbm=db.shipcosts.reduce((s,x)=>s+(+x.cbm||0),0);
   $('kpiWrap').innerHTML=`<div class="kpi"><div class="lbl">จำนวน SKU</div><div class="val">${db.products.length}</div></div>
-    <div class="kpi green"><div class="lbl">ส่วนต่างลดได้ (¥/หน่วย)</div><div class="val">${money(totalSave)}</div></div>
+    <div class="kpi green"><div class="lbl">ส่วนต่างลดได้ (CNY/หน่วย)</div><div class="val">${money(totalSave)}</div></div>
     <div class="kpi gold"><div class="lbl">ค่าขนส่งรวม (บาท)</div><div class="val">${money(shipTot)}</div></div>
     <div class="kpi"><div class="lbl">เฉลี่ย บาท/CBM</div><div class="val">${money(shipCbm?shipTot/shipCbm:0)}</div></div>
     <div class="kpi"><div class="lbl">Shipment กำลังผลิต</div><div class="val">${db.tracking.filter(t=>t.op_status==='กำลังผลิต').length}</div></div>`;
@@ -1015,9 +1015,9 @@ function drawPriceChart(){destroy('price');const sku=$('dashSku').value;if(!sku)
   if(hl.length){const f=hl[0];if(f.old_price!=null){labels.push(String(f.changed_at).slice(0,10)+' (เดิม)');vals.push(+f.old_price);}
     hl.forEach(h=>{labels.push(String(h.changed_at).slice(0,10));vals.push(+h.new_price);});}
   else{const p=prod(sku);if(p&&p.price!=null){labels.push('ปัจจุบัน');vals.push(p.price);}}
-  charts.price=new Chart($('priceChart'),{type:'line',data:{labels,datasets:[{label:sku+' (¥)',data:vals,borderColor:'#3A5A8C',backgroundColor:'rgba(58,90,140,.15)',fill:true,tension:.2,pointRadius:5}]},options:{responsive:true,maintainAspectRatio:false}});}
+  charts.price=new Chart($('priceChart'),{type:'line',data:{labels,datasets:[{label:sku+' (CNY)',data:vals,borderColor:'#3A5A8C',backgroundColor:'rgba(58,90,140,.15)',fill:true,tension:.2,pointRadius:5}]},options:{responsive:true,maintainAspectRatio:false}});}
 function drawSaveChart(){destroy('save');const bySku={};histRows().forEach(h=>{if(h.saveUnit>0)bySku[h.sku]=(bySku[h.sku]||0)+h.saveUnit;});const labels=Object.keys(bySku);
-  charts.save=new Chart($('saveChart'),{type:'bar',data:{labels,datasets:[{label:'ลดได้สะสม (¥/หน่วย)',data:labels.map(l=>bySku[l]),backgroundColor:'#1E7145'}]},options:{responsive:true,maintainAspectRatio:false}});}
+  charts.save=new Chart($('saveChart'),{type:'bar',data:{labels,datasets:[{label:'ลดได้สะสม (CNY/หน่วย)',data:labels.map(l=>bySku[l]),backgroundColor:'#1E7145'}]},options:{responsive:true,maintainAspectRatio:false}});}
 function drawShipChart(){destroy('ship');const list=[...db.shipcosts].sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
   charts.ship=new Chart($('shipChart'),{type:'bar',data:{labels:list.map(x=>x.ref),datasets:[{label:'บาท/CBM',data:list.map(x=>x.cbm?(+x.cost/+x.cbm):0),backgroundColor:'#D0212B'}]},options:{responsive:true,maintainAspectRatio:false}});}
 
