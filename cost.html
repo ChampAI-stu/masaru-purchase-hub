@@ -484,7 +484,7 @@ function buildProducts(){
       product_name: best?best.product_name:(e.name_th||e.name_en||''),
       price: best?(+best.standard_price||0):null,
       supplier: best?(best.supplier||''):'',
-      suppliers: rows.map(r=>({supplier:r.supplier||'',price:+r.standard_price||0})),
+      suppliers: rows.map(r=>({supplier:r.supplier||'',price:+r.standard_price||0,product_name:r.product_name||'',stock:r.current_stock})),
       current_stock: best?best.current_stock:null,
       name_en:e.name_en||'', name_th:e.name_th||'', brand:e.brand||'', model:e.model||'', hs:e.hs||'',
       component:e.component||'', spec:e.spec||'', unit:e.unit||'', per_ctn:e.per_ctn||null,
@@ -518,21 +518,23 @@ function renderSkuTable(){
   const q=($('skuSearch').value||'').toLowerCase();
   const list=db.products.filter(p=>!q||((p.sku||'')+(p.name_en||'')+(p.name_th||'')+(p.product_name||'')+(p.brand||'')+(p.model||'')).toLowerCase().includes(q));
   if(!list.length){$('skuTable').innerHTML='<div class="empty">ไม่พบสินค้า (ดึงจาก sku_master + sku_export_info)</div>';return;}
-  let h='<table><thead><tr><th>SKU</th><th>Supplier</th><th>ต้นทุน (CNY)</th><th>ชื่อ (กลาง / EN / ไทย)</th><th>Brand·Model</th><th>ขนาดกล่อง·CBM·Kg</th><th class="no-print">จัดการ</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th>SKU</th><th>Supplier</th><th>ต้นทุน (CNY)</th><th>สต็อก</th><th>ชื่อ (กลาง / EN / ไทย)</th><th>Brand·Model</th><th>ขนาดกล่อง·CBM·Kg</th><th class="no-print">จัดการ</th></tr></thead><tbody>';
   list.forEach(p=>{
     const packed=(p.box_size||p.cbm_ctn||p.w_ctn)?`${esc(p.box_size||'')} · ${p.cbm_ctn||'-'} · ${p.w_ctn||'-'}`:'<span class="muted">ยังไม่กรอก</span>';
-    const sups=(p.suppliers&&p.suppliers.length)?p.suppliers:[{supplier:'',price:null}];
+    const sups=(p.suppliers&&p.suppliers.length)?p.suppliers:[{supplier:'',price:null,product_name:'',stock:null}];
     sups.forEach((sup,i)=>{
       const first=i===0;
       const bt=first?' style="border-top:2px solid var(--line)"':'';
       const priceTxt=sup.price!=null?money(sup.price):'<span class="muted">—</span>';
+      const nameMid=sup.product_name||p.product_name||'';
       h+=`<tr>
-        <td${bt}>${first?`<b>${esc(p.sku)}</b>`:''}</td>
+        <td${bt}><b>${esc(p.sku)}</b></td>
         <td${bt}>${esc(sup.supplier||'')||'<span class="muted">—</span>'}</td>
         <td${bt}>${priceTxt}</td>
-        <td${bt}>${first?esc(p.product_name||'')+'<br><span class="muted">'+esc(p.name_en||'')+' / '+esc(p.name_th||'')+'</span>':''}</td>
-        <td${bt}>${first?esc(p.brand||'')+' '+esc(p.model||''):''}</td>
-        <td${bt}>${first?packed:''}</td>
+        <td${bt}>${sup.stock!=null?money(sup.stock):'<span class="muted">—</span>'}</td>
+        <td${bt}>${esc(nameMid)}<br><span class="muted">${esc(p.name_en||'')} / ${esc(p.name_th||'')}</span></td>
+        <td${bt}>${esc(p.brand||'')} ${esc(p.model||'')}</td>
+        <td${bt}>${packed}</td>
         <td class="no-print"${bt}>${first?`<button class="mini btn" onclick="openExport('${esc(p.sku)}')">${canEdit?'แก้ข้อมูลส่งออก':'ดู'}</button>`:''}</td>
       </tr>`;
     });
