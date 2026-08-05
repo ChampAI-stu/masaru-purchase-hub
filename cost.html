@@ -801,7 +801,7 @@ function initInvPl(){
   fillSkuSelects();
   fillPartySelects();
   $('loadShipment').innerHTML='<option value="">— เอกสารบันทึกไว้ —</option>'+db.shipments.map(s=>`<option value="${s.id}">${esc(s.invno)} · ${s.date||''}</option>`).join('');
-  if(db.shipments[0]){$('loadShipment').value=db.shipments[0].id;loadShipmentToForm();}else newShipmentForm();
+  newShipmentForm();   // เริ่มเป็นบิลใหม่เปล่าทุกครั้งที่เข้าหน้านี้ (เลือกจาก dropdown ถ้าจะเปิดใบเก่า)
 }
 function newShipmentForm(){
   $('loadShipment').value='';['f_invno','f_sname','f_stel','f_scomp','f_saddr','f_cname','f_caddr','f_port'].forEach(i=>$(i).value='');
@@ -921,7 +921,8 @@ function renderDoc(){
   $('docPreview').innerHTML=`<div class="doc"><section class="inv-page"><h2 class="title">INVOICE</h2><div class="goldline"></div>${hdr('Invoice No')}
     <table class="items"><colgroup><col style="width:13%"><col style="width:13%"><col style="width:12%"><col style="width:10%"><col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:7%"><col style="width:20%"></colgroup><thead><tr><th>DESCRIPTION</th><th>Picture</th><th>COMPONENT</th><th>Specification</th><th>Unit Price</th><th>Qty (PCS)</th><th>Total/${esc(d.cur)}</th><th>GW (Kg)</th><th>Remark</th></tr></thead><tbody>${rowInv}
       <tr><td colspan="4" style="text-align:right"><b>Logistics costs</b></td><td></td><td></td><td style="text-align:right">${money(d.logi)}</td><td></td><td></td></tr>
-      <tr><td colspan="6" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(totalPrice+d.logi)}</b></td><td></td><td></td></tr></tbody></table></section>
+      <tr><td colspan="6" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(totalPrice+d.logi)}</b></td><td></td><td></td></tr></tbody></table>
+    <div class="sig">Signature and Company Stamp<br><br>________________________</div></section>
     <section class="pl-page"><h2 class="title">PACKING LIST</h2><div class="goldline"></div>${hdr('Reference Invoice No')}
     <table class="items"><colgroup><col style="width:7%"><col style="width:33%"><col style="width:30%"><col style="width:10%"><col style="width:20%"></colgroup><thead><tr><th>ITEM</th><th>DESCRIPTION OF GOODS</th><th>Dimension</th><th>GW (Kg)</th><th>Shipping Mark</th></tr></thead><tbody>${rowPl}</tbody></table>
     <div class="sig">Signature and Company Stamp<br><br>________________________</div></section></div>`;
