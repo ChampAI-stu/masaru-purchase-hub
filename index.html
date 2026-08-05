@@ -212,8 +212,11 @@ async function showHub(session){
   const isExec = roles.some(isExecRole);
   const apps = isExec ? all : all.filter(a => (a.roles||[]).some(r => roles.includes(r)));
 
-  // (ปิดการเด้งเข้าระบบอัตโนมัติ) — โชว์การ์ดให้กดเอง เพื่อกัน redirect วนลูป
-  // ถ้ามีเว็บเดียวก็ยังโชว์การ์ดนั้นให้กด
+  // มีเว็บเดียว → พาเข้าเว็บนั้นเลย ไม่ต้องเห็นหน้าเลือก
+  if(apps.length === 1){
+    window.location.replace(apps[0].url);
+    return;
+  }
 
   $('hubSub').textContent = apps.length
     ? `คุณมีสิทธิ์เข้าใช้งาน ${apps.length} ระบบ — แตะการ์ดเพื่อเปิดในแท็บใหม่ (เปิดพร้อมกันได้หลายเว็บ)`
