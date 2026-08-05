@@ -243,7 +243,7 @@
             <datalist id="skuList"></datalist>
             <button class="btn gold" onclick="addLineBySku()">+ เพิ่มรายการ</button>
           </div>
-          <div id="lineItems"></div>
+          <div id="lineItems" style="overflow-x:auto"></div>
           <input type="file" id="lineImgFile" accept="image/*" style="display:none" onchange="onLineImg(this)">
           <div class="toolbar" style="margin-top:12px">
             <button class="btn green edit-only" onclick="saveShipment()">💾 บันทึกเอกสาร</button>
@@ -830,7 +830,7 @@ function setLineSku(i,val){
 }
 function renderLines(){
   if(!curItems.length){$('lineItems').innerHTML='<div class="empty">ยังไม่มีรายการ — พิมพ์ SKU ด้านบน</div>';return;}
-  let h='<table><thead><tr><th>SKU</th><th>รูป</th><th>ราคา</th><th>จำนวน(PCS)</th><th>Cartons</th><th>GW(Kg)</th><th>Shipping Mark</th><th></th></tr></thead><tbody>';
+  let h='<table style="min-width:760px"><thead><tr><th>SKU</th><th>รูป</th><th>ราคา</th><th>จำนวน(PCS)</th><th>Cartons</th><th>GW(Kg)</th><th>Shipping Mark</th><th></th></tr></thead><tbody>';
   curItems.forEach((it,i)=>{const p=prod(it.sku);
     const picCell=it.pic
       ?`<img class="thumb" src="${esc(it.pic)}"><br><button class="mini btn red" onclick="clearLineImage(${i})">ลบรูป</button>`
