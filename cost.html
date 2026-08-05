@@ -177,6 +177,7 @@
           <div class="toolbar">
             <select id="loadShipment" style="max-width:260px" onchange="loadShipmentToForm()"><option value="">— เอกสารบันทึกไว้ —</option></select>
             <button class="btn ghost mini edit-only" onclick="newShipmentForm()">สร้างใหม่</button>
+            <button class="btn red mini edit-only" onclick="deleteShipment()">🗑️ ลบใบนี้</button>
           </div>
           <div class="grid2"><div><label>Invoice / PO No.</label><input id="f_invno" placeholder="PO2607014"></div><div><label>วันที่</label><input id="f_date" type="date"></div></div>
           <h3>ผู้ส่ง (Sender)</h3>
@@ -424,8 +425,9 @@ function histRows(){
     return{...h,oldp,newp,pct,saveUnit};});
 }
 function renderCostTable(){
-  fillSkuSelects();
-  const flt=$('costFilter').value;
+  const flt=$('costFilter').value;     // อ่านค่าที่เลือกก่อน
+  fillSkuSelects();                    // (สร้าง options ใหม่)
+  $('costFilter').value=flt;           // คืนค่าที่เลือกไว้
   const rows=histRows().filter(h=>!flt||h.sku===flt).sort((a,b)=>String(b.changed_at).localeCompare(String(a.changed_at)));
   const all=histRows();
   const totalSave=all.reduce((s,h)=>s+h.saveUnit,0);
@@ -528,6 +530,14 @@ async function saveShipment(){
   const id=$('loadShipment').value;
   const ok=await dbWrite(()=> id?sb.from('shipments').update(rec).eq('id',id):sb.from('shipments').insert(rec));
   if(ok){await reload('shipments');initInvPl();alert('บันทึกเอกสารแล้ว');}
+}
+async function deleteShipment(){
+  const id=$('loadShipment').value;
+  if(!id)return alert('ยังไม่ได้เลือกเอกสาร (เอกสารที่ยังไม่บันทึกไม่ต้องลบ กด “สร้างใหม่” ได้เลย)');
+  const s=db.shipments.find(x=>x.id===id);
+  if(!confirm(`ลบเอกสาร "${s?s.invno:''}" ถาวร?\n(ลบออกจากฐานข้อมูล กู้คืนไม่ได้)`))return;
+  const ok=await dbWrite(()=>sb.from('shipments').delete().eq('id',id));
+  if(ok){await reload('shipments');initInvPl();alert('ลบเอกสารแล้ว');}
 }
 function fmtDate(d){if(!d)return'';return new Date(d).toLocaleDateString('en-GB');}
 function renderDoc(){
