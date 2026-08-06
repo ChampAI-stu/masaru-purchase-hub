@@ -134,17 +134,12 @@
 
   <main>
     <section id="tab-dashboard">
-      <div class="card"><h2>ภาพรวม</h2><div class="kpis" id="kpiWrap"></div></div>
-      <div class="card">
-        <h2>แนวโน้มราคาต่อหน่วย (จาก sku_price_history)</h2>
-        <div class="toolbar"><label style="margin:0">เลือกสินค้า:</label>
-          <select id="dashSku" style="max-width:260px" onchange="drawPriceChart()"></select><span class="sp"></span><span class="muted">หน่วย: CNY</span></div>
-        <div class="chartbox"><canvas id="priceChart"></canvas></div>
-      </div>
+      <div class="card"><h2>ภาพรวม Shipment</h2><div class="kpis" id="kpiWrap"></div></div>
       <div class="row">
-        <div class="card"><h2>ส่วนต่างราคาที่ลดได้ (CNY/หน่วย สะสม)</h2><div class="chartbox"><canvas id="saveChart"></canvas></div></div>
-        <div class="card"><h2>ต้นทุนค่าขนส่ง / CBM</h2><div class="chartbox"><canvas id="shipChart"></canvas></div></div>
+        <div class="card"><h2>สถานะ Shipment</h2><div class="chartbox"><canvas id="statusChart"></canvas></div></div>
+        <div class="card"><h2>มูลค่านำเข้ารายบริษัท (เดือนนี้)</h2><div class="chartbox"><canvas id="coChart"></canvas></div></div>
       </div>
+      <div class="card"><h2>⚠️ ภาษีใกล้ครบกำหนด (ภายใน 14 วัน)</h2><div id="taxDue" style="overflow-x:auto"></div></div>
     </section>
 
     <section id="tab-sku" style="display:none">
@@ -561,8 +556,6 @@ function setLineImageUrl(i,url){url=(url||'').trim();if(!url)return;curItems[i].
 function clearAllImages(){if(!curItems.some(it=>it.pic))return;if(!confirm('ล้างรูปทั้งหมดในเอกสารนี้? (บันทึกทับเพื่อคืนพื้นที่ DB)'))return;curItems.forEach(it=>it.pic='');renderLines();renderDoc();}
 
 function fillSkuSelects(){
-  const opts=db.products.map(p=>`<option value="${esc(p.sku)}">${esc(p.sku)} — ${esc(p.name_en||p.product_name||'')}</option>`).join('');
-  if($('dashSku'))$('dashSku').innerHTML=opts;
   if($('skuList'))$('skuList').innerHTML=db.products.map(p=>`<option value="${esc(p.sku)}">`).join('');
 }
 
@@ -1062,27 +1055,57 @@ async function seedSample(){
 /* ===== DASHBOARD ===== */
 let charts={};
 function destroy(k){if(charts[k]){charts[k].destroy();delete charts[k];}}
-function renderDashboard(){
-  fillSkuSelects();
-  const totalSave=histRows().reduce((s,h)=>s+h.saveUnit,0);
-  const shipTot=db.shipcosts.reduce((s,x)=>s+ +x.cost,0), shipCbm=db.shipcosts.reduce((s,x)=>s+(+x.cbm||0),0);
-  $('kpiWrap').innerHTML=`<div class="kpi"><div class="lbl">จำนวน SKU</div><div class="val">${db.products.length}</div></div>
-    <div class="kpi green"><div class="lbl">ส่วนต่างลดได้ (CNY/หน่วย)</div><div class="val">${money(totalSave)}</div></div>
-    <div class="kpi gold"><div class="lbl">ค่าขนส่งรวม (บาท)</div><div class="val">${money(shipTot)}</div></div>
-    <div class="kpi"><div class="lbl">เฉลี่ย บาท/CBM</div><div class="val">${money(shipCbm?shipTot/shipCbm:0)}</div></div>
-    <div class="kpi"><div class="lbl">Shipment กำลังผลิต</div><div class="val">${db.tracking.filter(t=>t.op_status==='กำลังผลิต').length}</div></div>`;
-  drawPriceChart();drawSaveChart();drawShipChart();
+function chartEmpty(canvasId,msg){
+  const box=$(canvasId).parentElement; let e=box.querySelector('.chart-empty');
+  if(msg){ if(!e){e=document.createElement('div');e.className='chart-empty';e.style.cssText='display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:13px;text-align:center';box.appendChild(e);} e.textContent=msg; $(canvasId).style.display='none'; }
+  else { if(e)e.remove(); $(canvasId).style.display=''; }
 }
-function drawPriceChart(){destroy('price');const sku=$('dashSku').value;if(!sku)return;
-  const hl=histBySku(sku);const labels=[],vals=[];
-  if(hl.length){const f=hl[0];if(f.old_price!=null){labels.push(String(f.changed_at).slice(0,10)+' (เดิม)');vals.push(+f.old_price);}
-    hl.forEach(h=>{labels.push(String(h.changed_at).slice(0,10));vals.push(+h.new_price);});}
-  else{const p=prod(sku);if(p&&p.price!=null){labels.push('ปัจจุบัน');vals.push(p.price);}}
-  charts.price=new Chart($('priceChart'),{type:'line',data:{labels,datasets:[{label:sku+' (CNY)',data:vals,borderColor:'#3A5A8C',backgroundColor:'rgba(58,90,140,.15)',fill:true,tension:.2,pointRadius:5}]},options:{responsive:true,maintainAspectRatio:false}});}
-function drawSaveChart(){destroy('save');const bySku={};histRows().forEach(h=>{if(h.saveUnit>0)bySku[h.sku]=(bySku[h.sku]||0)+h.saveUnit;});const labels=Object.keys(bySku);
-  charts.save=new Chart($('saveChart'),{type:'bar',data:{labels,datasets:[{label:'ลดได้สะสม (CNY/หน่วย)',data:labels.map(l=>bySku[l]),backgroundColor:'#1E7145'}]},options:{responsive:true,maintainAspectRatio:false}});}
-function drawShipChart(){destroy('ship');const list=[...db.shipcosts].sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
-  charts.ship=new Chart($('shipChart'),{type:'bar',data:{labels:list.map(x=>x.ref),datasets:[{label:'บาท/CBM',data:list.map(x=>x.cbm?(+x.cost/+x.cbm):0),backgroundColor:'#D0212B'}]},options:{responsive:true,maintainAspectRatio:false}});}
+function renderDashboard(){
+  const T=db.tracking;
+  const producing=T.filter(t=>t.op_status==='กำลังผลิต').length;
+  const transit=T.filter(t=>t.op_status==='อยู่ระหว่างส่งไปโกดังจีน'||t.op_status==='อยู่ระหว่างส่งมาไทย').length;
+  const arrived=T.filter(t=>t.op_status==='ถึงไทยแล้ว/สำเร็จ').length;
+  $('kpiWrap').innerHTML=`
+    <div class="kpi"><div class="lbl">Shipment ทั้งหมด</div><div class="val">${T.length}</div></div>
+    <div class="kpi gold"><div class="lbl">กำลังผลิต</div><div class="val">${producing}</div></div>
+    <div class="kpi"><div class="lbl">อยู่ระหว่างส่ง</div><div class="val">${transit}</div></div>
+    <div class="kpi green"><div class="lbl">ถึงไทยแล้ว/สำเร็จ</div><div class="val">${arrived}</div></div>
+    <div class="kpi"><div class="lbl">เอกสาร INV</div><div class="val">${db.shipments.length}</div></div>
+    <div class="kpi"><div class="lbl">จำนวน SKU</div><div class="val">${db.products.length}</div></div>`;
+  drawStatusChart(); drawCoChart(); renderTaxDue();
+}
+function drawStatusChart(){destroy('status');
+  const order=['กำลังผลิต','อยู่ระหว่างส่งไปโกดังจีน','อยู่ระหว่างส่งมาไทย','ถึงไทยแล้ว/สำเร็จ','ยกเลิก ทำไม่ได้'];
+  const labels=[],data=[],colors=[];
+  order.forEach(s=>{const n=db.tracking.filter(t=>t.op_status===s).length;if(n>0){labels.push(s);data.push(n);colors.push(opColor(s));}});
+  if(!data.length){chartEmpty('statusChart','ยังไม่มีข้อมูล Shipment');return;} chartEmpty('statusChart',null);
+  charts.status=new Chart($('statusChart'),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+}
+function drawCoChart(){destroy('co');
+  const m=new Date().toISOString().slice(0,7);
+  const by={};db.tracking.filter(t=>t.period===m).forEach(t=>{const c=t.import_company||'(ไม่ระบุ)';by[c]=(by[c]||0)+(+t.sum_amount||0);});
+  const labels=Object.keys(by);
+  if(!labels.length){chartEmpty('coChart','ไม่มีข้อมูลเดือนนี้ ('+m+')');return;} chartEmpty('coChart',null);
+  const palette=['#2E75B6','#1E7145','#C9A84C','#D0212B','#4B2E83','#8a5a00'];
+  charts.co=new Chart($('coChart'),{type:'bar',data:{labels,datasets:[{label:'มูลค่า',data:labels.map(l=>by[l]),backgroundColor:labels.map((_,i)=>palette[i%palette.length])}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+}
+function renderTaxDue(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const in14=new Date(today); in14.setDate(in14.getDate()+14);
+  const rows=db.tracking.filter(t=>{
+    if(t.tax_paid) return false;
+    if(!t.tax_due_date) return false;
+    const d=new Date(t.tax_due_date); return !isNaN(d)&&d<=in14;
+  }).sort((a,b)=>String(a.tax_due_date).localeCompare(String(b.tax_due_date)));
+  if(!rows.length){$('taxDue').innerHTML='<div class="empty">ไม่มีภาษีที่ใกล้ครบกำหนดใน 14 วัน 🎉</div>';return;}
+  let h='<table><thead><tr><th>Invoice</th><th>บริษัทนำเข้า</th><th>คาดวันจ่ายภาษี</th><th>ยอดภาษี</th><th>สถานะ</th></tr></thead><tbody>';
+  rows.forEach(t=>{const d=new Date(t.tax_due_date);const overdue=d<today;
+    h+=`<tr><td>${esc(t.invoice_no||'')}</td><td>${esc(t.import_company||'')}</td>
+      <td style="white-space:nowrap;color:${overdue?'#C00000':'inherit'};font-weight:${overdue?'700':'400'}">${esc(t.tax_due_date)}${overdue?' ⚠️ เกินกำหนด':''}</td>
+      <td style="text-align:right">${t.tax_amount!=null?money(t.tax_amount):'-'}</td>
+      <td><span style="background:${opColor(t.op_status)};color:#fff;padding:2px 7px;border-radius:10px;white-space:nowrap">${esc(t.op_status||'-')}</span></td></tr>`;});
+  $('taxDue').innerHTML=h+'</tbody></table>';
+}
 
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 </script>
