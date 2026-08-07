@@ -277,6 +277,12 @@
           <div class="combo" style="max-width:240px;flex:1"><input id="loadTax" class="combo-input" placeholder="— ค้นหา/เลือกใบสรุปภาษี —"><div id="loadTax_list" class="combo-list"></div></div>
           <button class="btn ghost" onclick="newTaxForm()">สร้างใหม่</button>
           <button class="btn red edit-only" onclick="deleteTaxSummary()">🗑 ลบใบนี้</button></div>
+        <div class="note" style="background:#EBF3FB">🔗 <b>ดึงข้อมูลจากใบบิล INV</b> ที่ออกไว้แล้ว — เลือกใบบิล ใส่อัตราแลกเปลี่ยนเป็นบาท (ถ้าบิลเป็น THB ใส่ 1) แล้วกด “ดึงข้อมูล” ระบบจะเติม SKU/จำนวน/ยอดเงิน + หัวเอกสารให้</div>
+        <div class="grid3">
+          <div><label>โหลดจากใบบิล (INV)</label><div class="combo"><input id="loadFromInv" class="combo-input" placeholder="— เลือกใบบิล —"><div id="loadFromInv_list" class="combo-list"></div></div></div>
+          <div><label>อัตราแลกเปลี่ยน (บาท/หน่วยบิล)</label><input id="x_rate" type="number" step="0.0001" value="1"></div>
+          <div style="display:flex;align-items:flex-end"><button class="btn edit-only" onclick="loadInvToTax()" style="width:100%">⬇️ ดึงข้อมูลจากบิลมาคำนวณ</button></div>
+        </div>
         <div class="grid2">
           <div><label>หัวเรื่อง</label><input id="x_title" placeholder="เช่น สรุปภาษีนำเข้า PO19305 + 19261 By GTL" oninput="renderTaxDoc()"></div>
           <div><label>ภาษีเดือน</label><input id="x_period" type="month" oninput="renderTaxDoc()"></div>
@@ -1137,12 +1143,27 @@ function renderTaxDoc(){
 }
 function initTax(){
   comboInit('loadTax', db.taxsum.map(s=>({id:s.id,label:(s.title||'(ไม่มีหัวเรื่อง)')+' · '+String(s.created_at||'').slice(0,10)})), ()=>loadTaxToForm(), '— ค้นหา/เลือกใบสรุปภาษี —');
+  comboInit('loadFromInv', db.shipments.map(s=>({id:s.id,label:(s.invno||'(ไม่มีเลข)')+' · '+(s.date||'')+' · '+(s.cname||'')})), null, '— เลือกใบบิล INV —');
   newTaxForm();
 }
+function loadInvToTax(){
+  const id=comboVal('loadFromInv'); if(!id){alert('เลือกใบบิล INV ก่อน');return;}
+  const s=db.shipments.find(x=>x.id===id); if(!s){alert('ไม่พบใบบิล');return;}
+  const rate=+$('x_rate').value||1;
+  const trk=db.tracking.find(x=>x.invoice_no===s.invno)||{};
+  $('x_ref').value=s.invno||'';
+  $('x_termport').value=((s.term||'')+' '+(s.port||'')).trim();
+  if(s.cname)$('x_company').value=s.cname;
+  if(trk.shipping)$('x_carrier').value=trk.shipping;
+  const dft=trk.draft_no||trk.draft_bill_no||''; if(dft)$('x_draft').value=dft;
+  if(!$('x_title').value.trim())$('x_title').value='สรุปภาษีนำเข้า '+(s.invno||'')+(trk.shipping?(' By '+trk.shipping):'');
+  taxItems=(s.items||[]).map(it=>({sku:it.sku||'',qty:+it.qty||0,amount:Math.round(((+it.price||0)*(+it.qty||0)*rate)*100)/100,duty:0,fee:false}));
+  renderTaxLines();
+}
 function newTaxForm(){
-  comboSet('loadTax','');
+  comboSet('loadTax',''); if(COMBOS['loadFromInv'])comboSet('loadFromInv','');
   ['x_title','x_period','x_carrier','x_draft','x_termport','x_ref','x_note'].forEach(i=>$(i).value='');
-  $('x_company').value='MASARU';
+  $('x_company').value='MASARU'; if($('x_rate'))$('x_rate').value='1';
   taxItems=[]; renderTaxLines();
 }
 function loadTaxToForm(){
