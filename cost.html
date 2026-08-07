@@ -712,9 +712,9 @@ function renderTrack(){
     <div class="kpi" style="background:${demWarn?'#C2410C':''}"><div class="lbl">DEM ใกล้ครบ (7 วัน)</div><div class="val">${demWarn}</div></div>
     <div class="kpi"><div class="lbl">ยอดภาษีรวม (บาท)</div><div class="val">${money(tax)}</div></div>`;
   if(!list.length){$('trkTable').innerHTML='<div class="empty">ยังไม่มีรายการ'+(canEdit?' — กด “เพิ่มรายการ”':'')+'</div>';return;}
-  const _cols=['9%','9%','9%','9%','6%','6%','6%','6%','8%','8%','9%','9%','5%']; if(canEdit)_cols.push('6%');
+  const _cols=['9%','8%','9%','9%','9%','6%','6%','6%','6%','8%','9%','9%','5%']; if(canEdit)_cols.push('6%');
   const _colg='<colgroup>'+_cols.map(w=>'<col style="width:'+w+'">').join('')+'</colgroup>';
-  let h='<table class="trkc">'+_colg+'<thead><tr><th>อินวอยซ์</th><th>บริษัท</th><th>ยื่นสมอ.</th><th>ดำเนินการ</th><th>ขนส่ง</th><th>CLS</th><th>ETD</th><th>ETA</th><th>B/L No</th><th>DEM</th><th>ค่าภาษี</th><th>ค่าขนส่ง</th><th>เอกสาร</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
+  let h='<table class="trkc">'+_colg+'<thead><tr><th>อินวอยซ์</th><th>B/L No</th><th>บริษัท</th><th>ยื่นสมอ.</th><th>ดำเนินการ</th><th>ขนส่ง</th><th>CLS</th><th>ETD</th><th>ETA</th><th>DEM</th><th>ค่าภาษี</th><th>ค่าขนส่ง</th><th>เอกสาร</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
   list.forEach(t=>{
     const taxCell=(+t.tax_amount?money(t.tax_amount):'-')+(t.tax_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.tax_amount)?' <span class="pill pending">ค้าง</span>':''));
     const shpCell=(+t.ship_cost?money(t.ship_cost):'-')+(t.ship_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.ship_cost)?' <span class="pill pending">ค้าง</span>':''));
@@ -722,13 +722,13 @@ function renderTrack(){
     const dem=demDaysLeft(t);
     const demBadge=(dem!=null&&dem<=7)?`<br><span class="pill" style="background:#C2410C;color:#fff;white-space:nowrap">${dem<0?'⚠️ DEM เกิน '+(-dem)+' วัน':'⏳ DEM เหลือ '+dem+' วัน'}</span>`:'';
     h+=`<tr><td><b>${esc(t.invoice_no||'')}</b>${t.shipment_id?` <button class="mini btn" onclick="openInvoiceFromTrack('${t.shipment_id}')" title="เปิดใบ INV จริง">📄 ใบ</button>`:''}<br><span class="muted">${esc(t.start_date||'')}</span></td>
+      <td>${esc(t.bl_no||'')}</td>
       <td>${tag(t.import_company,coColor(t.import_company))}</td>
       <td>${tag(t.mor_status,morColor(t.mor_status))}</td><td>${tag(t.op_status,opColor(t.op_status))}</td>
       <td>${tag(t.shipping,shipColor(t.shipping))}</td>
       <td>${esc(t.cls_date||'')}</td>
       <td>${esc(t.export_date||'')}</td>
       <td>${esc(t.arrival_date||'')}</td>
-      <td>${esc(t.bl_no||'')}</td>
       <td>${esc(t.dem_due_date||'')}${demBadge}</td>
       <td style="white-space:nowrap">${taxCell}</td><td style="white-space:nowrap">${shpCell}</td>
       <td style="text-align:center"><span class="pill ${dc===5?'done':(dc?'notified':'pending')}">${dc}/5</span></td>`+
