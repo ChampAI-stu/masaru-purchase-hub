@@ -109,6 +109,11 @@
   .combo-opt{padding:8px 11px;cursor:pointer;font-size:14px}
   .combo-opt:hover{background:#EAF1FB}
   .combo-empty{padding:8px 11px;color:var(--muted);font-size:13px}
+  #trkTable table.trkc{width:100%;table-layout:fixed;font-size:11px}
+  #trkTable table.trkc th,#trkTable table.trkc td{padding:5px 6px;word-break:break-word;white-space:normal!important;vertical-align:top}
+  #trkTable table.trkc .pill{font-size:10px;padding:2px 5px;white-space:normal!important;display:inline-block}
+  #trkTable table.trkc .mini{padding:2px 6px;font-size:11px}
+  #trkTable table.trkc span[style*="border-radius"]{white-space:normal!important;display:inline-block;line-height:1.25}
 </style>
 </head>
 <body>
@@ -677,7 +682,9 @@ function renderTrack(){
     <div class="kpi" style="background:${demWarn?'#C2410C':''}"><div class="lbl">DEM ใกล้ครบ (7 วัน)</div><div class="val">${demWarn}</div></div>
     <div class="kpi"><div class="lbl">ยอดภาษีรวม (บาท)</div><div class="val">${money(tax)}</div></div>`;
   if(!list.length){$('trkTable').innerHTML='<div class="empty">ยังไม่มีรายการ'+(canEdit?' — กด “เพิ่มรายการ”':'')+'</div>';return;}
-  let h='<table style="min-width:1300px"><thead><tr><th>อินวอยซ์</th><th>บริษัท</th><th>ยื่นสมอ.</th><th>ดำเนินการ</th><th>ขนส่ง</th><th>ETD</th><th>ETA</th><th>DEM</th><th>ศุลกากร</th><th>ค่าภาษี</th><th>ค่าขนส่ง</th><th>เอกสาร</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
+  const _cols=['10%','9%','10%','9%','7%','6%','6%','8%','6%','9%','9%','5%']; if(canEdit)_cols.push('6%');
+  const _colg='<colgroup>'+_cols.map(w=>'<col style="width:'+w+'">').join('')+'</colgroup>';
+  let h='<table class="trkc">'+_colg+'<thead><tr><th>อินวอยซ์</th><th>บริษัท</th><th>ยื่นสมอ.</th><th>ดำเนินการ</th><th>ขนส่ง</th><th>ETD</th><th>ETA</th><th>DEM</th><th>ศุลกากร</th><th>ค่าภาษี</th><th>ค่าขนส่ง</th><th>เอกสาร</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
   list.forEach(t=>{
     const taxCell=(+t.tax_amount?money(t.tax_amount):'-')+(t.tax_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.tax_amount)?' <span class="pill pending">ค้าง</span>':''));
     const shpCell=(+t.ship_cost?money(t.ship_cost):'-')+(t.ship_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.ship_cost)?' <span class="pill pending">ค้าง</span>':''));
