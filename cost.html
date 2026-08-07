@@ -648,7 +648,7 @@ const SHIP_CO=['GTL','NEXT','GLT Logistics'];
 function coColor(s){return {'LIKESHOP':'#C00000','MASARU':'#2E75B6','DAIKI':'#1E7145','PHONLAWUT':'#B7791F','คุณวุฒิ':'#8a5a00'}[s]||'#64748B';}
 function morColor(s){return {'ยื่นสมอ.ผ่านแล้ว':'#1E7145','ไม่ต้องยื่นสมอ.':'#B7791F'}[s]||'#2E75B6';}
 function opColor(s){return {'กำลังผลิต':'#374151','อยู่ระหว่างส่งไปโกดังจีน':'#1E7145','CLS':'#0EA5E9','อยู่ระหว่างส่งมาไทย':'#8a5a00','ถึงไทยแล้ว/สำเร็จ':'#4B2E83','DEM':'#C2410C','ยกเลิก ทำไม่ได้':'#C00000'}[s]||'#64748B';}
-function demDaysLeft(t){if(t.op_status!=='DEM'||!t.dem_due_date)return null;const today=new Date();today.setHours(0,0,0,0);const d=new Date(t.dem_due_date);if(isNaN(d))return null;return Math.round((d-today)/86400000);}
+function demDaysLeft(t){if(!t.dem_due_date||t.op_status==='ยกเลิก ทำไม่ได้')return null;const today=new Date();today.setHours(0,0,0,0);const d=new Date(t.dem_due_date);if(isNaN(d))return null;return Math.round((d-today)/86400000);}
 function shipColor(s){return {'GTL':'#C0398A','GLT Logistics':'#C0398A','NEXT':'#2E75B6'}[s]||'#64748B';}
 function tag(s,c){return s?`<span style="background:${c};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;white-space:nowrap">${esc(s)}</span>`:'<span class="muted">—</span>';}
 function docCount(r){return ['doc_acc_tax','doc_acc_receipt','doc_acc_billing','doc_quality','doc_purchase'].filter(k=>r[k]).length;}
@@ -682,9 +682,9 @@ function renderTrack(){
     <div class="kpi" style="background:${demWarn?'#C2410C':''}"><div class="lbl">DEM ใกล้ครบ (7 วัน)</div><div class="val">${demWarn}</div></div>
     <div class="kpi"><div class="lbl">ยอดภาษีรวม (บาท)</div><div class="val">${money(tax)}</div></div>`;
   if(!list.length){$('trkTable').innerHTML='<div class="empty">ยังไม่มีรายการ'+(canEdit?' — กด “เพิ่มรายการ”':'')+'</div>';return;}
-  const _cols=['10%','9%','10%','9%','7%','6%','6%','8%','6%','9%','9%','5%']; if(canEdit)_cols.push('6%');
+  const _cols=['9%','9%','9%','9%','6%','6%','6%','6%','8%','8%','9%','9%','5%']; if(canEdit)_cols.push('6%');
   const _colg='<colgroup>'+_cols.map(w=>'<col style="width:'+w+'">').join('')+'</colgroup>';
-  let h='<table class="trkc">'+_colg+'<thead><tr><th>อินวอยซ์</th><th>บริษัท</th><th>ยื่นสมอ.</th><th>ดำเนินการ</th><th>ขนส่ง</th><th>ETD</th><th>ETA</th><th>DEM</th><th>ศุลกากร</th><th>ค่าภาษี</th><th>ค่าขนส่ง</th><th>เอกสาร</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
+  let h='<table class="trkc">'+_colg+'<thead><tr><th>อินวอยซ์</th><th>บริษัท</th><th>ยื่นสมอ.</th><th>ดำเนินการ</th><th>ขนส่ง</th><th>CLS</th><th>ETD</th><th>ETA</th><th>B/L No</th><th>DEM</th><th>ค่าภาษี</th><th>ค่าขนส่ง</th><th>เอกสาร</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
   list.forEach(t=>{
     const taxCell=(+t.tax_amount?money(t.tax_amount):'-')+(t.tax_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.tax_amount)?' <span class="pill pending">ค้าง</span>':''));
     const shpCell=(+t.ship_cost?money(t.ship_cost):'-')+(t.ship_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.ship_cost)?' <span class="pill pending">ค้าง</span>':''));
@@ -695,10 +695,11 @@ function renderTrack(){
       <td>${tag(t.import_company,coColor(t.import_company))}</td>
       <td>${tag(t.mor_status,morColor(t.mor_status))}</td><td>${tag(t.op_status,opColor(t.op_status))}</td>
       <td>${tag(t.shipping,shipColor(t.shipping))}</td>
-      <td style="white-space:nowrap">${esc(t.export_date||'')}</td>
-      <td style="white-space:nowrap">${esc(t.arrival_date||'')}</td>
-      <td style="white-space:nowrap">${esc(t.dem_due_date||'')}${demBadge}</td>
-      <td style="text-align:right;white-space:nowrap">${t.customs_fee!=null?money(t.customs_fee):'-'}</td>
+      <td>${esc(t.cls_date||'')}</td>
+      <td>${esc(t.export_date||'')}</td>
+      <td>${esc(t.arrival_date||'')}</td>
+      <td>${esc(t.bl_no||'')}</td>
+      <td>${esc(t.dem_due_date||'')}${demBadge}</td>
       <td style="white-space:nowrap">${taxCell}</td><td style="white-space:nowrap">${shpCell}</td>
       <td style="text-align:center"><span class="pill ${dc===5?'done':(dc?'notified':'pending')}">${dc}/5</span></td>`+
       (canEdit?`<td class="no-print" style="white-space:nowrap"><button class="mini btn" onclick="openTrack('${t.id}')">แก้</button> <button class="mini btn red" onclick="delTrack('${t.id}')">ลบ</button></td>`:'')+`</tr>`;});
