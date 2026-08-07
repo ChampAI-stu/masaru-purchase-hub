@@ -131,6 +131,7 @@
     <button data-tab="parties" onclick="go('parties')">🏢 ผู้ขาย/ผู้ซื้อ</button>
     <button data-tab="invpl" onclick="go('invpl')">📄 ออก INV + PL</button>
     <button data-tab="summary" onclick="go('summary')">📊 สรุปรายเดือน</button>
+    <button data-tab="posum" onclick="go('posum')">📦 รวม PO</button>
   </div>
 
   <main>
@@ -252,6 +253,14 @@
         <div id="summaryWrap" style="overflow-x:auto"></div>
       </div>
     </section>
+    <section id="tab-posum" style="display:none">
+      <div class="card">
+        <div class="toolbar"><h2 style="margin:0;border:0;padding:0">📦 รวม PO (จาก Purchase Board)</h2><span class="sp"></span>
+          <input id="poSearch" placeholder="ค้นหา PO / SKU" oninput="renderPoSummary()" style="max-width:220px"></div>
+        <div class="note">🔒 หน้านี้ <b>ดูอย่างเดียว</b> — ข้อมูลดึงจาก Purchase Board โดยตรง (อิงตาม PO) หากต้องแก้ไข กรุณาแก้ที่หน้า <b>Purchase Board</b> เท่านั้น</div>
+        <div id="poTable" style="overflow-x:auto"></div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -265,7 +274,7 @@
     <div class="grid2"><div><label>Model</label><input id="e_model"></div><div><label>HS Code</label><input id="e_hs"></div></div>
     <div class="grid2"><div><label>Component</label><textarea id="e_comp"></textarea></div><div><label>Specification</label><textarea id="e_spec"></textarea></div></div>
     <h3>ข้อมูลบรรจุ (ใช้ทำ Packing List)</h3>
-    <div class="grid3"><div><label>หน่วย</label><input id="e_unit" placeholder="Set / PCS"></div><div><label>จำนวน/กล่อง</label><input id="e_perctn" type="number"></div><div><label>น้ำหนัก/กล่อง (Kg)</label><input id="e_wctn" type="number" step="0.01"></div></div>
+    <div class="grid3"><div><label>หน่วย</label><select id="e_unit"><option value="">—</option><option>SET</option><option>PCS</option></select></div><div><label>จำนวน/กล่อง</label><input id="e_perctn" type="number"></div><div><label>น้ำหนัก/กล่อง (Kg)</label><input id="e_wctn" type="number" step="0.01"></div></div>
     <div class="grid2">
       <div><label>ขนาดกล่อง (ซม.) — กว้าง × ยาว × สูง</label>
         <div style="display:flex;gap:6px">
@@ -277,7 +286,6 @@
       <div><label>CBM/กล่อง (คำนวณอัตโนมัติ)</label><input id="e_cbm" type="number" step="0.000001" readonly style="background:#f1f5f9"></div>
     </div>
     <input type="hidden" id="e_box">
-    <div><label>Shipping Mark เริ่มต้น</label><input id="e_mark"></div>
     <div class="muted" style="margin-top:8px">📷 รูปสินค้า: ไปแนบตอนออกใบ INV (แท็บ “ออก INV + PL”) แนบเฉพาะบิลนั้น ล้างได้ ไม่เก็บถาวร</div>
   </div>
   <div class="dlg-foot"><button class="btn ghost" onclick="expDlg.close()">ยกเลิก</button><button class="btn green edit-only" onclick="saveExport();return false">บันทึก</button></div>
@@ -321,6 +329,7 @@
     </div>
     <div class="grid3">
       <div><label>บริษัทขนส่ง</label><input id="t_ship" list="shipCoList" placeholder="พิมพ์หรือเลือก" autocomplete="off"><datalist id="shipCoList"></datalist></div>
+      <div><label>CLS (ปิดตู้/คัตออฟ)</label><input id="t_cls" type="date"></div>
       <div><label>ETD (ส่งออก)</label><input id="t_exp" type="date"></div>
       <div><label>ETA (ถึงไทย)</label><input id="t_arr" type="date"></div>
     </div>
@@ -399,7 +408,7 @@ function comboSet(id,val){
 }
 function comboVal(id){const inp=$(id);return inp?(inp.dataset.val||''):'';}
 
-let db={master:[],hist:[],expMap:{},shipcosts:[],shipments:[],products:[],tracking:[],parties:[],budget:[]};
+let db={master:[],hist:[],expMap:{},shipcosts:[],shipments:[],products:[],tracking:[],parties:[],budget:[],po:[]};
 let currentRole='view', canEdit=false;
 
 /* ===== AUTH GUARD (session ร่วมจาก HUB) ===== */
@@ -446,11 +455,11 @@ async function fetchTable(name,order){
 async function loadAll(){
   const jobs=[['master','sku_master','sku'],['hist','sku_price_history','changed_at'],
     ['exp','sku_export_info','sku'],['shipcosts','shipcosts','date'],['shipments','shipments','date'],
-    ['tracking','shipment_tracking','start_date'],['parties','inv_parties','name'],['budget','acct_budget','period']];
+    ['tracking','shipment_tracking','start_date'],['parties','inv_parties','name'],['budget','acct_budget','period'],['po','purchase_orders','po_number']];
   const res=await Promise.all(jobs.map(async j=>{try{return await fetchTable(j[1],j[2]);}catch(e){console.warn('load fail '+j[1],e);return [];}}));
   const m={}; jobs.forEach((j,i)=>m[j[0]]=res[i]||[]);
   db.master=m.master; db.hist=m.hist; db.shipcosts=m.shipcosts; db.shipments=m.shipments;
-  db.tracking=m.tracking; db.parties=m.parties; db.budget=m.budget;
+  db.tracking=m.tracking; db.parties=m.parties; db.budget=m.budget; db.po=m.po;
   db.expMap={}; m.exp.forEach(e=>db.expMap[e.sku]=e);
   buildProducts();
   if($('seedBtn'))$('seedBtn').style.display=db.products.length?'none':'';
@@ -485,13 +494,14 @@ function prod(sku){return db.products.find(p=>p.sku===sku);}
 /* ===== NAV ===== */
 function go(t){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
-  ['dashboard','sku','track','parties','invpl','summary'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
+  ['dashboard','sku','track','parties','invpl','summary','posum'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
   if(t==='dashboard')renderDashboard();
   if(t==='sku')renderSkuTable();
   if(t==='track')renderTrack();
   if(t==='parties')renderParties();
   if(t==='invpl')initInvPl();
   if(t==='summary')renderSummary();
+  if(t==='posum')renderPoSummary();
 }
 
 /* ===== SKU + EXPORT INFO ===== */
@@ -532,7 +542,7 @@ function openExport(sku){
   const dims=(String(e.box_size||'').match(/\d+(?:\.\d+)?/g)||[]);
   $('e_bw').value=dims[0]||'';$('e_bl').value=dims[1]||'';$('e_bh').value=dims[2]||'';
   $('e_box').value=e.box_size||'';
-  $('e_cbm').value=e.cbm_ctn||'';$('e_mark').value=e.mark||'';
+  $('e_cbm').value=e.cbm_ctn||'';
   $('expDlg').showModal();
 }
 function parseBox(s){const m=String(s||'').match(/([\d.]+)\s*[x×X]\s*([\d.]+)\s*[x×X]\s*([\d.]+)/);return m?{w:+m[1],l:+m[2],h:+m[3]}:{w:0,l:0,h:0};}
@@ -549,7 +559,7 @@ async function saveExport(){
   const rec={sku,brand:$('e_brand').value.trim(),name_en:$('e_en').value.trim(),name_th:$('e_th').value.trim(),
     model:$('e_model').value.trim(),hs:$('e_hs').value.trim(),component:$('e_comp').value,spec:$('e_spec').value,
     unit:$('e_unit').value.trim(),per_ctn:+$('e_perctn').value||null,w_ctn:+$('e_wctn').value||null,
-    box_size:$('e_box').value.trim(),cbm_ctn:+$('e_cbm').value||null,mark:$('e_mark').value.trim()};
+    box_size:$('e_box').value.trim(),cbm_ctn:+$('e_cbm').value||null};
   const ok=await dbWrite(()=>sb.from('sku_export_info').upsert(rec,{onConflict:'sku'}));
   if(ok){await reloadExport();$('expDlg').close();renderSkuTable();}
 }
@@ -668,7 +678,7 @@ function renderTrack(){
     <div class="kpi" style="background:${demWarn?'#C2410C':''}"><div class="lbl">DEM ใกล้ครบ (7 วัน)</div><div class="val">${demWarn}</div></div>
     <div class="kpi"><div class="lbl">ยอดภาษีรวม (บาท)</div><div class="val">${money(tax)}</div></div>`;
   if(!list.length){$('trkTable').innerHTML='<div class="empty">ยังไม่มีรายการ'+(canEdit?' — กด “เพิ่มรายการ”':'')+'</div>';return;}
-  let h='<table style="min-width:1300px"><thead><tr><th>อินวอยซ์</th><th>PO JST</th><th>บริษัท</th><th>รายการสินค้า</th><th>ยื่นสมอ.</th><th>ดำเนินการ</th><th>ขนส่ง</th><th>ดราฟใบขน</th><th>ศุลกากร</th><th>ค่าภาษี</th><th>ค่าขนส่ง</th><th>เอกสาร</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
+  let h='<table style="min-width:1300px"><thead><tr><th>อินวอยซ์</th><th>บริษัท</th><th>รายการสินค้า</th><th>ยื่นสมอ.</th><th>ดำเนินการ</th><th>ขนส่ง</th><th>ดราฟใบขน</th><th>ศุลกากร</th><th>ค่าภาษี</th><th>ค่าขนส่ง</th><th>เอกสาร</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
   list.forEach(t=>{
     const taxCell=(+t.tax_amount?money(t.tax_amount):'-')+(t.tax_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.tax_amount)?' <span class="pill pending">ค้าง</span>':''));
     const shpCell=(+t.ship_cost?money(t.ship_cost):'-')+(t.ship_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.ship_cost)?' <span class="pill pending">ค้าง</span>':''));
@@ -676,7 +686,7 @@ function renderTrack(){
     const dem=demDaysLeft(t);
     const demBadge=(dem!=null&&dem<=7)?`<br><span class="pill" style="background:#C2410C;color:#fff;white-space:nowrap">${dem<0?'⚠️ DEM เกิน '+(-dem)+' วัน':'⏳ DEM เหลือ '+dem+' วัน'}</span>`:'';
     h+=`<tr><td><b>${esc(t.invoice_no||'')}</b>${t.shipment_id?` <button class="mini btn" onclick="openInvoiceFromTrack('${t.shipment_id}')" title="เปิดใบ INV จริง">📄 ใบ</button>`:''}<br><span class="muted">${esc(t.start_date||'')}</span></td>
-      <td>${esc(t.jst_po||'')}</td><td>${tag(t.import_company,coColor(t.import_company))}</td>
+      <td>${tag(t.import_company,coColor(t.import_company))}</td>
       <td style="min-width:150px">${esc(t.product_list||'')}</td>
       <td>${tag(t.mor_status,morColor(t.mor_status))}</td><td>${tag(t.op_status,opColor(t.op_status))}${demBadge}</td>
       <td>${tag(t.shipping,shipColor(t.shipping))}</td>
@@ -697,7 +707,7 @@ function openTrack(id){
   $('t_co').value=g('import_company');$('t_start').value=g('start_date');$('t_resp').value=g('responsible');
   $('t_prod').value=g('product_list');$('t_mor').value=g('mor_status');$('t_op').value=g('op_status');
   $('t_qty').value=g('sum_qty');$('t_amount').value=g('sum_amount');$('t_taxdue').value=g('tax_due_date');
-  $('t_ship').value=g('shipping');$('t_exp').value=g('export_date');$('t_arr').value=g('arrival_date');
+  $('t_ship').value=g('shipping');$('t_cls').value=g('cls_date');$('t_exp').value=g('export_date');$('t_arr').value=g('arrival_date');
   $('t_bl').value=g('bl_no');$('t_vessel').value=g('vessel_no');$('t_container').value=g('container_no');
   $('t_draft').value=g('draft_bill_no');$('t_tax').value=g('tax_amount');$('t_taxdate').value=g('tax_pay_date');
   $('t_draftno').value=g('draft_no');$('t_customs').value=g('customs_fee');$('t_demdue').value=g('dem_due_date');
@@ -713,7 +723,7 @@ async function saveTrack(){
     import_company:$('t_co').value||null,start_date:$('t_start').value||null,responsible:$('t_resp').value.trim()||null,
     product_list:$('t_prod').value.trim()||null,mor_status:$('t_mor').value||null,op_status:$('t_op').value||null,
     sum_qty:+$('t_qty').value||null,sum_amount:+$('t_amount').value||null,tax_due_date:$('t_taxdue').value||null,
-    shipping:$('t_ship').value||null,export_date:$('t_exp').value||null,arrival_date:$('t_arr').value||null,
+    shipping:$('t_ship').value||null,cls_date:$('t_cls').value||null,export_date:$('t_exp').value||null,arrival_date:$('t_arr').value||null,
     bl_no:$('t_bl').value.trim()||null,vessel_no:$('t_vessel').value.trim()||null,container_no:$('t_container').value.trim()||null,
     draft_bill_no:$('t_draft').value.trim()||null,tax_amount:+$('t_tax').value||null,tax_pay_date:$('t_taxdate').value||null,
     draft_no:$('t_draftno').value.trim()||null,customs_fee:+$('t_customs').value||null,dem_due_date:$('t_demdue').value||null,
@@ -1004,6 +1014,30 @@ function exportInvPlExcel(){
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,(d.invno||'INV_PL').slice(0,28));XLSX.writeFile(wb,`${d.invno||'INV_PL'}_INV_PL.xlsx`);
 }
 /* ===== สร้าง PDF จริง (เรนเดอร์ทีละหน้า A4) → เปิดในแท็บใหม่ ===== */
+function renderPoSummary(){
+  const q=($('poSearch')?$('poSearch').value:'').toLowerCase();
+  const by={};
+  db.po.forEach(o=>{const k=o.po_number||'(ไม่มี PO)';(by[k]=by[k]||[]).push(o);});
+  let keys=Object.keys(by).sort();
+  if(q)keys=keys.filter(k=>(k+' '+by[k].map(r=>r.sku||'').join(' ')).toLowerCase().includes(q));
+  if(!keys.length){$('poTable').innerHTML='<div class="empty">'+(db.po.length?'ไม่พบ PO ตามคำค้น':'ยังไม่มีข้อมูล PO (ดึงจาก Purchase Board)')+'</div>';return;}
+  let h='<table style="min-width:1050px"><thead><tr><th>เลขที่ PO</th><th>SKU</th><th>จำนวนรวม</th><th>เข้าแล้ว</th><th>วันเข้าคลัง (ETA)</th><th>สถานะ</th><th>บริษัทขนส่ง</th><th>หมายเหตุ</th></tr></thead><tbody>';
+  keys.forEach(k=>{const rows=by[k];
+    const skus=[...new Set(rows.map(r=>r.sku).filter(Boolean))].join(', ');
+    const qty=rows.reduce((s,r)=>s+(+r.quantity||0),0);
+    const rec=rows.reduce((s,r)=>s+(+r.received_qty||0),0);
+    const carrier=(rows.find(r=>r.carrier)||{}).carrier||'';
+    const eta=rows.map(r=>r.eta).filter(Boolean).sort()[0]||'';
+    const sts=[...new Set(rows.map(r=>r.status).filter(Boolean))];
+    const note=[...new Set(rows.map(r=>r.note).filter(Boolean))].join(' · ');
+    h+=`<tr><td><b>${esc(k)}</b></td><td style="min-width:140px">${esc(skus)}</td>
+      <td style="text-align:right">${money(qty)}</td><td style="text-align:right">${money(rec)}</td>
+      <td style="white-space:nowrap">${esc(eta)}</td>
+      <td>${sts.map(s=>tag(s,'#64748B')).join(' ')||'-'}</td>
+      <td>${carrier?tag(carrier,'#2E75B6'):'<span class="muted">—</span>'}</td>
+      <td>${esc(note)}</td></tr>`;});
+  $('poTable').innerHTML=h+'</tbody></table>';
+}
 function exportInvoiceExcel(ev){
   if(ev)ev.preventDefault();
   if(!window.ExcelJS){alert('กำลังโหลดไลบรารี Excel — ลองกดใหม่อีกครั้ง');return;}
