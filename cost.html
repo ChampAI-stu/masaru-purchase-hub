@@ -440,14 +440,14 @@ async function fetchTable(name,order){
   return all;
 }
 async function loadAll(){
-  const[master,hist,exp,shipcosts,shipments,tracking,parties]=await Promise.all([
-    fetchTable('sku_master','sku'), fetchTable('sku_price_history','changed_at'),
-    fetchTable('sku_export_info','sku'), fetchTable('shipcosts','date'),
-    fetchTable('shipments','date'),
-    fetchTable('shipment_tracking','start_date'), fetchTable('inv_parties','name')]);
-  db.master=master; db.hist=hist; db.shipcosts=shipcosts; db.shipments=shipments; db.tracking=tracking; db.parties=parties;
-  db.budget=await fetchTable('acct_budget','period');
-  db.expMap={}; exp.forEach(e=>db.expMap[e.sku]=e);
+  const jobs=[['master','sku_master','sku'],['hist','sku_price_history','changed_at'],
+    ['exp','sku_export_info','sku'],['shipcosts','shipcosts','date'],['shipments','shipments','date'],
+    ['tracking','shipment_tracking','start_date'],['parties','inv_parties','name'],['budget','acct_budget','period']];
+  const res=await Promise.all(jobs.map(async j=>{try{return await fetchTable(j[1],j[2]);}catch(e){console.warn('load fail '+j[1],e);return [];}}));
+  const m={}; jobs.forEach((j,i)=>m[j[0]]=res[i]||[]);
+  db.master=m.master; db.hist=m.hist; db.shipcosts=m.shipcosts; db.shipments=m.shipments;
+  db.tracking=m.tracking; db.parties=m.parties; db.budget=m.budget;
+  db.expMap={}; m.exp.forEach(e=>db.expMap[e.sku]=e);
   buildProducts();
   if($('seedBtn'))$('seedBtn').style.display=db.products.length?'none':'';
 }
