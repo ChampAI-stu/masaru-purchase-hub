@@ -231,8 +231,7 @@
             <button class="btn ghost" onclick="clearAllImages()" title="ล้างรูปในเอกสารนี้เพื่อคืนพื้นที่ DB">🧹 ล้างรูป</button>
             <span class="sp"></span>
             <button class="btn" onclick="savePdf(event)">📄 บันทึก PDF</button>
-            <button class="btn gold" onclick="exportInvoiceExcel(event)">⬇️ Excel (แก้ได้)</button>
-            <button class="btn gold" onclick="exportInvPlExcel()">⬇️ Export Excel</button>
+            <button class="btn gold" onclick="exportInvoiceExcel(event)">⬇️ Excel (INV+PL แก้ได้)</button>
           </div>
         </div>
         <div class="card" style="flex:1 1 100%;min-width:340px">
@@ -1044,49 +1043,69 @@ function exportInvoiceExcel(ev){
   const d=formData();
   const groups=[]; const gi={};
   d.items.forEach((it,idx)=>{const key=it.sku?('sku:'+it.sku):('__b'+idx);
-    if(gi[key]==null){gi[key]=groups.length;groups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:0,total:0,mixed:false});}
+    if(gi[key]==null){gi[key]=groups.length;groups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:0,total:0,pic:it.pic||'',mixed:false});}
     const g=groups[gi[key]];if((+it.price||0)!==g.price)g.mixed=true;
-    g.qty+=+it.qty||0;g.gw+=+it.gw||0;g.total+=(+it.price||0)*(+it.qty||0);});
+    g.qty+=+it.qty||0;g.gw+=+it.gw||0;g.total+=(+it.price||0)*(+it.qty||0); if(!g.pic&&it.pic)g.pic=it.pic;});
   const totalPrice=d.items.reduce((s,i)=>s+(+i.price*+i.qty),0);
   const totalGW=d.items.reduce((s,i)=>s+(+i.gw||0),0);
   const totalCtn=d.items.reduce((s,i)=>s+(+i.ctn||0),0);
   const wb=new ExcelJS.Workbook();
-  const ws=wb.addWorksheet('INVOICE',{views:[{showGridLines:false}]});
-  ws.columns=[{width:26},{width:10},{width:14},{width:14},{width:11},{width:10},{width:13},{width:10},{width:30}];
-  const thin={style:'thin',color:{argb:'FF888888'}}, border={top:thin,left:thin,bottom:thin,right:thin}, navy='FF1F3864';
-  ws.mergeCells('A1:I1'); const t=ws.getCell('A1'); t.value='INVOICE'; t.font={bold:true,size:20}; t.alignment={horizontal:'center'}; ws.getRow(1).height=28;
-  const left=[['Vender Name',d.sname],['Company',d.scomp]];
-  if(d.slic)left.push(['Export Licence',d.slic]); if(d.stax)left.push(['Tax ID',d.stax]);
-  left.push(['Address',d.saddr],['Tel',d.stel],['Consignee',d.cname],['Address',d.caddr]);
-  const right=[['Date',fmtDate(d.date)],['Invoice No',d.invno],['Gross Weight',money(totalGW)+' Kg'],['Total Package',money(totalCtn)+' Cartons'],['TERM',d.term],['PORT',d.port]];
-  const start=3, n=Math.max(left.length,right.length);
-  for(let i=0;i<n;i++){const r=start+i; ws.mergeCells(r,1,r,4); ws.mergeCells(r,6,r,9);
-    if(left[i])ws.getCell(r,1).value={richText:[{text:left[i][0]+' : ',font:{bold:true}},{text:String(left[i][1]||'')}]};
-    if(right[i])ws.getCell(r,6).value={richText:[{text:right[i][0]+' : ',font:{bold:true}},{text:String(right[i][1]||'')}]};}
-  const tableTop=start+n+1;
+  const thin={style:'thin',color:{argb:'FF888888'}}, border={top:thin,left:thin,bottom:thin,right:thin};
+  const navy='FF1F3864', gold='FFC9A84C';
+  function addImg(ws,dataUrl,col0,row0){const m=String(dataUrl||'').match(/^data:image\/(png|jpe?g|gif|webp);base64,(.+)$/i);if(!m)return false;
+    let ext=m[1].toLowerCase(); if(ext==='jpg')ext='jpeg';
+    try{const id=wb.addImage({base64:m[2],extension:ext}); ws.addImage(id,{tl:{col:col0+0.12,row:row0+0.08},ext:{width:52,height:52}}); return true;}catch(e){return false;}}
+  function headerBlock(ws,title,nCols){
+    const last=String.fromCharCode(64+nCols);
+    ws.mergeCells('A1:'+last+'1'); const t=ws.getCell('A1'); t.value=title; t.font={bold:true,size:20}; t.alignment={horizontal:'center'}; ws.getRow(1).height=28;
+    ws.mergeCells('A2:'+last+'2'); ws.getCell('A2').fill={type:'pattern',pattern:'solid',fgColor:{argb:gold}}; ws.getRow(2).height=4;
+    const left=[['Vender Name',d.sname],['Company',d.scomp]];
+    if(d.slic)left.push(['Export Licence',d.slic]); if(d.stax)left.push(['Tax ID',d.stax]);
+    left.push(['Address',d.saddr],['Tel',d.stel],['Consignee',d.cname],['Address',d.caddr]);
+    const right=[['Date',fmtDate(d.date)],['Invoice No',d.invno],['Gross Weight',money(totalGW)+' Kg'],['Total Package',money(totalCtn)+' Cartons'],['TERM',d.term],['PORT',d.port]];
+    const mid=Math.ceil(nCols/2), start=4, n=Math.max(left.length,right.length);
+    for(let i=0;i<n;i++){const r=start+i; ws.mergeCells(r,1,r,mid-1); ws.mergeCells(r,mid+1,r,nCols);
+      if(left[i])ws.getCell(r,1).value={richText:[{text:left[i][0]+' : ',font:{bold:true}},{text:String(left[i][1]||'')}]};
+      if(right[i])ws.getCell(r,mid+1).value={richText:[{text:right[i][0]+' : ',font:{bold:true}},{text:String(right[i][1]||'')}]};
+      ws.getCell(r,1).alignment={vertical:'top',wrapText:true}; ws.getCell(r,mid+1).alignment={vertical:'top',wrapText:true};}
+    return start+n+1;
+  }
+  // ===== INVOICE =====
+  const wsI=wb.addWorksheet('INVOICE',{views:[{showGridLines:false}]});
+  wsI.columns=[{width:24},{width:11},{width:14},{width:14},{width:11},{width:10},{width:13},{width:10},{width:30}];
+  let top=headerBlock(wsI,'INVOICE',9);
   const heads=['DESCRIPTION','Picture','COMPONENT','Specification','Unit Price','Qty(PCS)','Total/'+d.cur,'GW(Kg)','Remark'];
-  const hr=ws.getRow(tableTop);
-  heads.forEach((h,i)=>{const c=hr.getCell(i+1);c.value=h;c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:navy}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=border;});
-  hr.height=22;
-  let rIdx=tableTop+1;
+  const hr=wsI.getRow(top); heads.forEach((h,i)=>{const c=hr.getCell(i+1);c.value=h;c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:navy}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=border;}); hr.height=22;
+  let r=top+1;
   groups.forEach(g=>{const p=prod(g.sku)||{}; const up=(g.mixed&&g.qty)?(g.total/g.qty):g.price;
-    const remark=`BRAND ：${p.brand||''}\nMODEL：${p.model||g.sku}\n\n${p.name_en||''} : ${g.sku}\n${p.name_th||''}`;
-    const vals=[(p.name_en||p.product_name||g.sku)+'\n'+(p.model||g.sku),'',p.component||'',p.spec||'',up,g.qty,g.total,g.gw,remark];
-    const row=ws.getRow(rIdx);
+    const remark='BRAND ：'+(p.brand||'')+'\nMODEL：'+(p.model||g.sku)+'\n\n'+(p.name_en||'')+' : '+g.sku+'\n'+(p.name_th||'');
+    const vals=[(p.name_en||p.product_name||g.sku)+'\n'+(p.model||g.sku),'',p.component||'',p.spec||'',(+up||0),g.qty,g.total,g.gw,remark];
+    const row=wsI.getRow(r);
     vals.forEach((v,i)=>{const c=row.getCell(i+1);c.value=v;c.border=border;c.alignment={vertical:'top',wrapText:true,horizontal:(i>=4&&i<=7)?'right':'left'};});
-    [5,6,7,8].forEach(ci=>row.getCell(ci).numFmt='#,##0.00'); rIdx++;});
-  const lr=ws.getRow(rIdx); ws.mergeCells(rIdx,1,rIdx,6);
-  lr.getCell(1).value='Logistics costs'; lr.getCell(1).alignment={horizontal:'right'}; lr.getCell(1).font={bold:true};
-  lr.getCell(7).value=d.logi; lr.getCell(7).numFmt='#,##0.00'; lr.getCell(7).alignment={horizontal:'right'};
-  for(let i=1;i<=9;i++)lr.getCell(i).border=border; rIdx++;
-  const tr=ws.getRow(rIdx); ws.mergeCells(rIdx,1,rIdx,6);
-  tr.getCell(1).value='Total'; tr.getCell(1).alignment={horizontal:'right'}; tr.getCell(1).font={bold:true};
-  tr.getCell(7).value=totalPrice+d.logi; tr.getCell(7).numFmt='#,##0.00'; tr.getCell(7).font={bold:true}; tr.getCell(7).alignment={horizontal:'right'};
-  for(let i=1;i<=9;i++)tr.getCell(i).border=border; rIdx+=3;
-  ws.mergeCells(rIdx,6,rIdx,9); ws.getCell(rIdx,6).value='Signature and Company Stamp'; ws.getCell(rIdx,6).alignment={horizontal:'center'};
-  ws.mergeCells(rIdx+2,6,rIdx+2,9); ws.getCell(rIdx+2,6).value='__________________________'; ws.getCell(rIdx+2,6).alignment={horizontal:'center'};
+    [5,6,7,8].forEach(ci=>row.getCell(ci).numFmt='#,##0.00');
+    if(g.pic&&addImg(wsI,g.pic,1,r-1))row.height=42; else row.height=40;
+    r++;});
+  const lr=wsI.getRow(r); wsI.mergeCells(r,1,r,6); lr.getCell(1).value='Logistics costs'; lr.getCell(1).alignment={horizontal:'right'}; lr.getCell(1).font={bold:true}; lr.getCell(7).value=d.logi; lr.getCell(7).numFmt='#,##0.00'; lr.getCell(7).alignment={horizontal:'right'}; for(let i=1;i<=9;i++)lr.getCell(i).border=border; r++;
+  const tr=wsI.getRow(r); wsI.mergeCells(r,1,r,6); tr.getCell(1).value='Total'; tr.getCell(1).alignment={horizontal:'right'}; tr.getCell(1).font={bold:true}; tr.getCell(7).value=totalPrice+d.logi; tr.getCell(7).numFmt='#,##0.00'; tr.getCell(7).font={bold:true}; tr.getCell(7).alignment={horizontal:'right'}; for(let i=1;i<=9;i++)tr.getCell(i).border=border; r+=3;
+  wsI.mergeCells(r,6,r,9); wsI.getCell(r,6).value='Signature and Company Stamp'; wsI.getCell(r,6).alignment={horizontal:'center'};
+  wsI.mergeCells(r+2,6,r+2,9); wsI.getCell(r+2,6).value='__________________________'; wsI.getCell(r+2,6).alignment={horizontal:'center'};
+  // ===== PACKING LIST =====
+  const wsP=wb.addWorksheet('PACKING LIST',{views:[{showGridLines:false}]});
+  wsP.columns=[{width:8},{width:40},{width:34},{width:12},{width:26}];
+  top=headerBlock(wsP,'PACKING LIST',5);
+  const ph=['ITEM','DESCRIPTION OF GOODS','Dimension','GW (Kg)','Shipping Mark'];
+  const phr=wsP.getRow(top); ph.forEach((h,i)=>{const c=phr.getCell(i+1);c.value=h;c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:navy}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=border;}); phr.height=22;
+  let pr=top+1;
+  d.items.forEach((it,idx)=>{const p=prod(it.sku)||{};
+    const _cbm=lineCbmCtn(it)||(+p.cbm_ctn||0); const _box=(it.w&&it.l&&it.h)?(it.w+'x'+it.l+'x'+it.h+' Cm'):(p.box_size||'');
+    const dim=(it.ctn||0)+' Cartons*'+(p.per_ctn||'')+'= '+money(it.qty)+' '+(p.unit||'Pcs')+'\nBoxes Size: '+_box+'\n'+money((it.ctn||0)*_cbm)+' CBM\n1 Cartons = '+(p.per_ctn||'')+' '+(p.unit||'')+' = '+(p.w_ctn||'')+' Kg';
+    const desc=(p.name_en||it.sku)+'\n'+(p.name_th||'')+'\nBRAND：'+(p.brand||'')+' MODEL：'+(p.model||it.sku);
+    const vals=[idx+1,desc,dim,it.gw,it.mark||''];
+    const row=wsP.getRow(pr);
+    vals.forEach((v,i)=>{const c=row.getCell(i+1);c.value=v;c.border=border;c.alignment={vertical:'top',wrapText:true,horizontal:(i===0?'center':(i===3?'right':'left'))};});
+    row.getCell(4).numFmt='#,##0.00'; pr++;});
   wb.xlsx.writeBuffer().then(buf=>{const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='INVOICE_'+(d.invno||'draft')+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='INVOICE_PL_'+(d.invno||'draft')+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   }).catch(e=>{console.error(e);alert('สร้าง Excel ไม่สำเร็จ: '+e.message);});
 }
 async function savePdf(ev){
