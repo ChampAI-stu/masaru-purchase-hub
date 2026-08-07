@@ -1099,11 +1099,12 @@ function renderDoc(){
         out+=`<tr><td style="text-align:center">${idx}</td><td>${esc(p.name_en||it.sku)}<br>${thName(p)}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||it.sku)}</td>
           <td style="white-space:pre-line">${esc(dim)}</td><td style="text-align:right">${money(it.gw)}</td><td style="white-space:pre-line">${esc(it.mark||'')}</td></tr>`;
       } else {
-        const p0=prod(it.sku)||{}; const grpCtn=members.reduce((s,m)=>s+(+m.ctn||0),0); const grpQty=members.reduce((s,m)=>s+(+m.qty||0),0);
-        const dim=dimOf(grpCtn,grpQty,p0,it.w,it.l,it.h);
+        const p0=prod(it.sku)||{};
         members.forEach((m,mi)=>{const p=prod(m.sku)||{}; idx++;
-          out+=`<tr><td style="text-align:center">${idx}</td><td>${esc(p.name_en||m.sku)}<br>${thName(p)}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||m.sku)}</td>`;
-          if(mi===0)out+=`<td rowspan="${span}" style="white-space:pre-line;vertical-align:middle">${esc(dim)}</td><td rowspan="${span}" style="text-align:right;vertical-align:middle">${money(it.gw)}</td><td rowspan="${span}" style="white-space:pre-line;vertical-align:middle">${esc(it.mark||'')}</td>`;
+          const dimM=dimOf(m.ctn,m.qty,(Object.keys(p).length?p:p0),it.w,it.l,it.h);   // ขนาดกล่องใช้ร่วม · ctn/qty ของตัวเอง
+          out+=`<tr><td style="text-align:center">${idx}</td><td>${esc(p.name_en||m.sku)}<br>${thName(p)}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||m.sku)}</td>
+            <td style="white-space:pre-line">${esc(dimM)}</td>`;
+          if(mi===0)out+=`<td rowspan="${span}" style="text-align:right;vertical-align:middle">${money(it.gw)}</td><td rowspan="${span}" style="white-space:pre-line;vertical-align:middle">${esc(it.mark||'')}</td>`;
           out+='</tr>';});
       }
       i+=span;
@@ -1342,14 +1343,11 @@ function exportInvoiceExcel(ev){
       const desc=(p.name_en||m.sku)+'\n'+thNameX(p)+'\nBRAND：'+(p.brand||'')+' MODEL：'+(p.model||m.sku);
       const row=wsP.getRow(pr);
       row.getCell(1).value=(pr-top); row.getCell(2).value=desc;
-      if(mi===0){
-        const grpCtn=members.reduce((s,mm)=>s+(+mm.ctn||0),0), grpQty=members.reduce((s,mm)=>s+(+mm.qty||0),0);
-        const dim= span>1 ? dimOfX(grpCtn,grpQty,p0,it.w,it.l,it.h) : dimOfX(it.ctn,it.qty,p0,it.w,it.l,it.h);
-        row.getCell(3).value=dim; row.getCell(4).value=+it.gw||0; row.getCell(4).numFmt='#,##0.00'; row.getCell(5).value=it.mark||'';
-      }
-      for(let ci=1;ci<=5;ci++){const c=row.getCell(ci);c.border=border;c.alignment={vertical:(ci>=3?'middle':'top'),wrapText:true,horizontal:(ci===1?'center':(ci===4?'right':'left'))};}
+      row.getCell(3).value=dimOfX(m.ctn,m.qty,(Object.keys(p).length?p:p0),it.w,it.l,it.h);   // Dimension แยกต่อชิ้น
+      if(mi===0){ row.getCell(4).value=+it.gw||0; row.getCell(4).numFmt='#,##0.00'; row.getCell(5).value=it.mark||''; }
+      for(let ci=1;ci<=5;ci++){const c=row.getCell(ci);c.border=border;c.alignment={vertical:(ci>=4?'middle':'top'),wrapText:true,horizontal:(ci===1?'center':(ci===4?'right':'left'))};}
       pr++;});
-    if(span>1){wsP.mergeCells(startRow,3,startRow+span-1,3);wsP.mergeCells(startRow,4,startRow+span-1,4);wsP.mergeCells(startRow,5,startRow+span-1,5);}
+    if(span>1){wsP.mergeCells(startRow,4,startRow+span-1,4);wsP.mergeCells(startRow,5,startRow+span-1,5);}   // ผสานเฉพาะ GW + Shipping Mark
     ii+=span;
   }
   wb.xlsx.writeBuffer().then(buf=>{const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
