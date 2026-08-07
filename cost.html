@@ -1265,7 +1265,7 @@ async function exportTaxPdf(ev){
   try{
     const {jsPDF}=window.jspdf; const pdf=new jsPDF({unit:'mm',format:'a4',orientation:'landscape'});
     const pageW=297,pageH=210,margin=8,usableW=pageW-2*margin,usableH=pageH-2*margin;
-    const canvas=await html2canvas(sec,{scale:2,useCORS:true,backgroundColor:'#ffffff'});
+    const canvas=await html2canvas(sec,{scale:2,useCORS:true,backgroundColor:'#ffffff',imageTimeout:20000,logging:false});
     const pxPerMM=canvas.width/usableW; const fullH=canvas.height/pxPerMM;
     if(fullH<=usableH){pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',margin,margin,usableW,fullH);}
     else{const pagePxH=Math.floor(usableH*pxPerMM);let first=true;
@@ -1360,8 +1360,17 @@ function exportInvoiceExcel(ev){
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='INVOICE_PL_'+(d.invno||'draft')+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   }).catch(e=>{console.error(e);alert('สร้าง Excel ไม่สำเร็จ: '+e.message);});
 }
+async function waitDocImages(){
+  const imgs=[...document.querySelectorAll('#docPreview img')];
+  await Promise.all(imgs.map(im=>new Promise(res=>{
+    if(im.complete&&im.naturalWidth>0)return res();
+    im.onload=()=>res(); im.onerror=()=>res();
+    setTimeout(res,8000);   // กันค้าง
+  })));
+}
 async function savePdf(ev){
   renderDoc();
+  await waitDocImages();   // รอรูปทุกใบโหลดเสร็จก่อนถ่ายลง PDF
   if(!curItems.length){alert('ยังไม่มีรายการสินค้าในเอกสาร');return;}
   const sections=document.querySelectorAll('#docPreview .doc section');
   if(!sections.length){alert('ไม่มีเอกสาร');return;}
@@ -1376,7 +1385,7 @@ async function savePdf(ev){
     const pageW=210,pageH=297,margin=8,usableW=pageW-2*margin,usableH=pageH-2*margin;
     let firstPage=true;
     for(const sec of sections){
-      const canvas=await html2canvas(sec,{scale:2,useCORS:true,backgroundColor:'#ffffff'});
+      const canvas=await html2canvas(sec,{scale:2,useCORS:true,backgroundColor:'#ffffff',imageTimeout:20000,logging:false});
       const pxPerMM=canvas.width/usableW;         // scale ภาพให้พอดีความกว้างหน้า
       const fullH=canvas.height/pxPerMM;          // ความสูงจริงเป็น mm
       if(fullH<=usableH){
