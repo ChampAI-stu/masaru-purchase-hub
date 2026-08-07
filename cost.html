@@ -835,7 +835,7 @@ function renderSummary(){
   const m=($('sumMonth').value||'').trim();
   if(!m){$('summaryWrap').innerHTML='<div class="empty">พิมพ์หรือเลือกเดือน (เช่น 2026-05) เพื่อดูสรุป</div>';return;}
   const all=db.tracking.filter(t=>t.period===m).sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||'')));
-  const cos=[...new Set(all.map(t=>t.import_company).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));
+  const cos=[...new Set(db.tracking.map(t=>t.import_company).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));  // ทุกบริษัทที่เคยมี — โชว์ครบแม้เดือนนี้ยังไม่มีข้อมูล
   const cell=t=>`
     <td style="white-space:pre-line">${esc(t.jst_po||'')}</td>
     <td style="white-space:pre-line;max-width:220px">${esc(t.product_list||'')}</td>
@@ -872,7 +872,7 @@ function renderSummary(){
 }
 function exportSummary(){
   const m=($('sumMonth').value||'').trim(); if(!m){alert('เลือก/พิมพ์เดือนก่อน');return;}
-  const cos=[...new Set(db.tracking.filter(t=>t.period===m).map(t=>t.import_company).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));
+  const cos=[...new Set(db.tracking.map(t=>t.import_company).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));
   const head=['รหัสใบจัดซื้อ','SKU / รายการ','คาดวันจ่ายภาษี','จำนวน','ราคา','ผู้รับผิดชอบ','ส่งออกวันที่','สถานะ','วันที่เข้า','ยอดภาษี','วันจ่ายจริง','ขนส่ง'];
   const rows=[]; let grand=0;
   const all=db.tracking.filter(t=>t.period===m).sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||'')));
@@ -1156,7 +1156,11 @@ function loadInvToTax(){
   if(s.cname)$('x_company').value=s.cname;
   if(trk.shipping)$('x_carrier').value=trk.shipping;
   const dft=trk.draft_no||trk.draft_bill_no||''; if(dft)$('x_draft').value=dft;
+  if(trk.period)$('x_period').value=trk.period;
   if(!$('x_title').value.trim())$('x_title').value='สรุปภาษีนำเข้า '+(s.invno||'')+(trk.shipping?(' By '+trk.shipping):'');
+  const poRef=trk.jst_po||s.invno||'';
+  const plist=(s.items||[]).map((it,i)=>{const p=prod(it.sku)||{};return (i+1)+'. PO '+poRef+' '+(it.sku||'')+' = '+money(it.qty)+' '+(p.unit||'ชุด');}).join('\n');
+  $('x_note').value=plist;
   taxItems=(s.items||[]).map(it=>({sku:it.sku||'',qty:+it.qty||0,amount:Math.round(((+it.price||0)*(+it.qty||0)*rate)*100)/100,duty:0,fee:false}));
   renderTaxLines();
 }
