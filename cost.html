@@ -1119,7 +1119,7 @@ function renderDoc(){
   $('docPreview').innerHTML=`<div class="doc"><section class="inv-page"><h2 class="title">INVOICE</h2><div class="goldline"></div>${hdr('Invoice No')}
     <table class="items"><colgroup><col style="width:13%"><col style="width:13%"><col style="width:12%"><col style="width:10%"><col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:7%"><col style="width:20%"></colgroup><thead><tr><th>DESCRIPTION</th><th>Picture</th><th>COMPONENT</th><th>Specification</th><th>Unit Price</th><th>Qty (PCS)</th><th>Total/${esc(d.cur)}</th><th>GW (Kg)</th><th>Remark</th></tr></thead><tbody>${rowInv}
       <tr><td colspan="4" style="text-align:right"><b>Logistics costs</b></td><td></td><td></td><td style="text-align:right">${money(d.logi)}</td><td></td><td></td></tr>
-      <tr><td colspan="6" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(totalPrice+d.logi)}</b></td><td></td><td></td></tr></tbody></table>
+      <tr><td colspan="6" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(totalPrice+d.logi)}</b></td><td style="text-align:right"><b>${money(totalGW)}</b></td><td></td></tr></tbody></table>
     <div class="sig">Signature and Company Stamp<br><br>________________________</div></section>
     <section class="pl-page"><h2 class="title">PACKING LIST</h2><div class="goldline"></div>${hdr('Reference Invoice No')}
     <table class="items"><colgroup><col style="width:7%"><col style="width:33%"><col style="width:30%"><col style="width:10%"><col style="width:20%"></colgroup><thead><tr><th>ITEM</th><th>DESCRIPTION OF GOODS</th><th>Dimension</th><th>GW (Kg)</th><th>Shipping Mark</th></tr></thead><tbody>${rowPl}</tbody></table>
@@ -1325,7 +1325,7 @@ function exportInvoiceExcel(ev){
     if(g.pic&&addImg(wsI,g.pic,1,r-1))row.height=42; else row.height=40;
     r++;});
   const lr=wsI.getRow(r); wsI.mergeCells(r,1,r,6); lr.getCell(1).value='Logistics costs'; lr.getCell(1).alignment={horizontal:'right'}; lr.getCell(1).font={bold:true}; lr.getCell(7).value=d.logi; lr.getCell(7).numFmt='#,##0.00'; lr.getCell(7).alignment={horizontal:'right'}; for(let i=1;i<=9;i++)lr.getCell(i).border=border; r++;
-  const tr=wsI.getRow(r); wsI.mergeCells(r,1,r,6); tr.getCell(1).value='Total'; tr.getCell(1).alignment={horizontal:'right'}; tr.getCell(1).font={bold:true}; tr.getCell(7).value=totalPrice+d.logi; tr.getCell(7).numFmt='#,##0.00'; tr.getCell(7).font={bold:true}; tr.getCell(7).alignment={horizontal:'right'}; for(let i=1;i<=9;i++)tr.getCell(i).border=border; r+=3;
+  const tr=wsI.getRow(r); wsI.mergeCells(r,1,r,6); tr.getCell(1).value='Total'; tr.getCell(1).alignment={horizontal:'right'}; tr.getCell(1).font={bold:true}; tr.getCell(7).value=totalPrice+d.logi; tr.getCell(7).numFmt='#,##0.00'; tr.getCell(7).font={bold:true}; tr.getCell(7).alignment={horizontal:'right'}; tr.getCell(8).value=totalGW; tr.getCell(8).numFmt='#,##0.00'; tr.getCell(8).font={bold:true}; tr.getCell(8).alignment={horizontal:'right'}; for(let i=1;i<=9;i++)tr.getCell(i).border=border; r+=3;
   wsI.mergeCells(r,6,r,9); wsI.getCell(r,6).value='Signature and Company Stamp'; wsI.getCell(r,6).alignment={horizontal:'center'};
   wsI.mergeCells(r+2,6,r+2,9); wsI.getCell(r+2,6).value='__________________________'; wsI.getCell(r+2,6).alignment={horizontal:'center'};
   // ===== PACKING LIST =====
