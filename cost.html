@@ -838,7 +838,7 @@ function renderSummary(){
   const m=($('sumMonth').value||'').trim();
   if(!m){$('summaryWrap').innerHTML='<div class="empty">พิมพ์หรือเลือกเดือน (เช่น 2026-05) เพื่อดูสรุป</div>';return;}
   const all=db.tracking.filter(t=>t.period===m).sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||'')));
-  const cos=[...new Set(db.tracking.map(t=>t.import_company).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));  // ทุกบริษัทที่เคยมี — โชว์ครบแม้เดือนนี้ยังไม่มีข้อมูล
+  const cos=[...new Set([...consigneeNames(),...db.tracking.map(t=>t.import_company).filter(Boolean)])].sort((a,b)=>String(a).localeCompare(String(b)));  // ผู้ซื้อทุกราย + บริษัทใน tracking — โชว์ครบแม้เดือนนี้ยังไม่มีข้อมูล
   const cell=t=>`
     <td style="white-space:pre-line">${esc(t.jst_po||'')}</td>
     <td style="white-space:pre-line;max-width:220px">${esc(t.product_list||'')}</td>
@@ -875,7 +875,7 @@ function renderSummary(){
 }
 function exportSummary(){
   const m=($('sumMonth').value||'').trim(); if(!m){alert('เลือก/พิมพ์เดือนก่อน');return;}
-  const cos=[...new Set(db.tracking.map(t=>t.import_company).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));
+  const cos=[...new Set([...consigneeNames(),...db.tracking.map(t=>t.import_company).filter(Boolean)])].sort((a,b)=>String(a).localeCompare(String(b)));
   const head=['รหัสใบจัดซื้อ','SKU / รายการ','คาดวันจ่ายภาษี','จำนวน','ราคา','ผู้รับผิดชอบ','ส่งออกวันที่','สถานะ','วันที่เข้า','ยอดภาษี','วันจ่ายจริง','ขนส่ง'];
   const rows=[]; let grand=0;
   const all=db.tracking.filter(t=>t.period===m).sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||'')));
@@ -1075,11 +1075,32 @@ function renderDoc(){
       <td style="white-space:pre-line">${esc(p.component||'')}</td><td>${esc(p.spec||'')}</td>
       <td style="text-align:right">${money(up)}</td><td style="text-align:right">${money(g.qty)}</td>
       <td style="text-align:right">${money(g.total)}</td><td style="text-align:right">${money(g.gw)}</td><td class="rmark">${esc(remark)}</td></tr>`;}).join('');
-  const rowPl=d.items.map((it,idx)=>{const p=prod(it.sku)||{};
-    const _cbm=lineCbmCtn(it)||(+p.cbm_ctn||0); const _box=(it.w&&it.l&&it.h)?`${it.w}x${it.l}x${it.h} Cm`:(p.box_size||'');
-    const dim=`${it.ctn||0} Cartons*${p.per_ctn||''}= ${money(it.qty)} ${p.unit||'Pcs'}\nBoxes Size: ${_box}\n${money((it.ctn||0)*_cbm)} CBM\n1 Cartons = ${p.per_ctn||''} ${p.unit||''} = ${p.w_ctn||''} Kg`;
-    return `<tr><td style="text-align:center">${idx+1}</td><td>${esc(p.name_en||it.sku)}<br>${esc(p.name_th||'')}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||it.sku)}</td>
-      <td style="white-space:pre-line">${esc(dim)}</td><td style="text-align:right">${money(it.gw)}</td><td style="white-space:pre-line">${esc(it.mark||'')}</td></tr>`;}).join('');
+  const rowPl=(()=>{
+    let out='',idx=0,i=0;
+    while(i<d.items.length){
+      const it=d.items[i], gid=it.gid;
+      let members=[it];
+      if(gid){let j=i+1;while(j<d.items.length&&d.items[j].gid===gid){members.push(d.items[j]);j++;}}
+      const span=members.length;
+      if(span===1){
+        const p=prod(it.sku)||{}; idx++;
+        const _cbm=lineCbmCtn(it)||(+p.cbm_ctn||0); const _box=(it.w&&it.l&&it.h)?`${it.w}x${it.l}x${it.h} Cm`:(p.box_size||'');
+        const dim=`${it.ctn||0} Cartons*${p.per_ctn||''}= ${money(it.qty)} ${p.unit||'Pcs'}\nBoxes Size: ${_box}\n${money((it.ctn||0)*_cbm)} CBM\n1 Cartons = ${p.per_ctn||''} ${p.unit||''} = ${p.w_ctn||''} Kg`;
+        out+=`<tr><td style="text-align:center">${idx}</td><td>${esc(p.name_en||it.sku)}<br>${esc(p.name_th||'')}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||it.sku)}</td>
+          <td style="white-space:pre-line">${esc(dim)}</td><td style="text-align:right">${money(it.gw)}</td><td style="white-space:pre-line">${esc(it.mark||'')}</td></tr>`;
+      } else {
+        const p0=prod(it.sku)||{}; const box=(it.w&&it.l&&it.h)?`${it.w}x${it.l}x${it.h} Cm`:(p0.box_size||''); const cbmCtn=lineCbmCtn(it)||(+p0.cbm_ctn||0);
+        const grpCtn=members.reduce((s,m)=>s+(+m.ctn||0),0);
+        const dim=`รวมกลุ่ม ${grpCtn} Cartons\nBoxes Size: ${box}\n${money(grpCtn*cbmCtn)} CBM`;
+        members.forEach((m,mi)=>{const p=prod(m.sku)||{}; idx++;
+          out+=`<tr><td style="text-align:center">${idx}</td><td>${esc(p.name_en||m.sku)}<br>${esc(p.name_th||'')}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||m.sku)}<br><span style="color:#666">${m.ctn||0} Ctn · ${money(m.qty)} ${esc(p.unit||'Pcs')}</span></td>`;
+          if(mi===0)out+=`<td rowspan="${span}" style="white-space:pre-line;vertical-align:middle;background:#fbfcfe">${esc(dim)}</td><td rowspan="${span}" style="text-align:right;vertical-align:middle;background:#fbfcfe">${money(it.gw)}</td><td rowspan="${span}" style="white-space:pre-line;vertical-align:middle;background:#fbfcfe">${esc(it.mark||'')}</td>`;
+          out+='</tr>';});
+      }
+      i+=span;
+    }
+    return out;
+  })();
   const hdr=lbl=>`<table class="hdr"><tr><td style="width:60%"><b>Vender Name :</b> ${esc(d.sname)}<br><b>Company :</b> ${esc(d.scomp)}${d.slic?'<br><b>Export Licence :</b> '+esc(d.slic):''}${d.stax?'<br><b>Tax ID :</b> '+esc(d.stax):''}<br><b>Address :</b> ${esc(d.saddr)}<br><b>Tel :</b> ${esc(d.stel)}<br><b>Consignee :</b> ${esc(d.cname)}<br><b>Address :</b> ${esc(d.caddr)}</td>
     <td style="vertical-align:top"><b>Date :</b> ${fmtDate(d.date)}<br><b>${lbl} :</b> ${esc(d.invno)}<br><b>Gross Weight :</b> ${money(totalGW)} Kg<br><b>Total Package :</b> ${money(totalCtn)} Cartons<br><b>TERM :</b> ${esc(d.term)}${d.port?`<br><b>PORT :</b> ${esc(d.port)}`:''}</td></tr></table>`;
   $('docPreview').innerHTML=`<div class="doc"><section class="inv-page"><h2 class="title">INVOICE</h2><div class="goldline"></div>${hdr('Invoice No')}
@@ -1299,15 +1320,29 @@ function exportInvoiceExcel(ev){
   top=headerBlock(wsP,'PACKING LIST',5);
   const ph=['ITEM','DESCRIPTION OF GOODS','Dimension','GW (Kg)','Shipping Mark'];
   const phr=wsP.getRow(top); ph.forEach((h,i)=>{const c=phr.getCell(i+1);c.value=h;c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:navy}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=border;}); phr.height=22;
-  let pr=top+1;
-  d.items.forEach((it,idx)=>{const p=prod(it.sku)||{};
-    const _cbm=lineCbmCtn(it)||(+p.cbm_ctn||0); const _box=(it.w&&it.l&&it.h)?(it.w+'x'+it.l+'x'+it.h+' Cm'):(p.box_size||'');
-    const dim=(it.ctn||0)+' Cartons*'+(p.per_ctn||'')+'= '+money(it.qty)+' '+(p.unit||'Pcs')+'\nBoxes Size: '+_box+'\n'+money((it.ctn||0)*_cbm)+' CBM\n1 Cartons = '+(p.per_ctn||'')+' '+(p.unit||'')+' = '+(p.w_ctn||'')+' Kg';
-    const desc=(p.name_en||it.sku)+'\n'+(p.name_th||'')+'\nBRAND：'+(p.brand||'')+' MODEL：'+(p.model||it.sku);
-    const vals=[idx+1,desc,dim,it.gw,it.mark||''];
-    const row=wsP.getRow(pr);
-    vals.forEach((v,i)=>{const c=row.getCell(i+1);c.value=v;c.border=border;c.alignment={vertical:'top',wrapText:true,horizontal:(i===0?'center':(i===3?'right':'left'))};});
-    row.getCell(4).numFmt='#,##0.00'; pr++;});
+  let pr=top+1; let ii=0;
+  while(ii<d.items.length){
+    const it=d.items[ii], gid=it.gid; let members=[it];
+    if(gid){let j=ii+1;while(j<d.items.length&&d.items[j].gid===gid){members.push(d.items[j]);j++;}}
+    const span=members.length; const p0=prod(it.sku)||{};
+    const box=(it.w&&it.l&&it.h)?(it.w+'x'+it.l+'x'+it.h+' Cm'):(p0.box_size||''); const cbmCtn=lineCbmCtn(it)||(+p0.cbm_ctn||0);
+    const startRow=pr;
+    members.forEach((m,mi)=>{const p=prod(m.sku)||{};
+      const desc=(p.name_en||m.sku)+'\n'+(p.name_th||'')+'\nBRAND：'+(p.brand||'')+' MODEL：'+(p.model||m.sku)+(span>1?('\n'+(m.ctn||0)+' Ctn · '+money(m.qty)+' '+(p.unit||'Pcs')):'');
+      const row=wsP.getRow(pr);
+      row.getCell(1).value=(pr-top); row.getCell(2).value=desc;
+      if(mi===0){
+        const grpCtn=members.reduce((s,mm)=>s+(+mm.ctn||0),0);
+        const dim=span>1
+          ? ('รวมกลุ่ม '+grpCtn+' Cartons\nBoxes Size: '+box+'\n'+money(grpCtn*cbmCtn)+' CBM')
+          : ((it.ctn||0)+' Cartons*'+(p0.per_ctn||'')+'= '+money(it.qty)+' '+(p0.unit||'Pcs')+'\nBoxes Size: '+box+'\n'+money((it.ctn||0)*cbmCtn)+' CBM\n1 Cartons = '+(p0.per_ctn||'')+' '+(p0.unit||'')+' = '+(p0.w_ctn||'')+' Kg');
+        row.getCell(3).value=dim; row.getCell(4).value=+it.gw||0; row.getCell(4).numFmt='#,##0.00'; row.getCell(5).value=it.mark||'';
+      }
+      for(let ci=1;ci<=5;ci++){const c=row.getCell(ci);c.border=border;c.alignment={vertical:(ci>=3?'middle':'top'),wrapText:true,horizontal:(ci===1?'center':(ci===4?'right':'left'))};}
+      pr++;});
+    if(span>1){wsP.mergeCells(startRow,3,startRow+span-1,3);wsP.mergeCells(startRow,4,startRow+span-1,4);wsP.mergeCells(startRow,5,startRow+span-1,5);}
+    ii+=span;
+  }
   wb.xlsx.writeBuffer().then(buf=>{const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='INVOICE_PL_'+(d.invno||'draft')+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   }).catch(e=>{console.error(e);alert('สร้าง Excel ไม่สำเร็จ: '+e.message);});
