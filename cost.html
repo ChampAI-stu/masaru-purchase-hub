@@ -183,6 +183,11 @@
     </section>
 
     <section id="tab-parties" style="display:none">
+      <div class="toolbar" style="margin-bottom:12px">
+        <input id="pSearch" placeholder="🔍 ค้นหา ชื่อ / nickname / บริษัท / Tel / Tax ID" oninput="renderParties()" style="max-width:340px">
+        <span class="sp"></span>
+        <button class="btn gold" onclick="exportParties()">⬇️ ดาวน์โหลด Excel</button>
+      </div>
       <div class="row">
         <div class="card" style="flex:1">
           <div class="toolbar"><h2 style="margin:0;border:0;padding:0">🏭 ผู้ขาย (Vender)</h2><span class="sp"></span>
@@ -635,8 +640,20 @@ function renderParties(){
       (canEdit?`<td class="no-print" style="white-space:nowrap"><button class="mini btn" onclick="openParty('${kind}','${p.id}')">แก้</button> <button class="mini btn red" onclick="delParty('${p.id}')">ลบ</button></td>`:'')+`</tr>`;});
     return h+'</tbody></table>';
   };
-  $('venderTable').innerHTML=mk(partiesOf('vender'),'vender');
-  $('consTable').innerHTML=mk(partiesOf('consignee'),'consignee');
+  const q=($('pSearch')?$('pSearch').value:'').toLowerCase().trim();
+  const filt=list=>!q?list:list.filter(p=>((p.nickname||'')+' '+(p.name||'')+' '+(p.company||'')+' '+(p.tel||'')+' '+(p.tax_id||'')+' '+(p.export_licence||'')+' '+(p.address||'')).toLowerCase().includes(q));
+  $('venderTable').innerHTML=mk(filt(partiesOf('vender')),'vender');
+  $('consTable').innerHTML=mk(filt(partiesOf('consignee')),'consignee');
+}
+function exportParties(){
+  const mkRows=(list,vender)=>{const head=vender?['Nickname','ชื่อจริง (ลงในบิล)','Company','Tel','Address','Export Licence','Tax ID']:['Nickname','ชื่อจริง (ลงในบิล)','Company','Tel','Address'];
+    const rows=[head]; list.forEach(p=>rows.push(vender?[p.nickname||'',p.name||'',p.company||'',p.tel||'',p.address||'',p.export_licence||'',p.tax_id||'']:[p.nickname||'',p.name||'',p.company||'',p.tel||'',p.address||''])); return rows;};
+  const wb=XLSX.utils.book_new();
+  const wsV=XLSX.utils.aoa_to_sheet(mkRows(partiesOf('vender'),true)); wsV['!cols']=[{wch:18},{wch:30},{wch:24},{wch:16},{wch:40},{wch:20},{wch:18}];
+  const wsC=XLSX.utils.aoa_to_sheet(mkRows(partiesOf('consignee'),false)); wsC['!cols']=[{wch:18},{wch:30},{wch:24},{wch:16},{wch:40}];
+  XLSX.utils.book_append_sheet(wb,wsV,'ผู้ขาย Vender');
+  XLSX.utils.book_append_sheet(wb,wsC,'ผู้ซื้อ Consignee');
+  XLSX.writeFile(wb,'ผู้ขาย-ผู้ซื้อ_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 function openParty(kind,id){
   const p=id?db.parties.find(x=>x.id===id):{};
