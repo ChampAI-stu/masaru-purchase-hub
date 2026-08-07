@@ -11,6 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
   :root{--navy:#1A2942;--navy-2:#22345A;--blue:#3A5A8C;--gold:#D0212B;--red:#D0212B;--green:#1E7145;
     --bg:#F4F6FA;--card:#fff;--line:#E2E8F0;--ink:#1E293B;--mut:#64748B;--rowLighter:#F8FAFD;}
@@ -229,6 +230,7 @@
             <button class="btn ghost" onclick="clearAllImages()" title="ล้างรูปในเอกสารนี้เพื่อคืนพื้นที่ DB">🧹 ล้างรูป</button>
             <span class="sp"></span>
             <button class="btn" onclick="savePdf(event)">📄 บันทึก PDF</button>
+            <button class="btn gold" onclick="exportInvoiceExcel(event)">⬇️ Excel (แก้ได้)</button>
             <button class="btn gold" onclick="exportInvPlExcel()">⬇️ Export Excel</button>
           </div>
         </div>
@@ -1002,6 +1004,57 @@ function exportInvPlExcel(){
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,(d.invno||'INV_PL').slice(0,28));XLSX.writeFile(wb,`${d.invno||'INV_PL'}_INV_PL.xlsx`);
 }
 /* ===== สร้าง PDF จริง (เรนเดอร์ทีละหน้า A4) → เปิดในแท็บใหม่ ===== */
+function exportInvoiceExcel(ev){
+  if(ev)ev.preventDefault();
+  if(!window.ExcelJS){alert('กำลังโหลดไลบรารี Excel — ลองกดใหม่อีกครั้ง');return;}
+  const d=formData();
+  const groups=[]; const gi={};
+  d.items.forEach((it,idx)=>{const key=it.sku?('sku:'+it.sku):('__b'+idx);
+    if(gi[key]==null){gi[key]=groups.length;groups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:0,total:0,mixed:false});}
+    const g=groups[gi[key]];if((+it.price||0)!==g.price)g.mixed=true;
+    g.qty+=+it.qty||0;g.gw+=+it.gw||0;g.total+=(+it.price||0)*(+it.qty||0);});
+  const totalPrice=d.items.reduce((s,i)=>s+(+i.price*+i.qty),0);
+  const totalGW=d.items.reduce((s,i)=>s+(+i.gw||0),0);
+  const totalCtn=d.items.reduce((s,i)=>s+(+i.ctn||0),0);
+  const wb=new ExcelJS.Workbook();
+  const ws=wb.addWorksheet('INVOICE',{views:[{showGridLines:false}]});
+  ws.columns=[{width:26},{width:10},{width:14},{width:14},{width:11},{width:10},{width:13},{width:10},{width:30}];
+  const thin={style:'thin',color:{argb:'FF888888'}}, border={top:thin,left:thin,bottom:thin,right:thin}, navy='FF1F3864';
+  ws.mergeCells('A1:I1'); const t=ws.getCell('A1'); t.value='INVOICE'; t.font={bold:true,size:20}; t.alignment={horizontal:'center'}; ws.getRow(1).height=28;
+  const left=[['Vender Name',d.sname],['Company',d.scomp]];
+  if(d.slic)left.push(['Export Licence',d.slic]); if(d.stax)left.push(['Tax ID',d.stax]);
+  left.push(['Address',d.saddr],['Tel',d.stel],['Consignee',d.cname],['Address',d.caddr]);
+  const right=[['Date',fmtDate(d.date)],['Invoice No',d.invno],['Gross Weight',money(totalGW)+' Kg'],['Total Package',money(totalCtn)+' Cartons'],['TERM',d.term],['PORT',d.port]];
+  const start=3, n=Math.max(left.length,right.length);
+  for(let i=0;i<n;i++){const r=start+i; ws.mergeCells(r,1,r,4); ws.mergeCells(r,6,r,9);
+    if(left[i])ws.getCell(r,1).value={richText:[{text:left[i][0]+' : ',font:{bold:true}},{text:String(left[i][1]||'')}]};
+    if(right[i])ws.getCell(r,6).value={richText:[{text:right[i][0]+' : ',font:{bold:true}},{text:String(right[i][1]||'')}]};}
+  const tableTop=start+n+1;
+  const heads=['DESCRIPTION','Picture','COMPONENT','Specification','Unit Price','Qty(PCS)','Total/'+d.cur,'GW(Kg)','Remark'];
+  const hr=ws.getRow(tableTop);
+  heads.forEach((h,i)=>{const c=hr.getCell(i+1);c.value=h;c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:navy}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=border;});
+  hr.height=22;
+  let rIdx=tableTop+1;
+  groups.forEach(g=>{const p=prod(g.sku)||{}; const up=(g.mixed&&g.qty)?(g.total/g.qty):g.price;
+    const remark=`BRAND ：${p.brand||''}\nMODEL：${p.model||g.sku}\n\n${p.name_en||''} : ${g.sku}\n${p.name_th||''}`;
+    const vals=[(p.name_en||p.product_name||g.sku)+'\n'+(p.model||g.sku),'',p.component||'',p.spec||'',up,g.qty,g.total,g.gw,remark];
+    const row=ws.getRow(rIdx);
+    vals.forEach((v,i)=>{const c=row.getCell(i+1);c.value=v;c.border=border;c.alignment={vertical:'top',wrapText:true,horizontal:(i>=4&&i<=7)?'right':'left'};});
+    [5,6,7,8].forEach(ci=>row.getCell(ci).numFmt='#,##0.00'); rIdx++;});
+  const lr=ws.getRow(rIdx); ws.mergeCells(rIdx,1,rIdx,6);
+  lr.getCell(1).value='Logistics costs'; lr.getCell(1).alignment={horizontal:'right'}; lr.getCell(1).font={bold:true};
+  lr.getCell(7).value=d.logi; lr.getCell(7).numFmt='#,##0.00'; lr.getCell(7).alignment={horizontal:'right'};
+  for(let i=1;i<=9;i++)lr.getCell(i).border=border; rIdx++;
+  const tr=ws.getRow(rIdx); ws.mergeCells(rIdx,1,rIdx,6);
+  tr.getCell(1).value='Total'; tr.getCell(1).alignment={horizontal:'right'}; tr.getCell(1).font={bold:true};
+  tr.getCell(7).value=totalPrice+d.logi; tr.getCell(7).numFmt='#,##0.00'; tr.getCell(7).font={bold:true}; tr.getCell(7).alignment={horizontal:'right'};
+  for(let i=1;i<=9;i++)tr.getCell(i).border=border; rIdx+=3;
+  ws.mergeCells(rIdx,6,rIdx,9); ws.getCell(rIdx,6).value='Signature and Company Stamp'; ws.getCell(rIdx,6).alignment={horizontal:'center'};
+  ws.mergeCells(rIdx+2,6,rIdx+2,9); ws.getCell(rIdx+2,6).value='__________________________'; ws.getCell(rIdx+2,6).alignment={horizontal:'center'};
+  wb.xlsx.writeBuffer().then(buf=>{const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='INVOICE_'+(d.invno||'draft')+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  }).catch(e=>{console.error(e);alert('สร้าง Excel ไม่สำเร็จ: '+e.message);});
+}
 async function savePdf(ev){
   renderDoc();
   if(!curItems.length){alert('ยังไม่มีรายการสินค้าในเอกสาร');return;}
