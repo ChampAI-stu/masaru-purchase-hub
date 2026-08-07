@@ -419,7 +419,7 @@
               <th class="sortable" data-sort="received_qty">จำนวนที่เข้า<span class="sort-ind"></span></th>
               <th class="sortable" data-sort="eta">วันที่เข้าคลัง<span class="sort-ind"></span></th>
               <th class="sortable" data-sort="status">สถานะ PO<span class="sort-ind"></span></th>
-              <th class="sortable" data-sort="carrier">บริษัทขนส่ง<span class="sort-ind"></span></th>
+              <th class="sortable" data-sort="carrier" id="carrierHead">บริษัทขนส่ง<span class="sort-ind"></span></th>
               <th>หมายเหตุ</th>
               <th class="sortable" data-sort="updated_at">วันที่อัพเดท<span class="sort-ind"></span></th>
               <th id="actionsHead" style="display:none">จัดการ</th>
@@ -1068,6 +1068,8 @@ function subscribeRealtime(){
 
 // ===== RENDER =====
 function render(){
+  const hideCarrier = (currentRole==='marketing');   // การตลาดไม่เห็นบริษัทขนส่ง
+  {const _ch=document.getElementById('carrierHead'); if(_ch)_ch.style.display=hideCarrier?'none':'';}
   const q = $('searchInput').value.toLowerCase().trim();
   const sf = $('statusFilter').value;
   let rows = allOrders.filter(o => {
@@ -1085,7 +1087,7 @@ function render(){
   renderSummary();
   const tb = $('tableBody');
   if(rows.length === 0){
-    const colspan = currentRole==='purchase' ? (selectionMode?12:11) : 10;
+    const colspan = currentRole==='purchase' ? (selectionMode?12:11) : (currentRole==='marketing'?9:10);
     tb.innerHTML = `<tr><td colspan="${colspan}"><div class="empty">
       <div class="big">📋</div>ยังไม่มีรายการ${q||sf?'ที่ตรงกับการค้นหา':''}</div></td></tr>`;
     renderPagination(0);
@@ -1131,7 +1133,7 @@ function render(){
       <td>${recvCell}</td>
       <td>${etaCell}</td>
       <td><span class="badge ${STATUS_CLASS[o.status]||''}">${STATUS_ICON[o.status]||''} ${esc(o.status)}</span></td>
-      <td>${o.carrier?`<span class="carrier-tag" style="background:${carrierColor(o.carrier)}">${esc(o.carrier)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+      ${hideCarrier?'':`<td>${o.carrier?`<span class="carrier-tag" style="background:${carrierColor(o.carrier)}">${esc(o.carrier)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>`}
       <td><span class="note">${o.note?esc(o.note):'—'}</span></td>
       <td style="font-size:12px;color:var(--muted);white-space:nowrap">${fmtDateTime(o.updated_at)}</td>
       ${actions}
