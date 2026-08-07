@@ -1058,13 +1058,14 @@ function renderDoc(){
   const d=formData();
   const totalGW=(()=>{const seen={};let s=0;d.items.forEach(it=>{if(it.gid){if(!seen[it.gid]){seen[it.gid]=1;s+=+it.gw||0;}}else s+=+it.gw||0;});return s;})(), totalCtn=d.items.reduce((s,i)=>s+(+i.ctn||0),0), totalPrice=d.items.reduce((s,i)=>s+(+i.price*+i.qty),0);
   // Invoice: รวมแถวที่ SKU เดียวกัน (บวก Qty/Total/GW) — Packing List ยังแยกทุกบรรทัด
-  const invGroups=[]; const gi={};
+  const invGroups=[]; const gi={}; const _seenGw={};
   d.items.forEach((it,idx)=>{
     const key=it.sku?('sku:'+it.sku):('__blank'+idx);
     if(gi[key]==null){gi[key]=invGroups.length;invGroups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:0,total:0,pic:it.pic||'',mixed:false});}
     const g=invGroups[gi[key]];
     if((+it.price||0)!==g.price)g.mixed=true;
-    g.qty+=+it.qty||0; g.gw+=+it.gw||0; g.total+=(+it.price||0)*(+it.qty||0);
+    const countGw = it.gid ? (!_seenGw[it.gid] && (_seenGw[it.gid]=1)) : true;   // GW กลุ่มนับครั้งเดียว
+    g.qty+=+it.qty||0; g.gw+=countGw?(+it.gw||0):0; g.total+=(+it.price||0)*(+it.qty||0);
     if(!g.pic&&it.pic)g.pic=it.pic;
   });
   const rowInv=invGroups.map(g=>{const p=prod(g.sku)||{};
@@ -1266,11 +1267,12 @@ function exportInvoiceExcel(ev){
   if(ev)ev.preventDefault();
   if(!window.ExcelJS){alert('กำลังโหลดไลบรารี Excel — ลองกดใหม่อีกครั้ง');return;}
   const d=formData();
-  const groups=[]; const gi={};
+  const groups=[]; const gi={}; const _seenGwX={};
   d.items.forEach((it,idx)=>{const key=it.sku?('sku:'+it.sku):('__b'+idx);
     if(gi[key]==null){gi[key]=groups.length;groups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:0,total:0,pic:it.pic||'',mixed:false});}
     const g=groups[gi[key]];if((+it.price||0)!==g.price)g.mixed=true;
-    g.qty+=+it.qty||0;g.gw+=+it.gw||0;g.total+=(+it.price||0)*(+it.qty||0); if(!g.pic&&it.pic)g.pic=it.pic;});
+    const cg=it.gid?(!_seenGwX[it.gid]&&(_seenGwX[it.gid]=1)):true;
+    g.qty+=+it.qty||0;g.gw+=cg?(+it.gw||0):0;g.total+=(+it.price||0)*(+it.qty||0); if(!g.pic&&it.pic)g.pic=it.pic;});
   const totalPrice=d.items.reduce((s,i)=>s+(+i.price*+i.qty),0);
   const totalGW=(()=>{const seen={};let s=0;d.items.forEach(it=>{if(it.gid){if(!seen[it.gid]){seen[it.gid]=1;s+=+it.gw||0;}}else s+=+it.gw||0;});return s;})();
   const totalCtn=d.items.reduce((s,i)=>s+(+i.ctn||0),0);
