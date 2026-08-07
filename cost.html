@@ -1079,7 +1079,7 @@ function renderDoc(){
           `<td style="white-space:pre-line">${esc(p.component||'')}</td><td>${esc(p.spec||'')}</td>`+
           `<td style="text-align:right">${money(up)}</td><td style="text-align:right">${money(g.qty)}</td>`+
           `<td style="text-align:right">${money(g.total)}</td>`+
-          (ri===0?`<td rowspan="${span}" style="text-align:right;vertical-align:top">${money(grpGw)}</td>`:'')+
+          `<td style="text-align:right;${(ri===0?'':'border-top:none;')+(ri===span-1?'':'border-bottom:none;')}">${ri===0?money(grpGw):''}</td>`+
           `<td class="rmark">${esc(remark)}</td></tr>`;});
       k+=span;
     }
@@ -1101,11 +1101,14 @@ function renderDoc(){
       } else {
         const p0=prod(it.sku)||{};
         members.forEach((m,mi)=>{const p=prod(m.sku)||{}; idx++;
-          const dimM=dimOf(m.ctn,m.qty,(Object.keys(p).length?p:p0),it.w,it.l,it.h);   // ขนาดกล่องใช้ร่วม · ctn/qty ของตัวเอง
+          const dimM=dimOf(m.ctn,m.qty,(Object.keys(p).length?p:p0),it.w,it.l,it.h);
+          const first=mi===0,last=mi===members.length-1;
+          const sh='text-align:right;'+(first?'':'border-top:none;')+(last?'':'border-bottom:none;');
+          const shL='white-space:pre-line;'+(first?'':'border-top:none;')+(last?'':'border-bottom:none;');
           out+=`<tr><td style="text-align:center">${idx}</td><td>${esc(p.name_en||m.sku)}<br>${thName(p)}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||m.sku)}</td>
-            <td style="white-space:pre-line">${esc(dimM)}</td>`;
-          if(mi===0)out+=`<td rowspan="${span}" style="text-align:right;vertical-align:middle">${money(it.gw)}</td><td rowspan="${span}" style="white-space:pre-line;vertical-align:middle">${esc(it.mark||'')}</td>`;
-          out+='</tr>';});
+            <td style="white-space:pre-line">${esc(dimM)}</td>
+            <td style="${sh}">${first?money(it.gw):''}</td>
+            <td style="${shL}">${first?esc(it.mark||''):''}</td></tr>`;});
       }
       i+=span;
     }
