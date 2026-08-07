@@ -140,6 +140,7 @@
         <div class="card"><h2>มูลค่านำเข้ารายบริษัท (เดือนนี้)</h2><div class="chartbox"><canvas id="coChart"></canvas></div></div>
       </div>
       <div class="card"><h2>⚠️ ภาษีใกล้ครบกำหนด (ภายใน 14 วัน)</h2><div id="taxDue" style="overflow-x:auto"></div></div>
+      <div class="card"><h2>⏳ DEM ใกล้ครบกำหนด (ภายใน 7 วัน)</h2><div id="demDue" style="overflow-x:auto"></div></div>
     </section>
 
     <section id="tab-sku" style="display:none">
@@ -316,8 +317,8 @@
     </div>
     <div class="grid3">
       <div><label>บริษัทขนส่ง</label><input id="t_ship" list="shipCoList" placeholder="พิมพ์หรือเลือก" autocomplete="off"><datalist id="shipCoList"></datalist></div>
-      <div><label>ส่งออกมาวันที่</label><input id="t_exp" type="date"></div>
-      <div><label>วันที่เข้า (ถึงไทย)</label><input id="t_arr" type="date"></div>
+      <div><label>ETD (ส่งออก)</label><input id="t_exp" type="date"></div>
+      <div><label>ETA (ถึงไทย)</label><input id="t_arr" type="date"></div>
     </div>
     <div class="grid3">
       <div><label>B/L No.</label><input id="t_bl"></div>
@@ -329,6 +330,11 @@
       <div><label>เลขที่ใบขน</label><input id="t_draft"></div>
       <div><label>ค่าภาษี (บาท)</label><input id="t_tax" type="number" step="0.01"></div>
       <div><label>วันที่จ่ายภาษีจริง</label><input id="t_taxdate" type="date"></div>
+    </div>
+    <div class="grid3">
+      <div><label>เลขที่ดราฟใบขน</label><input id="t_draftno"></div>
+      <div><label>ค่าธรรมเนียมกรมศุลกากร (บาท)</label><input id="t_customs" type="number" step="0.01"></div>
+      <div><label>วันครบกำหนด DEM</label><input id="t_demdue" type="date"></div>
     </div>
     <div class="grid3">
       <div><label>ค่าขนส่ง (บาท)</label><input id="t_shipcost" type="number" step="0.01"></div>
@@ -616,11 +622,12 @@ function applyConsignee(){
 
 /* ===== SHIPMENT TRACKING (ตารางติดตามการนำเข้า) ===== */
 const MOR_ST=['ยื่นสมอ.ผ่านแล้ว','อยู่ระหว่างยื่นสมอ','อยู่ระหว่างยื่นสมอ.แท่นชาร์จ','อยู่ระหว่างยื่นสมอ.สายชาร์จ','ไม่ต้องยื่นสมอ.'];
-const OP_ST=['กำลังผลิต','อยู่ระหว่างส่งไปโกดังจีน','อยู่ระหว่างส่งมาไทย','ถึงไทยแล้ว/สำเร็จ','ยกเลิก ทำไม่ได้'];
+const OP_ST=['กำลังผลิต','อยู่ระหว่างส่งไปโกดังจีน','CLS','อยู่ระหว่างส่งมาไทย','ถึงไทยแล้ว/สำเร็จ','DEM','ยกเลิก ทำไม่ได้'];
 const SHIP_CO=['GTL','NEXT','GLT Logistics'];
 function coColor(s){return {'LIKESHOP':'#C00000','MASARU':'#2E75B6','DAIKI':'#1E7145','PHONLAWUT':'#B7791F','คุณวุฒิ':'#8a5a00'}[s]||'#64748B';}
 function morColor(s){return {'ยื่นสมอ.ผ่านแล้ว':'#1E7145','ไม่ต้องยื่นสมอ.':'#B7791F'}[s]||'#2E75B6';}
-function opColor(s){return {'กำลังผลิต':'#374151','อยู่ระหว่างส่งไปโกดังจีน':'#1E7145','อยู่ระหว่างส่งมาไทย':'#8a5a00','ถึงไทยแล้ว/สำเร็จ':'#4B2E83','ยกเลิก ทำไม่ได้':'#C00000'}[s]||'#64748B';}
+function opColor(s){return {'กำลังผลิต':'#374151','อยู่ระหว่างส่งไปโกดังจีน':'#1E7145','CLS':'#0EA5E9','อยู่ระหว่างส่งมาไทย':'#8a5a00','ถึงไทยแล้ว/สำเร็จ':'#4B2E83','DEM':'#C2410C','ยกเลิก ทำไม่ได้':'#C00000'}[s]||'#64748B';}
+function demDaysLeft(t){if(t.op_status!=='DEM'||!t.dem_due_date)return null;const today=new Date();today.setHours(0,0,0,0);const d=new Date(t.dem_due_date);if(isNaN(d))return null;return Math.round((d-today)/86400000);}
 function shipColor(s){return {'GTL':'#C0398A','GLT Logistics':'#C0398A','NEXT':'#2E75B6'}[s]||'#64748B';}
 function tag(s,c){return s?`<span style="background:${c};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;white-space:nowrap">${esc(s)}</span>`:'<span class="muted">—</span>';}
 function docCount(r){return ['doc_acc_tax','doc_acc_receipt','doc_acc_billing','doc_quality','doc_purchase'].filter(k=>r[k]).length;}
@@ -646,22 +653,28 @@ function renderTrack(){
   const prod=db.tracking.filter(t=>t.op_status==='กำลังผลิต').length;
   const arrived=db.tracking.filter(t=>t.op_status==='ถึงไทยแล้ว/สำเร็จ').length;
   const taxUnpaid=db.tracking.filter(t=>(+t.tax_amount||0)>0&&!t.tax_paid).length;
+  const demWarn=db.tracking.filter(t=>{const d=demDaysLeft(t);return d!=null&&d<=7;}).length;
   $('trkKpi').innerHTML=`<div class="kpi"><div class="lbl">ทั้งหมด (รายการ)</div><div class="val">${db.tracking.length}</div></div>
     <div class="kpi"><div class="lbl">กำลังผลิต</div><div class="val">${prod}</div></div>
     <div class="kpi green"><div class="lbl">ถึงไทย/สำเร็จ</div><div class="val">${arrived}</div></div>
     <div class="kpi gold"><div class="lbl">ค่าภาษีค้างจ่าย</div><div class="val">${taxUnpaid}</div></div>
+    <div class="kpi" style="background:${demWarn?'#C2410C':''}"><div class="lbl">DEM ใกล้ครบ (7 วัน)</div><div class="val">${demWarn}</div></div>
     <div class="kpi"><div class="lbl">ยอดภาษีรวม (บาท)</div><div class="val">${money(tax)}</div></div>`;
   if(!list.length){$('trkTable').innerHTML='<div class="empty">ยังไม่มีรายการ'+(canEdit?' — กด “เพิ่มรายการ”':'')+'</div>';return;}
-  let h='<table style="min-width:1100px"><thead><tr><th>อินวอยซ์</th><th>PO JST</th><th>บริษัท</th><th>รายการสินค้า</th><th>ยื่นสมอ.</th><th>ดำเนินการ</th><th>ขนส่ง</th><th>ค่าภาษี</th><th>ค่าขนส่ง</th><th>เอกสาร</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
+  let h='<table style="min-width:1300px"><thead><tr><th>อินวอยซ์</th><th>PO JST</th><th>บริษัท</th><th>รายการสินค้า</th><th>ยื่นสมอ.</th><th>ดำเนินการ</th><th>ขนส่ง</th><th>ดราฟใบขน</th><th>ศุลกากร</th><th>ค่าภาษี</th><th>ค่าขนส่ง</th><th>เอกสาร</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
   list.forEach(t=>{
     const taxCell=(+t.tax_amount?money(t.tax_amount):'-')+(t.tax_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.tax_amount)?' <span class="pill pending">ค้าง</span>':''));
     const shpCell=(+t.ship_cost?money(t.ship_cost):'-')+(t.ship_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.ship_cost)?' <span class="pill pending">ค้าง</span>':''));
     const dc=docCount(t);
+    const dem=demDaysLeft(t);
+    const demBadge=(dem!=null&&dem<=7)?`<br><span class="pill" style="background:#C2410C;color:#fff;white-space:nowrap">${dem<0?'⚠️ DEM เกิน '+(-dem)+' วัน':'⏳ DEM เหลือ '+dem+' วัน'}</span>`:'';
     h+=`<tr><td><b>${esc(t.invoice_no||'')}</b>${t.shipment_id?` <button class="mini btn" onclick="openInvoiceFromTrack('${t.shipment_id}')" title="เปิดใบ INV จริง">📄 ใบ</button>`:''}<br><span class="muted">${esc(t.start_date||'')}</span></td>
       <td>${esc(t.jst_po||'')}</td><td>${tag(t.import_company,coColor(t.import_company))}</td>
       <td style="min-width:150px">${esc(t.product_list||'')}</td>
-      <td>${tag(t.mor_status,morColor(t.mor_status))}</td><td>${tag(t.op_status,opColor(t.op_status))}</td>
-      <td>${tag(t.shipping,shipColor(t.shipping))}</td><td style="white-space:nowrap">${taxCell}</td><td style="white-space:nowrap">${shpCell}</td>
+      <td>${tag(t.mor_status,morColor(t.mor_status))}</td><td>${tag(t.op_status,opColor(t.op_status))}${demBadge}</td>
+      <td>${tag(t.shipping,shipColor(t.shipping))}</td>
+      <td>${esc(t.draft_no||'')}</td><td style="text-align:right;white-space:nowrap">${t.customs_fee!=null?money(t.customs_fee):'-'}</td>
+      <td style="white-space:nowrap">${taxCell}</td><td style="white-space:nowrap">${shpCell}</td>
       <td style="text-align:center"><span class="pill ${dc===5?'done':(dc?'notified':'pending')}">${dc}/5</span></td>`+
       (canEdit?`<td class="no-print" style="white-space:nowrap"><button class="mini btn" onclick="openTrack('${t.id}')">แก้</button> <button class="mini btn red" onclick="delTrack('${t.id}')">ลบ</button></td>`:'')+`</tr>`;});
   $('trkTable').innerHTML=h+'</tbody></table>';
@@ -680,6 +693,7 @@ function openTrack(id){
   $('t_ship').value=g('shipping');$('t_exp').value=g('export_date');$('t_arr').value=g('arrival_date');
   $('t_bl').value=g('bl_no');$('t_vessel').value=g('vessel_no');$('t_container').value=g('container_no');
   $('t_draft').value=g('draft_bill_no');$('t_tax').value=g('tax_amount');$('t_taxdate').value=g('tax_pay_date');
+  $('t_draftno').value=g('draft_no');$('t_customs').value=g('customs_fee');$('t_demdue').value=g('dem_due_date');
   $('t_shipcost').value=g('ship_cost');$('t_shipdue').value=g('ship_due');$('t_billing').value=g('billing');
   $('t_taxpaid').checked=!!t.tax_paid;$('t_shippaid').checked=!!t.ship_paid;
   $('t_d1').checked=!!t.doc_acc_tax;$('t_d2').checked=!!t.doc_acc_receipt;$('t_d3').checked=!!t.doc_acc_billing;
@@ -695,6 +709,7 @@ async function saveTrack(){
     shipping:$('t_ship').value||null,export_date:$('t_exp').value||null,arrival_date:$('t_arr').value||null,
     bl_no:$('t_bl').value.trim()||null,vessel_no:$('t_vessel').value.trim()||null,container_no:$('t_container').value.trim()||null,
     draft_bill_no:$('t_draft').value.trim()||null,tax_amount:+$('t_tax').value||null,tax_pay_date:$('t_taxdate').value||null,
+    draft_no:$('t_draftno').value.trim()||null,customs_fee:+$('t_customs').value||null,dem_due_date:$('t_demdue').value||null,
     ship_cost:+$('t_shipcost').value||null,ship_due:$('t_shipdue').value||null,billing:$('t_billing').value.trim()||null,
     tax_paid:$('t_taxpaid').checked,ship_paid:$('t_shippaid').checked,
     doc_acc_tax:$('t_d1').checked,doc_acc_receipt:$('t_d2').checked,doc_acc_billing:$('t_d3').checked,
@@ -705,11 +720,11 @@ async function saveTrack(){
 }
 async function delTrack(id){if(!confirm('ลบรายการนี้?'))return;const ok=await dbWrite(()=>sb.from('shipment_tracking').delete().eq('id',id));if(ok){await reload('tracking');renderTrack();}}
 function exportTrack(){
-  const rows=[['เดือน','อินวอยซ์','PO JST','บริษัทนำเข้า','วันที่เริ่ม','ผู้รับผิดชอบ','รายการสินค้า','ยื่นสมอ.','ดำเนินการ','ขนส่ง','ส่งออกวันที่','วันที่เข้า','B/L No.','Vessel No.','Container No.','เลขที่ใบขน','ค่าภาษี','จ่ายภาษีแล้ว','วันจ่ายภาษี','ค่าขนส่ง','จ่ายขนส่งแล้ว','กำหนดชำระขนส่ง','ใบวางบิล','บช.แจ้งจ่ายภาษี','บช.ใบเสร็จ+ใบขน04','บช.วางบิลขนส่ง','คุณวุฒิบช.ส่ง','จัดซื้อชุดพร้อม','หมายเหตุ']];
+  const rows=[['เดือน','อินวอยซ์','PO JST','บริษัทนำเข้า','วันที่เริ่ม','ผู้รับผิดชอบ','รายการสินค้า','ยื่นสมอ.','ดำเนินการ','ขนส่ง','ETD (ส่งออก)','ETA (ถึงไทย)','B/L No.','Vessel No.','Container No.','เลขที่ใบขน','เลขที่ดราฟใบขน','ค่าธรรมเนียมศุลกากร','วันครบ DEM','ค่าภาษี','จ่ายภาษีแล้ว','วันจ่ายภาษี','ค่าขนส่ง','จ่ายขนส่งแล้ว','กำหนดชำระขนส่ง','ใบวางบิล','บช.แจ้งจ่ายภาษี','บช.ใบเสร็จ+ใบขน04','บช.วางบิลขนส่ง','คุณวุฒิบช.ส่ง','จัดซื้อชุดพร้อม','หมายเหตุ']];
   const yn=b=>b?'✓':'';
   db.tracking.slice().sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||''))).forEach(t=>{
     rows.push([t.period||'',t.invoice_no||'',t.jst_po||'',t.import_company||'',t.start_date||'',t.responsible||'',t.product_list||'',
-      t.mor_status||'',t.op_status||'',t.shipping||'',t.export_date||'',t.arrival_date||'',t.bl_no||'',t.vessel_no||'',t.container_no||'',t.draft_bill_no||'',
+      t.mor_status||'',t.op_status||'',t.shipping||'',t.export_date||'',t.arrival_date||'',t.bl_no||'',t.vessel_no||'',t.container_no||'',t.draft_bill_no||'',t.draft_no||'',t.customs_fee||'',t.dem_due_date||'',
       t.tax_amount||'',yn(t.tax_paid),t.tax_pay_date||'',t.ship_cost||'',yn(t.ship_paid),t.ship_due||'',t.billing||'',
       yn(t.doc_acc_tax),yn(t.doc_acc_receipt),yn(t.doc_acc_billing),yn(t.doc_quality),yn(t.doc_purchase),t.note||'']);});
   const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=rows[0].map(()=>({wch:16}));
@@ -1073,7 +1088,18 @@ function renderDashboard(){
     <div class="kpi green"><div class="lbl">ถึงไทยแล้ว/สำเร็จ</div><div class="val">${arrived}</div></div>
     <div class="kpi"><div class="lbl">เอกสาร INV</div><div class="val">${db.shipments.length}</div></div>
     <div class="kpi"><div class="lbl">จำนวน SKU</div><div class="val">${db.products.length}</div></div>`;
-  drawStatusChart(); drawCoChart(); renderTaxDue();
+  drawStatusChart(); drawCoChart(); renderTaxDue(); renderDemDue();
+}
+function renderDemDue(){
+  const rows=db.tracking.filter(t=>{const d=demDaysLeft(t);return d!=null&&d<=7;})
+    .sort((a,b)=>demDaysLeft(a)-demDaysLeft(b));
+  if(!rows.length){$('demDue').innerHTML='<div class="empty">ไม่มี DEM ที่ใกล้ครบกำหนดใน 7 วัน 🎉</div>';return;}
+  let h='<table><thead><tr><th>Invoice</th><th>บริษัทนำเข้า</th><th>Container</th><th>วันครบ DEM</th><th>เหลือ</th></tr></thead><tbody>';
+  rows.forEach(t=>{const d=demDaysLeft(t);const over=d<0;
+    h+=`<tr><td>${esc(t.invoice_no||'')}</td><td>${esc(t.import_company||'')}</td><td>${esc(t.container_no||'')}</td>
+      <td style="white-space:nowrap">${esc(t.dem_due_date||'')}</td>
+      <td style="white-space:nowrap"><span class="pill" style="background:${over?'#C00000':'#C2410C'};color:#fff">${over?'เกิน '+(-d)+' วัน':'เหลือ '+d+' วัน'}</span></td></tr>`;});
+  $('demDue').innerHTML=h+'</tbody></table>';
 }
 function drawStatusChart(){destroy('status');
   const order=['กำลังผลิต','อยู่ระหว่างส่งไปโกดังจีน','อยู่ระหว่างส่งมาไทย','ถึงไทยแล้ว/สำเร็จ','ยกเลิก ทำไม่ได้'];
