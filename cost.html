@@ -207,13 +207,14 @@
           <div class="combo" style="margin-bottom:8px"><input id="f_vender_sel" class="combo-input" placeholder="— ค้นหา/เลือกผู้ขายที่บันทึกไว้ —"><div id="f_vender_sel_list" class="combo-list"></div></div>
           <div class="grid2"><div><label>Vender Name</label><input id="f_sname"></div><div><label>Tel</label><input id="f_stel"></div></div>
           <div><label>Company</label><input id="f_scomp"></div>
+          <div class="grid2"><div><label>Export Licence</label><input id="f_slic"></div><div><label>Tax ID</label><input id="f_stax"></div></div>
           <div><label>Address</label><textarea id="f_saddr"></textarea></div>
           <h3>ผู้ซื้อ (Consignee)</h3>
           <div class="combo" style="margin-bottom:8px"><input id="f_cons_sel" class="combo-input" placeholder="— ค้นหา/เลือกผู้ซื้อที่บันทึกไว้ —"><div id="f_cons_sel_list" class="combo-list"></div></div>
           <div><label>Consignee Name</label><input id="f_cname"></div>
           <div><label>Address</label><textarea id="f_caddr"></textarea></div>
           <h3>เงื่อนไข</h3>
-          <div class="grid2"><div><label>TERM</label><input id="f_term" placeholder="EXW"></div><div><label>PORT</label><input id="f_port" placeholder="เช่น Shenzhen / Ningbo / Shanghai"></div></div>
+          <div class="grid2"><div><label>TERM</label><input id="f_term" placeholder="EXW" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div><div><label>PORT</label><input id="f_port" placeholder="เช่น SHENZHEN / NINGBO / SHANGHAI" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div></div>
           <div class="grid2"><div><label>ค่าขนส่ง</label><input id="f_logi" type="number" step="0.01" value="0"></div><div><label>สกุลเงิน</label><select id="f_cur"><option>CNY</option><option>USD</option><option>THB</option></select></div></div>
           <h3>รายการสินค้า</h3>
           <div class="toolbar">
@@ -287,6 +288,7 @@
     <div class="grid2"><div><label>ชื่อ (Name) *</label><input id="p_name"></div><div><label>Tel</label><input id="p_tel"></div></div>
     <div><label>Company</label><input id="p_company"></div>
     <div><label>Address</label><textarea id="p_address"></textarea></div>
+    <div class="grid2"><div><label>Export Licence (ผู้ขาย)</label><input id="p_lic"></div><div><label>Tax ID (ผู้ขาย)</label><input id="p_tax"></div></div>
     <input type="hidden" id="p_kind"><input type="hidden" id="p_editid">
   </div>
   <div class="dlg-foot"><button class="btn ghost" onclick="partyDlg.close()">ยกเลิก</button><button class="btn green edit-only" onclick="saveParty();return false">บันทึก</button></div>
@@ -581,7 +583,8 @@ function renderParties(){
   const mk=(list,kind)=>{
     if(!list.length)return '<div class="empty">ยังไม่มีข้อมูล'+(canEdit?' — กด “เพิ่ม”':'')+'</div>';
     let h='<table><thead><tr><th>Nickname</th><th>ชื่อจริง (ลงในบิล)</th><th>Company</th><th>Tel</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
-    list.forEach(p=>{h+=`<tr><td><b>${esc(p.nickname||'—')}</b></td><td>${esc(p.name||'')}<br><span class="muted">${esc((p.address||'').slice(0,60))}</span></td>
+    list.forEach(p=>{const extra=(kind==='vender'&&(p.tax_id||p.export_licence))?`<br><span class="muted">${p.tax_id?'Tax ID: '+esc(p.tax_id):''}${p.tax_id&&p.export_licence?' · ':''}${p.export_licence?'Exp.Lic: '+esc(p.export_licence):''}</span>`:'';
+      h+=`<tr><td><b>${esc(p.nickname||'—')}</b></td><td>${esc(p.name||'')}<br><span class="muted">${esc((p.address||'').slice(0,60))}</span>${extra}</td>
       <td>${esc(p.company||'')}</td><td>${esc(p.tel||'')}</td>`+
       (canEdit?`<td class="no-print" style="white-space:nowrap"><button class="mini btn" onclick="openParty('${kind}','${p.id}')">แก้</button> <button class="mini btn red" onclick="delParty('${p.id}')">ลบ</button></td>`:'')+`</tr>`;});
     return h+'</tbody></table>';
@@ -593,12 +596,13 @@ function openParty(kind,id){
   const p=id?db.parties.find(x=>x.id===id):{};
   $('partyTitle').firstChild.textContent = (kind==='vender'?'ข้อมูลผู้ขาย (Vender)':'ข้อมูลผู้ซื้อ (Consignee)');
   $('p_nickname').value=p.nickname||'';$('p_name').value=p.name||'';$('p_tel').value=p.tel||'';$('p_company').value=p.company||'';$('p_address').value=p.address||'';
+  $('p_lic').value=p.export_licence||'';$('p_tax').value=p.tax_id||'';
   $('p_kind').value=id?p.kind:kind;$('p_editid').value=id||'';
   $('partyDlg').showModal();
 }
 async function saveParty(){
   const name=$('p_name').value.trim(); if(!name)return alert('กรอกชื่อ');
-  const rec={kind:$('p_kind').value,name,nickname:$('p_nickname').value.trim()||null,tel:$('p_tel').value.trim()||null,company:$('p_company').value.trim()||null,address:$('p_address').value.trim()||null};
+  const rec={kind:$('p_kind').value,name,nickname:$('p_nickname').value.trim()||null,tel:$('p_tel').value.trim()||null,company:$('p_company').value.trim()||null,address:$('p_address').value.trim()||null,export_licence:$('p_lic').value.trim()||null,tax_id:$('p_tax').value.trim()||null};
   const id=$('p_editid').value;
   const ok=await dbWrite(()=> id?sb.from('inv_parties').update(rec).eq('id',id):sb.from('inv_parties').insert(rec));
   if(ok){await reload('parties');$('partyDlg').close();renderParties();}
@@ -612,6 +616,7 @@ function fillPartySelects(){
 function applyVender(){
   const p=db.parties.find(x=>x.id===comboVal('f_vender_sel')); if(!p)return;
   $('f_sname').value=p.name||'';$('f_stel').value=p.tel||'';$('f_scomp').value=p.company||'';$('f_saddr').value=p.address||'';
+  $('f_slic').value=p.export_licence||'';$('f_stax').value=p.tax_id||'';
   renderDoc();
 }
 function applyConsignee(){
@@ -840,7 +845,7 @@ function onDateChange(){
   renderDoc();
 }
 function newShipmentForm(){
-  comboSet('loadShipment','');['f_invno','f_sname','f_stel','f_scomp','f_saddr','f_cname','f_caddr','f_port'].forEach(i=>$(i).value='');
+  comboSet('loadShipment','');['f_invno','f_sname','f_stel','f_scomp','f_saddr','f_slic','f_stax','f_cname','f_caddr','f_port'].forEach(i=>$(i).value='');
   comboSet('f_vender_sel','');comboSet('f_cons_sel','');
   $('f_date').value=new Date().toISOString().slice(0,10);$('f_term').value='EXW';$('f_logi').value=0;$('f_cur').value='CNY';
   autoInvNo=nextInvNo($('f_date').value); $('f_invno').value=autoInvNo;   // ออกเลขอัตโนมัติ
@@ -850,7 +855,7 @@ function loadShipmentToForm(){
   const id=comboVal('loadShipment');if(!id){newShipmentForm();return;}
   const s=db.shipments.find(x=>x.id===id);
   $('f_invno').value=s.invno;$('f_date').value=s.date||'';$('f_sname').value=s.sname||'';$('f_stel').value=s.stel||'';
-  $('f_scomp').value=s.scomp||'';$('f_saddr').value=s.saddr||'';$('f_cname').value=s.cname||'';$('f_caddr').value=s.caddr||'';
+  $('f_scomp').value=s.scomp||'';$('f_saddr').value=s.saddr||'';$('f_slic').value=s.slic||'';$('f_stax').value=s.stax||'';$('f_cname').value=s.cname||'';$('f_caddr').value=s.caddr||'';
   $('f_term').value=s.term||'';$('f_port').value=s.port||'';$('f_logi').value=s.logi||0;$('f_cur').value=(s.cur==='RMB'?'CNY':(s.cur||'CNY'));
   curItems=JSON.parse(JSON.stringify(s.items||[]));renderLines();renderDoc();
 }
@@ -895,11 +900,11 @@ function updItem(i,k,v){curItems[i][k]=(k==='mark'||k==='sku')?v:(+v||0);
   if(k==='qty'){const p=prod(curItems[i].sku);if(p&&p.per_ctn&&!curItems[i].ctn)curItems[i].ctn=Math.ceil(v/p.per_ctn);}
   renderLines();renderDoc();}
 function formData(){return{invno:$('f_invno').value,date:$('f_date').value,sname:$('f_sname').value,stel:$('f_stel').value,
-  scomp:$('f_scomp').value,saddr:$('f_saddr').value,cname:$('f_cname').value,caddr:$('f_caddr').value,
+  scomp:$('f_scomp').value,saddr:$('f_saddr').value,slic:$('f_slic').value,stax:$('f_stax').value,cname:$('f_cname').value,caddr:$('f_caddr').value,
   term:$('f_term').value,port:$('f_port').value,logi:+$('f_logi').value||0,cur:$('f_cur').value,items:curItems};}
 async function saveShipment(){
   const d=formData();if(!d.invno)return alert('กรอก Invoice/PO No.');
-  const rec={invno:d.invno,date:d.date||null,sname:d.sname,stel:d.stel,scomp:d.scomp,saddr:d.saddr,cname:d.cname,caddr:d.caddr,term:d.term,port:d.port||null,logi:d.logi,cur:d.cur,items:d.items};
+  const rec={invno:d.invno,date:d.date||null,sname:d.sname,stel:d.stel,scomp:d.scomp,saddr:d.saddr,slic:d.slic||null,stax:d.stax||null,cname:d.cname,caddr:d.caddr,term:d.term,port:d.port||null,logi:d.logi,cur:d.cur,items:d.items};
   const id=comboVal('loadShipment');
   let shipmentId=id, ok=false;
   if(id){ ok=await dbWrite(()=>sb.from('shipments').update(rec).eq('id',id)); }
@@ -972,7 +977,7 @@ function renderDoc(){
     const dim=`${it.ctn||0} Cartons*${p.per_ctn||''}= ${money(it.qty)} ${p.unit||'Pcs'}\nBoxes Size: ${_box}\n${money((it.ctn||0)*_cbm)} CBM\n1 Cartons = ${p.per_ctn||''} ${p.unit||''} = ${p.w_ctn||''} Kg`;
     return `<tr><td style="text-align:center">${idx+1}</td><td>${esc(p.name_en||it.sku)}<br>${esc(p.name_th||'')}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||it.sku)}</td>
       <td style="white-space:pre-line">${esc(dim)}</td><td style="text-align:right">${money(it.gw)}</td><td style="white-space:pre-line">${esc(it.mark||'')}</td></tr>`;}).join('');
-  const hdr=lbl=>`<table class="hdr"><tr><td style="width:60%"><b>Vender Name :</b> ${esc(d.sname)}<br><b>Company :</b> ${esc(d.scomp)}<br><b>Address :</b> ${esc(d.saddr)}<br><b>Tel :</b> ${esc(d.stel)}<br><b>Consignee :</b> ${esc(d.cname)}<br><b>Address :</b> ${esc(d.caddr)}</td>
+  const hdr=lbl=>`<table class="hdr"><tr><td style="width:60%"><b>Vender Name :</b> ${esc(d.sname)}<br><b>Company :</b> ${esc(d.scomp)}${d.slic?'<br><b>Export Licence :</b> '+esc(d.slic):''}${d.stax?'<br><b>Tax ID :</b> '+esc(d.stax):''}<br><b>Address :</b> ${esc(d.saddr)}<br><b>Tel :</b> ${esc(d.stel)}<br><b>Consignee :</b> ${esc(d.cname)}<br><b>Address :</b> ${esc(d.caddr)}</td>
     <td style="vertical-align:top"><b>Date :</b> ${fmtDate(d.date)}<br><b>${lbl} :</b> ${esc(d.invno)}<br><b>Gross Weight :</b> ${money(totalGW)} Kg<br><b>Total Package :</b> ${money(totalCtn)} Cartons<br><b>TERM :</b> ${esc(d.term)}${d.port?`<br><b>PORT :</b> ${esc(d.port)}`:''}</td></tr></table>`;
   $('docPreview').innerHTML=`<div class="doc"><section class="inv-page"><h2 class="title">INVOICE</h2><div class="goldline"></div>${hdr('Invoice No')}
     <table class="items"><colgroup><col style="width:13%"><col style="width:13%"><col style="width:12%"><col style="width:10%"><col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:7%"><col style="width:20%"></colgroup><thead><tr><th>DESCRIPTION</th><th>Picture</th><th>COMPONENT</th><th>Specification</th><th>Unit Price</th><th>Qty (PCS)</th><th>Total/${esc(d.cur)}</th><th>GW (Kg)</th><th>Remark</th></tr></thead><tbody>${rowInv}
