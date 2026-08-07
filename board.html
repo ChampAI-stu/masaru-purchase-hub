@@ -419,6 +419,7 @@
               <th class="sortable" data-sort="received_qty">จำนวนที่เข้า<span class="sort-ind"></span></th>
               <th class="sortable" data-sort="eta">วันที่เข้าคลัง<span class="sort-ind"></span></th>
               <th class="sortable" data-sort="status">สถานะ PO<span class="sort-ind"></span></th>
+              <th class="sortable" data-sort="carrier">บริษัทขนส่ง<span class="sort-ind"></span></th>
               <th>หมายเหตุ</th>
               <th class="sortable" data-sort="updated_at">วันที่อัพเดท<span class="sort-ind"></span></th>
               <th id="actionsHead" style="display:none">จัดการ</th>
@@ -632,6 +633,11 @@
       <div class="m-field">
         <label>วันที่เข้าคลัง</label>
         <input type="date" id="mEta">
+      </div>
+      <div class="m-field">
+        <label>บริษัทขนส่ง</label>
+        <input type="text" id="mCarrier" list="carrierList" placeholder="เลือก/พิมพ์">
+        <datalist id="carrierList"></datalist>
       </div>
     </div>
     <div class="m-field">
@@ -1079,7 +1085,7 @@ function render(){
   renderSummary();
   const tb = $('tableBody');
   if(rows.length === 0){
-    const colspan = currentRole==='purchase' ? (selectionMode?11:10) : 9;
+    const colspan = currentRole==='purchase' ? (selectionMode?12:11) : 10;
     tb.innerHTML = `<tr><td colspan="${colspan}"><div class="empty">
       <div class="big">📋</div>ยังไม่มีรายการ${q||sf?'ที่ตรงกับการค้นหา':''}</div></td></tr>`;
     renderPagination(0);
@@ -1125,6 +1131,7 @@ function render(){
       <td>${recvCell}</td>
       <td>${etaCell}</td>
       <td><span class="badge ${STATUS_CLASS[o.status]||''}">${STATUS_ICON[o.status]||''} ${esc(o.status)}</span></td>
+      <td>${o.carrier?`<span class="carrier-tag" style="background:${carrierColor(o.carrier)}">${esc(o.carrier)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
       <td><span class="note">${o.note?esc(o.note):'—'}</span></td>
       <td style="font-size:12px;color:var(--muted);white-space:nowrap">${fmtDateTime(o.updated_at)}</td>
       ${actions}
@@ -1318,6 +1325,7 @@ window.openEdit = function(id){
   $('modalTitle').textContent = 'แก้ไขรายการ';
   $('editId').value=o.id; $('mPO').value=o.po_number||'';
   $('mEta').value=o.eta||''; $('mStatus').value=o.status||'อยู่ระหว่างสั่งซื้อ'; $('mNote').value=o.note||'';
+  $('carrierList').innerHTML=CARRIERS.map(c=>`<option value="${c.name}">`).join(''); $('mCarrier').value=o.carrier||'';
   $('skuLines').innerHTML='';
   addSkuLine({ sku:o.sku, qty:o.quantity, recv:(o.received_qty!=null)?o.received_qty:null });
   $('addSkuLineBtn').style.display='none';   // แก้ไขทีละรายการ ไม่เพิ่มหลาย SKU
@@ -1340,6 +1348,7 @@ function collectSkuLines(){
 async function saveOrder(){
   const shared = {
     po_number: $('mPO').value.trim() || null,
+    carrier: $('mCarrier').value.trim() || null,
     eta: $('mEta').value || null,
     status: $('mStatus').value,
     note: $('mNote').value.trim() || null,
@@ -1628,6 +1637,7 @@ function sortValue(o, key){
   switch(key){
     case 'quantity':  return o.quantity != null ? o.quantity : -Infinity;
     case 'received_qty': return o.received_qty != null ? o.received_qty : -Infinity;
+    case 'carrier': return (o.carrier||'').toLowerCase();
     case 'eta':       return o.eta ? new Date(o.eta).getTime() : Infinity;
     case 'updated_at': return o.updated_at ? new Date(o.updated_at).getTime() : -Infinity;
     case 'status':    return STATUS_ORDER[o.status] || 99;
