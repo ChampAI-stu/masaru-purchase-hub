@@ -1058,44 +1058,52 @@ function renderDoc(){
   const d=formData();
   const totalGW=(()=>{const seen={};let s=0;d.items.forEach(it=>{if(it.gid){if(!seen[it.gid]){seen[it.gid]=1;s+=+it.gw||0;}}else s+=+it.gw||0;});return s;})(), totalCtn=d.items.reduce((s,i)=>s+(+i.ctn||0),0), totalPrice=d.items.reduce((s,i)=>s+(+i.price*+i.qty),0);
   // Invoice: รวมแถวที่ SKU เดียวกัน (บวก Qty/Total/GW) — Packing List ยังแยกทุกบรรทัด
-  const invGroups=[]; const gi={}; const _seenGw={};
+  const invGroups=[]; const gi={};
   d.items.forEach((it,idx)=>{
     const key=it.sku?('sku:'+it.sku):('__blank'+idx);
-    if(gi[key]==null){gi[key]=invGroups.length;invGroups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:0,total:0,pic:it.pic||'',mixed:false});}
+    if(gi[key]==null){gi[key]=invGroups.length;invGroups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:0,total:0,pic:it.pic||'',mixed:false,gid:it.gid||null});}
     const g=invGroups[gi[key]];
     if((+it.price||0)!==g.price)g.mixed=true;
-    const countGw = it.gid ? (!_seenGw[it.gid] && (_seenGw[it.gid]=1)) : true;   // GW กลุ่มนับครั้งเดียว
-    g.qty+=+it.qty||0; g.gw+=countGw?(+it.gw||0):0; g.total+=(+it.price||0)*(+it.qty||0);
+    g.qty+=+it.qty||0; g.gw+=+it.gw||0; g.total+=(+it.price||0)*(+it.qty||0);
     if(!g.pic&&it.pic)g.pic=it.pic;
   });
-  const rowInv=invGroups.map(g=>{const p=prod(g.sku)||{};
-    const remark=`BRAND ：${p.brand||''}\nMODEL：${p.model||g.sku}\n\n${p.name_en||''} : ${g.sku}\n${p.name_th||''}`;
-    const pic=g.pic?`<img class="pic" src="${esc(g.pic)}">`:'';
-    const up=(g.mixed&&g.qty)?(g.total/g.qty):g.price;   // ถ้าราคาต่อหน่วยต่างกัน ใช้เฉลี่ยถ่วงน้ำหนัก
-    return `<tr><td>${esc(p.name_en||p.product_name||g.sku)}<br>${esc(p.model||g.sku)}</td><td style="text-align:center">${pic}</td>
-      <td style="white-space:pre-line">${esc(p.component||'')}</td><td>${esc(p.spec||'')}</td>
-      <td style="text-align:right">${money(up)}</td><td style="text-align:right">${money(g.qty)}</td>
-      <td style="text-align:right">${money(g.total)}</td><td style="text-align:right">${money(g.gw)}</td><td class="rmark">${esc(remark)}</td></tr>`;}).join('');
+  const rowInv=(()=>{let out='';let k=0;
+    while(k<invGroups.length){const gid=invGroups[k].gid; let run=[invGroups[k]];
+      if(gid){let m=k+1;while(m<invGroups.length&&invGroups[m].gid===gid){run.push(invGroups[m]);m++;}}
+      const span=run.length; const grpGw=+run[0].gw||0;   // GW ใช้ร่วมทั้งกลุ่ม → โชว์ครั้งเดียว (rowspan)
+      run.forEach((g,ri)=>{const p=prod(g.sku)||{};
+        const remark=`BRAND ：${p.brand||''}\nMODEL：${p.model||g.sku}\n\n${p.name_en||''} : ${g.sku}\n${p.name_th||''}`;
+        const pic=g.pic?`<img class="pic" src="${esc(g.pic)}">`:'';
+        const up=(g.mixed&&g.qty)?(g.total/g.qty):g.price;
+        out+=`<tr><td>${esc(p.name_en||p.product_name||g.sku)}<br>${esc(p.model||g.sku)}</td><td style="text-align:center">${pic}</td>`+
+          `<td style="white-space:pre-line">${esc(p.component||'')}</td><td>${esc(p.spec||'')}</td>`+
+          `<td style="text-align:right">${money(up)}</td><td style="text-align:right">${money(g.qty)}</td>`+
+          `<td style="text-align:right">${money(g.total)}</td>`+
+          (ri===0?`<td rowspan="${span}" style="text-align:right;vertical-align:top">${money(grpGw)}</td>`:'')+
+          `<td class="rmark">${esc(remark)}</td></tr>`;});
+      k+=span;
+    }
+    return out;
+  })();
   const rowPl=(()=>{
     let out='',idx=0,i=0;
+    const thName=p=>esc(p.name_th||p.product_name||'');
+    const dimOf=(ctn,qty,p,w,l,h)=>{const cbmCtn=((w&&l&&h)?(w*l*h)/1e6:(+p.cbm_ctn||0)); const box=(w&&l&&h)?`${w}*${l}*${h} Cm`:(p.box_size||''); return `${ctn||0} Cartons*${p.per_ctn||''}= ${money(qty)} ${p.unit||'Pcs'}\nCartons : ${box}\n${money((ctn||0)*cbmCtn)} CBM\n1 Cartons = ${p.per_ctn||''} ${p.unit||''} = ${p.w_ctn||''} Kg`;};
     while(i<d.items.length){
-      const it=d.items[i], gid=it.gid;
-      let members=[it];
+      const it=d.items[i], gid=it.gid; let members=[it];
       if(gid){let j=i+1;while(j<d.items.length&&d.items[j].gid===gid){members.push(d.items[j]);j++;}}
       const span=members.length;
       if(span===1){
         const p=prod(it.sku)||{}; idx++;
-        const _cbm=lineCbmCtn(it)||(+p.cbm_ctn||0); const _box=(it.w&&it.l&&it.h)?`${it.w}x${it.l}x${it.h} Cm`:(p.box_size||'');
-        const dim=`${it.ctn||0} Cartons*${p.per_ctn||''}= ${money(it.qty)} ${p.unit||'Pcs'}\nBoxes Size: ${_box}\n${money((it.ctn||0)*_cbm)} CBM\n1 Cartons = ${p.per_ctn||''} ${p.unit||''} = ${p.w_ctn||''} Kg`;
-        out+=`<tr><td style="text-align:center">${idx}</td><td>${esc(p.name_en||it.sku)}<br>${esc(p.name_th||'')}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||it.sku)}</td>
+        const dim=dimOf(it.ctn,it.qty,p,it.w,it.l,it.h);
+        out+=`<tr><td style="text-align:center">${idx}</td><td>${esc(p.name_en||it.sku)}<br>${thName(p)}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||it.sku)}</td>
           <td style="white-space:pre-line">${esc(dim)}</td><td style="text-align:right">${money(it.gw)}</td><td style="white-space:pre-line">${esc(it.mark||'')}</td></tr>`;
       } else {
-        const p0=prod(it.sku)||{}; const box=(it.w&&it.l&&it.h)?`${it.w}x${it.l}x${it.h} Cm`:(p0.box_size||''); const cbmCtn=lineCbmCtn(it)||(+p0.cbm_ctn||0);
-        const grpCtn=members.reduce((s,m)=>s+(+m.ctn||0),0);
-        const dim=`รวมกลุ่ม ${grpCtn} Cartons\nBoxes Size: ${box}\n${money(grpCtn*cbmCtn)} CBM`;
+        const p0=prod(it.sku)||{}; const grpCtn=members.reduce((s,m)=>s+(+m.ctn||0),0); const grpQty=members.reduce((s,m)=>s+(+m.qty||0),0);
+        const dim=dimOf(grpCtn,grpQty,p0,it.w,it.l,it.h);
         members.forEach((m,mi)=>{const p=prod(m.sku)||{}; idx++;
-          out+=`<tr><td style="text-align:center">${idx}</td><td>${esc(p.name_en||m.sku)}<br>${esc(p.name_th||'')}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||m.sku)}<br><span style="color:#666">${m.ctn||0} Ctn · ${money(m.qty)} ${esc(p.unit||'Pcs')}</span></td>`;
-          if(mi===0)out+=`<td rowspan="${span}" style="white-space:pre-line;vertical-align:middle;background:#fbfcfe">${esc(dim)}</td><td rowspan="${span}" style="text-align:right;vertical-align:middle;background:#fbfcfe">${money(it.gw)}</td><td rowspan="${span}" style="white-space:pre-line;vertical-align:middle;background:#fbfcfe">${esc(it.mark||'')}</td>`;
+          out+=`<tr><td style="text-align:center">${idx}</td><td>${esc(p.name_en||m.sku)}<br>${thName(p)}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||m.sku)}<br><span style="color:#888">${m.ctn||0} Ctn · ${money(m.qty)} ${esc(p.unit||'Pcs')}</span></td>`;
+          if(mi===0)out+=`<td rowspan="${span}" style="white-space:pre-line;vertical-align:top">${esc(dim)}</td><td rowspan="${span}" style="text-align:right;vertical-align:top">${money(it.gw)}</td><td rowspan="${span}" style="white-space:pre-line;vertical-align:top">${esc(it.mark||'')}</td>`;
           out+='</tr>';});
       }
       i+=span;
@@ -1323,21 +1331,20 @@ function exportInvoiceExcel(ev){
   const ph=['ITEM','DESCRIPTION OF GOODS','Dimension','GW (Kg)','Shipping Mark'];
   const phr=wsP.getRow(top); ph.forEach((h,i)=>{const c=phr.getCell(i+1);c.value=h;c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:navy}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=border;}); phr.height=22;
   let pr=top+1; let ii=0;
+  const dimOfX=(ctn,qty,p,w,l,h)=>{const cbmCtn=((w&&l&&h)?(w*l*h)/1e6:(+p.cbm_ctn||0)); const box=(w&&l&&h)?(w+'*'+l+'*'+h+' Cm'):(p.box_size||''); return (ctn||0)+' Cartons*'+(p.per_ctn||'')+'= '+money(qty)+' '+(p.unit||'Pcs')+'\nCartons : '+box+'\n'+money((ctn||0)*cbmCtn)+' CBM\n1 Cartons = '+(p.per_ctn||'')+' '+(p.unit||'')+' = '+(p.w_ctn||'')+' Kg';};
+  const thNameX=p=>(p.name_th||p.product_name||'');
   while(ii<d.items.length){
     const it=d.items[ii], gid=it.gid; let members=[it];
     if(gid){let j=ii+1;while(j<d.items.length&&d.items[j].gid===gid){members.push(d.items[j]);j++;}}
     const span=members.length; const p0=prod(it.sku)||{};
-    const box=(it.w&&it.l&&it.h)?(it.w+'x'+it.l+'x'+it.h+' Cm'):(p0.box_size||''); const cbmCtn=lineCbmCtn(it)||(+p0.cbm_ctn||0);
     const startRow=pr;
     members.forEach((m,mi)=>{const p=prod(m.sku)||{};
-      const desc=(p.name_en||m.sku)+'\n'+(p.name_th||'')+'\nBRAND：'+(p.brand||'')+' MODEL：'+(p.model||m.sku)+(span>1?('\n'+(m.ctn||0)+' Ctn · '+money(m.qty)+' '+(p.unit||'Pcs')):'');
+      const desc=(p.name_en||m.sku)+'\n'+thNameX(p)+'\nBRAND：'+(p.brand||'')+' MODEL：'+(p.model||m.sku)+(span>1?('\n'+(m.ctn||0)+' Ctn · '+money(m.qty)+' '+(p.unit||'Pcs')):'');
       const row=wsP.getRow(pr);
       row.getCell(1).value=(pr-top); row.getCell(2).value=desc;
       if(mi===0){
-        const grpCtn=members.reduce((s,mm)=>s+(+mm.ctn||0),0);
-        const dim=span>1
-          ? ('รวมกลุ่ม '+grpCtn+' Cartons\nBoxes Size: '+box+'\n'+money(grpCtn*cbmCtn)+' CBM')
-          : ((it.ctn||0)+' Cartons*'+(p0.per_ctn||'')+'= '+money(it.qty)+' '+(p0.unit||'Pcs')+'\nBoxes Size: '+box+'\n'+money((it.ctn||0)*cbmCtn)+' CBM\n1 Cartons = '+(p0.per_ctn||'')+' '+(p0.unit||'')+' = '+(p0.w_ctn||'')+' Kg');
+        const grpCtn=members.reduce((s,mm)=>s+(+mm.ctn||0),0), grpQty=members.reduce((s,mm)=>s+(+mm.qty||0),0);
+        const dim= span>1 ? dimOfX(grpCtn,grpQty,p0,it.w,it.l,it.h) : dimOfX(it.ctn,it.qty,p0,it.w,it.l,it.h);
         row.getCell(3).value=dim; row.getCell(4).value=+it.gw||0; row.getCell(4).numFmt='#,##0.00'; row.getCell(5).value=it.mark||'';
       }
       for(let ci=1;ci<=5;ci++){const c=row.getCell(ci);c.border=border;c.alignment={vertical:(ci>=3?'middle':'top'),wrapText:true,horizontal:(ci===1?'center':(ci===4?'right':'left'))};}
