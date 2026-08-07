@@ -661,7 +661,7 @@ function renderTrack(){
   const q=($('trkSearch').value||'').toLowerCase();
   let list=db.tracking.filter(t=>
     (!co0||t.import_company===co0)&&(!op0||t.op_status===op0)&&
-    (!q||((t.invoice_no||'')+(t.jst_po||'')+(t.product_list||'')+(t.responsible||'')).toLowerCase().includes(q)));
+    (!q||((t.invoice_no||'')+(t.jst_po||'')+(t.product_list||'')+(t.draft_no||'')+(t.responsible||'')).toLowerCase().includes(q)));
   list=list.slice().sort((a,b)=>String(b.start_date||'').localeCompare(String(a.start_date||'')));
   // KPI
   const tax=db.tracking.reduce((s,t)=>s+(+t.tax_amount||0),0);
@@ -677,7 +677,7 @@ function renderTrack(){
     <div class="kpi" style="background:${demWarn?'#C2410C':''}"><div class="lbl">DEM ใกล้ครบ (7 วัน)</div><div class="val">${demWarn}</div></div>
     <div class="kpi"><div class="lbl">ยอดภาษีรวม (บาท)</div><div class="val">${money(tax)}</div></div>`;
   if(!list.length){$('trkTable').innerHTML='<div class="empty">ยังไม่มีรายการ'+(canEdit?' — กด “เพิ่มรายการ”':'')+'</div>';return;}
-  let h='<table style="min-width:1300px"><thead><tr><th>อินวอยซ์</th><th>บริษัท</th><th>รายการสินค้า</th><th>ยื่นสมอ.</th><th>ดำเนินการ</th><th>ขนส่ง</th><th>ดราฟใบขน</th><th>ศุลกากร</th><th>ค่าภาษี</th><th>ค่าขนส่ง</th><th>เอกสาร</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
+  let h='<table style="min-width:1300px"><thead><tr><th>อินวอยซ์</th><th>บริษัท</th><th>ยื่นสมอ.</th><th>ดำเนินการ</th><th>ขนส่ง</th><th>ETD</th><th>ETA</th><th>DEM</th><th>ศุลกากร</th><th>ค่าภาษี</th><th>ค่าขนส่ง</th><th>เอกสาร</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
   list.forEach(t=>{
     const taxCell=(+t.tax_amount?money(t.tax_amount):'-')+(t.tax_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.tax_amount)?' <span class="pill pending">ค้าง</span>':''));
     const shpCell=(+t.ship_cost?money(t.ship_cost):'-')+(t.ship_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.ship_cost)?' <span class="pill pending">ค้าง</span>':''));
@@ -686,10 +686,12 @@ function renderTrack(){
     const demBadge=(dem!=null&&dem<=7)?`<br><span class="pill" style="background:#C2410C;color:#fff;white-space:nowrap">${dem<0?'⚠️ DEM เกิน '+(-dem)+' วัน':'⏳ DEM เหลือ '+dem+' วัน'}</span>`:'';
     h+=`<tr><td><b>${esc(t.invoice_no||'')}</b>${t.shipment_id?` <button class="mini btn" onclick="openInvoiceFromTrack('${t.shipment_id}')" title="เปิดใบ INV จริง">📄 ใบ</button>`:''}<br><span class="muted">${esc(t.start_date||'')}</span></td>
       <td>${tag(t.import_company,coColor(t.import_company))}</td>
-      <td style="min-width:150px">${esc(t.product_list||'')}</td>
-      <td>${tag(t.mor_status,morColor(t.mor_status))}</td><td>${tag(t.op_status,opColor(t.op_status))}${demBadge}</td>
+      <td>${tag(t.mor_status,morColor(t.mor_status))}</td><td>${tag(t.op_status,opColor(t.op_status))}</td>
       <td>${tag(t.shipping,shipColor(t.shipping))}</td>
-      <td>${esc(t.draft_no||'')}</td><td style="text-align:right;white-space:nowrap">${t.customs_fee!=null?money(t.customs_fee):'-'}</td>
+      <td style="white-space:nowrap">${esc(t.export_date||'')}</td>
+      <td style="white-space:nowrap">${esc(t.arrival_date||'')}</td>
+      <td style="white-space:nowrap">${esc(t.dem_due_date||'')}${demBadge}</td>
+      <td style="text-align:right;white-space:nowrap">${t.customs_fee!=null?money(t.customs_fee):'-'}</td>
       <td style="white-space:nowrap">${taxCell}</td><td style="white-space:nowrap">${shpCell}</td>
       <td style="text-align:center"><span class="pill ${dc===5?'done':(dc?'notified':'pending')}">${dc}/5</span></td>`+
       (canEdit?`<td class="no-print" style="white-space:nowrap"><button class="mini btn" onclick="openTrack('${t.id}')">แก้</button> <button class="mini btn red" onclick="delTrack('${t.id}')">ลบ</button></td>`:'')+`</tr>`;});
