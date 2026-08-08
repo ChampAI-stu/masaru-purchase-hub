@@ -211,7 +211,6 @@
           <div class="toolbar">
             <div class="combo" style="max-width:260px;flex:1"><input id="loadShipment" class="combo-input" placeholder="— ค้นหา/เลือกเอกสาร —"><div id="loadShipment_list" class="combo-list"></div></div>
             <button class="btn ghost mini edit-only" onclick="newShipmentForm()">สร้างใหม่</button>
-            <button class="btn red mini edit-only" onclick="deleteShipment()">🗑️ ลบใบนี้</button>
           </div>
           <div class="grid2"><div><label>Invoice / PO No. <span class="muted" style="font-weight:400">(ออกอัตโนมัติ · แก้เองได้)</span></label>
             <div style="display:flex;gap:6px"><input id="f_invno" placeholder="PO2607014" style="flex:1"><button class="btn ghost mini edit-only" type="button" onclick="regenInvNo()" title="ออกเลขใหม่ตามวันที่">🔄</button></div></div>
@@ -800,7 +799,16 @@ async function saveTrack(){
   const ok=await dbWrite(()=> id?sb.from('shipment_tracking').update(rec).eq('id',id):sb.from('shipment_tracking').insert(rec));
   if(ok){await reload('tracking');$('trkDlg').close();renderTrack();}
 }
-async function delTrack(id){if(!confirm('ลบรายการนี้?'))return;const ok=await dbWrite(()=>sb.from('shipment_tracking').delete().eq('id',id));if(ok){await reload('tracking');renderTrack();}}
+async function delTrack(id){
+  const t0=db.tracking.find(x=>x.id===id)||{};
+  // หาเอกสาร INV ที่ผูกกัน (จาก shipment_id หรือเลขอินวอยซ์ตรงกัน)
+  const linked=db.shipments.find(s=>s.id===t0.shipment_id)||db.shipments.find(s=>t0.invoice_no&&s.invno===t0.invoice_no);
+  const msg=linked?`ลบรายการ "${t0.invoice_no||''}" พร้อมเอกสาร INV/PL ที่ผูกกันถาวร?\n(กู้คืนไม่ได้)`:'ลบรายการนี้ถาวร? (กู้คืนไม่ได้)';
+  if(!confirm(msg))return;
+  const ok=await dbWrite(()=>sb.from('shipment_tracking').delete().eq('id',id));
+  if(ok&&linked)await dbWrite(()=>sb.from('shipments').delete().eq('id',linked.id));
+  if(ok){await Promise.all([reload('tracking'),reload('shipments')]);renderTrack();}
+}
 function exportTrack(){
   const rows=[['เดือน','อินวอยซ์','PO JST','บริษัทนำเข้า','วันที่เริ่ม','ผู้รับผิดชอบ','รายการสินค้า','ยื่นสมอ.','ดำเนินการ','ขนส่ง','ETD (ส่งออก)','ETA (ถึงไทย)','B/L No.','Vessel No.','Container No.','เลขที่ใบขน','เลขที่ดราฟใบขน','ค่าธรรมเนียมศุลกากร','วันครบ DEM','ค่าภาษี','จ่ายภาษีแล้ว','วันจ่ายภาษี','ค่าขนส่ง','จ่ายขนส่งแล้ว','กำหนดชำระขนส่ง','ใบวางบิล','บช.แจ้งจ่ายภาษี','บช.ใบเสร็จ+ใบขน04','บช.วางบิลขนส่ง','คุณวุฒิบช.ส่ง','จัดซื้อชุดพร้อม','หมายเหตุ']];
   const yn=b=>b?'✓':'';
