@@ -280,7 +280,7 @@
         <div class="note" style="background:#EBF3FB">🔗 <b>ดึงข้อมูลจากใบบิล INV</b> ที่ออกไว้แล้ว — เลือกใบบิล ใส่อัตราแลกเปลี่ยนเป็นบาท (ถ้าบิลเป็น THB ใส่ 1) แล้วกด “ดึงข้อมูล” ระบบจะเติม SKU/จำนวน/ยอดเงิน + หัวเอกสารให้</div>
         <div class="grid3">
           <div><label>โหลดจากใบบิล (INV)</label><div class="combo"><input id="loadFromInv" class="combo-input" placeholder="— เลือกใบบิล —"><div id="loadFromInv_list" class="combo-list"></div></div></div>
-          <div><label>อัตราแลกเปลี่ยน (บาท/หน่วยบิล)</label><input id="x_rate" type="number" step="0.0001" value="1"></div>
+          <div><label id="x_rate_lbl">อัตราแลกเปลี่ยน (บาท/หน่วยบิล)</label><input id="x_rate" type="number" step="0.0001" value="1" placeholder="เช่น 4.85"></div>
           <div style="display:flex;align-items:flex-end"><button class="btn edit-only" onclick="loadInvToTax()" style="width:100%">⬇️ ดึงข้อมูลจากบิลมาคำนวณ</button></div>
         </div>
         <div class="grid2">
@@ -1206,13 +1206,25 @@ function renderTaxDoc(){
 }
 function initTax(){
   comboInit('loadTax', db.taxsum.map(s=>({id:s.id,label:(s.title||'(ไม่มีหัวเรื่อง)')+' · '+String(s.created_at||'').slice(0,10)})), ()=>loadTaxToForm(), '— ค้นหา/เลือกใบสรุปภาษี —');
-  comboInit('loadFromInv', db.shipments.map(s=>({id:s.id,label:(s.invno||'(ไม่มีเลข)')+' · '+(s.date||'')+' · '+(s.cname||'')})), null, '— เลือกใบบิล INV —');
+  comboInit('loadFromInv', db.shipments.map(s=>({id:s.id,label:(s.invno||'(ไม่มีเลข)')+' · '+(s.date||'')+' · '+(s.cname||'')})), ()=>onTaxInvPicked(), '— เลือกใบบิล INV —');
   newTaxForm();
+}
+function onTaxInvPicked(){
+  const id=comboVal('loadFromInv'); const s=db.shipments.find(x=>x.id===id); if(!s)return;
+  const cur=(s.cur==='RMB'?'CNY':(s.cur||'CNY'));
+  const lbl=$('x_rate_lbl'), inp=$('x_rate');
+  if(cur==='THB'){ lbl.textContent='อัตราแลกเปลี่ยน (บิลเป็น THB — ล็อก 1)'; inp.value='1'; inp.disabled=true; }
+  else{ lbl.textContent='อัตราแลกเปลี่ยน ('+cur+' → THB) กรอกเรทจริง'; inp.disabled=false;
+        if(!inp.value||+inp.value===1) inp.value=''; inp.placeholder=cur==='USD'?'เช่น 35.50':'เช่น 4.85'; }
 }
 function loadInvToTax(){
   const id=comboVal('loadFromInv'); if(!id){alert('เลือกใบบิล INV ก่อน');return;}
   const s=db.shipments.find(x=>x.id===id); if(!s){alert('ไม่พบใบบิล');return;}
-  const rate=+$('x_rate').value||1;
+  const s0=db.shipments.find(x=>x.id===comboVal('loadFromInv'))||{};
+  const cur0=(s0.cur==='RMB'?'CNY':(s0.cur||'CNY'));
+  const rate=+$('x_rate').value;
+  if(cur0!=='THB'&&(!rate||rate<=0)){alert('กรอกอัตราแลกเปลี่ยน '+cur0+' → THB ก่อน (เรทจริง เช่น 4.85)');$('x_rate').focus();return;}
+  const rateUse=cur0==='THB'?1:rate;
   const trk=db.tracking.find(x=>x.invoice_no===s.invno)||{};
   $('x_ref').value=s.invno||'';
   $('x_termport').value=((s.term||'')+' '+(s.port||'')).trim();
@@ -1224,13 +1236,13 @@ function loadInvToTax(){
   const poRef=trk.jst_po||s.invno||'';
   const plist=(s.items||[]).map((it,i)=>{const p=prod(it.sku)||{};return (i+1)+'. PO '+poRef+' '+(it.sku||'')+' = '+money(it.qty)+' '+(p.unit||'ชุด');}).join('\n');
   $('x_note').value=plist;
-  taxItems=(s.items||[]).map(it=>({sku:it.sku||'',qty:+it.qty||0,amount:Math.round(((+it.price||0)*(+it.qty||0)*rate)*100)/100,duty:0,fee:false}));
+  taxItems=(s.items||[]).map(it=>({sku:it.sku||'',qty:+it.qty||0,amount:Math.round(((+it.price||0)*(+it.qty||0)*rateUse)*100)/100,duty:0,fee:false}));
   renderTaxLines();
 }
 function newTaxForm(){
   comboSet('loadTax',''); if(COMBOS['loadFromInv'])comboSet('loadFromInv','');
   ['x_title','x_period','x_carrier','x_draft','x_termport','x_ref','x_note'].forEach(i=>$(i).value='');
-  $('x_company').value='MASARU'; if($('x_rate'))$('x_rate').value='1';
+  $('x_company').value='MASARU'; if($('x_rate')){$('x_rate').value='1';$('x_rate').disabled=false;} if($('x_rate_lbl'))$('x_rate_lbl').textContent='อัตราแลกเปลี่ยน (บาท/หน่วยบิล)';
   taxItems=[]; renderTaxLines();
 }
 function loadTaxToForm(){
