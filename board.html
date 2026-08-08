@@ -677,7 +677,7 @@ body.price-on .sl-price{display:block}
     <div style="background:var(--blue-bg);border:1px solid #378ADD33;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.7">
       <b>วิธีใช้:</b><br>
       1. ดาวน์โหลดเทมเพลต → กรอกข้อมูล<br>
-      2. คอลัมน์: <b>เลขที่ PO · SKU · จำนวน · วันที่เข้าคลัง · สถานะ · หมายเหตุ</b><br>
+      2. คอลัมน์: <b>เลขที่ PO · SKU · จำนวน · วันที่เข้าคลัง · สถานะ · หมายเหตุ · ราคาจัดซื้อ/หน่วย (AF)</b><br>
       3. เลือกไฟล์ → ตรวจตัวอย่าง → ยืนยันนำเข้า
     </div>
 
@@ -695,7 +695,7 @@ body.price-on .sl-price{display:block}
       <div style="max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:9px">
         <table style="font-size:12px"><thead><tr>
           <th style="padding:8px 10px">เลขที่ PO</th><th style="padding:8px 10px">SKU</th>
-          <th style="padding:8px 10px">จำนวน</th><th style="padding:8px 10px">เข้าแล้ว</th><th style="padding:8px 10px">วันที่เข้าคลัง</th>
+          <th style="padding:8px 10px">จำนวน</th><th style="padding:8px 10px">เข้าแล้ว</th><th style="padding:8px 10px">ราคา/หน่วย</th><th style="padding:8px 10px">วันที่เข้าคลัง</th>
           <th style="padding:8px 10px">สถานะ</th>
         </tr></thead><tbody id="importPreviewBody"></tbody></table>
       </div>
@@ -1533,7 +1533,8 @@ function handleImportFile(e){
         recv:   pick(['จำนวนเข้าคลังสำเร็จ'], []),
         eta:    pick(['เวลาที่คาดว่าจะส่งถึง'], []),
         status: pick(['สถานะใบจัดซื้อสินค้า'], []),
-        note:   pick(['หมายเหตุ'], [])
+        note:   pick(['หมายเหตุ'], []),
+        price:  pick(['ราคาจัดซื้อ / หน่วย'], ['ราคาซื้อต่อหน่วย'])   // คอลัมน์ AF (สำรอง: AO)
       };
       if(ci.sku < 0){ toast('ไม่พบคอลัมน์ SKU — โหลดเทมเพลตไปใช้นะคะ'); return; }
       importRecords = [];
@@ -1547,11 +1548,13 @@ function handleImportFile(e){
         if(erpStatusRaw === 'โมฆะ'){ skippedVoid++; continue; }
         const recvRaw = ci.recv>=0 ? r[ci.recv] : '';
         const qtyRaw = ci.qty>=0 ? r[ci.qty] : '';
+        const priceRaw = ci.price>=0 ? r[ci.price] : '';
         importRecords.push({
           po_number: ci.po>=0 ? (String(r[ci.po]||'').trim()||null) : null,
           sku,
           quantity: (qtyRaw==='' || qtyRaw==null) ? null : (parseInt(qtyRaw)||0),
           received_qty: (recvRaw==='' || recvRaw==null) ? null : (parseInt(recvRaw)||0),
+          price: (priceRaw==='' || priceRaw==null) ? null : (parseFloat(priceRaw)||null),
           eta: ci.eta>=0 ? toISODate(r[ci.eta]) : null,
           note: null,   // ไม่อ่านหมายเหตุจากไฟล์ — คงค่าเดิมในเว็บไว้
           _erp: ci.status>=0 ? mapStatus(r[ci.status]) : 'อยู่ระหว่างสั่งซื้อ'   // สถานะ ERP (ไว้คำนวณ)
@@ -1581,9 +1584,10 @@ function showImportPreview(){
     <td style="padding:7px 10px">${esc(r.sku)}</td>
     <td style="padding:7px 10px">${r.quantity||'—'}</td>
     <td style="padding:7px 10px">${r.received_qty!=null?r.received_qty:0}</td>
+    <td style="padding:7px 10px">${r.price!=null?Number(r.price).toLocaleString():'—'}</td>
     <td style="padding:7px 10px">${r.eta?fmtDate(r.eta):'—'}</td>
     <td style="padding:7px 10px">${esc(provisional(r))}</td>
-  </tr>`).join('') + (importRecords.length>50 ? `<tr><td colspan="6" style="padding:8px;text-align:center;color:var(--muted)">…และอีก ${importRecords.length-50} รายการ</td></tr>` : '');
+  </tr>`).join('') + (importRecords.length>50 ? `<tr><td colspan="7" style="padding:8px;text-align:center;color:var(--muted)">…และอีก ${importRecords.length-50} รายการ</td></tr>` : '');
   $('importPreview').style.display = 'block';
   $('importConfirm').disabled = false; $('importConfirm').style.opacity = '1';
 }
@@ -1603,7 +1607,7 @@ async function confirmImport(){
   const now = new Date().toISOString();
   // ดึงข้อมูลเดิมทุกแถว ไว้ "รวม" กับไฟล์ (ช่องว่างในไฟล์ = คงค่าเดิม)
   const { data: existing } = await sb.from('purchase_orders')
-    .select('po_number,sku,quantity,received_qty,eta,status,note');
+    .select('po_number,sku,quantity,received_qty,eta,status,note,price');
   const existMap = {};
   (existing || []).forEach(o => { existMap[(o.po_number||'')+'||'+o.sku] = o; });
 
@@ -1616,6 +1620,7 @@ async function confirmImport(){
       sku: r.sku,
       quantity: ordered,
       received_qty: received,
+      price: r.price != null ? r.price : (ex ? ex.price : null),   // ราคาจากไฟล์ (AF) / ไม่มี = คงเดิม
       eta:  r.eta  != null ? r.eta  : (ex ? ex.eta  : null),
       note: r.note != null ? r.note : (ex ? ex.note : null),
       status: computeStatusMerged(r._erp, ordered, received, ex ? ex.status : null),
