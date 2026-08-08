@@ -121,7 +121,7 @@
     <section id="tab-cost" class="hide">
       <div class="card">
         <h2>ฐานข้อมูลต้นทุนสินค้า (อ้างอิงสินค้าจากระบบ PR)</h2>
-        <div class="note">ต้นทุนรวม/หน่วย (Landed) = <b>ต้นทุนบาท</b> (¥ × เรทแลกเปลี่ยน) + <b>ค่าขนส่ง</b> (คิดจากน้ำหนัก หรือ ปริมาตร) + <b>VAT</b>. กรอก น้ำหนัก และ ขนาดกล่อง เพื่อคำนวณค่าขนส่งทั้ง 2 วิธี — บันทึกเก็บในฐานข้อมูลเดียวกัน</div>
+        <div class="note">ต้นทุนรวม/หน่วย (Landed) = <b>ต้นทุนบาท</b> (¥ × เรทแลกเปลี่ยน) + <b>ค่าขนส่ง</b> (คิดจากน้ำหนัก หรือ ปริมาตร) + <b>VAT</b>. <b>น้ำหนัก·ขนาดกล่อง = ต่อลัง</b> (ตามใบ Packing List) → ระบบหารด้วย <b>จำนวนชิ้น/ลัง</b> ให้เป็นต่อหน่วยอัตโนมัติ (เว้นว่าง = 1 ชิ้น/ลัง)</div>
         <div class="toolbar">
           <input type="search" id="costSearch" placeholder="🔍 ค้นหา SKU / ชื่อ / supplier" oninput="renderCost()">
           <span class="muted" id="costInfo"></span>
@@ -134,8 +134,9 @@
             <thead><tr>
               <th>SKU</th><th>ชื่อ / Supplier</th>
               <th class="right">ต้นทุน ¥</th><th class="right">ต้นทุนบาท</th>
-              <th class="right">นน. (กก.)</th><th class="right">ยาว</th><th class="right">กว้าง</th><th class="right">สูง</th>
-              <th class="right">CBM</th>
+              <th class="right">นน./ลัง (กก.)</th><th class="right">ยาว</th><th class="right">กว้าง</th><th class="right">สูง</th>
+              <th class="right">ชิ้น/ลัง</th>
+              <th class="right">CBM/หน่วย</th>
               <th class="right">ส่ง(นน.)</th><th class="right">ส่ง(ปม.)</th>
               <th class="right">ค่าส่งที่ใช้</th><th class="right">VAT</th><th class="right">รวม/หน่วย</th>
             </tr></thead>
@@ -289,14 +290,17 @@ function computeRow(m){
   const c=COST[ckey(m)]||{};
   const yuan=num(m.standard_price);
   const baht=yuan*SET.cny_rate;
-  const w=num(c.weight_kg), L=num(c.len_cm), W=num(c.wid_cm), H=num(c.hei_cm);
-  const cbm=(L*W*H)/1e6;
+  const wc=num(c.weight_kg), L=num(c.len_cm), W=num(c.wid_cm), H=num(c.hei_cm);
+  const pcs=num(c.pcs_per_carton)>0?num(c.pcs_per_carton):1;   // จำนวนชิ้น/ลัง (ว่าง = 1)
+  const cbmCarton=(L*W*H)/1e6;   // CBM ต่อลัง (จากขนาดกล่อง)
+  const cbm=cbmCarton/pcs;       // CBM ต่อหน่วย
+  const w=wc/pcs;                // น้ำหนักต่อหน่วย
   const shipW=w*SET.rate_kg;
   const shipV=cbm*SET.rate_cbm;
   let shipUsed=SET.ship_method==='weight'?shipW:(SET.ship_method==='volume'?shipV:Math.max(shipW,shipV));
   const vat=(baht+shipUsed)*SET.vat_pct;
   const landed=baht+shipUsed+vat;
-  return {yuan,baht,w,L,W,H,cbm,shipW,shipV,shipUsed,vat,landed,c};
+  return {yuan,baht,w,wc,L,W,H,pcs,cbmCarton,cbm,shipW,shipV,shipUsed,vat,landed,c};
 }
 
 /* ================= DASHBOARD ================= */
@@ -343,13 +347,14 @@ function renderCost(){
       <td><input class="cell-in" data-f="len_cm" value="${x.L||''}" ${dis} oninput="onCostEdit('${esc(k)}')"></td>
       <td><input class="cell-in" data-f="wid_cm" value="${x.W||''}" ${dis} oninput="onCostEdit('${esc(k)}')"></td>
       <td><input class="cell-in" data-f="hei_cm" value="${x.H||''}" ${dis} oninput="onCostEdit('${esc(k)}')"></td>
+      <td><input class="cell-in" data-f="pcs_per_carton" value="${x.pcs>1?x.pcs:(x.c.pcs_per_carton||'')}" ${dis} oninput="onCostEdit('${esc(k)}')"></td>
       <td class="right mono calc" data-o="cbm">${x.cbm?x.cbm.toFixed(5):'-'}</td>
       <td class="right mono" data-o="shipW">${fmt(x.shipW)}</td>
       <td class="right mono" data-o="shipV">${fmt(x.shipV)}</td>
       <td class="right mono calc" data-o="shipUsed">${fmt(x.shipUsed)}</td>
       <td class="right mono" data-o="vat">${fmt(x.vat)}</td>
       <td class="right mono calc" data-o="landed"><b>${fmt(x.landed)}</b></td>
-    </tr>`;}).join('') || '<tr><td colspan="14" class="empty">ไม่พบรายการ</td></tr>';
+    </tr>`;}).join('') || '<tr><td colspan="15" class="empty">ไม่พบรายการ</td></tr>';
   if(rows.length>600)$('costInfo').textContent+=' — แสดง 600 แรก (ใช้ค้นหาเพื่อจำกัด)';
 }
 function onCostEdit(k){
@@ -365,9 +370,9 @@ function onCostEdit(k){
 const cssq=s=>s.replace(/["\\]/g,'\\$&');
 async function saveAllCost(){
   if(!canEdit)return toast('บทบาทนี้แก้ไขไม่ได้',true);
-  const rows=Object.values(COST).filter(r=>r.sku&&(r.weight_kg||r.len_cm||r.wid_cm||r.hei_cm||r.note));
+  const rows=Object.values(COST).filter(r=>r.sku&&(r.weight_kg||r.len_cm||r.wid_cm||r.hei_cm||r.pcs_per_carton||r.note));
   if(!rows.length)return toast('ยังไม่มีข้อมูลให้บันทึก',true);
-  const out=rows.map(r=>({sku:r.sku,supplier:r.supplier||'',weight_kg:num(r.weight_kg),len_cm:num(r.len_cm),wid_cm:num(r.wid_cm),hei_cm:num(r.hei_cm),note:r.note||null}));
+  const out=rows.map(r=>({sku:r.sku,supplier:r.supplier||'',weight_kg:num(r.weight_kg),len_cm:num(r.len_cm),wid_cm:num(r.wid_cm),hei_cm:num(r.hei_cm),pcs_per_carton:num(r.pcs_per_carton)||null,note:r.note||null}));
   const {error}=await sb.from('sku_cost').upsert(out,{onConflict:'sku,supplier'});
   if(error)return toast('บันทึกไม่ได้: '+error.message,true);
   toast('บันทึกต้นทุน '+out.length+' รายการแล้ว ✅');renderDash();
@@ -375,8 +380,9 @@ async function saveAllCost(){
 function exportCost(){
   const out=MASTER.map(m=>{const x=computeRow(m);return{
     'SKU':m.sku,'ชื่อ':m.product_name||'','Supplier':m.supplier||'',
-    'ต้นทุน¥':x.yuan,'ต้นทุนบาท':+x.baht.toFixed(2),'น้ำหนัก(กก.)':x.w||'',
-    'ยาว':x.L||'','กว้าง':x.W||'','สูง':x.H||'','CBM':+x.cbm.toFixed(5),
+    'ต้นทุน¥':x.yuan,'ต้นทุนบาท':+x.baht.toFixed(2),'น้ำหนัก/ลัง(กก.)':x.wc||'',
+    'ยาว':x.L||'','กว้าง':x.W||'','สูง':x.H||'','ชิ้น/ลัง':x.c.pcs_per_carton||'',
+    'CBM/หน่วย':+x.cbm.toFixed(5),'น้ำหนัก/หน่วย':+x.w.toFixed(3),
     'ค่าส่ง(นน.)':+x.shipW.toFixed(2),'ค่าส่ง(ปม.)':+x.shipV.toFixed(2),
     'ค่าส่งที่ใช้':+x.shipUsed.toFixed(2),'VAT':+x.vat.toFixed(2),'ต้นทุนรวม/หน่วย':+x.landed.toFixed(2)};});
   const ws=XLSX.utils.json_to_sheet(out);const wb=XLSX.utils.book_new();
