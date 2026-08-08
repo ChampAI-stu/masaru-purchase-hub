@@ -318,8 +318,7 @@
     <div class="grid2"><div><label>Model</label><input id="e_model"></div><div><label>HS Code</label><input id="e_hs"></div></div>
     <div class="grid2"><div><label>Component</label><textarea id="e_comp"></textarea></div><div><label>Specification</label><textarea id="e_spec"></textarea></div></div>
     <h3>ข้อมูลบรรจุ (ใช้ทำ Packing List)</h3>
-    <div class="grid3"><div><label>หน่วย</label><select id="e_unit"><option value="">—</option><option>SET</option><option>PCS</option></select></div>
-          <div><label>ดำเนินการตามกรมศุลกากร</label><select id="e_customs"><option value="">อัตโนมัติ (นับจากบิล)</option><option value="done">✔ เคยออกแล้ว</option><option value="never">— ยังไม่เคย</option></select></div><div><label>จำนวน/กล่อง</label><input id="e_perctn" type="number"></div><div><label>น้ำหนัก/กล่อง (Kg)</label><input id="e_wctn" type="number" step="0.01"></div></div>
+    <div class="grid3"><div><label>หน่วย</label><select id="e_unit"><option value="">—</option><option>SET</option><option>PCS</option></select></div><div><label>จำนวน/กล่อง</label><input id="e_perctn" type="number"></div><div><label>น้ำหนัก/กล่อง (Kg)</label><input id="e_wctn" type="number" step="0.01"></div></div>
     <div class="grid2">
       <div><label>ขนาดกล่อง (ซม.) — กว้าง × ยาว × สูง</label>
         <div style="display:flex;gap:6px">
@@ -574,10 +573,7 @@ function renderSkuTable(){
         <td${bt}>${esc(nameMid)}<br><span class="muted">${esc(p.name_en||'')} / ${esc(p.name_th||'')}</span></td>
         <td${bt}>${esc(p.brand||'')} ${esc(p.model||'')}</td>
         <td${bt}>${packed}</td>
-        <td${bt}>${(()=>{const cs=p.customs_status;
-          if(cs==='done')return '<span class="pill down">✔ เคยออกแล้ว</span>';
-          if(cs==='never')return '<span class="muted">— ยังไม่เคย</span>';
-          const b=billMap[p.sku];const n=b?b.size:0;return n?`<span class="pill down" title="${esc([...b].join(', '))}">✔ ออกแล้ว ${n} ใบ</span>`:'<span class="muted">— ยังไม่เคย</span>';})()}</td>
+        <td${bt}>${(()=>{const b=billMap[p.sku];const n=b?b.size:0;return n?`<span class="pill down" title="${esc([...b].join(', '))}">✔ ออกแล้ว ${n} ใบ</span>`:'<span class="muted">— ยังไม่เคย</span>';})()}</td>
         <td class="no-print"${bt}><button class="mini btn" onclick="openExport('${esc(p.sku)}')">${canEdit?'แก้ข้อมูลส่งออก':'ดู'}</button></td>
       </tr>`;
     });
@@ -590,8 +586,8 @@ function exportSkuExcel(){
   const head=['SKU','Supplier','ต้นทุน (CNY)','ชื่อ (กลาง)','ชื่อ EN','ชื่อไทย','Brand','Model','HS Code','Component','Specification','หน่วย','จำนวน/กล่อง','น้ำหนัก/กล่อง (Kg)','ขนาดกล่อง','CBM/กล่อง','ดำเนินการตามกรมศุลกากร','เลขที่บิลที่เคยออก'];
   const rows=[head];
   db.products.forEach(p=>{
-    const cs=p.customs_status; const b=billMap[p.sku]; const n=b?b.size:0;
-    const st= cs==='done' ? '✔ เคยออกแล้ว' : cs==='never' ? 'ยังไม่เคย' : (n?('✔ ออกแล้ว '+n+' ใบ'):'ยังไม่เคย');
+    const b=billMap[p.sku]; const n=b?b.size:0;
+    const st= n?('✔ ออกแล้ว '+n+' ใบ'):'ยังไม่เคย';
     (p.suppliers&&p.suppliers.length?p.suppliers:[{supplier:'',price:null,product_name:p.product_name}]).forEach(sup=>{
       rows.push([p.sku,sup.supplier||'',sup.price!=null?+sup.price:'',sup.product_name||p.product_name||'',p.name_en||'',p.name_th||'',p.brand||'',p.model||'',p.hs||'',p.component||'',p.spec||'',p.unit||'',p.per_ctn||'',p.w_ctn||'',p.box_size||'',p.cbm_ctn||'',st,b?[...b].join(', '):'']);});
   });
@@ -610,7 +606,6 @@ function openExport(sku){
   $('e_bw').value=dims[0]||'';$('e_bl').value=dims[1]||'';$('e_bh').value=dims[2]||'';
   $('e_box').value=e.box_size||'';
   $('e_cbm').value=e.cbm_ctn||'';
-  $('e_customs').value=e.customs_status||'';
   $('expDlg').showModal();
 }
 function parseBox(s){const m=String(s||'').match(/([\d.]+)\s*[x×X]\s*([\d.]+)\s*[x×X]\s*([\d.]+)/);return m?{w:+m[1],l:+m[2],h:+m[3]}:{w:0,l:0,h:0};}
@@ -627,7 +622,7 @@ async function saveExport(){
   const rec={sku,brand:$('e_brand').value.trim(),name_en:$('e_en').value.trim(),name_th:$('e_th').value.trim(),
     model:$('e_model').value.trim(),hs:$('e_hs').value.trim(),component:$('e_comp').value,spec:$('e_spec').value,
     unit:$('e_unit').value.trim(),per_ctn:+$('e_perctn').value||null,w_ctn:+$('e_wctn').value||null,
-    box_size:$('e_box').value.trim(),cbm_ctn:+$('e_cbm').value||null,customs_status:$('e_customs').value||null};
+    box_size:$('e_box').value.trim(),cbm_ctn:+$('e_cbm').value||null};
   const ok=await dbWrite(()=>sb.from('sku_export_info').upsert(rec,{onConflict:'sku'}));
   if(ok){await reloadExport();$('expDlg').close();renderSkuTable();}
 }
