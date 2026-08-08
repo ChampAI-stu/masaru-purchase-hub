@@ -477,7 +477,7 @@ async function enterApp(session){
   $('rolePill').textContent='บทบาท: '+({purchase:'จัดซื้อ (แก้ข้อมูลส่งออก/เอกสารได้)',shipping:'ขนส่ง/Shipping (สิทธิ์เท่าจัดซื้อ)',executive:'ผู้บริหาร (ดูอย่างเดียว)'}[currentRole]);
   if(!canEdit)document.body.classList.add('view-only');
   $('boot').style.display='none';$('app').style.display='block';
-  await loadAll();bindDoc();go('dashboard');
+  await loadAll();bindDoc();go('dashboard');startRealtime();
 }
 /* ผูกช่องหัวเอกสาร/ผู้ส่ง/ผู้รับ ให้ตัวอย่างเอกสารอัปเดตสดเมื่อพิมพ์ */
 let docBound=false;
@@ -534,14 +534,38 @@ function buildProducts(){
 }
 async function reloadExport(){ const exp=await fetchTable('sku_export_info','sku'); db.expMap={}; exp.forEach(e=>db.expMap[e.sku]=e); buildProducts(); }
 async function reload(name){
-  const map={shipcosts:['shipcosts','date'],shipments:['shipments','date'],tracking:['shipment_tracking','start_date'],parties:['inv_parties','name'],budget:['acct_budget','period'],taxsum:['tax_summaries','created_at']};
+  const map={shipcosts:['shipcosts','date'],shipments:['shipments','date'],tracking:['shipment_tracking','start_date'],parties:['inv_parties','name'],budget:['acct_budget','period'],taxsum:['tax_summaries','created_at'],po:['purchase_orders','po_number'],master:['sku_master','sku'],hist:['sku_price_history','changed_at']};
   const[t,o]=map[name]; db[name]=await fetchTable(t,o);
 }
 async function dbWrite(fn){ try{const{error}=await fn(); if(error)throw error; return true;}catch(e){alert('บันทึกไม่สำเร็จ: '+(e.message||e));return false;} }
 function prod(sku){return db.products.find(p=>p.sku===sku);}
 
 /* ===== NAV ===== */
+/* ===== Realtime: ข้อมูลอัปเดตสดทุกเครื่อง (เหมือน Purchase Board) ===== */
+let _rtTimer=null;
+function _rtRefresh(){
+  // แท็บฟอร์มกำลังพิมพ์ (ออกบิล/สรุปภาษี) — ไม่ re-render อัตโนมัติ กันข้อมูลที่พิมพ์หาย
+  if(CURTAB==='dashboard')renderDashboard();
+  else if(CURTAB==='sku')renderSkuTable();
+  else if(CURTAB==='track')renderTrack();
+  else if(CURTAB==='parties')renderParties();
+  else if(CURTAB==='summary')renderSummary();
+  else if(CURTAB==='posum')renderPoSummary();
+}
+function _rtQueue(name){
+  reload(name).then(()=>{if(name==='master'||name==='hist')buildProducts();clearTimeout(_rtTimer);_rtTimer=setTimeout(_rtRefresh,300);});
+}
+function startRealtime(){
+  const map=[['shipments','shipments'],['shipment_tracking','tracking'],['inv_parties','parties'],
+             ['acct_budget','budget'],['tax_summaries','taxsum'],['purchase_orders','po'],
+             ['sku_master','master'],['sku_price_history','hist']];
+  const ch=sb.channel('cost-rt');
+  map.forEach(([tbl,key])=>ch.on('postgres_changes',{event:'*',schema:'public',table:tbl},()=>_rtQueue(key)));
+  ch.on('postgres_changes',{event:'*',schema:'public',table:'sku_export_info'},async()=>{await reloadExport();clearTimeout(_rtTimer);_rtTimer=setTimeout(_rtRefresh,300);});
+  ch.subscribe();
+}
 function go(t){
+  CURTAB=t;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   ['dashboard','sku','track','parties','invpl','taxsum','summary','posum'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
   if(t==='dashboard')renderDashboard();
