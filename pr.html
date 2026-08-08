@@ -294,14 +294,19 @@
             <input type="file" id="file-master" accept=".xlsx,.xls,.csv" onchange="importMaster(event)"/></div>
           <button class="btn gold sm" onclick="downloadTemplate()">📥 โหลดเทมเพลต</button>
           <button class="btn ghost sm" onclick="openAddSku()">+ เพิ่ม SKU เอง</button>
-          <span class="muted">คอลัมน์ที่รองรับ: <b>sku, product_name, supplier, standard_price</b></span>
+          <span class="muted">คอลัมน์ที่รองรับ: <b>sku, product_name, supplier, standard_price, currency</b></span>
         </div>
         <div id="add-sku" class="hide" style="margin-top:8px;padding:12px;background:#F8FAFC;border-radius:10px">
           <div class="row">
             <div class="fld grow"><label>รหัสสินค้า</label><input id="m-sku"/></div>
             <div class="fld grow"><label>ชื่อสินค้า</label><input id="m-name"/></div>
             <div class="fld grow"><label>Supplier</label><input id="m-sup"/></div>
-            <div class="fld grow"><label>ราคามาตรฐาน (¥)</label><input id="m-price" type="number" step="0.01"/></div>
+            <div class="fld"><label>สกุลเงิน</label>
+              <select id="m-cur">
+                <option value="CNY">¥ นำเข้า (CNY)</option>
+                <option value="THB">฿ ในประเทศ (THB)</option>
+              </select></div>
+            <div class="fld grow"><label>ราคามาตรฐาน (¥ / ฿)</label><input id="m-price" type="number" step="0.01"/></div>
           </div>
           <button class="btn sm" onclick="saveSku()">บันทึก</button>
         </div>
@@ -316,7 +321,7 @@
         <div class="scroll">
           <table>
             <thead><tr><th>รหัสสินค้า</th><th>ชื่อสินค้า</th><th>Supplier</th>
-              <th class="right">ราคามาตรฐาน (¥)</th><th></th></tr></thead>
+              <th class="right">ราคามาตรฐาน</th><th>สกุล</th><th></th></tr></thead>
             <tbody id="master-rows"></tbody>
           </table>
         </div>
@@ -423,7 +428,8 @@ async function showPriceHistory(id){
   const {data,error}=await sb.from('sku_price_history')
     .select('*').eq('sku', r.sku).eq('supplier', r.supplier||'')
     .order('changed_at',{ascending:false});
-  const cur = `<div style="padding:4px 0 12px;border-bottom:1px solid var(--line);margin-bottom:8px">ราคาปัจจุบัน: <b style="font-size:17px">${fmt(r.standard_price)}</b> ¥</div>`;
+  const unit = r.currency==='THB' ? '฿' : '¥';
+  const cur = `<div style="padding:4px 0 12px;border-bottom:1px solid var(--line);margin-bottom:8px">ราคาปัจจุบัน: <b style="font-size:17px">${fmt(r.standard_price)}</b> ${unit}</div>`;
   if(error){
     box.innerHTML = `<div class="muted" style="padding:12px">ยังดูประวัติไม่ได้: ${esc(error.message)}<br><br>ถ้ายังไม่ได้สร้างตาราง <b>sku_price_history</b> ให้รันไฟล์ SQL ที่แนบก่อนครับ</div>`;
     return;
@@ -435,7 +441,7 @@ async function showPriceHistory(id){
     const dir=(oldp==null)?'':(newp>oldp?'ph-up':(newp<oldp?'ph-down':''));
     const change=(oldp==null)?'ตั้งราคาเริ่มต้น':`${fmt(oldp)} → <b>${fmt(newp)}</b>`;
     const who=h.changed_by?`<div class="ph-date">โดย ${esc(h.changed_by)}</div>`:'';
-    return `<div class="ph-row"><div><div class="ph-date">${dt}</div>${who}</div><div class="ph-price ${dir}">${change} ¥</div></div>`;
+    return `<div class="ph-row"><div><div class="ph-date">${dt}</div>${who}</div><div class="ph-price ${dir}">${change} ${unit}</div></div>`;
   }).join('');
 }
 
@@ -638,11 +644,12 @@ function renderMaster(){
     <td class="m-name">${esc(r.product_name||'')}</td>
     <td class="m-sup">${r.supplier?esc(r.supplier):'<span class="muted">-</span>'}</td>
     <td class="right m-price">${fmt(r.standard_price)}</td>
+    <td class="m-cur">${r.currency==='THB'?'฿ THB':'¥ CNY'}</td>
     <td style="white-space:nowrap">
       <button class="btn sm ghost" onclick="showPriceHistory('${r.id}')">📈 ประวัติ</button>
       <button class="btn sm ghost" style="margin-left:5px" onclick="editMasterRow('${r.id}')">✏️ แก้ไข</button>
       <button class="btn sm" style="background:var(--red);margin-left:5px" onclick="delSkuById('${r.id}')">ลบ</button>
-    </td></tr>`).join('') || `<tr><td colspan="5" class="muted" style="text-align:center;padding:18px">— ไม่พบรายการที่ค้นหา —</td></tr>`;
+    </td></tr>`).join('') || `<tr><td colspan="6" class="muted" style="text-align:center;padding:18px">— ไม่พบรายการที่ค้นหา —</td></tr>`;
 }
 function editMasterRow(id){
   if(!requireEditor())return;
@@ -651,6 +658,10 @@ function editMasterRow(id){
   tr.querySelector('.m-name').innerHTML=`<input class="ed-name" value="${esc(r.product_name||'')}" style="width:100%;padding:5px 7px;border:1px solid var(--line);border-radius:6px"/>`;
   tr.querySelector('.m-sup').innerHTML=`<input class="ed-sup" value="${esc(r.supplier||'')}" placeholder="(ว่างได้)" style="width:100%;padding:5px 7px;border:1px solid var(--line);border-radius:6px"/>`;
   tr.querySelector('.m-price').innerHTML=`<input class="ed-price" type="number" step="0.01" value="${r.standard_price||0}" style="width:110px;padding:5px 7px;border:1px solid var(--line);border-radius:6px;text-align:right"/>`;
+  tr.querySelector('.m-cur').innerHTML=`<select class="ed-cur" style="padding:5px 7px;border:1px solid var(--line);border-radius:6px">
+      <option value="CNY" ${(r.currency||'CNY')!=='THB'?'selected':''}>¥ CNY</option>
+      <option value="THB" ${r.currency==='THB'?'selected':''}>฿ THB</option>
+    </select>`;
   tr.lastElementChild.innerHTML=`
     <button class="btn sm" onclick="saveMasterRow('${id}')">💾 บันทึก</button>
     <button class="btn sm ghost" style="margin-left:5px" onclick="renderMaster()">ยกเลิก</button>`;
@@ -658,10 +669,12 @@ function editMasterRow(id){
 async function saveMasterRow(id){
   if(!requireEditor())return;
   const tr=document.querySelector(`#master-rows tr[data-id="${id}"]`); if(!tr)return;
+  const curEl=tr.querySelector('.ed-cur');
   const upd={
     product_name: tr.querySelector('.ed-name').value.trim(),
     supplier: tr.querySelector('.ed-sup').value.trim(),   // ว่าง = '' (ตรงกับ constraint)
-    standard_price: parseFloat(tr.querySelector('.ed-price').value)||0
+    standard_price: parseFloat(tr.querySelector('.ed-price').value)||0,
+    currency: curEl ? curEl.value : 'CNY'
   };
   const {error}=await sb.from('sku_master').update(upd).eq('id',id);
   if(error){toast('บันทึกไม่ได้: '+error.message,true);return;}
@@ -679,11 +692,13 @@ function openAddSku(){ $('add-sku').classList.toggle('hide'); }
 async function saveSku(){
   if(!requireEditor())return;
   const row={ sku:$('m-sku').value.trim(), product_name:$('m-name').value.trim(),
-    supplier:$('m-sup').value.trim(), standard_price:parseFloat($('m-price').value)||0 };
+    supplier:$('m-sup').value.trim(), standard_price:parseFloat($('m-price').value)||0,
+    currency: $('m-cur') ? $('m-cur').value : 'CNY' };
   if(!row.sku){toast('ใส่รหัสสินค้าก่อน',true);return;}
   const {error}=await sb.from('sku_master').upsert(row,{onConflict:'sku,supplier'});
   if(error){toast(error.message,true);return;}
   ['m-sku','m-name','m-sup','m-price'].forEach(i=>$(i).value='');
+  if($('m-cur')) $('m-cur').value='CNY';
   toast('บันทึก SKU แล้ว'); loadMaster();
 }
 async function delSkuById(id){
@@ -692,15 +707,16 @@ async function delSkuById(id){
   await sb.from('sku_master').delete().eq('id',id); toast('ลบแล้ว'); loadMaster();
 }
 function downloadTemplate(){
-  const header=['sku','product_name','supplier','standard_price'];
+  const header=['sku','product_name','supplier','standard_price','currency'];
   const rows=[
-    {sku:'PTB10-2040', product_name:'POWER TURBO series', supplier:'MTIAN', standard_price:125},
-    {sku:'PTB10-2040', product_name:'POWER TURBO series', supplier:'MUTIAN', standard_price:120},
-    {sku:'SCDR-205', product_name:'สว่านโรตารี่ไร้สาย 20V', supplier:'YAGUI', standard_price:234},
-    {sku:'', product_name:'', supplier:'', standard_price:''}
+    {sku:'PTB10-2040', product_name:'POWER TURBO series', supplier:'MTIAN', standard_price:125, currency:'CNY'},
+    {sku:'PTB10-2040', product_name:'POWER TURBO series', supplier:'MUTIAN', standard_price:120, currency:'CNY'},
+    {sku:'SCDR-205', product_name:'สว่านโรตารี่ไร้สาย 20V', supplier:'YAGUI', standard_price:234, currency:'CNY'},
+    {sku:'DOMESTIC-01', product_name:'สินค้าซื้อในประเทศ (ราคาบาท)', supplier:'ซัพในไทย', standard_price:1590, currency:'THB'},
+    {sku:'', product_name:'', supplier:'', standard_price:'', currency:''}
   ];
   const ws=XLSX.utils.json_to_sheet(rows,{header});
-  ws['!cols']=[{wch:16},{wch:28},{wch:20},{wch:16}];
+  ws['!cols']=[{wch:16},{wch:28},{wch:20},{wch:16},{wch:10}];
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'master');
   XLSX.writeFile(wb, 'MASARU_เทมเพลตข้อมูลกลาง.xlsx');
@@ -714,13 +730,18 @@ async function importMaster(e){
   const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
   const norm=k=>String(k).toLowerCase().replace(/[\s_]/g,'');
   const pick=(o,...keys)=>{for(const kk of keys){for(const k in o){if(norm(k)===norm(kk))return o[k];}}return undefined;};
-  const out=rows.map(r=>({
-    sku: String(pick(r,'sku','รหัสสินค้า','รหัส')||'').trim(),
-    product_name: String(pick(r,'product_name','productname','ชื่อสินค้า','ชื่อ')||'').trim(),
-    supplier: String(pick(r,'supplier','ผู้ขาย')||'').trim(),
-    standard_price: parseFloat(pick(r,'standard_price','standardprice','ราคามาตรฐาน','ราคา/หน่วย','ราคา'))||0,
-    current_stock: parseInt(pick(r,'current_stock','currentstock','สต็อก','สต็อกปัจจุบัน'))||0
-  })).filter(r=>r.sku);
+  const out=rows.map(r=>{
+    const curRaw=String(pick(r,'currency','สกุลเงิน','สกุล','หน่วยเงิน','หน่วย')||'').trim().toUpperCase();
+    const currency=(curRaw.includes('THB')||curRaw.includes('฿')||curRaw.includes('บาท')) ? 'THB' : 'CNY';
+    return {
+      sku: String(pick(r,'sku','รหัสสินค้า','รหัส')||'').trim(),
+      product_name: String(pick(r,'product_name','productname','ชื่อสินค้า','ชื่อ')||'').trim(),
+      supplier: String(pick(r,'supplier','ผู้ขาย')||'').trim(),
+      standard_price: parseFloat(pick(r,'standard_price','standardprice','ราคามาตรฐาน','ราคา/หน่วย','ราคา'))||0,
+      currency,
+      current_stock: parseInt(pick(r,'current_stock','currentstock','สต็อก','สต็อกปัจจุบัน'))||0
+    };
+  }).filter(r=>r.sku);
   if(!out.length){toast('ไม่พบคอลัมน์ sku ในไฟล์',true);return;}
   const {error}=await sb.from('sku_master').upsert(out,{onConflict:'sku,supplier'});
   if(error){toast(error.message,true);return;}
@@ -1235,7 +1256,7 @@ async function viewPR(id){
   const submitted = p.status!=='draft';
   const canSubmit = ME.role==='จัดซื้อ' && p.status==='draft';
   let myCanSign=false, sigLockMsg='🔒 ยังเซ็นไม่ได้';
-  if(mySlot==='requester'){ myCanSign=(p.status==='draft'||p.status==='rejected'); if(!myCanSign) sigLockMsg='🔒 ส่งแล้ว แก้ลายเซ็นไม่ได้ (ต้องถูกตีกลับก่อน)'; }
+  if(mySlot==='requester') myCanSign=true;
   else if(mySlot==='reviewer'){ myCanSign=submitted; if(!submitted) sigLockMsg='🔒 รอจัดซื้อกดส่งก่อน'; }
   else if(mySlot==='approver'){
     if(!submitted){ sigLockMsg='🔒 รอจัดซื้อกดส่งก่อน'; }
@@ -1345,10 +1366,6 @@ const SLOT_OF={'จัดซื้อ':'requester','หัวหน้า':'revi
 async function signMine(id){
   const k=SLOT_OF[ME.role];
   if(!k){toast('บทบาทนี้เซ็นไม่ได้',true);return;}
-  const p0=PR_ALL.find(x=>String(x.id)===String(id));
-  if(k==='requester' && p0 && p0.status!=='draft' && p0.status!=='rejected'){
-    toast('🔒 ใบนี้ส่งเข้าอนุมัติแล้ว — แก้ลายเซ็นไม่ได้ (ต้องถูกตีกลับก่อน)',true); return;
-  }
   if(!ME.name || ME.name===ME.email){ toast('ตั้งชื่อ-นามสกุลในโปรไฟล์ก่อน',true); openProfile(); return; }
   const {data:cur}=await sb.from('pr').select('signatures').eq('id',id).single();
   const sig=cur.signatures||{};
@@ -1360,10 +1377,6 @@ async function signMine(id){
 }
 async function unsignMine(id){
   const k=SLOT_OF[ME.role]; if(!k)return;
-  const p0=PR_ALL.find(x=>String(x.id)===String(id));
-  if(k==='requester' && p0 && p0.status!=='draft' && p0.status!=='rejected'){
-    toast('🔒 ใบนี้ส่งเข้าอนุมัติแล้ว — ยกเลิกลายเซ็นไม่ได้ (ต้องถูกตีกลับก่อน)',true); return;
-  }
   const {data:cur}=await sb.from('pr').select('signatures').eq('id',id).single();
   const sig=cur.signatures||{};
   if(k==='reviewer' && sig.approver && sig.approver.name){ toast('ผู้บริหารเซ็นแล้ว ยกเลิกไม่ได้',true); return; }
@@ -1374,13 +1387,6 @@ async function unsignMine(id){
 }
 async function submitPR(id){
   if(ME.role!=='จัดซื้อ'){toast('เฉพาะจัดซื้อกดส่งได้',true);return;}
-  // ต้องเซ็นช่องผู้ขอซื้อก่อนส่ง — กันลืมเซ็นแล้ววันที่คลาดเคลื่อน
-  const {data:curSig}=await sb.from('pr').select('signatures').eq('id',id).single();
-  const sg0=(curSig&&curSig.signatures)||{};
-  if(!(sg0.requester&&sg0.requester.name)){
-    toast('⚠️ ต้องเซ็นชื่อช่อง "ผู้ขอซื้อ" ก่อนส่งเข้าอนุมัติ',true);
-    return;
-  }
   // เช็คผลตรวจ AI ของใบนี้ — ถ้ามี "ต้องตรวจ" (fail) หรือ "พิจารณา" (warn) → เตือนใหญ่ก่อน
   const p = PR_ALL.find(x=>String(x.id)===String(id));
   const a = (p&&p.ai_result)||{};
