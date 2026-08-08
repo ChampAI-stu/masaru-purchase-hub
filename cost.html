@@ -1356,6 +1356,10 @@ function exportInvoiceExcel(ev){
     if(span>1){wsP.mergeCells(startRow,3,startRow+span-1,3);wsP.mergeCells(startRow,4,startRow+span-1,4);wsP.mergeCells(startRow,5,startRow+span-1,5);}
     ii+=span;
   }
+  // ช่องลายเซ็น/ประทับตราบริษัท ท้าย Packing List (เหมือน PDF)
+  pr+=2;
+  wsP.mergeCells(pr,4,pr,5); wsP.getCell(pr,4).value='Signature and Company Stamp'; wsP.getCell(pr,4).alignment={horizontal:'center'};
+  wsP.mergeCells(pr+2,4,pr+2,5); wsP.getCell(pr+2,4).value='__________________________'; wsP.getCell(pr+2,4).alignment={horizontal:'center'};
   wb.xlsx.writeBuffer().then(buf=>{const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='INVOICE_PL_'+(d.invno||'draft')+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   }).catch(e=>{console.error(e);alert('สร้าง Excel ไม่สำเร็จ: '+e.message);});
