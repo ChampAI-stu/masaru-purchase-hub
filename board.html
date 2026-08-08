@@ -428,6 +428,7 @@ body.price-on .sl-price{display:block}
               <th class="sortable" data-sort="received_qty">จำนวนที่เข้า<span class="sort-ind"></span></th>
               <th class="sortable" data-sort="eta">วันที่เข้าคลัง<span class="sort-ind"></span></th>
               <th class="sortable" data-sort="status">สถานะ PO<span class="sort-ind"></span></th>
+              <th class="sortable" data-sort="carrier" id="carrierHead">บริษัทขนส่ง<span class="sort-ind"></span></th>
               <th>หมายเหตุ</th>
               <th class="sortable" data-sort="updated_at">วันที่อัพเดท<span class="sort-ind"></span></th>
               <th id="priceHead" style="display:none">ราคาสินค้า (¥)</th>
@@ -643,6 +644,11 @@ body.price-on .sl-price{display:block}
         <label>วันที่เข้าคลัง</label>
         <input type="date" id="mEta">
       </div>
+    </div>
+    <div class="m-field">
+      <label>บริษัทขนส่ง</label>
+      <input type="text" id="mCarrier" list="carrierList" placeholder="เลือก/พิมพ์">
+      <datalist id="carrierList"></datalist>
     </div>
     <div class="m-field">
       <label>หมายเหตุ</label>
@@ -1123,6 +1129,8 @@ function subscribeRealtime(){
 
 // ===== RENDER =====
 function render(){
+  const hideCarrier = (currentRole==='marketing');
+  {const _ch=document.getElementById('carrierHead'); if(_ch)_ch.style.display=hideCarrier?'none':'';}
   const q = $('searchInput').value.toLowerCase().trim();
   const sf = $('statusFilter').value;
   let rows = allOrders.filter(o => {
@@ -1140,7 +1148,7 @@ function render(){
   renderSummary();
   const tb = $('tableBody');
   if(rows.length === 0){
-    let colspan = currentRole==='purchase' ? (selectionMode?11:10) : 9;
+    let colspan = currentRole==='purchase' ? (selectionMode?12:11) : (currentRole==='marketing'?9:10);
     if(canSeePrice) colspan += 1;
     tb.innerHTML = `<tr><td colspan="${colspan}"><div class="empty">
       <div class="big">📋</div>ยังไม่มีรายการ${q||sf?'ที่ตรงกับการค้นหา':''}</div></td></tr>`;
@@ -1197,6 +1205,7 @@ function render(){
       <td>${recvCell}</td>
       <td>${etaCell}</td>
       <td><span class="badge ${STATUS_CLASS[o.status]||''}">${STATUS_ICON[o.status]||''} ${esc(o.status)}</span></td>
+      ${hideCarrier?'':`<td>${o.carrier?`<span class="carrier-tag" style="background:${carrierColor(o.carrier)}">${esc(o.carrier)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>`}
       <td><span class="note">${o.note?esc(o.note):'—'}</span></td>
       <td style="font-size:12px;color:var(--muted);white-space:nowrap">${fmtDateTime(o.updated_at)}</td>
       ${priceCell}
@@ -1379,7 +1388,7 @@ function addSkuLine(vals = {}, allowDelete = true){
 
 function openAdd(){
   $('modalTitle').textContent = 'เพิ่ม PO ใหม่';
-  $('editId').value=''; $('mPO').value=''; $('mEta').value='';
+  $('editId').value=''; $('mPO').value=''; $('mEta').value=''; $('carrierList').innerHTML=CARRIERS.map(c=>`<option value="${c.name}">`).join(''); $('mCarrier').value='';
   $('mStatus').value='อยู่ระหว่างสั่งซื้อ'; $('mNote').value='';
   $('skuLines').innerHTML='';
   addSkuLine();                          // เริ่มด้วย 1 บรรทัดว่าง
@@ -1392,6 +1401,7 @@ window.openEdit = function(id){
   $('modalTitle').textContent = 'แก้ไขรายการ';
   $('editId').value=o.id; $('mPO').value=o.po_number||'';
   $('mEta').value=o.eta||''; $('mStatus').value=o.status||'อยู่ระหว่างสั่งซื้อ'; $('mNote').value=o.note||'';
+  $('carrierList').innerHTML=CARRIERS.map(c=>`<option value="${c.name}">`).join(''); $('mCarrier').value=o.carrier||'';
   $('skuLines').innerHTML='';
   addSkuLine({ sku:o.sku, qty:o.quantity, recv:(o.received_qty!=null)?o.received_qty:null, price:(o.price!=null)?o.price:null });
   $('addSkuLineBtn').style.display='none';   // แก้ไขทีละรายการ ไม่เพิ่มหลาย SKU
@@ -1416,6 +1426,7 @@ function collectSkuLines(){
 
 async function saveOrder(){
   const shared = {
+    carrier: $('mCarrier').value.trim() || null,
     po_number: $('mPO').value.trim() || null,
     eta: $('mEta').value || null,
     status: $('mStatus').value,
@@ -1746,6 +1757,7 @@ function sortValue(o, key){
   switch(key){
     case 'quantity':  return o.quantity != null ? o.quantity : -Infinity;
     case 'received_qty': return o.received_qty != null ? o.received_qty : -Infinity;
+    case 'carrier': return (o.carrier||'').toLowerCase();
     case 'eta':       return o.eta ? new Date(o.eta).getTime() : Infinity;
     case 'updated_at': return o.updated_at ? new Date(o.updated_at).getTime() : -Infinity;
     case 'status':    return STATUS_ORDER[o.status] || 99;
