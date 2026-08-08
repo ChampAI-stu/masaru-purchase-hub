@@ -1002,13 +1002,13 @@ async function updateCentralPrice(id){
   if(!(newp>0)){ alert('ยังไม่มีราคาสินค้าในแถวนี้'); return; }
   if(newp===Number(m.price)){ alert('ราคาตรงกับข้อมูลกลางอยู่แล้ว'); return; }
   if(!confirm('อัพเดตราคากลางของ '+o.sku+'\n'+Number(m.price).toLocaleString()+' → '+newp.toLocaleString()+' ¥ ?\n(อัพเดตข้อมูลกลาง + ประวัติในระบบ PR และมีผลกับระบบต้นทุนทันที)')) return;
+  // อัพเดตเฉพาะราคากลางใน sku_master — ประวัติถูกบันทึกอัตโนมัติโดย trigger ของ PR
+  // (เหมือนที่หน้า PR ทำ: อัปเดต sku_master แล้ว trigger add_price_history บันทึกประวัติ + changed_by ให้เอง)
   const up = await sb.from('sku_master').update({ standard_price: newp }).eq('sku', o.sku).eq('supplier', m.supplier||'');
   if(up.error){ alert('อัพเดตข้อมูลกลางไม่ได้: '+up.error.message); return; }
-  const hi = await sb.from('sku_price_history').insert({ sku:o.sku, supplier:m.supplier||'', old_price:(Number(m.price)||null), new_price:newp, changed_by:ME_EMAIL, changed_at:new Date().toISOString() });
-  if(hi.error){ console.warn('history insert:', hi.error.message); }
   MASTERP[o.sku] = { supplier:m.supplier||'', price:newp };
   render();
-  alert('อัพเดตราคาเรียบร้อย ✅  (ข้อมูลกลาง + ประวัติ + ระบบต้นทุน)');
+  alert('อัพเดตราคาเรียบร้อย ✅  (ข้อมูลกลาง + ประวัติ [PR] + ระบบต้นทุน)');
 }
 
 // ===== ป๊อบอัพประกาศ (โหลดจาก Supabase) =====
