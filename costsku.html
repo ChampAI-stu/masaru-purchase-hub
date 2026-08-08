@@ -249,12 +249,12 @@ async function enterApp(session){
   const meta=session.user?.app_metadata||{};
   const roles=(Array.isArray(meta.user_roles)&&meta.user_roles.length)?meta.user_roles:(meta.user_role?[meta.user_role]:[]);
   const isExec=roles.includes('pr_exec')||roles.includes('executive');
+  const isMgr=roles.includes('pr_manager');
   const isBuyer=roles.includes('purchase');
-  const isShip=roles.includes('shipping');
-  if(!isBuyer&&!isShip&&!isExec){location.replace(PORTAL_URL);return;}
-  currentRole=isBuyer?'purchase':(isShip?'shipping':'executive');
-  canEdit=(isBuyer||isShip);
-  $('rolePill').textContent='บทบาท: '+({purchase:'จัดซื้อ (แก้ไขได้)',shipping:'ขนส่ง (แก้ไขได้)',executive:'ผู้บริหาร (ดูอย่างเดียว)'}[currentRole]);
+  if(!isBuyer&&!isMgr&&!isExec){location.replace(PORTAL_URL);return;}   // เข้าได้เฉพาะ จัดซื้อ / หัวหน้า / ผู้บริหาร
+  currentRole=isBuyer?'purchase':(isMgr?'manager':'executive');
+  canEdit=(isBuyer||isMgr);   // จัดซื้อ + หัวหน้า แก้ไขได้ ; ผู้บริหาร ดูอย่างเดียว
+  $('rolePill').textContent='บทบาท: '+({purchase:'จัดซื้อ (แก้ไขได้)',manager:'หัวหน้า (แก้ไขได้)',executive:'ผู้บริหาร (ดูอย่างเดียว)'}[currentRole]);
   if(!canEdit)document.body.classList.add('view-only');
   await loadAll();
   $('boot').style.display='none';$('app').style.display='block';
