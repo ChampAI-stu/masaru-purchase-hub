@@ -156,6 +156,11 @@
         <div class="toolbar">
           <h2 style="margin:0;border:0;padding:0">📦 สินค้า + ข้อมูลส่งออก</h2><span class="sp"></span>
           <input id="skuSearch" placeholder="ค้นหา SKU / ชื่อ / Brand" style="max-width:240px" oninput="renderSkuTable()">
+          <select id="skuCustomsFilter" style="max-width:170px" onchange="renderSkuTable()">
+            <option value="">— ใบขน: ทั้งหมด —</option>
+            <option value="done">✔ มีใบขนแล้ว</option>
+            <option value="never">✖ ยังไม่มีใบขน</option>
+          </select>
           <button class="btn ghost" onclick="exportSkuTemplate()">โหลดเทมเพลตส่งออก</button>
           <button class="btn ghost edit-only" onclick="document.getElementById('expImport').click()">นำเข้าข้อมูลส่งออก</button>
           <button class="btn gold" onclick="exportSkuExcel()">⬇️ Export Excel</button>
@@ -318,9 +323,7 @@
     <div class="grid2"><div><label>Model</label><input id="e_model"></div><div><label>HS Code</label><input id="e_hs"></div></div>
     <div class="grid2"><div><label>Component</label><textarea id="e_comp"></textarea></div><div><label>Specification</label><textarea id="e_spec"></textarea></div></div>
     <h3>ข้อมูลบรรจุ (ใช้ทำ Packing List)</h3>
-    <div class="grid3"><div><label>หน่วย</label><select id="e_unit"><option value="">—</option><option>SET</option><option>PCS</option></select></div>
-          <div><label>ดำเนินการตามกรมศุลกากร</label><select id="e_customs"><option value="">อัตโนมัติ (นับจากบิล)</option><option value="done">✔ มีใบขนแล้ว</option><option value="never">✖ ยังไม่มีใบขน</option></select></div>
-          <div><label>หมายเหตุใบขน</label><input id="e_cnote" placeholder="เช่น กำลังส่งออก ทำใบขน 16/7/26"></div><div><label>จำนวน/กล่อง</label><input id="e_perctn" type="number"></div><div><label>น้ำหนัก/กล่อง (Kg)</label><input id="e_wctn" type="number" step="0.01"></div></div>
+    <div class="grid3"><div><label>หน่วย</label><select id="e_unit"><option value="">—</option><option>SET</option><option>PCS</option></select></div><div><label>จำนวน/กล่อง</label><input id="e_perctn" type="number"></div><div><label>น้ำหนัก/กล่อง (Kg)</label><input id="e_wctn" type="number" step="0.01"></div></div>
     <div class="grid2">
       <div><label>ขนาดกล่อง (ซม.) — กว้าง × ยาว × สูง</label>
         <div style="display:flex;gap:6px">
@@ -555,7 +558,11 @@ function go(t){
 function renderSkuTable(){
   fillSkuSelects();
   const q=($('skuSearch').value||'').toLowerCase();
-  const list=db.products.filter(p=>!q||((p.sku||'')+(p.name_en||'')+(p.name_th||'')+(p.product_name||'')+(p.brand||'')+(p.model||'')).toLowerCase().includes(q));
+  const cf=($('skuCustomsFilter')?$('skuCustomsFilter').value:'');
+  const _bm={}; if(cf){db.shipments.forEach(s=>{(s.items||[]).forEach(it=>{if(it.sku)_bm[it.sku]=1;});});}
+  const csOf=p=>p.customs_status==='done'?'done':(p.customs_status==='never'?'never':(_bm[p.sku]?'done':'never'));
+  const list=db.products.filter(p=>(!q||((p.sku||'')+(p.name_en||'')+(p.name_th||'')+(p.product_name||'')+(p.brand||'')+(p.model||'')).toLowerCase().includes(q))
+    &&(!cf||csOf(p)===cf));
   if(!list.length){$('skuTable').innerHTML='<div class="empty">ไม่พบสินค้า (ดึงจาก sku_master + sku_export_info)</div>';return;}
   const billMap={};
   db.shipments.forEach(s=>{(s.items||[]).forEach(it=>{if(it.sku){(billMap[it.sku]=billMap[it.sku]||new Set()).add(s.invno||s.id);}});});
@@ -575,11 +582,11 @@ function renderSkuTable(){
         <td${bt}>${esc(nameMid)}<br><span class="muted">${esc(p.name_en||'')} / ${esc(p.name_th||'')}</span></td>
         <td${bt}>${esc(p.brand||'')} ${esc(p.model||'')}</td>
         <td${bt}>${packed}</td>
-        <td${bt}>${(()=>{const cs=p.customs_status; const cn=p.customs_note?'<br><span class="muted" style="font-size:11px">'+esc(p.customs_note)+'</span>':'';
-          if(cs==='done')return '<span class="pill down">✔ มีใบขนแล้ว</span>'+cn;
-          if(cs==='never')return '<span class="muted">✖ ยังไม่มีใบขน</span>'+cn;
-          const b=billMap[p.sku];const n=b?b.size:0;return (n?`<span class="pill down" title="${esc([...b].join(', '))}">✔ ออกแล้ว ${n} ใบ</span>`:'<span class="muted">— ยังไม่เคย</span>')+cn;})()}</td>
-        <td class="no-print"${bt}><button class="mini btn" onclick="openExport('${esc(p.sku)}')">${canEdit?'แก้ข้อมูลส่งออก':'ดู'}</button></td>
+        <td${bt}>${(()=>{const cs=p.customs_status;
+          if(cs==='done')return '<span class="pill down">✔ มีใบขนแล้ว</span>';
+          if(cs==='never')return '<span class="muted">✖ ยังไม่มีใบขน</span>';
+          const b=billMap[p.sku];const n=b?b.size:0;return n?`<span class="pill down" title="${esc([...b].join(', '))}">✔ ออกแล้ว ${n} ใบ</span>`:'<span class="muted">— ยังไม่เคย</span>';})()}</td>
+        <td class="no-print"${bt} style="white-space:nowrap"><button class="mini btn" onclick="openExport('${esc(p.sku)}')">${canEdit?'แก้ข้อมูลส่งออก':'ดู'}</button>${canEdit?` <button class="mini btn red" onclick="delExportInfo('${esc(p.sku)}')" title="ลบข้อมูลส่งออก/สถานะใบขนของ SKU นี้">ลบ</button>`:''}</td>
       </tr>`;
     });
   });
@@ -588,17 +595,22 @@ function renderSkuTable(){
 function exportSkuExcel(){
   const billMap={};
   db.shipments.forEach(s=>{(s.items||[]).forEach(it=>{if(it.sku){(billMap[it.sku]=billMap[it.sku]||new Set()).add(s.invno||s.id);}});});
-  const head=['SKU','Supplier','ต้นทุน (CNY)','ชื่อ (กลาง)','ชื่อ EN','ชื่อไทย','Brand','Model','HS Code','Component','Specification','หน่วย','จำนวน/กล่อง','น้ำหนัก/กล่อง (Kg)','ขนาดกล่อง','CBM/กล่อง','ดำเนินการตามกรมศุลกากร','หมายเหตุใบขน','เลขที่บิลที่เคยออก'];
+  const head=['SKU','Supplier','ต้นทุน (CNY)','ชื่อ (กลาง)','ชื่อ EN','ชื่อไทย','Brand','Model','HS Code','Component','Specification','หน่วย','จำนวน/กล่อง','น้ำหนัก/กล่อง (Kg)','ขนาดกล่อง','CBM/กล่อง','ดำเนินการตามกรมศุลกากร','เลขที่บิลที่เคยออก'];
   const rows=[head];
   db.products.forEach(p=>{
     const b=billMap[p.sku]; const n=b?b.size:0; const cs=p.customs_status;
     const st= cs==='done'?'✔ มีใบขนแล้ว': cs==='never'?'✖ ยังไม่มีใบขน':(n?('✔ ออกแล้ว '+n+' ใบ'):'ยังไม่เคย');
     (p.suppliers&&p.suppliers.length?p.suppliers:[{supplier:'',price:null,product_name:p.product_name}]).forEach(sup=>{
-      rows.push([p.sku,sup.supplier||'',sup.price!=null?+sup.price:'',sup.product_name||p.product_name||'',p.name_en||'',p.name_th||'',p.brand||'',p.model||'',p.hs||'',p.component||'',p.spec||'',p.unit||'',p.per_ctn||'',p.w_ctn||'',p.box_size||'',p.cbm_ctn||'',st,(p.customs_note||''),b?[...b].join(', '):'']);});
+      rows.push([p.sku,sup.supplier||'',sup.price!=null?+sup.price:'',sup.product_name||p.product_name||'',p.name_en||'',p.name_th||'',p.brand||'',p.model||'',p.hs||'',p.component||'',p.spec||'',p.unit||'',p.per_ctn||'',p.w_ctn||'',p.box_size||'',p.cbm_ctn||'',st,b?[...b].join(', '):'']);});
   });
   const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=head.map((h,i)=>({wch:i===0?16:(i>=9&&i<=10?26:14)}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'สินค้า-ข้อมูลส่งออก');
   XLSX.writeFile(wb,'สินค้า_ข้อมูลส่งออก_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+async function delExportInfo(sku){
+  if(!confirm('ลบข้อมูลส่งออก/สถานะใบขนของ "'+sku+'" ?\n(ตัว SKU และราคายังอยู่ — มาจากระบบ PR)'))return;
+  const ok=await dbWrite(()=>sb.from('sku_export_info').delete().eq('sku',sku));
+  if(ok){await reloadExport();renderSkuTable();}
 }
 function openExport(sku){
   const p=prod(sku)||{sku}; const e=db.expMap[sku]||{};
@@ -611,7 +623,6 @@ function openExport(sku){
   $('e_bw').value=dims[0]||'';$('e_bl').value=dims[1]||'';$('e_bh').value=dims[2]||'';
   $('e_box').value=e.box_size||'';
   $('e_cbm').value=e.cbm_ctn||'';
-  $('e_customs').value=e.customs_status||'';$('e_cnote').value=e.customs_note||'';
   $('expDlg').showModal();
 }
 function parseBox(s){const m=String(s||'').match(/([\d.]+)\s*[x×X]\s*([\d.]+)\s*[x×X]\s*([\d.]+)/);return m?{w:+m[1],l:+m[2],h:+m[3]}:{w:0,l:0,h:0};}
@@ -628,7 +639,7 @@ async function saveExport(){
   const rec={sku,brand:$('e_brand').value.trim(),name_en:$('e_en').value.trim(),name_th:$('e_th').value.trim(),
     model:$('e_model').value.trim(),hs:$('e_hs').value.trim(),component:$('e_comp').value,spec:$('e_spec').value,
     unit:$('e_unit').value.trim(),per_ctn:+$('e_perctn').value||null,w_ctn:+$('e_wctn').value||null,
-    box_size:$('e_box').value.trim(),cbm_ctn:+$('e_cbm').value||null,customs_status:$('e_customs').value||null,customs_note:$('e_cnote').value.trim()||null};
+    box_size:$('e_box').value.trim(),cbm_ctn:+$('e_cbm').value||null};
   const ok=await dbWrite(()=>sb.from('sku_export_info').upsert(rec,{onConflict:'sku'}));
   if(ok){await reloadExport();$('expDlg').close();renderSkuTable();}
 }
