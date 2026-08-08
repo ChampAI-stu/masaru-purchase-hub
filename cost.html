@@ -586,7 +586,7 @@ function renderSkuTable(){
           if(cs==='done')return '<span class="pill down">✔ มีใบขนแล้ว</span>';
           if(cs==='never')return '<span class="muted">✖ ยังไม่มีใบขน</span>';
           const b=billMap[p.sku];const n=b?b.size:0;return n?`<span class="pill down" title="${esc([...b].join(', '))}">✔ ออกแล้ว ${n} ใบ</span>`:'<span class="muted">— ยังไม่เคย</span>';})()}</td>
-        <td class="no-print"${bt} style="white-space:nowrap"><button class="mini btn" onclick="openExport('${esc(p.sku)}')">${canEdit?'แก้ข้อมูลส่งออก':'ดู'}</button>${canEdit?` <button class="mini btn red" onclick="delExportInfo('${esc(p.sku)}')" title="ลบข้อมูลส่งออก/สถานะใบขนของ SKU นี้">ลบ</button>`:''}</td>
+        <td class="no-print"${bt} style="white-space:nowrap"><button class="mini btn" onclick="openExport('${esc(p.sku)}')">${canEdit?'แก้ไข':'ดู'}</button>${canEdit?` <button class="mini btn red" onclick="delExportInfo('${esc(p.sku)}')" title="ลบข้อมูลส่งออก/สถานะใบขนของ SKU นี้">ลบ</button>`:''}</td>
       </tr>`;
     });
   });
