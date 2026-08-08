@@ -1279,12 +1279,11 @@ function exportInvoiceExcel(ev){
   if(ev)ev.preventDefault();
   if(!window.ExcelJS){alert('กำลังโหลดไลบรารี Excel — ลองกดใหม่อีกครั้ง');return;}
   const d=formData();
-  const groups=[]; const gi={}; const _seenGwX={};
+  const groups=[]; const gi={};
   d.items.forEach((it,idx)=>{const key=it.sku?('sku:'+it.sku):('__b'+idx);
-    if(gi[key]==null){gi[key]=groups.length;groups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:0,total:0,pic:it.pic||'',mixed:false});}
+    if(gi[key]==null){gi[key]=groups.length;groups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:+it.gw||0,total:0,pic:it.pic||'',mixed:false,gid:it.gid||null});}
     const g=groups[gi[key]];if((+it.price||0)!==g.price)g.mixed=true;
-    const cg=it.gid?(!_seenGwX[it.gid]&&(_seenGwX[it.gid]=1)):true;
-    g.qty+=+it.qty||0;g.gw+=cg?(+it.gw||0):0;g.total+=(+it.price||0)*(+it.qty||0); if(!g.pic&&it.pic)g.pic=it.pic;});
+    g.qty+=+it.qty||0;g.total+=(+it.price||0)*(+it.qty||0); if(!g.pic&&it.pic)g.pic=it.pic;});
   const totalPrice=d.items.reduce((s,i)=>s+(+i.price*+i.qty),0);
   const totalGW=(()=>{const seen={};let s=0;d.items.forEach(it=>{if(it.gid){if(!seen[it.gid]){seen[it.gid]=1;s+=+it.gw||0;}}else s+=+it.gw||0;});return s;})();
   const totalCtn=d.items.reduce((s,i)=>s+(+i.ctn||0),0);
@@ -1315,15 +1314,22 @@ function exportInvoiceExcel(ev){
   let top=headerBlock(wsI,'INVOICE',9);
   const heads=['DESCRIPTION','Picture','COMPONENT','Specification','Unit Price','Qty(PCS)','Total/'+d.cur,'GW(Kg)','Remark'];
   const hr=wsI.getRow(top); heads.forEach((h,i)=>{const c=hr.getCell(i+1);c.value=h;c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:navy}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=border;}); hr.height=22;
-  let r=top+1;
-  groups.forEach(g=>{const p=prod(g.sku)||{}; const up=(g.mixed&&g.qty)?(g.total/g.qty):g.price;
-    const remark='BRAND ：'+(p.brand||'')+'\nMODEL：'+(p.model||g.sku)+'\n\n'+(p.name_en||'')+' : '+g.sku+'\n'+(p.name_th||'');
-    const vals=[(p.name_en||p.product_name||g.sku)+'\n'+(p.model||g.sku),'',p.component||'',p.spec||'',(+up||0),g.qty,g.total,g.gw,remark];
-    const row=wsI.getRow(r);
-    vals.forEach((v,i)=>{const c=row.getCell(i+1);c.value=v;c.border=border;c.alignment={vertical:'top',wrapText:true,horizontal:(i>=4&&i<=7)?'right':'left'};});
-    [5,6,7,8].forEach(ci=>row.getCell(ci).numFmt='#,##0.00');
-    if(g.pic&&addImg(wsI,g.pic,1,r-1))row.height=42; else row.height=40;
-    r++;});
+  let r=top+1; let k=0;
+  while(k<groups.length){
+    const gid=groups[k].gid; let run=[groups[k]];
+    if(gid){let m=k+1;while(m<groups.length&&groups[m].gid===gid){run.push(groups[m]);m++;}}
+    const span=run.length; const grpGw=+run[0].gw||0; const startR=r;
+    run.forEach((g,ri)=>{const p=prod(g.sku)||{}; const up=(g.mixed&&g.qty)?(g.total/g.qty):g.price;
+      const remark='BRAND ：'+(p.brand||'')+'\nMODEL：'+(p.model||g.sku)+'\n\n'+(p.name_en||'')+' : '+g.sku+'\n'+(p.name_th||'');
+      const vals=[(p.name_en||p.product_name||g.sku)+'\n'+(p.model||g.sku),'',p.component||'',p.spec||'',(+up||0),g.qty,g.total,(ri===0?grpGw:''),remark];
+      const row=wsI.getRow(r);
+      vals.forEach((v,i)=>{const c=row.getCell(i+1);c.value=v;c.border=border;c.alignment={vertical:'top',wrapText:true,horizontal:(i>=4&&i<=7)?'right':'left'};});
+      [5,6,7].forEach(ci=>row.getCell(ci).numFmt='#,##0.00'); if(ri===0)row.getCell(8).numFmt='#,##0.00';
+      if(g.pic&&addImg(wsI,g.pic,1,r-1))row.height=42; else row.height=40;
+      r++;});
+    if(span>1){wsI.mergeCells(startR,8,startR+span-1,8); wsI.getCell(startR,8).alignment={vertical:'middle',horizontal:'right'};}
+    k+=span;
+  }
   const lr=wsI.getRow(r); wsI.mergeCells(r,1,r,6); lr.getCell(1).value='Logistics costs'; lr.getCell(1).alignment={horizontal:'right'}; lr.getCell(1).font={bold:true}; lr.getCell(7).value=d.logi; lr.getCell(7).numFmt='#,##0.00'; lr.getCell(7).alignment={horizontal:'right'}; for(let i=1;i<=9;i++)lr.getCell(i).border=border; r++;
   const tr=wsI.getRow(r); wsI.mergeCells(r,1,r,6); tr.getCell(1).value='Total'; tr.getCell(1).alignment={horizontal:'right'}; tr.getCell(1).font={bold:true}; tr.getCell(7).value=totalPrice+d.logi; tr.getCell(7).numFmt='#,##0.00'; tr.getCell(7).font={bold:true}; tr.getCell(7).alignment={horizontal:'right'}; tr.getCell(8).value=totalGW; tr.getCell(8).numFmt='#,##0.00'; tr.getCell(8).font={bold:true}; tr.getCell(8).alignment={horizontal:'right'}; for(let i=1;i<=9;i++)tr.getCell(i).border=border; r+=3;
   wsI.mergeCells(r,6,r,9); wsI.getCell(r,6).value='Signature and Company Stamp'; wsI.getCell(r,6).alignment={horizontal:'center'};
