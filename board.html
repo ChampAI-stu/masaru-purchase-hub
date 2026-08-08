@@ -690,6 +690,12 @@ body.price-on .sl-price{display:block}
     </button>
     <div id="importFileName" style="font-size:13px;color:var(--muted);margin-bottom:10px"></div>
 
+    <label style="display:flex;gap:8px;align-items:flex-start;background:var(--blue-bg);border:1px solid #378ADD33;border-radius:10px;padding:11px 13px;margin-bottom:12px;cursor:pointer;font-size:13px;line-height:1.6">
+      <input type="checkbox" id="priceOnlyMode" checked style="margin-top:3px;width:16px;height:16px;cursor:pointer">
+      <span><b>อัปเดตเฉพาะราคา (¥) เท่านั้น</b> — เขียนแค่ช่องราคาให้แถวที่มีอยู่แล้ว <b>ไม่แตะสถานะ / จำนวน / วันที่ / ขนส่ง</b><br>
+      <span style="color:var(--muted)">เอาเครื่องหมายออก = ซิงก์ครบทุกช่องจากไฟล์ (สถานะ/จำนวน/วันที่เข้าคลัง)</span></span>
+    </label>
+
     <div id="importPreview" style="display:none">
       <div style="font-weight:600;color:var(--navy);margin-bottom:8px">ตัวอย่างข้อมูล (<span id="importCount">0</span> รายการ)</div>
       <div style="max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:9px">
@@ -1603,6 +1609,42 @@ function computeStatusMerged(erp, ordered, received, existingStatus){
 async function confirmImport(){
   if(importRecords.length === 0) return;
   $('importConfirm').disabled = true; $('importConfirm').textContent = 'กำลังนำเข้า...';
+
+  // ── โหมดอัปเดตเฉพาะราคา: เขียนแค่ช่อง price ให้แถวที่มีอยู่ ไม่แตะฟิลด์อื่นเลย ──
+  if($('priceOnlyMode') && $('priceOnlyMode').checked){
+    const { data: existing } = await sb.from('purchase_orders').select('id,po_number,sku');
+    const idMap = {};
+    (existing || []).forEach(o => { idMap[(o.po_number||'')+'||'+o.sku] = o.id; });
+    let noMatch = 0, noPrice = 0;
+    const updates = [];
+    importRecords.forEach(r => {
+      if(r.price == null){ noPrice++; return; }
+      const id = idMap[(r.po_number||'')+'||'+r.sku];
+      if(id == null){ noMatch++; return; }
+      updates.push({ id, price: r.price });
+    });
+    if(updates.length === 0){
+      $('importConfirm').disabled = false; $('importConfirm').textContent = 'ยืนยันนำเข้า';
+      toast(noMatch>0 ? `ไม่พบรายการที่ตรงกันในระบบ (${noMatch} รายการ)` : 'ไฟล์ไม่มีราคาให้อัปเดต');
+      return;
+    }
+    // อัปเดตทีละแถว เฉพาะช่อง price — ฟิลด์อื่น (สถานะ/จำนวน/วันที่/ขนส่ง/trip) คงเดิมทั้งหมด
+    let failed = 0;
+    for(let i=0;i<updates.length;i+=25){
+      const chunk = updates.slice(i, i+25);
+      const res = await Promise.all(chunk.map(u =>
+        sb.from('purchase_orders').update({ price: u.price }).eq('id', u.id)));
+      failed += res.filter(x => x.error).length;
+    }
+    $('importConfirm').disabled = false; $('importConfirm').textContent = 'ยืนยันนำเข้า';
+    if(failed > 0){ toast(`อัปเดตราคาไม่สำเร็จ ${failed} รายการ`); return; }
+    $('importBg').style.display = 'none';
+    const extra = (noMatch? ` · ข้าม ${noMatch} (ไม่พบในระบบ)`:'') + (noPrice? ` · ไม่มีราคา ${noPrice}`:'');
+    toast(`อัปเดตราคา ${updates.length} รายการ${extra}`);
+    loadOrders();
+    return;
+  }
+
   const email = (await sb.auth.getUser()).data.user?.email || 'purchase';
   const now = new Date().toISOString();
   // ดึงข้อมูลเดิมทุกแถว ไว้ "รวม" กับไฟล์ (ช่องว่างในไฟล์ = คงค่าเดิม)
