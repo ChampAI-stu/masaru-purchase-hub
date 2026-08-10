@@ -849,13 +849,6 @@ function fillSummaryMonthList(){
   dl.innerHTML=months.map(m=>`<option value="${esc(m)}">`).join('');
 }
 function budgetOf(period,company){const b=db.budget.find(x=>x.period===period&&x.company===company);return b?b:null;}
-function promptBudget(period,company,cur){
-  const v=prompt('ยอดที่บัญชีขอ — '+company+'\nกรอกจำนวนเงิน (บาท):', (cur!=null?cur:''));
-  if(v===null)return;                       // กดยกเลิก
-  const s=String(v).trim().replace(/,/g,'');
-  if(s!==''&&isNaN(+s)){alert('กรุณากรอกเป็นตัวเลข');return;}
-  saveBudget(period,company,s===''?'':(+s));
-}
 async function saveBudget(period,company,val){
   const amount=val===''?null:(+val||0);
   const ex=budgetOf(period,company);
@@ -900,7 +893,7 @@ function renderSummary(){
     if(!rows.length) html+=`<tr><td colspan="12" class="muted" style="padding:10px">— ไม่มีรายการเดือนนี้ —</td></tr>`;
     rows.forEach(t=>html+=`<tr>${cell(t)}</tr>`);
     html+=`<tr style="background:#EAF1FB;font-weight:700"><td colspan="4" style="text-align:right">ผลรวม</td><td style="text-align:right">${money(subtotal)}</td><td colspan="7"></td></tr>`;
-    html+=`<tr style="background:#F7FBFF"><td colspan="4" style="text-align:right">ยอดที่บัญชีขอ</td><td style="text-align:right">${canEdit?`<b>${money(req)}</b> <button class="mini btn" style="margin-left:8px" onclick="promptBudget('${esc(m)}','${esc(c)}',${req||0})">✏️ แก้ไข</button>`:money(req)}</td><td colspan="7"></td></tr>`;
+    html+=`<tr style="background:#F7FBFF"><td colspan="4" style="text-align:right">ยอดที่บัญชีขอ</td><td style="text-align:right">${canEdit?`<input type="number" step="0.01" value="${req||''}" style="width:110px;text-align:right;padding:3px 5px;border:1px solid var(--line);border-radius:6px" onchange="saveBudget('${esc(m)}','${esc(c)}',this.value)">`:money(req)}</td><td colspan="7"></td></tr>`;
     html+=`<tr style="font-weight:700"><td colspan="4" style="text-align:right">ยอดคงเหลือ</td><td style="text-align:right;color:${rem<0?'#C00000':'#1E7145'}">${money(rem)}</td><td colspan="7"></td></tr>`;
     html+='</tbody></table></div></div>';
   });
@@ -1175,6 +1168,18 @@ function exportInvPlExcel(){
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,(d.invno||'INV_PL').slice(0,28));XLSX.writeFile(wb,`${d.invno||'INV_PL'}_INV_PL.xlsx`);
 }
 /* ===== สร้าง PDF จริง (เรนเดอร์ทีละหน้า A4) → เปิดในแท็บใหม่ ===== */
+const PO_STATUS_ORDER={'อยู่ระหว่างสั่งซื้อ':1,'อยู่ระหว่างผลิต':2,'อยู่ระหว่างขนส่ง':3,'รอนำส่งเข้าคลัง':4,'เข้าคลังแล้ว':5,'ผิดปกติ':6};
+const PO_STATUS_META={
+  'อยู่ระหว่างสั่งซื้อ':{c:'#854F0B',bg:'#FFF3CC',i:'🛒'},
+  'อยู่ระหว่างผลิต':{c:'#B45309',bg:'#FFEAD5',i:'🏭'},
+  'อยู่ระหว่างขนส่ง':{c:'#534AB7',bg:'#EEEDFE',i:'🚚'},
+  'รอนำส่งเข้าคลัง':{c:'#3A5A8C',bg:'#E6F1FB',i:'📥'},
+  'เข้าคลังแล้ว':{c:'#1E7145',bg:'#EAF3DE',i:'📦'},
+  'ผิดปกติ':{c:'#D0212B',bg:'#FCE4E4',i:'⚠️'}
+};
+function poBadge(s){const m=PO_STATUS_META[s]||{c:'#334155',bg:'#E2E8F0',i:''};return `<span style="display:inline-flex;align-items:center;gap:4px;background:${m.bg};color:${m.c};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap">${m.i} ${esc(s)}</span>`;}
+function poThDate(d){if(!d)return'';const M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];const t=new Date(d);if(isNaN(t))return esc(d);return t.getDate()+' '+M[t.getMonth()]+' '+((t.getFullYear()+543)%100);}
+function poEtaState(d,st){if(!d||st==='เข้าคลังแล้ว')return'';const today=new Date();today.setHours(0,0,0,0);const e=new Date(d);if(isNaN(e))return'';e.setHours(0,0,0,0);const diff=(e-today)/86400000;if(diff<0)return'over';if(diff<=7)return'soon';return'';}
 function renderPoSummary(){
   const q=($('poSearch')?$('poSearch').value:'').toLowerCase();
   const by={};
@@ -1182,21 +1187,27 @@ function renderPoSummary(){
   let keys=Object.keys(by).sort();
   if(q)keys=keys.filter(k=>(k+' '+by[k].map(r=>r.sku||'').join(' ')).toLowerCase().includes(q));
   if(!keys.length){$('poTable').innerHTML='<div class="empty">'+(db.po.length?'ไม่พบ PO ตามคำค้น':'ยังไม่มีข้อมูล PO (ดึงจาก Purchase Board)')+'</div>';return;}
-  let h='<table style="min-width:1050px"><thead><tr><th>เลขที่ PO</th><th>SKU</th><th>จำนวนรวม</th><th>เข้าแล้ว</th><th>วันเข้าคลัง (ETA)</th><th>สถานะ</th><th>บริษัทขนส่ง</th><th>หมายเหตุ</th></tr></thead><tbody>';
+  let h='<table style="min-width:1050px"><thead><tr><th>เลขที่ PO</th><th>SKU</th><th style="text-align:right">จำนวนรวม</th><th style="text-align:right">เข้าแล้ว</th><th>วันเข้าคลัง (ETA)</th><th>สถานะ</th><th>บริษัทขนส่ง</th><th>หมายเหตุ</th></tr></thead><tbody>';
   keys.forEach(k=>{const rows=by[k];
     const skus=[...new Set(rows.map(r=>r.sku).filter(Boolean))].join(', ');
     const qty=rows.reduce((s,r)=>s+(+r.quantity||0),0);
     const rec=rows.reduce((s,r)=>s+(+r.received_qty||0),0);
     const carrier=(rows.find(r=>r.carrier)||{}).carrier||'';
     const eta=rows.map(r=>r.eta).filter(Boolean).sort()[0]||'';
-    const sts=[...new Set(rows.map(r=>r.status).filter(Boolean))];
     const note=[...new Set(rows.map(r=>r.note).filter(Boolean))].join(' · ');
+    const stsAll=[...new Set(rows.map(r=>r.status).filter(Boolean))].sort((a,b)=>(PO_STATUS_ORDER[a]||99)-(PO_STATUS_ORDER[b]||99));
+    const mainSt=stsAll[0]||'';
+    const mixed=stsAll.length>1;
+    const est=poEtaState(eta,mainSt);
+    const etaTag=est==='over'?'<span style="margin-left:6px;font-size:10px;font-weight:600;background:#FCE4E4;color:#D0212B;padding:1px 7px;border-radius:20px">เลยกำหนด</span>':(est==='soon'?'<span style="margin-left:6px;font-size:10px;font-weight:600;background:#FFF3CC;color:#854F0B;padding:1px 7px;border-radius:20px">🔥 ใกล้เข้า</span>':'');
+    const recStyle=(qty>0&&rec>=qty)?'color:#1E7145;font-weight:700':(rec>0?'color:#854F0B;font-weight:700':'color:#94A3B8');
+    const stCell=mainSt?(poBadge(mainSt)+(mixed?`<span class="muted" style="font-size:10.5px;margin-left:6px" title="${esc(stsAll.join(' / '))}">+${stsAll.length-1} สถานะ</span>`:'')):'<span class="muted">—</span>';
     h+=`<tr><td><b>${esc(k)}</b></td><td style="min-width:140px">${esc(skus)}</td>
-      <td style="text-align:right">${money(qty)}</td><td style="text-align:right">${money(rec)}</td>
-      <td style="white-space:nowrap">${esc(eta)}</td>
-      <td>${sts.map(s=>tag(s,'#64748B')).join(' ')||'-'}</td>
-      <td>${carrier?tag(carrier,'#2E75B6'):'<span class="muted">—</span>'}</td>
-      <td>${esc(note)}</td></tr>`;});
+      <td style="text-align:right">${money(qty)}</td><td style="text-align:right;${recStyle}">${money(rec)}</td>
+      <td style="white-space:nowrap">${eta?poThDate(eta)+etaTag:'<span class="muted">—</span>'}</td>
+      <td>${stCell}</td>
+      <td>${carrier?tag(carrier,'#3A5A8C'):'<span class="muted">—</span>'}</td>
+      <td>${note?esc(note):'<span class="muted">—</span>'}</td></tr>`;});
   $('poTable').innerHTML=h+'</tbody></table>';
 }
 let taxItems=[];
