@@ -899,7 +899,7 @@ function ruleCheck(items, rate){
   const pass=items.filter(i=>i.check_status==='pass').length;
   const warn=items.filter(i=>i.check_status==='warn').length;
   let fail=items.filter(i=>i.check_status==='fail').length;
-  if(rate < CFG.RATE_MIN || rate > CFG.RATE_MAX){
+  if(docCur()==='CNY' && (rate < CFG.RATE_MIN || rate > CFG.RATE_MAX)){
     findings.unshift({seq:'—', sku:'เรท B/¥', lv:'fail',
       t:`เรท ${rate} หลุดช่วงที่ตั้งไว้ (${CFG.RATE_MIN}–${CFG.RATE_MAX}) — ตรวจสอบเรทก่อน`});
     fail++;
