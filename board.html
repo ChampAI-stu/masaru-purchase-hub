@@ -759,6 +759,10 @@ body.price-on .sl-price{display:block}
       </div>
     </div>
     <div class="m-field">
+      <label>บริษัทขนส่ง</label>
+      <input type="text" id="puCarrier" list="carrierList" placeholder="เว้นว่าง = ไม่เปลี่ยน">
+    </div>
+    <div class="m-field">
       <label>หมายเหตุ</label>
       <textarea id="puNote" placeholder="เว้นว่าง = ไม่เปลี่ยน"></textarea>
     </div>
@@ -1706,7 +1710,8 @@ $('poUpdateSave').addEventListener('click', savePoUpdate);
 function openPoUpdate(){
   const pos = [...new Set(allOrders.map(o=>o.po_number).filter(Boolean))].sort();
   $('poList').innerHTML = pos.map(p=>`<option value="${esc(p)}">`).join('');
-  $('puPO').value=''; $('puStatus').value=''; $('puEta').value=''; $('puNote').value='';
+  $('carrierList').innerHTML = CARRIERS.map(c=>`<option value="${c.name}">`).join('');
+  $('puPO').value=''; $('puStatus').value=''; $('puEta').value=''; $('puNote').value=''; $('puCarrier').value='';
   $('puClearEta').checked = false; $('puEta').disabled = false;
   $('puCount').textContent='';
   $('poUpdateBg').style.display='flex';
@@ -1729,8 +1734,9 @@ async function savePoUpdate(){
   if($('puStatus').value)      upd.status = $('puStatus').value;
   if($('puClearEta').checked)  upd.eta = null;                    // ล้างวันที่ → เป็น —
   else if($('puEta').value)    upd.eta = $('puEta').value;
+  if($('puCarrier').value.trim()) upd.carrier = $('puCarrier').value.trim();
   if($('puNote').value.trim()) upd.note = $('puNote').value.trim();
-  if(Object.keys(upd).length===1){ toast('กรอกอย่างน้อย 1 ช่อง (สถานะ/วันที่/หมายเหตุ)'); return; }
+  if(Object.keys(upd).length===1){ toast('กรอกอย่างน้อย 1 ช่อง (สถานะ/วันที่/ขนส่ง/หมายเหตุ)'); return; }
   if(!confirm(`อัพเดท ${matches.length} รายการใน PO ${po} ให้เหมือนกันทั้งหมด?`)) return;
   $('poUpdateSave').disabled=true; $('poUpdateSave').textContent='กำลังอัพเดท...';
   const { error } = await sb.from('purchase_orders').update(upd).eq('po_number', po);
