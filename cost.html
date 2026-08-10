@@ -1183,10 +1183,10 @@ function poEtaState(d,st){if(!d||st==='เข้าคลังแล้ว')ret
 function renderPoSummary(){
   const q=($('poSearch')?$('poSearch').value:'').toLowerCase();
   const by={};
-  db.po.forEach(o=>{const k=o.po_number||'(ไม่มี PO)';(by[k]=by[k]||[]).push(o);});
+  (db.po||[]).forEach(o=>{const k=o.po_number||'(ไม่มี PO)';(by[k]=by[k]||[]).push(o);});
   let keys=Object.keys(by).sort();
   if(q)keys=keys.filter(k=>(k+' '+by[k].map(r=>r.sku||'').join(' ')).toLowerCase().includes(q));
-  if(!keys.length){$('poTable').innerHTML='<div class="empty">'+(db.po.length?'ไม่พบ PO ตามคำค้น':'ยังไม่มีข้อมูล PO (ดึงจาก Purchase Board)')+'</div>';return;}
+  if(!keys.length){$('poTable').innerHTML='<div class="empty">'+((db.po&&db.po.length)?'ไม่พบ PO ตามคำค้น':'ยังไม่มีข้อมูล PO (ดึงจาก Purchase Board)')+'</div>';return;}
   let h='<table style="min-width:1050px"><thead><tr><th>เลขที่ PO</th><th>SKU</th><th style="text-align:right">จำนวนรวม</th><th style="text-align:right">เข้าแล้ว</th><th>วันเข้าคลัง (ETA)</th><th>สถานะ</th><th>บริษัทขนส่ง</th><th>หมายเหตุ</th></tr></thead><tbody>';
   keys.forEach(k=>{const rows=by[k];
     const skus=[...new Set(rows.map(r=>r.sku).filter(Boolean))].join(', ');
@@ -1195,15 +1195,19 @@ function renderPoSummary(){
     const carrier=(rows.find(r=>r.carrier)||{}).carrier||'';
     const eta=rows.map(r=>r.eta).filter(Boolean).sort()[0]||'';
     const note=[...new Set(rows.map(r=>r.note).filter(Boolean))].join(' · ');
-    const stsAll=[...new Set(rows.map(r=>r.status).filter(Boolean))].sort((a,b)=>(PO_STATUS_ORDER[a]||99)-(PO_STATUS_ORDER[b]||99));
+    const byStatus={};
+    rows.forEach(r=>{if(!r.status)return;(byStatus[r.status]=byStatus[r.status]||[]).push(r.sku||'—');});
+    const stsAll=Object.keys(byStatus).sort((a,b)=>(PO_STATUS_ORDER[a]||99)-(PO_STATUS_ORDER[b]||99));
     const mainSt=stsAll[0]||'';
-    const mixed=stsAll.length>1;
+    let stCell;
+    if(!stsAll.length) stCell='<span class="muted">—</span>';
+    else if(stsAll.length===1) stCell=poBadge(stsAll[0]);
+    else stCell=stsAll.map(s=>`<div style="margin:3px 0;display:flex;align-items:center;gap:6px;flex-wrap:wrap">${poBadge(s)}<span class="muted" style="font-size:11px">${esc([...new Set(byStatus[s])].join(', '))}</span></div>`).join('');
     const est=poEtaState(eta,mainSt);
     const etaTag=est==='over'?'<span style="margin-left:6px;font-size:10px;font-weight:600;background:#FCE4E4;color:#D0212B;padding:1px 7px;border-radius:20px">เลยกำหนด</span>':(est==='soon'?'<span style="margin-left:6px;font-size:10px;font-weight:600;background:#FFF3CC;color:#854F0B;padding:1px 7px;border-radius:20px">🔥 ใกล้เข้า</span>':'');
     const recStyle=(qty>0&&rec>=qty)?'color:#1E7145;font-weight:700':(rec>0?'color:#854F0B;font-weight:700':'color:#94A3B8');
-    const stCell=mainSt?(poBadge(mainSt)+(mixed?`<span class="muted" style="font-size:10.5px;margin-left:6px" title="${esc(stsAll.join(' / '))}">+${stsAll.length-1} สถานะ</span>`:'')):'<span class="muted">—</span>';
     h+=`<tr><td><b>${esc(k)}</b></td><td style="min-width:140px">${esc(skus)}</td>
-      <td style="text-align:right">${money(qty)}</td><td style="text-align:right;${recStyle}">${money(rec)}</td>
+      <td style="text-align:right">${qty?money(qty):'—'}</td><td style="text-align:right;${recStyle}">${money(rec)}</td>
       <td style="white-space:nowrap">${eta?poThDate(eta)+etaTag:'<span class="muted">—</span>'}</td>
       <td>${stCell}</td>
       <td>${carrier?tag(carrier,'#3A5A8C'):'<span class="muted">—</span>'}</td>
