@@ -156,11 +156,6 @@
         <div class="toolbar">
           <h2 style="margin:0;border:0;padding:0">📦 สินค้า + ข้อมูลส่งออก</h2><span class="sp"></span>
           <input id="skuSearch" placeholder="ค้นหา SKU / ชื่อ / Brand" style="max-width:240px" oninput="renderSkuTable()">
-          <select id="skuCustomsFilter" style="max-width:170px" onchange="renderSkuTable()">
-            <option value="">— ใบขน: ทั้งหมด —</option>
-            <option value="done">✔ มีใบขนแล้ว</option>
-            <option value="never">✖ ยังไม่มีใบขน</option>
-          </select>
           <button class="btn ghost" onclick="exportSkuTemplate()">โหลดเทมเพลตส่งออก</button>
           <button class="btn ghost edit-only" onclick="document.getElementById('expImport').click()">นำเข้าข้อมูลส่งออก</button>
           <button class="btn gold" onclick="exportSkuExcel()">⬇️ Export Excel</button>
@@ -323,7 +318,8 @@
     <div class="grid2"><div><label>Model</label><input id="e_model"></div><div><label>HS Code</label><input id="e_hs"></div></div>
     <div class="grid2"><div><label>Component</label><textarea id="e_comp"></textarea></div><div><label>Specification</label><textarea id="e_spec"></textarea></div></div>
     <h3>ข้อมูลบรรจุ (ใช้ทำ Packing List)</h3>
-    <div class="grid3"><div><label>หน่วย</label><select id="e_unit"><option value="">—</option><option>SET</option><option>PCS</option></select></div><div><label>จำนวน/กล่อง</label><input id="e_perctn" type="number"></div><div><label>น้ำหนัก/กล่อง (Kg)</label><input id="e_wctn" type="number" step="0.01"></div></div>
+    <div class="grid3"><div><label>หน่วย</label><select id="e_unit"><option value="">—</option><option>SET</option><option>PCS</option></select></div>
+          <div><label>ดำเนินการตามกรมศุลกากร</label><select id="e_customs"><option value="">อัตโนมัติ (นับจากบิล)</option><option value="done">✔ เคยออกแล้ว</option><option value="never">— ยังไม่เคย</option></select></div><div><label>จำนวน/กล่อง</label><input id="e_perctn" type="number"></div><div><label>น้ำหนัก/กล่อง (Kg)</label><input id="e_wctn" type="number" step="0.01"></div></div>
     <div class="grid2">
       <div><label>ขนาดกล่อง (ซม.) — กว้าง × ยาว × สูง</label>
         <div style="display:flex;gap:6px">
@@ -477,7 +473,7 @@ async function enterApp(session){
   $('rolePill').textContent='บทบาท: '+({purchase:'จัดซื้อ (แก้ข้อมูลส่งออก/เอกสารได้)',shipping:'ขนส่ง/Shipping (สิทธิ์เท่าจัดซื้อ)',executive:'ผู้บริหาร (ดูอย่างเดียว)'}[currentRole]);
   if(!canEdit)document.body.classList.add('view-only');
   $('boot').style.display='none';$('app').style.display='block';
-  await loadAll();bindDoc();go('dashboard');startRealtime();
+  await loadAll();bindDoc();go('dashboard');
 }
 /* ผูกช่องหัวเอกสาร/ผู้ส่ง/ผู้รับ ให้ตัวอย่างเอกสารอัปเดตสดเมื่อพิมพ์ */
 let docBound=false;
@@ -534,38 +530,14 @@ function buildProducts(){
 }
 async function reloadExport(){ const exp=await fetchTable('sku_export_info','sku'); db.expMap={}; exp.forEach(e=>db.expMap[e.sku]=e); buildProducts(); }
 async function reload(name){
-  const map={shipcosts:['shipcosts','date'],shipments:['shipments','date'],tracking:['shipment_tracking','start_date'],parties:['inv_parties','name'],budget:['acct_budget','period'],taxsum:['tax_summaries','created_at'],po:['purchase_orders','po_number'],master:['sku_master','sku'],hist:['sku_price_history','changed_at']};
+  const map={shipcosts:['shipcosts','date'],shipments:['shipments','date'],tracking:['shipment_tracking','start_date'],parties:['inv_parties','name'],budget:['acct_budget','period'],taxsum:['tax_summaries','created_at']};
   const[t,o]=map[name]; db[name]=await fetchTable(t,o);
 }
 async function dbWrite(fn){ try{const{error}=await fn(); if(error)throw error; return true;}catch(e){alert('บันทึกไม่สำเร็จ: '+(e.message||e));return false;} }
 function prod(sku){return db.products.find(p=>p.sku===sku);}
 
 /* ===== NAV ===== */
-/* ===== Realtime: ข้อมูลอัปเดตสดทุกเครื่อง (เหมือน Purchase Board) ===== */
-let _rtTimer=null;
-function _rtRefresh(){
-  // แท็บฟอร์มกำลังพิมพ์ (ออกบิล/สรุปภาษี) — ไม่ re-render อัตโนมัติ กันข้อมูลที่พิมพ์หาย
-  if(CURTAB==='dashboard')renderDashboard();
-  else if(CURTAB==='sku')renderSkuTable();
-  else if(CURTAB==='track')renderTrack();
-  else if(CURTAB==='parties')renderParties();
-  else if(CURTAB==='summary')renderSummary();
-  else if(CURTAB==='posum')renderPoSummary();
-}
-function _rtQueue(name){
-  reload(name).then(()=>{if(name==='master'||name==='hist')buildProducts();clearTimeout(_rtTimer);_rtTimer=setTimeout(_rtRefresh,300);});
-}
-function startRealtime(){
-  const map=[['shipments','shipments'],['shipment_tracking','tracking'],['inv_parties','parties'],
-             ['acct_budget','budget'],['tax_summaries','taxsum'],['purchase_orders','po'],
-             ['sku_master','master'],['sku_price_history','hist']];
-  const ch=sb.channel('cost-rt');
-  map.forEach(([tbl,key])=>ch.on('postgres_changes',{event:'*',schema:'public',table:tbl},()=>_rtQueue(key)));
-  ch.on('postgres_changes',{event:'*',schema:'public',table:'sku_export_info'},async()=>{await reloadExport();clearTimeout(_rtTimer);_rtTimer=setTimeout(_rtRefresh,300);});
-  ch.subscribe();
-}
 function go(t){
-  CURTAB=t;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   ['dashboard','sku','track','parties','invpl','taxsum','summary','posum'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
   if(t==='dashboard')renderDashboard();
@@ -582,11 +554,7 @@ function go(t){
 function renderSkuTable(){
   fillSkuSelects();
   const q=($('skuSearch').value||'').toLowerCase();
-  const cf=($('skuCustomsFilter')?$('skuCustomsFilter').value:'');
-  const _bm={}; if(cf){db.shipments.forEach(s=>{(s.items||[]).forEach(it=>{if(it.sku)_bm[it.sku]=1;});});}
-  const csOf=p=>p.customs_status==='done'?'done':(p.customs_status==='never'?'never':(_bm[p.sku]?'done':'never'));
-  const list=db.products.filter(p=>(!q||((p.sku||'')+(p.name_en||'')+(p.name_th||'')+(p.product_name||'')+(p.brand||'')+(p.model||'')).toLowerCase().includes(q))
-    &&(!cf||csOf(p)===cf));
+  const list=db.products.filter(p=>!q||((p.sku||'')+(p.name_en||'')+(p.name_th||'')+(p.product_name||'')+(p.brand||'')+(p.model||'')).toLowerCase().includes(q));
   if(!list.length){$('skuTable').innerHTML='<div class="empty">ไม่พบสินค้า (ดึงจาก sku_master + sku_export_info)</div>';return;}
   const billMap={};
   db.shipments.forEach(s=>{(s.items||[]).forEach(it=>{if(it.sku){(billMap[it.sku]=billMap[it.sku]||new Set()).add(s.invno||s.id);}});});
@@ -607,10 +575,10 @@ function renderSkuTable(){
         <td${bt}>${esc(p.brand||'')} ${esc(p.model||'')}</td>
         <td${bt}>${packed}</td>
         <td${bt}>${(()=>{const cs=p.customs_status;
-          if(cs==='done')return '<span class="pill down">✔ มีใบขนแล้ว</span>';
-          if(cs==='never')return '<span class="muted">✖ ยังไม่มีใบขน</span>';
+          if(cs==='done')return '<span class="pill down">✔ เคยออกแล้ว</span>';
+          if(cs==='never')return '<span class="muted">— ยังไม่เคย</span>';
           const b=billMap[p.sku];const n=b?b.size:0;return n?`<span class="pill down" title="${esc([...b].join(', '))}">✔ ออกแล้ว ${n} ใบ</span>`:'<span class="muted">— ยังไม่เคย</span>';})()}</td>
-        <td class="no-print"${bt} style="white-space:nowrap"><button class="mini btn" onclick="openExport('${esc(p.sku)}')">${canEdit?'แก้ไข':'ดู'}</button>${canEdit?` <button class="mini btn red" onclick="delExportInfo('${esc(p.sku)}')" title="ลบข้อมูลส่งออก/สถานะใบขนของ SKU นี้">ลบ</button>`:''}</td>
+        <td class="no-print"${bt}><button class="mini btn" onclick="openExport('${esc(p.sku)}')">${canEdit?'แก้ข้อมูลส่งออก':'ดู'}</button></td>
       </tr>`;
     });
   });
@@ -622,19 +590,14 @@ function exportSkuExcel(){
   const head=['SKU','Supplier','ต้นทุน (CNY)','ชื่อ (กลาง)','ชื่อ EN','ชื่อไทย','Brand','Model','HS Code','Component','Specification','หน่วย','จำนวน/กล่อง','น้ำหนัก/กล่อง (Kg)','ขนาดกล่อง','CBM/กล่อง','ดำเนินการตามกรมศุลกากร','เลขที่บิลที่เคยออก'];
   const rows=[head];
   db.products.forEach(p=>{
-    const b=billMap[p.sku]; const n=b?b.size:0; const cs=p.customs_status;
-    const st= cs==='done'?'✔ มีใบขนแล้ว': cs==='never'?'✖ ยังไม่มีใบขน':(n?('✔ ออกแล้ว '+n+' ใบ'):'ยังไม่เคย');
+    const cs=p.customs_status; const b=billMap[p.sku]; const n=b?b.size:0;
+    const st= cs==='done' ? '✔ เคยออกแล้ว' : cs==='never' ? 'ยังไม่เคย' : (n?('✔ ออกแล้ว '+n+' ใบ'):'ยังไม่เคย');
     (p.suppliers&&p.suppliers.length?p.suppliers:[{supplier:'',price:null,product_name:p.product_name}]).forEach(sup=>{
       rows.push([p.sku,sup.supplier||'',sup.price!=null?+sup.price:'',sup.product_name||p.product_name||'',p.name_en||'',p.name_th||'',p.brand||'',p.model||'',p.hs||'',p.component||'',p.spec||'',p.unit||'',p.per_ctn||'',p.w_ctn||'',p.box_size||'',p.cbm_ctn||'',st,b?[...b].join(', '):'']);});
   });
   const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=head.map((h,i)=>({wch:i===0?16:(i>=9&&i<=10?26:14)}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'สินค้า-ข้อมูลส่งออก');
   XLSX.writeFile(wb,'สินค้า_ข้อมูลส่งออก_'+new Date().toISOString().slice(0,10)+'.xlsx');
-}
-async function delExportInfo(sku){
-  if(!confirm('ลบข้อมูลส่งออก/สถานะใบขนของ "'+sku+'" ?\n(ตัว SKU และราคายังอยู่ — มาจากระบบ PR)'))return;
-  const ok=await dbWrite(()=>sb.from('sku_export_info').delete().eq('sku',sku));
-  if(ok){await reloadExport();renderSkuTable();}
 }
 function openExport(sku){
   const p=prod(sku)||{sku}; const e=db.expMap[sku]||{};
@@ -647,6 +610,7 @@ function openExport(sku){
   $('e_bw').value=dims[0]||'';$('e_bl').value=dims[1]||'';$('e_bh').value=dims[2]||'';
   $('e_box').value=e.box_size||'';
   $('e_cbm').value=e.cbm_ctn||'';
+  $('e_customs').value=e.customs_status||'';
   $('expDlg').showModal();
 }
 function parseBox(s){const m=String(s||'').match(/([\d.]+)\s*[x×X]\s*([\d.]+)\s*[x×X]\s*([\d.]+)/);return m?{w:+m[1],l:+m[2],h:+m[3]}:{w:0,l:0,h:0};}
@@ -663,7 +627,7 @@ async function saveExport(){
   const rec={sku,brand:$('e_brand').value.trim(),name_en:$('e_en').value.trim(),name_th:$('e_th').value.trim(),
     model:$('e_model').value.trim(),hs:$('e_hs').value.trim(),component:$('e_comp').value,spec:$('e_spec').value,
     unit:$('e_unit').value.trim(),per_ctn:+$('e_perctn').value||null,w_ctn:+$('e_wctn').value||null,
-    box_size:$('e_box').value.trim(),cbm_ctn:+$('e_cbm').value||null};
+    box_size:$('e_box').value.trim(),cbm_ctn:+$('e_cbm').value||null,customs_status:$('e_customs').value||null};
   const ok=await dbWrite(()=>sb.from('sku_export_info').upsert(rec,{onConflict:'sku'}));
   if(ok){await reloadExport();$('expDlg').close();renderSkuTable();}
 }
@@ -885,6 +849,13 @@ function fillSummaryMonthList(){
   dl.innerHTML=months.map(m=>`<option value="${esc(m)}">`).join('');
 }
 function budgetOf(period,company){const b=db.budget.find(x=>x.period===period&&x.company===company);return b?b:null;}
+function promptBudget(period,company,cur){
+  const v=prompt('ยอดที่บัญชีขอ — '+company+'\nกรอกจำนวนเงิน (บาท):', (cur!=null?cur:''));
+  if(v===null)return;                       // กดยกเลิก
+  const s=String(v).trim().replace(/,/g,'');
+  if(s!==''&&isNaN(+s)){alert('กรุณากรอกเป็นตัวเลข');return;}
+  saveBudget(period,company,s===''?'':(+s));
+}
 async function saveBudget(period,company,val){
   const amount=val===''?null:(+val||0);
   const ex=budgetOf(period,company);
@@ -929,7 +900,7 @@ function renderSummary(){
     if(!rows.length) html+=`<tr><td colspan="12" class="muted" style="padding:10px">— ไม่มีรายการเดือนนี้ —</td></tr>`;
     rows.forEach(t=>html+=`<tr>${cell(t)}</tr>`);
     html+=`<tr style="background:#EAF1FB;font-weight:700"><td colspan="4" style="text-align:right">ผลรวม</td><td style="text-align:right">${money(subtotal)}</td><td colspan="7"></td></tr>`;
-    html+=`<tr style="background:#F7FBFF"><td colspan="4" style="text-align:right">ยอดที่บัญชีขอ</td><td style="text-align:right">${canEdit?`<input type="number" step="0.01" value="${req||''}" style="width:110px;text-align:right;padding:3px 5px;border:1px solid var(--line);border-radius:6px" onchange="saveBudget('${esc(m)}','${esc(c)}',this.value)">`:money(req)}</td><td colspan="7"></td></tr>`;
+    html+=`<tr style="background:#F7FBFF"><td colspan="4" style="text-align:right">ยอดที่บัญชีขอ</td><td style="text-align:right">${canEdit?`<b>${money(req)}</b> <button class="mini btn" style="margin-left:8px" onclick="promptBudget('${esc(m)}','${esc(c)}',${req||0})">✏️ แก้ไข</button>`:money(req)}</td><td colspan="7"></td></tr>`;
     html+=`<tr style="font-weight:700"><td colspan="4" style="text-align:right">ยอดคงเหลือ</td><td style="text-align:right;color:${rem<0?'#C00000':'#1E7145'}">${money(rem)}</td><td colspan="7"></td></tr>`;
     html+='</tbody></table></div></div>';
   });
