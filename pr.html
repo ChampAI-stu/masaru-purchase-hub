@@ -321,9 +321,9 @@
           <span id="master-search-info" class="muted" style="margin-left:10px;font-size:13px"></span>
         </div>
         <div class="scroll">
-          <table>
+          <table style="min-width:900px">
             <thead><tr><th>รหัสสินค้า</th><th>ชื่อสินค้า</th><th>Supplier</th>
-              <th class="right">ราคามาตรฐาน</th><th>สกุล</th><th></th></tr></thead>
+              <th class="right">ราคามาตรฐาน</th><th>สกุล</th><th style="white-space:nowrap"></th></tr></thead>
             <tbody id="master-rows"></tbody>
           </table>
         </div>
@@ -647,7 +647,7 @@ function renderMaster(){
     <td class="m-sup">${r.supplier?esc(r.supplier):'<span class="muted">-</span>'}</td>
     <td class="right m-price">${fmt(r.standard_price)}</td>
     <td class="m-cur">${r.currency==='THB'?'฿ THB':'¥ CNY'}</td>
-    <td style="white-space:nowrap">
+    <td style="white-space:nowrap;padding-right:14px">
       <button class="btn sm ghost" onclick="showPriceHistory('${r.id}')">📈 ประวัติ</button>
       <button class="btn sm ghost" style="margin-left:5px" onclick="editMasterRow('${r.id}')">✏️ แก้ไข</button>
       <button class="btn sm" style="background:var(--red);margin-left:5px" onclick="delSkuById('${r.id}')">ลบ</button>
