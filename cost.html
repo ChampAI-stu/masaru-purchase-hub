@@ -735,6 +735,8 @@ function fillTrackFilters(){
   if($('trkCo'))$('trkCo').innerHTML='<option value="">— ทุกบริษัท —</option>'+[...new Set([...consigneeNames(),...cos])].map(c=>`<option>${esc(c)}</option>`).join('');
   if($('trkOp'))$('trkOp').innerHTML='<option value="">— ทุกสถานะ —</option>'+OP_ST.map(c=>`<option>${esc(c)}</option>`).join('');
 }
+let trkSort={key:"start_date",dir:"desc"};
+function sortTrack(k){ if(trkSort.key===k) trkSort.dir=(trkSort.dir==="asc"?"desc":"asc"); else {trkSort.key=k;trkSort.dir="asc";} renderTrack(); }
 function renderTrack(){
   const co0=$('trkCo')?$('trkCo').value:'', op0=$('trkOp')?$('trkOp').value:'';
   fillTrackFilters();
@@ -743,7 +745,12 @@ function renderTrack(){
   let list=db.tracking.filter(t=>
     (!co0||t.import_company===co0)&&(!op0||t.op_status===op0)&&
     (!q||((t.invoice_no||'')+' '+(t.jst_po||'')+' '+(t.product_list||'')+' '+(t.bl_no||'')+' '+(t.vessel_no||'')+' '+(t.container_no||'')+' '+(t.draft_bill_no||'')+' '+(t.draft_no||'')+' '+(t.responsible||'')).toLowerCase().includes(q)));
-  list=list.slice().sort((a,b)=>String(b.start_date||'').localeCompare(String(a.start_date||'')));
+  {const NUMK={tax_amount:1,ship_cost:1,_docs:1};const k=trkSort.key,dir=trkSort.dir==="asc"?1:-1;
+   list=list.slice().sort((a,b)=>{let va,vb;
+     if(k==="_docs"){va=docCount(a);vb=docCount(b);}
+     else if(NUMK[k]){va=+a[k]||0;vb=+b[k]||0;}
+     else {va=String(a[k]||"").toLowerCase();vb=String(b[k]||"").toLowerCase();}
+     if(va<vb)return -1*dir; if(va>vb)return 1*dir; return 0;});}
   // KPI
   const tax=db.tracking.reduce((s,t)=>s+(+t.tax_amount||0),0);
   const shp=db.tracking.reduce((s,t)=>s+(+t.ship_cost||0),0);
@@ -760,7 +767,11 @@ function renderTrack(){
   if(!list.length){$('trkTable').innerHTML='<div class="empty">ยังไม่มีรายการ'+(canEdit?' — กด “เพิ่มรายการ”':'')+'</div>';return;}
   const _cols=['9%','8%','9%','9%','9%','6%','6%','6%','6%','8%','9%','9%','5%']; if(canEdit)_cols.push('6%');
   const _colg='<colgroup>'+_cols.map(w=>'<col style="width:'+w+'">').join('')+'</colgroup>';
-  let h='<table class="trkc">'+_colg+'<thead><tr><th>อินวอยซ์</th><th>B/L No</th><th>บริษัท</th><th>ยื่นสมอ.</th><th>ดำเนินการ</th><th>ขนส่ง</th><th>CLS</th><th>ETD</th><th>ETA</th><th>DEM</th><th>ค่าภาษี</th><th>ค่าขนส่ง</th><th>เอกสาร</th>'+(canEdit?'<th class="no-print">จัดการ</th>':'')+'</tr></thead><tbody>';
+  const _skcols=[['invoice_no','อินวอยซ์'],['bl_no','B/L No'],['import_company','บริษัท'],['mor_status','ยื่นสมอ.'],['op_status','ดำเนินการ'],['shipping','ขนส่ง'],['cls_date','CLS'],['export_date','ETD'],['arrival_date','ETA'],['dem_due_date','DEM'],['tax_amount','ค่าภาษี'],['ship_cost','ค่าขนส่ง'],['_docs','เอกสาร']];
+  const _arr=k=>trkSort.key===k?(trkSort.dir==='asc'?' ▲':' ▼'):'';
+  let _th=_skcols.map(c=>`<th onclick="sortTrack('${c[0]}')" style="cursor:pointer;user-select:none;white-space:nowrap" title="คลิกเพื่อเรียง">${c[1]}<span style="color:#C9A84C;font-size:10px">${_arr(c[0])}</span></th>`).join('');
+  if(canEdit)_th+='<th class="no-print">จัดการ</th>';
+  let h='<table class="trkc">'+_colg+'<thead><tr>'+_th+'</tr></thead><tbody>';
   list.forEach(t=>{
     const taxCell=(+t.tax_amount?money(t.tax_amount):'-')+(t.tax_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.tax_amount)?' <span class="pill pending">ค้าง</span>':''));
     const shpCell=(+t.ship_cost?money(t.ship_cost):'-')+(t.ship_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.ship_cost)?' <span class="pill pending">ค้าง</span>':''));
