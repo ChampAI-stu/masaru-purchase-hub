@@ -1400,14 +1400,14 @@ function exportInvoiceExcel(ev){
       const vals=[(p.name_en||p.product_name||g.sku)+'\n'+(p.model||g.sku),'',p.component||'',p.spec||'',(+up||0),g.qty,g.total,(ri===0?grpGw:''),remark];
       const row=wsI.getRow(r);
       vals.forEach((v,i)=>{const c=row.getCell(i+1);c.value=v;c.border=border;c.alignment={vertical:'top',wrapText:true,horizontal:(i>=4&&i<=7)?'right':'left'};});
-      [5,6,7].forEach(ci=>row.getCell(ci).numFmt='#,##0.00'); if(ri===0)row.getCell(8).numFmt='#,##0.00';
+      [5,7].forEach(ci=>row.getCell(ci).numFmt='#,##0.00'); row.getCell(6).numFmt='#,##0'; if(ri===0)row.getCell(8).numFmt='#,##0.00';
       if(g.pic&&addImg(wsI,g.pic,1,r-1))row.height=42; else row.height=40;
       r++;});
     if(span>1){wsI.mergeCells(startR,8,startR+span-1,8); wsI.getCell(startR,8).alignment={vertical:'middle',horizontal:'right'};}
     k+=span;
   }
   const lr=wsI.getRow(r); wsI.mergeCells(r,1,r,6); lr.getCell(1).value='Logistics costs'; lr.getCell(1).alignment={horizontal:'right'}; lr.getCell(1).font={bold:true}; lr.getCell(7).value=d.logi; lr.getCell(7).numFmt='#,##0.00'; lr.getCell(7).alignment={horizontal:'right'}; for(let i=1;i<=9;i++)lr.getCell(i).border=border; r++;
-  const tr=wsI.getRow(r); wsI.mergeCells(r,1,r,5); tr.getCell(1).value='Total'; tr.getCell(1).alignment={horizontal:'right'}; tr.getCell(1).font={bold:true}; tr.getCell(6).value=totalQty; tr.getCell(6).numFmt='#,##0.00'; tr.getCell(6).font={bold:true}; tr.getCell(6).alignment={horizontal:'right'}; tr.getCell(7).value=totalPrice+d.logi; tr.getCell(7).numFmt='#,##0.00'; tr.getCell(7).font={bold:true}; tr.getCell(7).alignment={horizontal:'right'}; tr.getCell(8).value=totalGW; tr.getCell(8).numFmt='#,##0.00'; tr.getCell(8).font={bold:true}; tr.getCell(8).alignment={horizontal:'right'}; for(let i=1;i<=9;i++)tr.getCell(i).border=border; r+=3;
+  const tr=wsI.getRow(r); wsI.mergeCells(r,1,r,5); tr.getCell(1).value='Total'; tr.getCell(1).alignment={horizontal:'right'}; tr.getCell(1).font={bold:true}; tr.getCell(6).value=totalQty; tr.getCell(6).numFmt='#,##0'; tr.getCell(6).font={bold:true}; tr.getCell(6).alignment={horizontal:'right'}; tr.getCell(7).value=totalPrice+d.logi; tr.getCell(7).numFmt='#,##0.00'; tr.getCell(7).font={bold:true}; tr.getCell(7).alignment={horizontal:'right'}; tr.getCell(8).value=totalGW; tr.getCell(8).numFmt='#,##0.00'; tr.getCell(8).font={bold:true}; tr.getCell(8).alignment={horizontal:'right'}; for(let i=1;i<=9;i++)tr.getCell(i).border=border; r+=3;
   wsI.mergeCells(r,6,r,9); wsI.getCell(r,6).value='Signature and Company Stamp'; wsI.getCell(r,6).alignment={horizontal:'center'};
   wsI.mergeCells(r+2,6,r+2,9); wsI.getCell(r+2,6).value='__________________________'; wsI.getCell(r+2,6).alignment={horizontal:'center'};
   // ===== PACKING LIST =====
