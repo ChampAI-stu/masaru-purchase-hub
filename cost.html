@@ -1011,7 +1011,7 @@ function ungroupLine(i){ // เอาออกจากกลุ่ม
 }
 function renderLines(){
   if(!curItems.length){$('lineItems').innerHTML='<div class="empty">ยังไม่มีรายการ — พิมพ์ SKU ด้านบน</div>';return;}
-  let h='<table style="min-width:1040px"><thead><tr><th>SKU</th><th>รูป</th><th>ราคา</th><th>จำนวน(PCS)</th><th>Cartons</th><th>NW(Kg)</th><th>GW(Kg)</th><th>กว้าง</th><th>ยาว</th><th>สูง</th><th>CBM/กล่อง</th><th>Shipping Mark</th><th></th></tr></thead><tbody>';
+  let h='<table style="min-width:1120px"><thead><tr><th>SKU</th><th>รูป</th><th>ราคา</th><th>จำนวน(PCS)</th><th>Cartons</th><th>NW(Kg)</th><th>GW(Kg)</th><th>กว้าง</th><th>ยาว</th><th>สูง</th><th>CBM/กล่อง</th><th>Shipping Mark</th><th style="text-align:center" title="ของแถม (FOC) — โชว์ราคาแต่ไม่รวมยอด/ภาษี">แถม</th><th></th></tr></thead><tbody>';
   curItems.forEach((it,i)=>{const p=prod(it.sku);
     const isGrp=!!it.gid; const gFirst=isGrp?groupFirstIndex(it.gid):-1; const isHead=(i===gFirst);
     const gc=groupColor(it.gid); const bt=(isGrp&&isHead)?' style="border-top:2px solid '+gc+'"':'';
@@ -1035,10 +1035,11 @@ function renderLines(){
       <td${bt}>${shared('h','0.1',it.h)}</td>
       <td style="text-align:right;white-space:nowrap"${bt}>${lineCbmCtn(it)?lineCbmCtn(it).toFixed(4):'<span class="muted">—</span>'}</td>
       <td${bt}>${shared('mark','',it.mark)}</td>
+      <td${bt} style="text-align:center"><input type="checkbox" ${it.foc?'checked':''} onchange="updItem(${i},'foc',this.checked)" title="ของแถม (FOC)"></td>
       <td${bt} style="white-space:nowrap"><button class="mini btn ghost" title="เพิ่มสินค้าย่อยในกลุ่มนี้ (ใช้ GW/ขนาด/Mark ร่วมกัน)" onclick="addSubLine(${i})">+ ย่อย</button>${isGrp?` <button class="mini btn ghost" title="เอาออกจากกลุ่ม" onclick="ungroupLine(${i})">⊘</button>`:''} <button class="mini btn red" onclick="curItems.splice(${i},1);renderLines();renderDoc()">✕</button></td></tr>`;});
   $('lineItems').innerHTML=h+'</tbody></table>';
 }
-function updItem(i,k,v){curItems[i][k]=(k==='mark'||k==='sku')?v:(+v||0);
+function updItem(i,k,v){curItems[i][k]=(k==='mark'||k==='sku')?v:(k==='foc'?!!v:(+v||0));
   if(k==='qty'){const p=prod(curItems[i].sku);if(p&&p.per_ctn&&!curItems[i].ctn)curItems[i].ctn=Math.ceil(v/p.per_ctn);}
   if(curItems[i].gid && SHARED_KEYS.includes(k)){const g=curItems[i].gid,val=curItems[i][k];curItems.forEach(x=>{if(x.gid===g)x[k]=val;});}  // ใช้ร่วมกันทั้งกลุ่ม
   renderLines();renderDoc();}
@@ -1096,12 +1097,12 @@ async function deleteShipment(){
 function fmtDate(d){if(!d)return'';return new Date(d).toLocaleDateString('en-GB');}
 function renderDoc(){
   const d=formData();
-  const totalGW=(()=>{const seen={};let s=0;d.items.forEach(it=>{if(it.gid){if(!seen[it.gid]){seen[it.gid]=1;s+=+it.gw||0;}}else s+=+it.gw||0;});return s;})(), totalCtn=d.items.reduce((s,i)=>s+(+i.ctn||0),0), totalPrice=d.items.reduce((s,i)=>s+(+i.price*+i.qty),0), totalQty=d.items.reduce((s,i)=>s+(+i.qty||0),0), totalCBM=d.items.reduce((s,i)=>{const _p=prod(i.sku)||{};const _c=(i.w&&i.l&&i.h)?(i.w*i.l*i.h)/1e6:(+_p.cbm_ctn||0);return s+(+i.ctn||0)*_c;},0);
+  const totalGW=(()=>{const seen={};let s=0;d.items.forEach(it=>{if(it.gid){if(!seen[it.gid]){seen[it.gid]=1;s+=+it.gw||0;}}else s+=+it.gw||0;});return s;})(), totalCtn=d.items.reduce((s,i)=>s+(+i.ctn||0),0), totalPrice=d.items.reduce((s,i)=>s+(i.foc?0:(+i.price*+i.qty)),0), totalQty=d.items.reduce((s,i)=>s+(+i.qty||0),0), totalCBM=d.items.reduce((s,i)=>{const _p=prod(i.sku)||{};const _c=(i.w&&i.l&&i.h)?(i.w*i.l*i.h)/1e6:(+_p.cbm_ctn||0);return s+(+i.ctn||0)*_c;},0);
   // Invoice: รวมแถวที่ SKU เดียวกัน (บวก Qty/Total/GW) — Packing List ยังแยกทุกบรรทัด
   const invGroups=[]; const gi={};
   d.items.forEach((it,idx)=>{
-    const key=it.sku?('sku:'+it.sku):('__blank'+idx);
-    if(gi[key]==null){gi[key]=invGroups.length;invGroups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:0,total:0,pic:it.pic||'',mixed:false,gid:it.gid||null});}
+    const key=(it.sku?('sku:'+it.sku):('__blank'+idx))+(it.foc?'|foc':'');
+    if(gi[key]==null){gi[key]=invGroups.length;invGroups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:0,total:0,pic:it.pic||'',mixed:false,gid:it.gid||null,foc:!!it.foc});}
     const g=invGroups[gi[key]];
     if((+it.price||0)!==g.price)g.mixed=true;
     g.qty+=+it.qty||0; g.gw+=+it.gw||0; g.total+=(+it.price||0)*(+it.qty||0);
@@ -1112,10 +1113,10 @@ function renderDoc(){
       if(gid){let m=k+1;while(m<invGroups.length&&invGroups[m].gid===gid){run.push(invGroups[m]);m++;}}
       const span=run.length; const grpGw=+run[0].gw||0;   // GW ใช้ร่วมทั้งกลุ่ม → โชว์ครั้งเดียว (rowspan)
       run.forEach((g,ri)=>{const p=prod(g.sku)||{};
-        const remark=`BRAND ：${p.brand||''}\nMODEL：${p.model||g.sku}\n\n${p.name_en||''} : ${g.sku}\n${p.name_th||''}`;
+        const remark=`${g.foc?'FREE OF CHARGE — ของแถม (ไม่คิดเงิน)\n\n':''}BRAND ：${p.brand||''}\nMODEL：${p.model||g.sku}\n\n${p.name_en||''} : ${g.sku}\n${p.name_th||''}`;
         const pic=g.pic?`<img class="pic" src="${esc(g.pic)}">`:'';
         const up=(g.mixed&&g.qty)?(g.total/g.qty):g.price;
-        out+=`<tr><td>${esc(p.name_en||p.product_name||g.sku)}<br>${esc(p.model||g.sku)}</td><td style="text-align:center">${pic}</td>`+
+        out+=`<tr${g.foc?' style="background:#FFFBEB"':''}><td>${esc(p.name_en||p.product_name||g.sku)}<br>${esc(p.model||g.sku)}${g.foc?' <b style="color:#B45309">(FOC)</b>':''}</td><td style="text-align:center">${pic}</td>`+
           `<td style="white-space:pre-line">${esc(p.component||'')}</td><td>${esc(p.spec||'')}</td>`+
           `<td style="text-align:right">${money(up)}</td><td style="text-align:right">${money(g.qty)}</td>`+
           `<td style="text-align:right">${money(g.total)}</td>`+
@@ -1354,11 +1355,11 @@ function exportInvoiceExcel(ev){
   if(!window.ExcelJS){alert('กำลังโหลดไลบรารี Excel — ลองกดใหม่อีกครั้ง');return;}
   const d=formData();
   const groups=[]; const gi={};
-  d.items.forEach((it,idx)=>{const key=it.sku?('sku:'+it.sku):('__b'+idx);
-    if(gi[key]==null){gi[key]=groups.length;groups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:+it.gw||0,total:0,pic:it.pic||'',mixed:false,gid:it.gid||null});}
+  d.items.forEach((it,idx)=>{const key=(it.sku?('sku:'+it.sku):('__b'+idx))+(it.foc?'|foc':'');
+    if(gi[key]==null){gi[key]=groups.length;groups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:+it.gw||0,total:0,pic:it.pic||'',mixed:false,gid:it.gid||null,foc:!!it.foc});}
     const g=groups[gi[key]];if((+it.price||0)!==g.price)g.mixed=true;
     g.qty+=+it.qty||0;g.total+=(+it.price||0)*(+it.qty||0); if(!g.pic&&it.pic)g.pic=it.pic;});
-  const totalPrice=d.items.reduce((s,i)=>s+(+i.price*+i.qty),0);
+  const totalPrice=d.items.reduce((s,i)=>s+(i.foc?0:(+i.price*+i.qty)),0);
   const totalGW=(()=>{const seen={};let s=0;d.items.forEach(it=>{if(it.gid){if(!seen[it.gid]){seen[it.gid]=1;s+=+it.gw||0;}}else s+=+it.gw||0;});return s;})();
   const totalCtn=d.items.reduce((s,i)=>s+(+i.ctn||0),0);
   const totalQty=d.items.reduce((s,i)=>s+(+i.qty||0),0);
@@ -1396,7 +1397,7 @@ function exportInvoiceExcel(ev){
     if(gid){let m=k+1;while(m<groups.length&&groups[m].gid===gid){run.push(groups[m]);m++;}}
     const span=run.length; const grpGw=+run[0].gw||0; const startR=r;
     run.forEach((g,ri)=>{const p=prod(g.sku)||{}; const up=(g.mixed&&g.qty)?(g.total/g.qty):g.price;
-      const remark='BRAND ：'+(p.brand||'')+'\nMODEL：'+(p.model||g.sku)+'\n\n'+(p.name_en||'')+' : '+g.sku+'\n'+(p.name_th||'');
+      const remark=(g.foc?'FREE OF CHARGE — ของแถม (ไม่คิดเงิน)\n\n':'')+'BRAND ：'+(p.brand||'')+'\nMODEL：'+(p.model||g.sku)+'\n\n'+(p.name_en||'')+' : '+g.sku+'\n'+(p.name_th||'');
       const vals=[(p.name_en||p.product_name||g.sku)+'\n'+(p.model||g.sku),'',p.component||'',p.spec||'',(+up||0),g.qty,g.total,(ri===0?grpGw:''),remark];
       const row=wsI.getRow(r);
       vals.forEach((v,i)=>{const c=row.getCell(i+1);c.value=v;c.border=border;c.alignment={vertical:'top',wrapText:true,horizontal:(i>=4&&i<=7)?'right':'left'};});
