@@ -1361,6 +1361,8 @@ function exportInvoiceExcel(ev){
   const totalPrice=d.items.reduce((s,i)=>s+(+i.price*+i.qty),0);
   const totalGW=(()=>{const seen={};let s=0;d.items.forEach(it=>{if(it.gid){if(!seen[it.gid]){seen[it.gid]=1;s+=+it.gw||0;}}else s+=+it.gw||0;});return s;})();
   const totalCtn=d.items.reduce((s,i)=>s+(+i.ctn||0),0);
+  const totalQty=d.items.reduce((s,i)=>s+(+i.qty||0),0);
+  const totalCBM=d.items.reduce((s,i)=>{const _p=prod(i.sku)||{};const _c=(i.w&&i.l&&i.h)?(i.w*i.l*i.h)/1e6:(+_p.cbm_ctn||0);return s+(+i.ctn||0)*_c;},0);
   const wb=new ExcelJS.Workbook();
   const thin={style:'thin',color:{argb:'FF888888'}}, border={top:thin,left:thin,bottom:thin,right:thin};
   const navy='FF1F3864', gold='FFC9A84C';
@@ -1405,7 +1407,7 @@ function exportInvoiceExcel(ev){
     k+=span;
   }
   const lr=wsI.getRow(r); wsI.mergeCells(r,1,r,6); lr.getCell(1).value='Logistics costs'; lr.getCell(1).alignment={horizontal:'right'}; lr.getCell(1).font={bold:true}; lr.getCell(7).value=d.logi; lr.getCell(7).numFmt='#,##0.00'; lr.getCell(7).alignment={horizontal:'right'}; for(let i=1;i<=9;i++)lr.getCell(i).border=border; r++;
-  const tr=wsI.getRow(r); wsI.mergeCells(r,1,r,6); tr.getCell(1).value='Total'; tr.getCell(1).alignment={horizontal:'right'}; tr.getCell(1).font={bold:true}; tr.getCell(7).value=totalPrice+d.logi; tr.getCell(7).numFmt='#,##0.00'; tr.getCell(7).font={bold:true}; tr.getCell(7).alignment={horizontal:'right'}; tr.getCell(8).value=totalGW; tr.getCell(8).numFmt='#,##0.00'; tr.getCell(8).font={bold:true}; tr.getCell(8).alignment={horizontal:'right'}; for(let i=1;i<=9;i++)tr.getCell(i).border=border; r+=3;
+  const tr=wsI.getRow(r); wsI.mergeCells(r,1,r,5); tr.getCell(1).value='Total'; tr.getCell(1).alignment={horizontal:'right'}; tr.getCell(1).font={bold:true}; tr.getCell(6).value=totalQty; tr.getCell(6).numFmt='#,##0.00'; tr.getCell(6).font={bold:true}; tr.getCell(6).alignment={horizontal:'right'}; tr.getCell(7).value=totalPrice+d.logi; tr.getCell(7).numFmt='#,##0.00'; tr.getCell(7).font={bold:true}; tr.getCell(7).alignment={horizontal:'right'}; tr.getCell(8).value=totalGW; tr.getCell(8).numFmt='#,##0.00'; tr.getCell(8).font={bold:true}; tr.getCell(8).alignment={horizontal:'right'}; for(let i=1;i<=9;i++)tr.getCell(i).border=border; r+=3;
   wsI.mergeCells(r,6,r,9); wsI.getCell(r,6).value='Signature and Company Stamp'; wsI.getCell(r,6).alignment={horizontal:'center'};
   wsI.mergeCells(r+2,6,r+2,9); wsI.getCell(r+2,6).value='__________________________'; wsI.getCell(r+2,6).alignment={horizontal:'center'};
   // ===== PACKING LIST =====
@@ -1436,6 +1438,11 @@ function exportInvoiceExcel(ev){
     if(span>1){wsP.mergeCells(startRow,3,startRow+span-1,3);wsP.mergeCells(startRow,4,startRow+span-1,4);wsP.mergeCells(startRow,5,startRow+span-1,5);}
     ii+=span;
   }
+  // แถวรวม Total (จำนวนลัง · CBM · GW) — ให้ตรงกับ PDF
+  {const trp=wsP.getRow(pr); wsP.mergeCells(pr,1,pr,2); trp.getCell(1).value='Total'; trp.getCell(1).font={bold:true}; trp.getCell(1).alignment={horizontal:'right'};
+   trp.getCell(3).value=money(totalCtn)+' Cartons · '+money(totalCBM)+' CBM'; trp.getCell(3).font={bold:true}; trp.getCell(3).alignment={horizontal:'right',wrapText:true};
+   trp.getCell(4).value=totalGW; trp.getCell(4).numFmt='#,##0.00'; trp.getCell(4).font={bold:true}; trp.getCell(4).alignment={horizontal:'right'};
+   for(let i=1;i<=5;i++)trp.getCell(i).border=border; pr++;}
   // ช่องลายเซ็น/ประทับตราบริษัท ท้าย Packing List (เหมือน PDF)
   pr+=2;
   wsP.mergeCells(pr,4,pr,5); wsP.getCell(pr,4).value='Signature and Company Stamp'; wsP.getCell(pr,4).alignment={horizontal:'center'};
