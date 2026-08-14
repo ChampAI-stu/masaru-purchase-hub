@@ -1096,7 +1096,7 @@ async function deleteShipment(){
 function fmtDate(d){if(!d)return'';return new Date(d).toLocaleDateString('en-GB');}
 function renderDoc(){
   const d=formData();
-  const totalGW=(()=>{const seen={};let s=0;d.items.forEach(it=>{if(it.gid){if(!seen[it.gid]){seen[it.gid]=1;s+=+it.gw||0;}}else s+=+it.gw||0;});return s;})(), totalCtn=d.items.reduce((s,i)=>s+(+i.ctn||0),0), totalPrice=d.items.reduce((s,i)=>s+(+i.price*+i.qty),0);
+  const totalGW=(()=>{const seen={};let s=0;d.items.forEach(it=>{if(it.gid){if(!seen[it.gid]){seen[it.gid]=1;s+=+it.gw||0;}}else s+=+it.gw||0;});return s;})(), totalCtn=d.items.reduce((s,i)=>s+(+i.ctn||0),0), totalPrice=d.items.reduce((s,i)=>s+(+i.price*+i.qty),0), totalQty=d.items.reduce((s,i)=>s+(+i.qty||0),0), totalCBM=d.items.reduce((s,i)=>{const _p=prod(i.sku)||{};const _c=(i.w&&i.l&&i.h)?(i.w*i.l*i.h)/1e6:(+_p.cbm_ctn||0);return s+(+i.ctn||0)*_c;},0);
   // Invoice: รวมแถวที่ SKU เดียวกัน (บวก Qty/Total/GW) — Packing List ยังแยกทุกบรรทัด
   const invGroups=[]; const gi={};
   d.items.forEach((it,idx)=>{
@@ -1159,10 +1159,10 @@ function renderDoc(){
   $('docPreview').innerHTML=`<div class="doc"><section class="inv-page"><h2 class="title">INVOICE</h2><div class="goldline"></div>${hdr('Invoice No')}
     <table class="items"><colgroup><col style="width:13%"><col style="width:13%"><col style="width:12%"><col style="width:10%"><col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:7%"><col style="width:20%"></colgroup><thead><tr><th>DESCRIPTION</th><th>Picture</th><th>COMPONENT</th><th>Specification</th><th>Unit Price</th><th>Qty (PCS)</th><th>Total/${esc(d.cur)}</th><th>GW (Kg)</th><th>Remark</th></tr></thead><tbody>${rowInv}
       <tr><td colspan="4" style="text-align:right"><b>Logistics costs</b></td><td></td><td></td><td style="text-align:right">${money(d.logi)}</td><td></td><td></td></tr>
-      <tr><td colspan="6" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(totalPrice+d.logi)}</b></td><td style="text-align:right"><b>${money(totalGW)}</b></td><td></td></tr></tbody></table>
+      <tr><td colspan="5" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(totalQty)}</b></td><td style="text-align:right"><b>${money(totalPrice+d.logi)}</b></td><td style="text-align:right"><b>${money(totalGW)}</b></td><td></td></tr></tbody></table>
     <div class="sig">Signature and Company Stamp<br><br>________________________</div></section>
     <section class="pl-page"><h2 class="title">PACKING LIST</h2><div class="goldline"></div>${hdr('Reference Invoice No')}
-    <table class="items"><colgroup><col style="width:7%"><col style="width:33%"><col style="width:30%"><col style="width:10%"><col style="width:20%"></colgroup><thead><tr><th>ITEM</th><th>DESCRIPTION OF GOODS</th><th>Dimension</th><th>GW (Kg)</th><th>Shipping Mark</th></tr></thead><tbody>${rowPl}</tbody></table>
+    <table class="items"><colgroup><col style="width:7%"><col style="width:33%"><col style="width:30%"><col style="width:10%"><col style="width:20%"></colgroup><thead><tr><th>ITEM</th><th>DESCRIPTION OF GOODS</th><th>Dimension</th><th>GW (Kg)</th><th>Shipping Mark</th></tr></thead><tbody>${rowPl}<tr><td colspan="2" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(totalCtn)} Cartons · ${money(totalCBM)} CBM</b></td><td style="text-align:right"><b>${money(totalGW)}</b></td><td></td></tr></tbody></table>
     <div class="sig">Signature and Company Stamp<br><br>________________________</div></section></div>`;
 }
 function exportInvPlExcel(){
