@@ -156,6 +156,11 @@
         <div class="toolbar">
           <h2 style="margin:0;border:0;padding:0">📦 สินค้า + ข้อมูลส่งออก</h2><span class="sp"></span>
           <input id="skuSearch" placeholder="ค้นหา SKU / ชื่อ / Brand" style="max-width:240px" oninput="renderSkuTable()">
+          <select id="skuCustomsFilter" onchange="renderSkuTable()" style="max-width:190px">
+            <option value="">กรมศุลกากร: ทั้งหมด</option>
+            <option value="done">✔ เคยออกแล้ว</option>
+            <option value="never">— ยังไม่เคย</option>
+          </select>
           <button class="btn ghost" onclick="exportSkuTemplate()">โหลดเทมเพลตส่งออก</button>
           <button class="btn ghost edit-only" onclick="document.getElementById('expImport').click()">นำเข้าข้อมูลส่งออก</button>
           <button class="btn gold" onclick="exportSkuExcel()">⬇️ Export Excel</button>
@@ -554,10 +559,17 @@ function go(t){
 function renderSkuTable(){
   fillSkuSelects();
   const q=($('skuSearch').value||'').toLowerCase();
-  const list=db.products.filter(p=>!q||((p.sku||'')+(p.name_en||'')+(p.name_th||'')+(p.product_name||'')+(p.brand||'')+(p.model||'')).toLowerCase().includes(q));
-  if(!list.length){$('skuTable').innerHTML='<div class="empty">ไม่พบสินค้า (ดึงจาก sku_master + sku_export_info)</div>';return;}
+  const cf=($('skuCustomsFilter')&&$('skuCustomsFilter').value)||'';
   const billMap={};
   db.shipments.forEach(s=>{(s.items||[]).forEach(it=>{if(it.sku){(billMap[it.sku]=billMap[it.sku]||new Set()).add(s.invno||s.id);}});});
+  const custDone=p=> p.customs_status==='done' ? true : (p.customs_status==='never' ? false : !!(billMap[p.sku]&&billMap[p.sku].size>0));
+  const list=db.products.filter(p=>{
+    if(q && !(((p.sku||'')+(p.name_en||'')+(p.name_th||'')+(p.product_name||'')+(p.brand||'')+(p.model||'')).toLowerCase().includes(q))) return false;
+    if(cf==='done' && !custDone(p)) return false;
+    if(cf==='never' && custDone(p)) return false;
+    return true;
+  });
+  if(!list.length){$('skuTable').innerHTML='<div class="empty">ไม่พบสินค้า (ดึงจาก sku_master + sku_export_info)</div>';return;}
   let h='<table><thead><tr><th>SKU</th><th>Supplier</th><th>ต้นทุน (CNY)</th><th>ชื่อ (กลาง / EN / ไทย)</th><th>Brand·Model</th><th>ขนาดกล่อง·CBM·Kg</th><th>ดำเนินการตามกรมศุลกากร</th><th class="no-print">จัดการ</th></tr></thead><tbody>';
   list.forEach(p=>{
     const packed=(p.box_size||p.cbm_ctn||p.w_ctn)?`${esc(p.box_size||'')} · ${p.cbm_ctn||'-'} · ${p.w_ctn||'-'}`:'<span class="muted">ยังไม่กรอก</span>';
