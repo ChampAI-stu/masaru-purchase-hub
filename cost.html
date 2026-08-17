@@ -302,7 +302,7 @@
           <div><label>อ้างอิงรายการสินค้า (PO)</label><input id="x_ref" placeholder="PO2607005" oninput="renderTaxDoc()"></div>
         </div>
         <h3>รายการ</h3>
-        <div class="note">ใส่ <b>จำนวนเงิน(บาท)</b> ต่อรายการ + <b>อากรขาเข้า%</b> (0 หรือ 5) → ระบบคิด อากร=เงิน×%, VAT7%=(เงิน+อากร)×7%, รวม=อากร+VAT ให้อัตโนมัติ · ปุ่ม “+ ค่าผ่านพิธีฯ” = แถวค่าธรรมเนียม (ใส่ยอดที่ต้องจ่ายตรงๆ)</div>
+        <div class="note">ใส่ <b>จำนวนเงิน(บาท)</b> ต่อรายการ + <b>อากรขาเข้า%</b> (0 หรือ 5) → ระบบคิด อากร=เงิน×%, VAT7%=(เงิน+อากร)×7%, รวม=อากร+VAT ให้อัตโนมัติ · <b>รวมชำระปัดเศษลงเป็นจำนวนเต็ม</b> (ตรงกับที่กรมศุลกากรเรียกเก็บจริง) · ปุ่ม “+ ค่าผ่านพิธีฯ” = แถวค่าธรรมเนียม (ใส่ยอดที่ต้องจ่ายตรงๆ)</div>
         <div style="overflow-x:auto"><div id="taxLines"></div></div>
         <div class="edit-only" style="margin:8px 0"><button class="btn ghost" onclick="addTaxLine()">+ เพิ่มรายการ</button> <button class="btn ghost" onclick="addFeeLine()">+ ค่าผ่านพิธีศุลกากร</button></div>
         <div><label>หมายเหตุเพิ่มเติม</label><textarea id="x_note" oninput="renderTaxDoc()" placeholder="เช่น รายการ 1.PO19305 SMLG-320 = 1000 ชุด ..."></textarea></div>
@@ -1241,7 +1241,7 @@ function renderPoSummary(){
 let taxItems=[];
 function thaiMonth(p){if(!p)return'';const a=String(p).split('-');if(a.length<2)return p;return (+a[1])+'/'+((+a[0])+543);}
 function taxCalc(it){const amt=+it.amount||0; if(it.fee)return{amount:amt,duty:0,vat:0,total:amt};
-  const dr=(+it.duty||0)/100; const duty=amt*dr; const vat=(amt+duty)*0.07; return{amount:amt,duty:duty,vat:vat,total:duty+vat};}
+  const dr=(+it.duty||0)/100; const duty=amt*dr; const vat=(amt+duty)*0.07; return{amount:amt,duty:duty,vat:vat,total:Math.floor(duty+vat)};}
 function taxFormData(){return{title:$('x_title').value,period:$('x_period').value,company:$('x_company').value,carrier:$('x_carrier').value,draft_no:$('x_draft').value,termport:$('x_termport').value,ref:$('x_ref').value,note:$('x_note').value,items:taxItems};}
 function updTaxItem(i,k,v){taxItems[i][k]=(k==='sku')?v:(+v||0);renderTaxLines();}
 function addTaxLine(){taxItems.push({sku:'',qty:0,amount:0,duty:0,fee:false});renderTaxLines();}
@@ -1269,7 +1269,7 @@ function renderTaxDoc(){
     '<table style="width:100%;border-collapse:collapse;font-size:13px" border="1" cellpadding="5">'+
     '<thead><tr style="background:#dfe9d9;font-weight:700"><th>SKU</th><th>จำนวน/ชุด</th><th>จำนวนเงินบาท</th><th>ภาษี 7%</th><th>ภาษีอากรขาเข้า</th><th>รวมชำระค่าภาษีทั้งหมด</th></tr></thead>'+
     '<tbody>'+rows+
-    '<tr style="background:#fff2b2;font-weight:700"><td>ยอดรวมทั้งหมด</td><td></td><td style="text-align:right">'+money(tAmt)+'</td><td style="text-align:right">'+money(tVat)+'</td><td style="text-align:right">'+money(tDuty)+'</td><td style="text-align:right">'+money(tTot)+'</td></tr>'+
+    '<tr style="background:#fff2b2;font-weight:700"><td>ยอดรวมทั้งหมด</td><td></td><td style="text-align:right">'+money(tAmt)+'</td><td style="text-align:right">'+money(Math.floor(tVat))+'</td><td style="text-align:right">'+money(Math.floor(tDuty))+'</td><td style="text-align:right">'+money(tTot)+'</td></tr>'+
     '</tbody></table>'+
     '<div style="margin-top:12px;font-size:13px;line-height:1.6">'+
     '<div><b>หมายเหตุ:</b> ดราฟใบขน '+esc(d.draft_no||'')+' '+(d.carrier?'('+esc(d.carrier)+')':'')+'</div>'+
