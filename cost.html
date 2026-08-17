@@ -1260,8 +1260,8 @@ function renderTaxLines(){
   h+='</tbody></table>'; $('taxLines').innerHTML=h; renderTaxDoc();
 }
 function renderTaxDoc(){
-  const d=taxFormData(); let rows=''; let tAmt=0,tVat=0,tDuty=0,tTot=0;
-  d.items.forEach(it=>{const c=taxCalc(it);tAmt+=c.amount;tVat+=c.vat;tDuty+=c.duty;tTot+=c.total;
+  const d=taxFormData(); let rows=''; let tAmt=0,tVat=0,tDuty=0,tTot=0,tFee=0;
+  d.items.forEach(it=>{const c=taxCalc(it);tAmt+=c.amount;tVat+=c.vat;tDuty+=c.duty;tTot+=c.total;tFee+=it.fee?c.total:0;
     rows+='<tr><td style="padding:4px 8px">'+esc(it.sku||'')+'</td><td style="text-align:center">'+(it.qty?money(it.qty):'')+'</td>'+
       '<td style="text-align:right">'+money(c.amount)+'</td><td style="text-align:right">'+(it.fee?'':money(c.vat))+'</td>'+
       '<td style="text-align:right">'+(it.fee?'':money(c.duty))+'</td><td style="text-align:right">'+money2(c.total)+'</td></tr>';});
@@ -1270,7 +1270,7 @@ function renderTaxDoc(){
     '<table style="width:100%;border-collapse:collapse;font-size:13px" border="1" cellpadding="5">'+
     '<thead><tr style="background:#dfe9d9;font-weight:700"><th>SKU</th><th>จำนวน/ชุด</th><th>จำนวนเงินบาท</th><th>ภาษี 7%</th><th>ภาษีอากรขาเข้า</th><th>รวมชำระค่าภาษีทั้งหมด</th></tr></thead>'+
     '<tbody>'+rows+
-    '<tr style="background:#fff2b2;font-weight:700"><td>ยอดรวมทั้งหมด</td><td></td><td style="text-align:right">'+money(tAmt)+'</td><td style="text-align:right">'+money(tVat)+'</td><td style="text-align:right">'+money(tDuty)+'</td><td style="text-align:right">'+money2(tTot)+'</td></tr>'+
+    '<tr style="background:#fff2b2;font-weight:700"><td>ยอดรวมทั้งหมด</td><td></td><td style="text-align:right">'+money(tAmt)+'</td><td style="text-align:right">'+money(Math.floor(tVat))+'</td><td style="text-align:right">'+money(Math.floor(tDuty))+'</td><td style="text-align:right">'+money(Math.floor(tVat)+Math.floor(tDuty)+tFee)+'</td></tr>'+
     '</tbody></table>'+
     '<div style="margin-top:12px;font-size:13px;line-height:1.6">'+
     '<div><b>หมายเหตุ:</b> ดราฟใบขน '+esc(d.draft_no||'')+' '+(d.carrier?'('+esc(d.carrier)+')':'')+'</div>'+
