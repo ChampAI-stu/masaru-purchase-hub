@@ -96,13 +96,15 @@
   .doc table.items th,.doc table.items td{border:1px solid #000;padding:4px 6px;font-size:11px}
   .doc table.items td{word-break:break-word;overflow-wrap:anywhere;vertical-align:top}
   .doc table.items th{background:#dbe5f1;text-align:center;color:#000;font-size:10px;padding:3px 4px;white-space:normal;word-break:keep-all;overflow-wrap:normal;line-height:1.15}
-  .doc table.items tr{page-break-inside:avoid;break-inside:avoid}
-  .doc thead{display:table-header-group}
+  .doc table.items{page-break-inside:auto}
+  .doc table.items tr,.doc table.items td{page-break-inside:avoid;break-inside:avoid}
+  .doc table.items thead{display:table-header-group}
+  .doc table.items img,.doc .pic{page-break-inside:avoid;break-inside:avoid}
   .doc .rmark{white-space:pre-line;font-size:10px}
   .doc .pic{max-width:80px;max-height:80px;object-fit:contain}
   .doc .sig{margin-top:30px;text-align:right}
   .doc .goldline{height:3px;background:var(--gold);margin:6px 0}
-  @media print{body *{visibility:hidden}#docPreview,#docPreview *{visibility:visible}#docPreview{position:absolute;left:0;top:0;width:100%}.doc{width:100%;padding:0}.no-print{display:none!important}}
+  @media print{@page{margin:12mm}html,body{height:auto!important}body *{visibility:hidden}#docPreview,#docPreview *{visibility:visible}#docPreview{position:absolute;left:0;top:0;width:100%}.doc{width:100%;padding:0}.no-print{display:none!important}.doc table.items tr,.doc table.items td{page-break-inside:avoid!important;break-inside:avoid!important}.doc table.items thead{display:table-header-group}}
   .combo{position:relative}
   .combo-input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;background:#fff}
   .combo-list{position:absolute;z-index:60;left:0;right:0;top:calc(100% + 2px);background:#fff;border:1px solid var(--line);border-radius:8px;max-height:240px;overflow:auto;box-shadow:0 10px 28px #0002;display:none}
@@ -1497,14 +1499,28 @@ async function savePdf(ev){
         if(!firstPage)pdf.addPage();firstPage=false;
         pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',margin,margin,usableW,fullH);
       }else{
-        // ยาวเกิน 1 หน้า → ตัดเป็นหลายหน้า
+        // ยาวเกิน 1 หน้า → ตัดเป็นหลายหน้า "ที่ขอบระหว่างแถว" ไม่ให้แถวโดนตัดครึ่ง
         const pagePxH=Math.floor(usableH*pxPerMM);
-        for(let sY=0;sY<canvas.height;sY+=pagePxH){
-          const sliceH=Math.min(pagePxH,canvas.height-sY);
+        const rectTop=sec.getBoundingClientRect().top, rectW=sec.getBoundingClientRect().width;
+        const sc=canvas.width/rectW;   // สเกลจริง layout→canvas
+        const breaks=[...sec.querySelectorAll('table.items tr')]
+          .map(tr=>Math.round((tr.getBoundingClientRect().bottom-rectTop)*sc))
+          .filter(y=>y>0).sort((a,b)=>a-b);
+        let sY=0;
+        while(sY<canvas.height-1){
+          let target=Math.min(sY+pagePxH,canvas.height);
+          let cut=target;
+          if(target<canvas.height){
+            const cand=breaks.filter(b=>b>sY+20 && b<=target);   // ขอบแถวสุดท้ายที่ยังพอดีหน้า
+            if(cand.length)cut=cand[cand.length-1];               // ตัดตรงขอบแถว
+            // ถ้าแถวเดียวสูงเกินหน้า → ตัดตรง target (กันลูปค้าง)
+          }
+          const sliceH=cut-sY;
           const slice=document.createElement('canvas');slice.width=canvas.width;slice.height=sliceH;
           slice.getContext('2d').drawImage(canvas,0,sY,canvas.width,sliceH,0,0,canvas.width,sliceH);
           if(!firstPage)pdf.addPage();firstPage=false;
           pdf.addImage(slice.toDataURL('image/jpeg',0.95),'JPEG',margin,margin,usableW,sliceH/pxPerMM);
+          sY=cut;
         }
       }
     }
