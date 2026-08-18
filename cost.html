@@ -1114,7 +1114,7 @@ function renderDoc(){
   // Invoice: รวมแถวที่ SKU เดียวกัน (บวก Qty/Total/GW) — Packing List ยังแยกทุกบรรทัด
   const invGroups=[]; const gi={};
   d.items.forEach((it,idx)=>{
-    const key=(it.sku?('sku:'+it.sku):('__blank'+idx))+(it.foc?'|foc':'');
+    const key=(it.sku?('sku:'+it.sku):('__blank'+idx))+(it.gid?('|g'+it.gid):'')+(it.foc?'|foc':'');
     if(gi[key]==null){gi[key]=invGroups.length;invGroups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:0,total:0,pic:it.pic||'',mixed:false,gid:it.gid||null,foc:!!it.foc});}
     const g=invGroups[gi[key]];
     if((+it.price||0)!==g.price)g.mixed=true;
@@ -1368,7 +1368,7 @@ function exportInvoiceExcel(ev){
   if(!window.ExcelJS){alert('กำลังโหลดไลบรารี Excel — ลองกดใหม่อีกครั้ง');return;}
   const d=formData();
   const groups=[]; const gi={};
-  d.items.forEach((it,idx)=>{const key=(it.sku?('sku:'+it.sku):('__b'+idx))+(it.foc?'|foc':'');
+  d.items.forEach((it,idx)=>{const key=(it.sku?('sku:'+it.sku):('__b'+idx))+(it.gid?('|g'+it.gid):'')+(it.foc?'|foc':'');
     if(gi[key]==null){gi[key]=groups.length;groups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:+it.gw||0,total:0,pic:it.pic||'',mixed:false,gid:it.gid||null,foc:!!it.foc});}
     const g=groups[gi[key]];if((+it.price||0)!==g.price)g.mixed=true;
     g.qty+=+it.qty||0;g.total+=(+it.price||0)*(+it.qty||0); if(!g.pic&&it.pic)g.pic=it.pic;});
