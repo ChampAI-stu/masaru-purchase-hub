@@ -432,6 +432,15 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 const money=n=>Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2});
 const money2=n=>Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
+// สร้างข้อความ "จำนวนลัง × ต่อลัง = จำนวนชุด" — ถ้ามีลังเศษ (ลังไม่เต็ม) จะแยกให้เอง
+function pkgCartonLine(ctn,qty,per,unit){
+  ctn=+ctn||0; qty=+qty||0; per=+per||0; unit=unit||'Pcs';
+  if(per>0 && ctn>0 && qty>0 && qty<ctn*per){
+    const full=Math.floor(qty/per), rem=qty-full*per, remCtn=ctn-full;
+    if(rem>0 && remCtn===1) return full+' Cartons*'+per+' + 1 Carton*'+rem+' = '+money(qty)+' '+unit;
+  }
+  return ctn+' Cartons*'+(per||'')+'= '+money(qty)+' '+unit;
+}
 const COMBOS={};
 function comboInit(id,items,onSelect,ph){
   const inp=$(id); if(!inp)return;
@@ -1026,7 +1035,7 @@ function ungroupLine(i){ // เอาออกจากกลุ่ม
 }
 function renderLines(){
   if(!curItems.length){$('lineItems').innerHTML='<div class="empty">ยังไม่มีรายการ — พิมพ์ SKU ด้านบน</div>';return;}
-  let h='<table style="min-width:1120px"><thead><tr><th>SKU</th><th>รูป</th><th>ราคา</th><th>จำนวน(PCS)</th><th>Cartons</th><th>NW(Kg)</th><th>GW(Kg)</th><th>กว้าง</th><th>ยาว</th><th>สูง</th><th>CBM/กล่อง</th><th>Shipping Mark</th><th style="text-align:center" title="ของแถม (FOC) — โชว์ราคาแต่ไม่รวมยอด/ภาษี">แถม</th><th></th></tr></thead><tbody>';
+  let h='<table style="min-width:1120px"><thead><tr><th>SKU</th><th>รูป</th><th>ราคา</th><th>จำนวน(PCS)</th><th>Cartons</th><th title="ชุด/ลัง — เว้นว่าง = ใช้ค่ากลาง (แก้เฉพาะลังเศษ)">ชุด/ลัง</th><th>NW(Kg)</th><th>GW(Kg)</th><th>กว้าง</th><th>ยาว</th><th>สูง</th><th>CBM/กล่อง</th><th>Shipping Mark</th><th style="text-align:center" title="ของแถม (FOC) — โชว์ราคาแต่ไม่รวมยอด/ภาษี">แถม</th><th></th></tr></thead><tbody>';
   curItems.forEach((it,i)=>{const p=prod(it.sku);
     const isGrp=!!it.gid; const gFirst=isGrp?groupFirstIndex(it.gid):-1; const isHead=(i===gFirst);
     const gc=groupColor(it.gid); const bt=(isGrp&&isHead)?' style="border-top:2px solid '+gc+'"':'';
@@ -1043,6 +1052,7 @@ function renderLines(){
       <td${bt}><input style="width:80px" type="number" step="0.01" value="${it.price}" onchange="updItem(${i},'price',this.value)"></td>
       <td${bt}><input style="width:90px" type="number" value="${it.qty}" onchange="updItem(${i},'qty',this.value)"></td>
       <td${bt}><input style="width:70px" type="number" value="${it.ctn}" onchange="updItem(${i},'ctn',this.value)"></td>
+      <td${bt}><input style="width:60px" type="number" value="${it.perctn||''}" placeholder="${p&&p.per_ctn?p.per_ctn:''}" onchange="updItem(${i},'perctn',this.value)" title="ชุด/ลัง (เว้นว่าง=ใช้ค่ากลาง${p&&p.per_ctn?' '+p.per_ctn:''})"></td>
       <td${bt}><input style="width:80px" type="number" step="0.01" value="${it.nw||0}" onchange="updItem(${i},'nw',this.value)"></td>
       <td${bt}>${shared('gw','0.01',it.gw)}</td>
       <td${bt}>${shared('w','0.1',it.w)}</td>
@@ -1144,20 +1154,20 @@ function renderDoc(){
   const rowPl=(()=>{
     let out='',idx=0,i=0;
     const thName=p=>esc(p.name_th||p.product_name||'');
-    const dimOf=(ctn,qty,p,w,l,h)=>{const cbmCtn=((w&&l&&h)?(w*l*h)/1e6:(+p.cbm_ctn||0)); const box=(w&&l&&h)?`${w}*${l}*${h} Cm`:(p.box_size||''); return `${ctn||0} Cartons*${p.per_ctn||''}= ${money(qty)} ${p.unit||'Pcs'}\nCartons : ${box}\n${money((ctn||0)*cbmCtn)} CBM\n1 Cartons = ${p.per_ctn||''} ${p.unit||''} = ${p.w_ctn||''} Kg`;};
+    const dimOf=(ctn,qty,p,w,l,h,perOv)=>{const per=+perOv||(+p.per_ctn||0); const cbmCtn=((w&&l&&h)?(w*l*h)/1e6:(+p.cbm_ctn||0)); const box=(w&&l&&h)?`${w}*${l}*${h} Cm`:(p.box_size||''); return `${pkgCartonLine(ctn,qty,per,p.unit||'Pcs')}\nCartons : ${box}\n${money((ctn||0)*cbmCtn)} CBM\n1 Cartons = ${per||''} ${p.unit||''} = ${p.w_ctn||''} Kg`;};
     while(i<d.items.length){
       const it=d.items[i], gid=it.gid; let members=[it];
       if(gid){let j=i+1;while(j<d.items.length&&d.items[j].gid===gid){members.push(d.items[j]);j++;}}
       const span=members.length;
       if(span===1){
         const p=prod(it.sku)||{}; idx++;
-        const dim=dimOf(it.ctn,it.qty,p,it.w,it.l,it.h);
+        const dim=dimOf(it.ctn,it.qty,p,it.w,it.l,it.h,it.perctn);
         out+=`<tr${it.foc?' style="background:#FFFBEB"':''}><td style="text-align:center">${idx}</td><td>${esc(p.name_en||it.sku)}<br>${thName(p)}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||it.sku)}${it.foc?'<br><b style="color:#B45309">*** FREE OF CHARGE — ของแถม ***</b>':''}</td>
           <td style="white-space:pre-line">${esc(dim)}</td><td style="text-align:right">${money(it.gw)}</td><td style="white-space:pre-line">${esc(it.mark||'')}</td></tr>`;
       } else {
         const p0=prod(it.sku)||{};
         const grpCtn=members.reduce((s,m)=>s+(+m.ctn||0),0), grpQty=members.reduce((s,m)=>s+(+m.qty||0),0);
-        const dimG=dimOf(grpCtn,grpQty,p0,it.w,it.l,it.h);   // กล่องเดียวกัน → Dimension ก้อนเดียวของกลุ่ม
+        const dimG=dimOf(grpCtn,grpQty,p0,it.w,it.l,it.h,it.perctn);   // กล่องเดียวกัน → Dimension ก้อนเดียวของกลุ่ม
         members.forEach((m,mi)=>{const p=prod(m.sku)||{}; idx++;
           const first=mi===0,last=mi===members.length-1;
           const nb=(first?'':'border-top:none;')+(last?'':'border-bottom:none;');
@@ -1433,7 +1443,7 @@ function exportInvoiceExcel(ev){
   const ph=['ITEM','DESCRIPTION OF GOODS','Dimension','GW (Kg)','Shipping Mark'];
   const phr=wsP.getRow(top); ph.forEach((h,i)=>{const c=phr.getCell(i+1);c.value=h;c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:navy}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=border;}); phr.height=22;
   let pr=top+1; let ii=0;
-  const dimOfX=(ctn,qty,p,w,l,h)=>{const cbmCtn=((w&&l&&h)?(w*l*h)/1e6:(+p.cbm_ctn||0)); const box=(w&&l&&h)?(w+'*'+l+'*'+h+' Cm'):(p.box_size||''); return (ctn||0)+' Cartons*'+(p.per_ctn||'')+'= '+money(qty)+' '+(p.unit||'Pcs')+'\nCartons : '+box+'\n'+money((ctn||0)*cbmCtn)+' CBM\n1 Cartons = '+(p.per_ctn||'')+' '+(p.unit||'')+' = '+(p.w_ctn||'')+' Kg';};
+  const dimOfX=(ctn,qty,p,w,l,h,perOv)=>{const per=+perOv||(+p.per_ctn||0); const cbmCtn=((w&&l&&h)?(w*l*h)/1e6:(+p.cbm_ctn||0)); const box=(w&&l&&h)?(w+'*'+l+'*'+h+' Cm'):(p.box_size||''); return pkgCartonLine(ctn,qty,per,p.unit||'Pcs')+'\nCartons : '+box+'\n'+money((ctn||0)*cbmCtn)+' CBM\n1 Cartons = '+(per||'')+' '+(p.unit||'')+' = '+(p.w_ctn||'')+' Kg';};
   const thNameX=p=>(p.name_th||p.product_name||'');
   while(ii<d.items.length){
     const it=d.items[ii], gid=it.gid; let members=[it];
@@ -1446,7 +1456,7 @@ function exportInvoiceExcel(ev){
       row.getCell(1).value=(pr-top); row.getCell(2).value=desc;
       if(mi===0){
         const grpCtn=members.reduce((s,mm)=>s+(+mm.ctn||0),0), grpQty=members.reduce((s,mm)=>s+(+mm.qty||0),0);
-        row.getCell(3).value= span>1 ? dimOfX(grpCtn,grpQty,p0,it.w,it.l,it.h) : dimOfX(it.ctn,it.qty,p0,it.w,it.l,it.h);
+        row.getCell(3).value= span>1 ? dimOfX(grpCtn,grpQty,p0,it.w,it.l,it.h,it.perctn) : dimOfX(it.ctn,it.qty,p0,it.w,it.l,it.h,it.perctn);
         row.getCell(4).value=+it.gw||0; row.getCell(4).numFmt='#,##0.00'; row.getCell(5).value=it.mark||'';
       }
       for(let ci=1;ci<=5;ci++){const c=row.getCell(ci);c.border=border;c.alignment={vertical:(ci>=3?'middle':'top'),wrapText:true,horizontal:(ci===1?'center':(ci===4?'right':'left'))};}
