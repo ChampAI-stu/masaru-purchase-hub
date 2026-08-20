@@ -179,9 +179,9 @@
       <div class="card">
         <div class="toolbar">
           <h2 style="margin:0;border:0;padding:0">📋 ตารางติดตามการนำเข้า / Shipment</h2><span class="sp"></span>
-          <input id="trkSearch" placeholder="ค้นหา INV / PO / SKU / B\/L / Vessel / ตู้ / ใบขน" title="ค้นได้: อินวอยซ์ · PO JST · สินค้า/SKU · B/L No. · Vessel No. · Container No. · เลขที่ใบขน · เลขที่ดราฟใบขน · ผู้รับผิดชอบ" style="max-width:220px" oninput="renderTrack()">
-          <select id="trkCo" style="max-width:150px" onchange="renderTrack()"><option value="">— ทุกบริษัท —</option></select>
-          <select id="trkOp" style="max-width:180px" onchange="renderTrack()"><option value="">— ทุกสถานะ —</option></select>
+          <input id="trkSearch" placeholder="ค้นหา INV / PO / SKU / B\/L / Vessel / ตู้ / ใบขน" title="ค้นได้: อินวอยซ์ · PO JST · สินค้า/SKU · B/L No. · Vessel No. · Container No. · เลขที่ใบขน · เลขที่ดราฟใบขน · ผู้รับผิดชอบ" style="max-width:220px" oninput="trkPage=1;renderTrack()">
+          <select id="trkCo" style="max-width:150px" onchange="trkPage=1;renderTrack()"><option value="">— ทุกบริษัท —</option></select>
+          <select id="trkOp" style="max-width:180px" onchange="trkPage=1;renderTrack()"><option value="">— ทุกสถานะ —</option></select>
           <button class="btn edit-only" onclick="openTrack()">+ เพิ่มรายการ</button>
           <button class="btn gold" onclick="exportTrack()">⬇️ Export Excel</button>
         </div>
@@ -759,8 +759,9 @@ function fillTrackFilters(){
   if($('trkCo'))$('trkCo').innerHTML='<option value="">— ทุกบริษัท —</option>'+[...new Set([...consigneeNames(),...cos])].map(c=>`<option>${esc(c)}</option>`).join('');
   if($('trkOp'))$('trkOp').innerHTML='<option value="">— ทุกสถานะ —</option>'+OP_ST.map(c=>`<option>${esc(c)}</option>`).join('');
 }
-let trkSort={key:"start_date",dir:"desc"};
-function sortTrack(k){ if(trkSort.key===k) trkSort.dir=(trkSort.dir==="asc"?"desc":"asc"); else {trkSort.key=k;trkSort.dir="asc";} renderTrack(); }
+let trkSort={key:"start_date",dir:"desc"}; let trkPage=1; const TRK_PER=20;
+function sortTrack(k){ if(trkSort.key===k) trkSort.dir=(trkSort.dir==="asc"?"desc":"asc"); else {trkSort.key=k;trkSort.dir="asc";} trkPage=1; renderTrack(); }
+function trkGo(p){ trkPage=p; renderTrack(); }
 function renderTrack(){
   const co0=$('trkCo')?$('trkCo').value:'', op0=$('trkOp')?$('trkOp').value:'';
   fillTrackFilters();
@@ -789,6 +790,9 @@ function renderTrack(){
     <div class="kpi" style="background:${demWarn?'#C2410C':''}"><div class="lbl">DEM ใกล้ครบ (7 วัน)</div><div class="val">${demWarn}</div></div>
     <div class="kpi"><div class="lbl">ยอดภาษีรวม (บาท)</div><div class="val">${money(tax)}</div></div>`;
   if(!list.length){$('trkTable').innerHTML='<div class="empty">ยังไม่มีรายการ'+(canEdit?' — กด “เพิ่มรายการ”':'')+'</div>';return;}
+  const _total=list.length, _pages=Math.max(1,Math.ceil(_total/TRK_PER));
+  if(trkPage>_pages)trkPage=_pages; if(trkPage<1)trkPage=1;
+  const pageList=list.slice((trkPage-1)*TRK_PER,trkPage*TRK_PER);
   const _cols=['9%','8%','9%','9%','9%','6%','6%','6%','6%','8%','9%','9%','5%']; if(canEdit)_cols.push('6%');
   const _colg='<colgroup>'+_cols.map(w=>'<col style="width:'+w+'">').join('')+'</colgroup>';
   const _skcols=[['invoice_no','อินวอยซ์'],['bl_no','B/L No'],['import_company','บริษัท'],['mor_status','ยื่นสมอ.'],['op_status','ดำเนินการ'],['shipping','ขนส่ง'],['cls_date','CLS'],['export_date','ETD'],['arrival_date','ETA'],['dem_due_date','DEM'],['tax_amount','ค่าภาษี'],['ship_cost','ค่าขนส่ง'],['_docs','เอกสาร']];
@@ -796,7 +800,7 @@ function renderTrack(){
   let _th=_skcols.map(c=>`<th onclick="sortTrack('${c[0]}')" style="cursor:pointer;user-select:none;white-space:nowrap" title="คลิกเพื่อเรียง">${c[1]}<span style="color:#C9A84C;font-size:10px">${_arr(c[0])}</span></th>`).join('');
   if(canEdit)_th+='<th class="no-print">จัดการ</th>';
   let h='<table class="trkc">'+_colg+'<thead><tr>'+_th+'</tr></thead><tbody>';
-  list.forEach(t=>{
+  pageList.forEach(t=>{
     const taxCell=(+t.tax_amount?money(t.tax_amount):'-')+(t.tax_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.tax_amount)?' <span class="pill pending">ค้าง</span>':''));
     const shpCell=(+t.ship_cost?money(t.ship_cost):'-')+(t.ship_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.ship_cost)?' <span class="pill pending">ค้าง</span>':''));
     const dc=docCount(t);
@@ -814,7 +818,17 @@ function renderTrack(){
       <td style="white-space:nowrap">${taxCell}</td><td style="white-space:nowrap">${shpCell}</td>
       <td style="text-align:center"><span class="pill ${dc===5?'done':(dc?'notified':'pending')}">${dc}/5</span></td>`+
       (canEdit?`<td class="no-print" style="white-space:nowrap"><button class="mini btn" onclick="openTrack('${t.id}')">แก้</button> <button class="mini btn red" onclick="delTrack('${t.id}')">ลบ</button></td>`:'')+`</tr>`;});
-  $('trkTable').innerHTML=h+'</tbody></table>';
+  const _from=(trkPage-1)*TRK_PER+1, _to=Math.min(trkPage*TRK_PER,_total);
+  let _pg='';
+  if(_pages>1){
+    _pg='<div style="display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap;font-size:13px">'
+      +'<span class="muted">แสดง '+_from+'–'+_to+' จาก '+_total+' รายการ</span>'
+      +'<button class="btn ghost mini" '+(trkPage<=1?'disabled':'')+' onclick="trkGo('+(trkPage-1)+')">‹ ก่อนหน้า</button>'
+      +'<span style="font-weight:700">หน้า '+trkPage+'/'+_pages+'</span>'
+      +'<button class="btn ghost mini" '+(trkPage>=_pages?'disabled':'')+' onclick="trkGo('+(trkPage+1)+')">ถัดไป ›</button>'
+      +'</div>';
+  }
+  $('trkTable').innerHTML=h+'</tbody></table>'+_pg;
 }
 function openTrack(id){
   $('t_co').innerHTML='<option value=""></option>'+opt([...new Set([...consigneeNames(),...db.tracking.map(x=>x.import_company).filter(Boolean)])],'');
