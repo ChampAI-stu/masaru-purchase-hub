@@ -748,7 +748,7 @@ const SHIP_CO=['GTL','NEXT','GLT Logistics'];
 function coColor(s){return {'LIKESHOP':'#C00000','MASARU':'#2E75B6','DAIKI':'#1E7145','PHONLAWUT':'#B7791F','คุณวุฒิ':'#8a5a00'}[s]||'#64748B';}
 function morColor(s){return {'ยื่นสมอ.ผ่านแล้ว':'#1E7145','ไม่ต้องยื่นสมอ.':'#B7791F'}[s]||'#2E75B6';}
 function opColor(s){return {'กำลังผลิต':'#374151','อยู่ระหว่างส่งไปโกดังจีน':'#1E7145','CLS':'#0EA5E9','อยู่ระหว่างส่งมาไทย':'#8a5a00','ถึงไทยแล้ว/สำเร็จ':'#4B2E83','DEM':'#C2410C','ยกเลิก ทำไม่ได้':'#C00000'}[s]||'#64748B';}
-function demDaysLeft(t){if(!t.dem_due_date||t.op_status==='ยกเลิก ทำไม่ได้')return null;const today=new Date();today.setHours(0,0,0,0);const d=new Date(t.dem_due_date);if(isNaN(d))return null;return Math.round((d-today)/86400000);}
+function demDaysLeft(t){if(!t.dem_due_date||t.op_status==='ยกเลิก ทำไม่ได้'||t.op_status==='ถึงไทยแล้ว/สำเร็จ')return null;const today=new Date();today.setHours(0,0,0,0);const d=new Date(t.dem_due_date);if(isNaN(d))return null;return Math.round((d-today)/86400000);}
 function shipColor(s){return {'GTL':'#C0398A','GLT Logistics':'#C0398A','NEXT':'#2E75B6'}[s]||'#64748B';}
 function tag(s,c){return s?`<span style="background:${c};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;white-space:nowrap">${esc(s)}</span>`:'<span class="muted">—</span>';}
 function docCount(r){return ['doc_acc_tax','doc_acc_receipt','doc_acc_billing','doc_quality','doc_purchase'].filter(k=>r[k]).length;}
