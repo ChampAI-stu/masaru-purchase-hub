@@ -254,8 +254,8 @@ async function enterApp(session){
   const isBuyer=roles.includes('purchase');
   if(!isBuyer&&!isMgr&&!isExec){location.replace(PORTAL_URL);return;}   // เข้าได้เฉพาะ จัดซื้อ / หัวหน้า / ผู้บริหาร
   currentRole=isBuyer?'purchase':(isMgr?'manager':'executive');
-  canEdit=(isBuyer||isMgr);   // จัดซื้อ + หัวหน้า แก้ไขได้ ; ผู้บริหาร ดูอย่างเดียว
-  $('rolePill').textContent='บทบาท: '+({purchase:'จัดซื้อ (แก้ไขได้)',manager:'หัวหน้า (แก้ไขได้)',executive:'ผู้บริหาร (ดูอย่างเดียว)'}[currentRole]);
+  canEdit=true;   // จัดซื้อ + หัวหน้า + ผู้บริหาร แก้ไขได้ทั้งหมด
+  $('rolePill').textContent='บทบาท: '+({purchase:'จัดซื้อ (แก้ไขได้)',manager:'หัวหน้า (แก้ไขได้)',executive:'ผู้บริหาร (แก้ไขได้)'}[currentRole]);
   if(!canEdit)document.body.classList.add('view-only');
   await loadAll();
   $('boot').style.display='none';$('app').style.display='block';
