@@ -211,10 +211,10 @@ async function boot(){
   const isMgr=roles.includes('pr_manager');
   // เข้าได้เฉพาะ จัดซื้อ / หัวหน้า / ผู้บริหาร
   if(!roles.includes('purchase')&&!isMgr&&!isExec){location.replace('index.html');return;}
-  canEdit=roles.includes('purchase')||isMgr;   // ผู้บริหาร = ดูอย่างเดียว
+  canEdit=true;   // จัดซื้อ + หัวหน้า + ผู้บริหาร แก้ไขได้ทั้งหมด
   ME=session.user.email||'';
   $('rolePill').textContent = roles.includes('purchase') ? '📦 จัดซื้อ (แก้ไขได้)'
-                            : (isMgr ? '🧑‍💼 หัวหน้า (แก้ไขได้)' : '👑 ผู้บริหาร (ดูอย่างเดียว)');
+                            : (isMgr ? '🧑‍💼 หัวหน้า (แก้ไขได้)' : '👑 ผู้บริหาร (แก้ไขได้)');
   if(!canEdit)$('addBillBtn').style.display='none';
   sb.auth.onAuthStateChange((_e,s)=>{if(!s)location.replace('index.html');});
   await loadAll();
