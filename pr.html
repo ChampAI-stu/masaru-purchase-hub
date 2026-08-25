@@ -416,8 +416,8 @@ let sb = null, MASTER = {}, MASTER_ALL = [], CURRENT_CHECK = null, ME = null, RT
 const $ = id => document.getElementById(id);
 const fmt = n => (Number(n)||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
 const isApprover = r => r==='หัวหน้า' || r==='ผู้บริหาร';
-// เฉพาะจัดซื้อเท่านั้นที่แก้ไขข้อมูลได้ ; role อื่น (เช่น ผู้บริหาร) ดูอย่างเดียว
-function canEdit(){ return !!(ME && ME.role==='จัดซื้อ'); }
+// จัดซื้อ / หัวหน้า / ผู้บริหาร แก้ไขข้อมูลได้ทั้งหมด
+function canEdit(){ return !!(ME && (ME.role==='จัดซื้อ' || ME.role==='หัวหน้า' || ME.role==='ผู้บริหาร')); }
 function requireEditor(){ if(!canEdit()){ toast('บทบาทนี้ดูอย่างเดียว แก้ไขไม่ได้',true); return false; } return true; }
 
 function toast(msg, err){const t=$('toast');t.textContent=msg;t.className='toast show'+(err?' err':'');setTimeout(()=>t.className='toast',2600);}
