@@ -63,6 +63,9 @@ tr:nth-child(even) td{background:#F8FAFD}
 <div class="topbar">
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
+  <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime
+  </span>
   <div class="pill-top" id="rolePill">…</div>
   <button class="btn-top" onclick="location.href='index.html'">🏠 หน้ารวม</button>
   <button class="btn-top" onclick="doLogout()">ออกจากระบบ</button>
@@ -244,6 +247,22 @@ async function boot(){
   if(!canEdit){$('addBillBtn').style.display='none';$('syncBtn').style.display='none';}
   sb.auth.onAuthStateChange((_e,s)=>{if(!s)location.replace('index.html');});
   await loadAll();
+  subscribeRealtime();
+}
+
+/* ===== REALTIME — เห็นรายการที่คนอื่นทำทันที ไม่ต้องรีเฟรช ===== */
+let rtTimer=null;
+function subscribeRealtime(){
+  const bump=()=>{ clearTimeout(rtTimer); rtTimer=setTimeout(async()=>{ await loadAll(); flashLive(); },400); };
+  sb.channel('pay-live')
+    .on('postgres_changes',{event:'*',schema:'public',table:'pay_bills'},bump)
+    .on('postgres_changes',{event:'*',schema:'public',table:'pay_payments'},bump)
+    .subscribe();
+}
+function flashLive(){
+  const d=$('liveDot'); if(!d)return;
+  d.style.background='#22C55E'; d.style.transform='scale(1.9)';
+  setTimeout(()=>{d.style.transform='scale(1)';},450);
 }
 async function doLogout(){await sb.auth.signOut();location.replace('index.html');}
 
@@ -269,6 +288,7 @@ async function loadAll(){
   renderBills();
   if($('tab-plan').style.display!=='none'){ PLANVIEW==='month'?renderPlanMonth():renderPlan(); }
   if($('tab-month').style.display!=='none')renderMonth();
+  if(HIST_BID && $('histBg').style.display==='flex') openHist(HIST_BID);   // ประวัติที่เปิดค้างอยู่ก็อัปเดตตาม
 }
 function billPays(bid){return PAYS.filter(p=>p.bill_id===bid);}
 function paidSum(bid){return billPays(bid).filter(p=>p.status==='paid').reduce((s,p)=>s+(+p.amount||0),0);}
@@ -411,8 +431,10 @@ async function savePayment(){
 }
 
 /* ===== HISTORY ===== */
+let HIST_BID=null;
 function openHist(bid){
   const b=BILLS.find(x=>x.id===bid); if(!b)return;
+  HIST_BID=bid;
   const s=curSym(b.currency);
   const rows=billPays(bid).sort((a,c)=>String(a.pay_date||'').localeCompare(String(c.pay_date||'')));
   $('histTitle').textContent='ประวัติงวดจ่าย — '+(b.po_number||'')+' ('+(b.company||'')+')';
