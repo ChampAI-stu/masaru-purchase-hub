@@ -89,6 +89,7 @@ tr:nth-child(even) td{background:#F8FAFD}
           <option value="closed">ปิดบิลแล้ว</option>
         </select>
         <div style="flex:1"></div>
+        <button class="btn" id="syncBtn" onclick="openSync()" style="background:#1E7145">🔄 ซิงก์จาก Purchase Board</button>
         <button class="btn" id="addBillBtn" onclick="openBill('')">+ เพิ่มบิล</button>
       </div>
       <div class="scroll"><div id="billTable"></div></div>
@@ -99,16 +100,21 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div id="tab-plan" style="display:none">
     <div class="kpis" id="planKpi"></div>
     <div class="card">
-      <h2>🗓️ แผนจ่ายเงินรายวัน</h2>
+      <h2>🗓️ แผนจ่ายเงิน</h2>
       <div class="row">
-        <button class="btn mini" onclick="planShift(-1)">◀ วันก่อน</button>
-        <input type="date" id="plDate" onchange="renderPlan()" style="max-width:170px">
-        <button class="btn mini" onclick="planShift(1)">วันถัดไป ▶</button>
-        <button class="btn mini" onclick="planToday()">วันนี้</button>
+        <button class="btn mini" id="vDay" onclick="planView('day')">รายวัน</button>
+        <button class="btn mini" id="vMonth" onclick="planView('month')" style="background:#fff;color:var(--navy);border:1px solid var(--line)">รายเดือน</button>
+        <span style="width:12px"></span>
+        <span id="dayCtl"><button class="btn mini" onclick="planShift(-1)">◀</button>
+        <input type="date" id="plDate" onchange="renderPlan()" style="max-width:165px">
+        <button class="btn mini" onclick="planShift(1)">▶</button>
+        <button class="btn mini" onclick="planToday()">วันนี้</button></span>
+        <span id="monCtl" style="display:none"><input type="month" id="plMonth" onchange="renderPlanMonth()" style="max-width:175px"></span>
         <div style="flex:1"></div>
-        <span class="muted">เพิ่มงวดใหม่ได้จากแท็บ Tracking บิล → + งวดจ่าย</span>
+        <span class="muted">เพิ่มงวดใหม่จากแท็บ Tracking บิล → + งวดจ่าย</span>
       </div>
       <div id="planBody"></div>
+      <div id="planMonthBody" style="display:none"></div>
     </div>
   </div>
 
@@ -187,6 +193,26 @@ tr:nth-child(even) td{background:#F8FAFD}
   </div>
 </div>
 
+<div class="modal-bg" id="syncBg">
+  <div class="modal" style="max-width:900px">
+    <h3>🔄 ซิงก์บิลจาก Purchase Board</h3>
+    <div class="muted" style="margin:6px 0 12px">ดึง PO ที่มี <b>ราคาสินค้า</b> ในบอร์ดมาสร้างเป็นบิล (รวมทุก SKU ในเลข PO เดียวกันเป็น 1 บิล) — PO ที่สร้างบิลไว้แล้วจะไม่แสดง</div>
+    <div class="row" style="margin-bottom:10px">
+      <label>บริษัทที่จ่าย</label>
+      <select id="syCompany"><option>LIKESHOP</option><option>MASARU</option><option>DAIKI</option><option>JMF</option></select>
+      <input id="sySearch" placeholder="ค้นหา PO / SKU" oninput="renderSync()" style="max-width:200px">
+      <div style="flex:1"></div>
+      <button class="btn mini" onclick="syncAll(true)">เลือกทั้งหมด</button>
+      <button class="btn mini ghost" onclick="syncAll(false)">ไม่เลือก</button>
+    </div>
+    <div class="scroll" style="max-height:380px"><div id="syncBody"></div></div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('syncBg').style.display='none'">ยกเลิก</button>
+      <button class="btn" onclick="doSync()">สร้างบิลที่เลือก</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -215,7 +241,7 @@ async function boot(){
   ME=session.user.email||'';
   $('rolePill').textContent = roles.includes('purchase') ? '📦 จัดซื้อ (แก้ไขได้)'
                             : (isMgr ? '🧑‍💼 หัวหน้า (แก้ไขได้)' : '👑 ผู้บริหาร (แก้ไขได้)');
-  if(!canEdit)$('addBillBtn').style.display='none';
+  if(!canEdit){$('addBillBtn').style.display='none';$('syncBtn').style.display='none';}
   sb.auth.onAuthStateChange((_e,s)=>{if(!s)location.replace('index.html');});
   await loadAll();
 }
@@ -241,7 +267,7 @@ async function loadAll(){
     pageAll('pay_payments','*','created_at')
   ]);
   renderBills();
-  if($('tab-plan').style.display!=='none')renderPlan();
+  if($('tab-plan').style.display!=='none'){ PLANVIEW==='month'?renderPlanMonth():renderPlan(); }
   if($('tab-month').style.display!=='none')renderMonth();
 }
 function billPays(bid){return PAYS.filter(p=>p.bill_id===bid);}
@@ -509,11 +535,98 @@ function renderMonth(){
   $('moBody').innerHTML=h;
 }
 
+/* ===== ซิงก์บิลจาก Purchase Board ===== */
+let POROWS=[];
+function poGroups(){
+  const by={};
+  POROWS.forEach(o=>{
+    const price=+o.price||0, qty=+o.quantity||0;
+    if(!o.po_number||price<=0)return;
+    const g=by[o.po_number]=by[o.po_number]||{po:o.po_number,skus:[],total:0,qty:0};
+    g.skus.push(o.sku||'-'); g.total+=price*qty; g.qty+=qty;
+  });
+  return Object.values(by).sort((a,b)=>String(b.po).localeCompare(String(a.po)));
+}
+async function openSync(){
+  POROWS=await pageAll('purchase_orders','po_number,sku,quantity,price','updated_at');
+  renderSync(); $('syncBg').style.display='flex';
+}
+function renderSync(){
+  const q=($('sySearch').value||'').toLowerCase();
+  const have=new Set(BILLS.map(b=>String(b.po_number||'').trim()));
+  let list=poGroups().filter(g=>!have.has(String(g.po).trim()));
+  if(q)list=list.filter(g=>(g.po+' '+g.skus.join(' ')).toLowerCase().includes(q));
+  if(!list.length){$('syncBody').innerHTML='<div class="empty">ไม่มี PO ใหม่ให้ซิงก์ — PO ที่มีราคาในบอร์ดถูกสร้างบิลครบแล้ว</div>';return;}
+  let h='<table><thead><tr><th style="width:38px"></th><th>เลขที่ PO</th><th>SKU</th><th class="right">จำนวน</th><th class="right">ยอดรวม (¥)</th></tr></thead><tbody>';
+  list.forEach(g=>{
+    h+=`<tr><td style="text-align:center"><input type="checkbox" class="sy-ck" data-po="${esc(g.po)}" checked style="width:16px;height:16px;cursor:pointer"></td>
+      <td><b>${esc(g.po)}</b></td><td style="font-size:12.5px">${esc([...new Set(g.skus)].join(', '))}</td>
+      <td class="right">${money(g.qty)}</td><td class="right"><b>${money(g.total)}</b></td></tr>`;});
+  $('syncBody').innerHTML=h+'</tbody></table>';
+}
+function syncAll(on){document.querySelectorAll('.sy-ck').forEach(c=>c.checked=on);}
+async function doSync(){
+  const pick=[...document.querySelectorAll('.sy-ck')].filter(c=>c.checked).map(c=>c.dataset.po);
+  if(!pick.length)return toast('ยังไม่ได้เลือก PO');
+  const co=$('syCompany').value, gs=poGroups().filter(g=>pick.includes(String(g.po)));
+  const rows=gs.map(g=>({po_number:g.po,company:co,sku:[...new Set(g.skus)].join(', '),
+    currency:'CNY',total_amount:+g.total.toFixed(2),status:'open',
+    note:'ซิงก์จาก Purchase Board',created_by:ME}));
+  const {error}=await sb.from('pay_bills').insert(rows);
+  if(error)return toast('ซิงก์ไม่สำเร็จ: '+error.message);
+  $('syncBg').style.display='none'; toast(`สร้างบิลจาก Purchase Board ${rows.length} รายการ ✅`); loadAll();
+}
+
+/* ===== แผนรายเดือน (ตาราง วัน × บริษัท) ===== */
+let PLANVIEW='day';
+function planView(v){
+  PLANVIEW=v;
+  const on='background:var(--navy);color:#fff;border:0', off='background:#fff;color:var(--navy);border:1px solid var(--line)';
+  $('vDay').style.cssText=(v==='day'?on:off); $('vMonth').style.cssText=(v==='month'?on:off);
+  $('dayCtl').style.display=v==='day'?'':'none'; $('monCtl').style.display=v==='month'?'':'none';
+  $('planBody').style.display=v==='day'?'':'none'; $('planMonthBody').style.display=v==='month'?'':'none';
+  v==='day'?renderPlan():renderPlanMonth();
+}
+function renderPlanMonth(){
+  if(!$('plMonth'))return;
+  if(!$('plMonth').value)$('plMonth').value=new Date().toISOString().slice(0,7);
+  const m=$('plMonth').value;
+  const rows=PAYS.filter(p=>(p.pay_date||'').startsWith(m));
+  const sumThb=a=>a.reduce((s,p)=>s+thbOf(p),0);
+  const planned=rows.filter(p=>p.status!=='paid'), paid=rows.filter(p=>p.status==='paid');
+  $('planKpi').innerHTML=`
+    <div class="kpi"><div class="lbl">งวดทั้งเดือน</div><div class="val">${rows.length}</div></div>
+    <div class="kpi gold"><div class="lbl">ยังไม่จ่าย (บาท)</div><div class="val">${money(sumThb(planned))}</div></div>
+    <div class="kpi green"><div class="lbl">จ่ายแล้ว (บาท)</div><div class="val">${money(sumThb(paid))}</div></div>
+    <div class="kpi"><div class="lbl">รวมทั้งเดือน (บาท)</div><div class="val">${money(sumThb(rows))}</div></div>`;
+  if(!rows.length){$('planMonthBody').innerHTML='<div class="empty">เดือนนี้ยังไม่มีแผนจ่าย</div>';return;}
+  const cos=[...new Set(rows.map(p=>billOf(p.bill_id).company||'-'))].sort();
+  const days=[...new Set(rows.map(p=>p.pay_date))].sort();
+  const D=['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+  let h='<table><thead><tr><th>วันที่</th>'+cos.map(c=>`<th class="right">${esc(c)}</th>`).join('')
+    +'<th class="right">รวม (฿)</th><th>สถานะ</th></tr></thead><tbody>';
+  days.forEach(d=>{
+    const dr=rows.filter(p=>p.pay_date===d);
+    const dt=new Date(d+'T00:00:00');
+    const done=dr.filter(p=>p.status==='paid').length, all=dr.length;
+    const badge=done===all?'<span class="pill p-paid">✅ จ่ายครบ</span>'
+      :(done>0?`<span class="pill p-plan">${done}/${all} จ่ายแล้ว</span>`:'<span class="pill p-plan">🗓️ รอจ่าย</span>');
+    h+=`<tr><td><b>${dt.getDate()}</b> <span class="muted">${D[dt.getDay()]}</span></td>`;
+    cos.forEach(c=>{const g=dr.filter(p=>(billOf(p.bill_id).company||'-')===c);
+      h+=`<td class="right">${g.length?money(sumThb(g)):'<span class="muted">-</span>'}</td>`;});
+    h+=`<td class="right"><b>${money(sumThb(dr))}</b></td><td>${badge}</td></tr>`;});
+  h+='<tr style="background:#FFF7DF;font-weight:800"><td>รวมทั้งเดือน</td>';
+  cos.forEach(c=>{const g=rows.filter(p=>(billOf(p.bill_id).company||'-')===c);
+    h+=`<td class="right">${money(sumThb(g))}</td>`;});
+  h+=`<td class="right">${money(sumThb(rows))}</td><td></td></tr></tbody></table>`;
+  $('planMonthBody').innerHTML=h;
+}
+
 /* ===== TABS ===== */
 function goTab(t){
   document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on',el.dataset.t===t));
   ['bills','plan','doc','month'].forEach(k=>$('tab-'+k).style.display=k===t?'':'none');
-  if(t==='plan')renderPlan();
+  if(t==='plan')planView(PLANVIEW);
   if(t==='month')renderMonth();
 }
 
