@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MASARU | วางแผนจ่ายเงิน</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--navy:#1A2942;--navy2:#223350;--red:#D0212B;--gold:#C9A84C;--bg:#F1F4F9;--line:#E3E8F0;--muted:#64748B;--green:#1E7145;--amber:#854F0B}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun',sans-serif;background:var(--bg);color:#1E293B;font-size:14px}
+.topbar{background:var(--navy);color:#fff;padding:10px 22px;display:flex;align-items:center;gap:14px;border-bottom:3px solid var(--red)}
+.brand{font-weight:800;font-style:italic;font-size:20px;letter-spacing:.5px}
+.brand span{color:var(--red)}
+.topbar .sub{opacity:.85;font-size:13px}
+.topbar .sp{flex:1}
+.pill-top{background:#ffffff22;border:1px solid #ffffff44;border-radius:20px;padding:5px 14px;font-size:12.5px;cursor:default}
+.btn-top{background:#fff;color:var(--navy);border:0;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px}
+.tabs{background:var(--navy2);display:flex;gap:4px;padding:0 18px}
+.tab{color:#C8D2E0;padding:12px 16px;cursor:pointer;font-weight:600;border-bottom:3px solid transparent;font-size:13.5px;white-space:nowrap}
+.tab.on{color:#fff;border-bottom-color:var(--red)}
+.wrap{max-width:1250px;margin:20px auto;padding:0 16px}
+.card{background:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 1px 4px rgba(16,42,80,.08);margin-bottom:16px}
+h2{font-size:16px;color:var(--navy);margin-bottom:12px;border-left:4px solid var(--red);padding-left:10px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--navy);color:#fff;border-radius:12px;padding:12px 16px}
+.kpi .lbl{font-size:12px;opacity:.85}.kpi .val{font-size:22px;font-weight:800;margin-top:2px}
+.kpi.green{background:var(--green)}.kpi.red{background:var(--red)}.kpi.gold{background:#8a6d1f}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+input,select,textarea{font-family:inherit;font-size:13.5px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+input:focus,select:focus,textarea:focus{outline:2px solid #2E75B655}
+.btn{background:var(--navy);color:#fff;border:0;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13.5px}
+.btn.red{background:var(--red)}.btn.green{background:var(--green)}.btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.mini{padding:5px 10px;font-size:12px;border-radius:7px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--navy);color:#fff;padding:9px 10px;text-align:left;white-space:nowrap;font-weight:600}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:nth-child(even) td{background:#F8FAFD}
+.right{text-align:right}
+.muted{color:var(--muted)}
+.pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.p-open{background:#E6F1FB;color:#3A5A8C}.p-closed{background:#EAF3DE;color:var(--green)}
+.p-paid{background:#EAF3DE;color:var(--green)}.p-plan{background:#FFF3CC;color:var(--amber)}
+.bar{background:#E9EEF5;border-radius:20px;height:8px;overflow:hidden;min-width:90px}
+.bar>i{display:block;height:100%;background:var(--green)}
+.empty{text-align:center;color:var(--muted);padding:26px}
+.scroll{overflow-x:auto}
+.modal-bg{position:fixed;inset:0;background:rgba(15,25,45,.55);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:40px 14px;overflow:auto}
+.modal{background:#fff;border-radius:14px;padding:20px 22px;width:100%;max-width:640px}
+.modal h3{color:var(--navy);margin-bottom:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.fld label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px;font-weight:600}
+.fld input,.fld select,.fld textarea{width:100%}
+.warnbox{background:#FCE4E4;border:1px solid #D0212B55;color:#8f1219;border-radius:10px;padding:10px 12px;font-size:13px;margin-top:10px;display:none}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 22px;border-radius:10px;font-weight:600;display:none;z-index:99}
+.tag-co{display:inline-block;padding:2px 10px;border-radius:6px;font-size:11.5px;font-weight:700;color:#fff;background:#3A5A8C}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
+  <div class="sp"></div>
+  <div class="pill-top" id="rolePill">…</div>
+  <button class="btn-top" onclick="location.href='index.html'">🏠 หน้ารวม</button>
+  <button class="btn-top" onclick="doLogout()">ออกจากระบบ</button>
+</div>
+<div class="tabs">
+  <div class="tab on" data-t="bills" onclick="goTab('bills')">📋 Tracking บิล</div>
+  <div class="tab" data-t="plan" onclick="goTab('plan')">🗓️ แผนจ่ายรายวัน</div>
+  <div class="tab" data-t="doc" onclick="goTab('doc')">🧾 เอกสารประจำวัน</div>
+  <div class="tab" data-t="month" onclick="goTab('month')">📊 สรุปเดือน</div>
+</div>
+
+<div class="wrap">
+  <!-- ============ TAB 1: BILLS ============ -->
+  <div id="tab-bills">
+    <div class="kpis" id="billKpi"></div>
+    <div class="card">
+      <h2>📋 Tracking บิลค่าสินค้า — จ่ายแล้ว / ค้างจ่าย</h2>
+      <div class="row">
+        <input id="bSearch" placeholder="ค้นหา PO / SKU / Vendor" style="max-width:230px" oninput="renderBills()">
+        <select id="bCo" onchange="renderBills()"><option value="">— ทุกบริษัท —</option></select>
+        <select id="bStatus" onchange="renderBills()">
+          <option value="">— ทุกสถานะ —</option>
+          <option value="open">ยังไม่ปิดบิล</option>
+          <option value="closed">ปิดบิลแล้ว</option>
+        </select>
+        <div style="flex:1"></div>
+        <button class="btn" id="addBillBtn" onclick="openBill('')">+ เพิ่มบิล</button>
+      </div>
+      <div class="scroll"><div id="billTable"></div></div>
+    </div>
+  </div>
+
+  <!-- ============ TAB 2: แผนจ่ายรายวัน ============ -->
+  <div id="tab-plan" style="display:none">
+    <div class="kpis" id="planKpi"></div>
+    <div class="card">
+      <h2>🗓️ แผนจ่ายเงินรายวัน</h2>
+      <div class="row">
+        <button class="btn mini" onclick="planShift(-1)">◀ วันก่อน</button>
+        <input type="date" id="plDate" onchange="renderPlan()" style="max-width:170px">
+        <button class="btn mini" onclick="planShift(1)">วันถัดไป ▶</button>
+        <button class="btn mini" onclick="planToday()">วันนี้</button>
+        <div style="flex:1"></div>
+        <span class="muted">เพิ่มงวดใหม่ได้จากแท็บ Tracking บิล → + งวดจ่าย</span>
+      </div>
+      <div id="planBody"></div>
+    </div>
+  </div>
+
+  <!-- ============ TAB 3: เอกสารประจำวัน (เฟส 3) ============ -->
+  <div id="tab-doc" style="display:none"><div class="card"><h2>🧾 เอกสารค่าใช้จ่ายประจำวัน</h2><div class="empty">เฟส 3 — กำลังพัฒนา (ใบปะหน้าสรุปค่าใช้จ่าย + PDF + แนบรูปหลักฐานผ่าน Google Drive)</div></div></div>
+
+  <!-- ============ TAB 4: สรุปเดือน ============ -->
+  <div id="tab-month" style="display:none">
+    <div class="kpis" id="moKpi"></div>
+    <div class="card">
+      <h2>📊 สรุปค่าใช้จ่ายทั้งเดือน</h2>
+      <div class="row"><input type="month" id="moMonth" onchange="renderMonth()" style="max-width:180px"><div style="flex:1"></div></div>
+      <div id="moBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: บิล ============ -->
+<div class="modal-bg" id="billBg">
+  <div class="modal">
+    <h3 id="billTitle">เพิ่มบิล</h3>
+    <div class="grid2">
+      <div class="fld"><label>รหัสใบจัดซื้อ (PO) ★</label><input id="f_po"></div>
+      <div class="fld"><label>บริษัท ★</label>
+        <select id="f_co"><option>LIKESHOP</option><option>MASARU</option><option>DAIKI</option><option>JMF</option></select></div>
+      <div class="fld"><label>Vendor / ร้านค้า</label><input id="f_vendor"></div>
+      <div class="fld"><label>SKU / สินค้า</label><input id="f_sku"></div>
+      <div class="fld"><label>สกุลเงิน</label>
+        <select id="f_cur"><option value="CNY">¥ CNY</option><option value="THB">฿ THB</option></select></div>
+      <div class="fld"><label>ยอดเต็มของบิล ★</label><input id="f_total" type="number" step="0.01"></div>
+    </div>
+    <div class="fld"><label>หมายเหตุ</label><textarea id="f_note" rows="2"></textarea></div>
+    <div class="row" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('billBg').style.display='none'">ยกเลิก</button>
+      <button class="btn" onclick="saveBill()">💾 บันทึกบิล</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: งวดจ่าย ============ -->
+<div class="modal-bg" id="payBg">
+  <div class="modal">
+    <h3 id="payTitle">+ งวดจ่าย</h3>
+    <div class="muted" id="payBillInfo" style="margin-bottom:8px"></div>
+    <div class="grid3">
+      <div class="fld"><label>วันที่จ่าย ★</label><input id="p_date" type="date"></div>
+      <div class="fld"><label>ยอดงวด (<span id="p_curlbl">¥</span>) ★</label><input id="p_amount" type="number" step="0.01" oninput="calcThb()"></div>
+      <div class="fld"><label>สถานะ</label>
+        <select id="p_status"><option value="planned">🗓️ วางแผน</option><option value="paid">✅ จ่ายแล้ว</option></select></div>
+      <div class="fld"><label>เรทโอน (฿/¥)</label><input id="p_rate" type="number" step="0.0001" oninput="calcThb()"></div>
+      <div class="fld"><label>ยอดบาท</label><input id="p_thb" type="number" step="0.01"></div>
+      <div class="fld"><label>ค่าธรรมเนียม (฿)</label><input id="p_fee" type="number" step="0.01" value="0"></div>
+      <div class="fld"><label>ช่องทาง</label>
+        <input id="p_channel" list="chList" placeholder="KSHER / SWIFT"><datalist id="chList"><option value="KSHER"><option value="SWIFT"><option value="โอนธนาคาร"></datalist></div>
+      <div class="fld"><label>งวด</label>
+        <input id="p_inst" list="instList" placeholder="มัดจำครั้งที่ 1"><datalist id="instList"><option value="มัดจำครั้งที่ 1"><option value="มัดจำครั้งที่ 2"><option value="จ่ายยอดค้างชำระ"><option value="จ่ายเต็มจำนวน"></datalist></div>
+      <div class="fld"><label>ผู้รับผิดชอบ</label><input id="p_resp"></div>
+    </div>
+    <div class="fld"><label>หมายเหตุ</label><input id="p_note"></div>
+    <div class="warnbox" id="payWarn"></div>
+    <div class="row" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('payBg').style.display='none'">ยกเลิก</button>
+      <button class="btn" id="paySaveBtn" onclick="savePayment()">💾 บันทึกงวด</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: ประวัติงวด ============ -->
+<div class="modal-bg" id="histBg">
+  <div class="modal" style="max-width:820px">
+    <h3 id="histTitle">ประวัติงวดจ่าย</h3>
+    <div id="histBody" class="scroll"></div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('histBg').style.display='none'">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
+const SUPABASE_KEY='sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);
+const money=n=>Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2});
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const curSym=c=>c==='THB'?'฿':'¥';
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2600);}
+
+let canEdit=false, ME='', BILLS=[], PAYS=[];
+
+/* ===== AUTH ===== */
+async function boot(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){location.replace('index.html');return;}
+  const md=session.user.app_metadata||{};
+  const roles=Array.isArray(md.user_roles)?md.user_roles:(md.user_role?[md.user_role]:[]);
+  const isExec=roles.includes('pr_exec')||roles.includes('executive');
+  if(!roles.includes('purchase')&&!roles.includes('accounting')&&!isExec){location.replace('index.html');return;}
+  canEdit=roles.includes('purchase')||roles.includes('accounting');
+  ME=session.user.email||'';
+  $('rolePill').textContent=canEdit?'บทบาท: จัดซื้อ (แก้ไขได้)':'👑 ผู้บริหาร (ดูอย่างเดียว)';
+  if(!canEdit)$('addBillBtn').style.display='none';
+  sb.auth.onAuthStateChange((_e,s)=>{if(!s)location.replace('index.html');});
+  await loadAll();
+}
+async function doLogout(){await sb.auth.signOut();location.replace('index.html');}
+
+/* ===== DATA ===== */
+async function pageAll(table,sel,order){
+  let out=[],from=0;const step=1000;
+  while(true){
+    let q=sb.from(table).select(sel).range(from,from+step-1);
+    if(order)q=q.order(order,{ascending:false});
+    const {data,error}=await q;
+    if(error){console.error(table,error.message);break;}
+    out=out.concat(data||[]);
+    if(!data||data.length<step)break;
+    from+=step;
+  }
+  return out;
+}
+async function loadAll(){
+  [BILLS,PAYS]=await Promise.all([
+    pageAll('pay_bills','*','created_at'),
+    pageAll('pay_payments','*','created_at')
+  ]);
+  renderBills();
+  if($('tab-plan').style.display!=='none')renderPlan();
+  if($('tab-month').style.display!=='none')renderMonth();
+}
+function billPays(bid){return PAYS.filter(p=>p.bill_id===bid);}
+function paidSum(bid){return billPays(bid).filter(p=>p.status==='paid').reduce((s,p)=>s+(+p.amount||0),0);}
+function planSum(bid){return billPays(bid).filter(p=>p.status==='planned').reduce((s,p)=>s+(+p.amount||0),0);}
+
+/* ===== RENDER BILLS ===== */
+function renderBills(){
+  const cos=[...new Set(BILLS.map(b=>b.company).filter(Boolean))];
+  const cur=$('bCo').value;
+  $('bCo').innerHTML='<option value="">— ทุกบริษัท —</option>'+cos.map(c=>`<option ${c===cur?'selected':''}>${esc(c)}</option>`).join('');
+  const q=($('bSearch').value||'').toLowerCase(), co=$('bCo').value, st=$('bStatus').value;
+  const list=BILLS.filter(b=>
+    (!co||b.company===co)&&(!st||b.status===st)&&
+    (!q||((b.po_number||'')+' '+(b.sku||'')+' '+(b.vendor||'')).toLowerCase().includes(q)));
+  // KPI
+  const open=BILLS.filter(b=>b.status!=='closed');
+  const remainTotal=open.reduce((s,b)=>s+Math.max(0,(+b.total_amount||0)-paidSum(b.id)),0);
+  const paidMonth=PAYS.filter(p=>p.status==='paid'&&p.pay_date&&p.pay_date.slice(0,7)===new Date().toISOString().slice(0,7))
+    .reduce((s,p)=>s+(+p.amount_thb||0),0);
+  const planCnt=PAYS.filter(p=>p.status==='planned').length;
+  $('billKpi').innerHTML=`
+    <div class="kpi"><div class="lbl">บิลทั้งหมด</div><div class="val">${BILLS.length}</div></div>
+    <div class="kpi gold"><div class="lbl">บิลยังไม่ปิด</div><div class="val">${open.length}</div></div>
+    <div class="kpi red"><div class="lbl">ค้างจ่ายรวม (สกุลบิล)</div><div class="val">${money(remainTotal)}</div></div>
+    <div class="kpi"><div class="lbl">งวดที่วางแผนไว้</div><div class="val">${planCnt}</div></div>
+    <div class="kpi green"><div class="lbl">จ่ายแล้วเดือนนี้ (฿)</div><div class="val">${money(paidMonth)}</div></div>`;
+  if(!list.length){$('billTable').innerHTML='<div class="empty">ยังไม่มีบิล'+(canEdit?' — กด "+ เพิ่มบิล"':'')+'</div>';return;}
+  let h=`<table><thead><tr><th>PO</th><th>บริษัท</th><th>Vendor / SKU</th>
+    <th class="right">ยอดเต็ม</th><th class="right">จ่ายแล้ว</th><th class="right">วางแผน</th><th class="right">ค้างจ่าย</th>
+    <th style="min-width:110px">ความคืบหน้า</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
+  list.forEach(b=>{
+    const total=+b.total_amount||0, paid=paidSum(b.id), plan=planSum(b.id);
+    const remain=Math.max(0,total-paid);
+    const pct=total>0?Math.min(100,Math.round(paid/total*100)):0;
+    const s=curSym(b.currency);
+    h+=`<tr>
+      <td><b>${esc(b.po_number)}</b></td>
+      <td><span class="tag-co">${esc(b.company||'')}</span></td>
+      <td>${esc(b.vendor||'')}${b.vendor&&b.sku?' · ':''}<span class="muted">${esc(b.sku||'')}</span></td>
+      <td class="right"><b>${money(total)} ${s}</b></td>
+      <td class="right" style="color:var(--green);font-weight:700">${money(paid)}</td>
+      <td class="right" style="color:var(--amber)">${plan?money(plan):'—'}</td>
+      <td class="right" style="color:${remain>0?'var(--red)':'var(--green)'};font-weight:700">${money(remain)}</td>
+      <td><div class="bar"><i style="width:${pct}%"></i></div><span class="muted" style="font-size:11px">${pct}%</span></td>
+      <td><span class="pill ${b.status==='closed'?'p-closed':'p-open'}">${b.status==='closed'?'ปิดบิลแล้ว':'ยังไม่ปิด'}</span></td>
+      <td style="white-space:nowrap">
+        ${canEdit?`<button class="btn mini green" onclick="openPay(${b.id})">+ งวดจ่าย</button> `:''}
+        <button class="btn mini ghost" onclick="openHist(${b.id})">ประวัติ (${billPays(b.id).length})</button>
+        ${canEdit?` <button class="btn mini ghost" onclick="openBill(${b.id})">แก้</button>
+        <button class="btn mini red" onclick="delBill(${b.id})">ลบ</button>`:''}
+      </td></tr>`;
+  });
+  $('billTable').innerHTML=h+'</tbody></table>';
+}
+
+/* ===== BILL CRUD ===== */
+let editBillId=null;
+function openBill(id){
+  editBillId=id||null;
+  const b=id?BILLS.find(x=>x.id===id):{};
+  $('billTitle').textContent=id?'แก้ไขบิล '+(b.po_number||''):'เพิ่มบิล';
+  $('f_po').value=b?.po_number||''; $('f_co').value=b?.company||'LIKESHOP';
+  $('f_vendor').value=b?.vendor||''; $('f_sku').value=b?.sku||'';
+  $('f_cur').value=b?.currency||'CNY'; $('f_total').value=b?.total_amount||'';
+  $('f_note').value=b?.note||'';
+  $('billBg').style.display='flex';
+}
+async function saveBill(){
+  const row={po_number:$('f_po').value.trim(),company:$('f_co').value,vendor:$('f_vendor').value.trim()||null,
+    sku:$('f_sku').value.trim()||null,currency:$('f_cur').value,total_amount:parseFloat($('f_total').value)||0,
+    note:$('f_note').value.trim()||null,updated_at:new Date().toISOString()};
+  if(!row.po_number)return toast('ใส่รหัส PO ก่อน');
+  if(!(row.total_amount>0))return toast('ใส่ยอดเต็มของบิลก่อน');
+  let error;
+  if(editBillId){({error}=await sb.from('pay_bills').update(row).eq('id',editBillId));}
+  else{row.created_by=ME;({error}=await sb.from('pay_bills').insert(row));}
+  if(error)return toast('บันทึกไม่สำเร็จ: '+error.message);
+  $('billBg').style.display='none';toast('บันทึกบิลเรียบร้อย ✅');loadAll();
+}
+async function delBill(id){
+  const b=BILLS.find(x=>x.id===id);
+  if(!confirm(`ลบบิล ${b?.po_number||''} ? (งวดจ่ายทั้งหมดของบิลนี้จะถูกลบด้วย)`))return;
+  const {error}=await sb.from('pay_bills').delete().eq('id',id);
+  if(error)return toast('ลบไม่สำเร็จ: '+error.message);
+  toast('ลบแล้ว');loadAll();
+}
+
+/* ===== PAYMENT ===== */
+let payBillId=null;
+function openPay(bid){
+  payBillId=bid;
+  const b=BILLS.find(x=>x.id===bid); if(!b)return;
+  const paid=paidSum(bid), remain=Math.max(0,(+b.total_amount||0)-paid);
+  $('payTitle').textContent='+ งวดจ่าย — '+(b.po_number||'');
+  $('p_curlbl').textContent=curSym(b.currency);
+  $('payBillInfo').innerHTML=`ยอดเต็ม <b>${money(b.total_amount)} ${curSym(b.currency)}</b> · จ่ายแล้ว <b style="color:var(--green)">${money(paid)}</b> · <b style="color:var(--red)">ค้าง ${money(remain)}</b>`;
+  $('p_date').value=new Date().toISOString().slice(0,10);
+  $('p_amount').value=''; $('p_rate').value=b.currency==='THB'?'1':''; $('p_thb').value='';
+  $('p_fee').value='0'; $('p_channel').value=''; $('p_inst').value=''; $('p_resp').value=''; $('p_note').value='';
+  $('p_status').value='planned';
+  $('payWarn').style.display='none';
+  $('payBg').style.display='flex';
+}
+function calcThb(){
+  const a=parseFloat($('p_amount').value)||0, r=parseFloat($('p_rate').value)||0;
+  if(a&&r)$('p_thb').value=(a*r).toFixed(2);
+}
+async function savePayment(){
+  const b=BILLS.find(x=>x.id===payBillId); if(!b)return;
+  const amt=parseFloat($('p_amount').value)||0;
+  if(!(amt>0))return toast('ใส่ยอดงวดก่อน');
+  if(!$('p_date').value)return toast('เลือกวันที่ก่อน');
+  const warns=[];
+  // ── เช็คโอนเกิน: จ่ายแล้ว + วางแผน + งวดนี้ > ยอดเต็ม ──
+  const after=paidSum(payBillId)+planSum(payBillId)+amt;
+  if(after>(+b.total_amount||0)+0.001)
+    warns.push(`🔴 โอนเกิน! จ่ายแล้ว+วางแผน+งวดนี้ = ${money(after)} เกินยอดบิล ${money(b.total_amount)} ${curSym(b.currency)}`);
+  // ── เช็คยอดซ้ำ: บิลเดียวกัน ยอดเท่ากัน ──
+  const dupSame=billPays(payBillId).filter(p=>Math.abs((+p.amount||0)-amt)<0.001);
+  if(dupSame.length)
+    warns.push(`🟠 ยอดซ้ำ! บิลนี้มีงวดยอด ${money(amt)} อยู่แล้ว ${dupSame.length} งวด (${dupSame.map(p=>p.pay_date||'-').join(', ')})`);
+  // ── เช็คยอด+วันเดียวกันในบิลอื่น ──
+  const dupDay=PAYS.filter(p=>p.bill_id!==payBillId&&p.pay_date===$('p_date').value&&Math.abs((+p.amount||0)-amt)<0.001);
+  if(dupDay.length){
+    const pos=dupDay.map(p=>{const bb=BILLS.find(x=>x.id===p.bill_id);return bb?bb.po_number:p.bill_id;}).join(', ');
+    warns.push(`🟠 วันเดียวกันมียอดเท่ากัน (${money(amt)}) ในบิล: ${pos} — เช็คว่าไม่ใช่รายการเดียวกัน`);
+  }
+  if(warns.length){
+    $('payWarn').innerHTML=warns.join('<br>')+'<br><b>กด "บันทึกงวด" อีกครั้งเพื่อยืนยันว่าถูกต้อง</b>';
+    if($('payWarn').style.display!=='block'){$('payWarn').style.display='block';return;}
+  }
+  const row={bill_id:payBillId,pay_date:$('p_date').value,amount:amt,
+    rate:parseFloat($('p_rate').value)||null,amount_thb:parseFloat($('p_thb').value)||null,
+    fee:parseFloat($('p_fee').value)||0,channel:$('p_channel').value.trim()||null,
+    installment:$('p_inst').value.trim()||null,responsible:$('p_resp').value.trim()||null,
+    status:$('p_status').value,note:$('p_note').value.trim()||null,created_by:ME};
+  const {error}=await sb.from('pay_payments').insert(row);
+  if(error)return toast('บันทึกไม่สำเร็จ: '+error.message);
+  $('payBg').style.display='none';toast('บันทึกงวดเรียบร้อย ✅');loadAll();
+}
+
+/* ===== HISTORY ===== */
+function openHist(bid){
+  const b=BILLS.find(x=>x.id===bid); if(!b)return;
+  const s=curSym(b.currency);
+  const rows=billPays(bid).sort((a,c)=>String(a.pay_date||'').localeCompare(String(c.pay_date||'')));
+  $('histTitle').textContent='ประวัติงวดจ่าย — '+(b.po_number||'')+' ('+(b.company||'')+')';
+  const paid=paidSum(bid), remain=Math.max(0,(+b.total_amount||0)-paid);
+  let h=`<div class="muted" style="margin-bottom:10px">ยอดเต็ม <b>${money(b.total_amount)} ${s}</b> · จ่ายแล้ว <b style="color:var(--green)">${money(paid)}</b> · ค้าง <b style="color:var(--red)">${money(remain)}</b></div>`;
+  if(!rows.length){h+='<div class="empty">ยังไม่มีงวดจ่าย</div>';}
+  else{
+    h+=`<table><thead><tr><th>วันที่</th><th>งวด</th><th class="right">ยอด (${s})</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทาง</th><th>ผู้รับผิดชอบ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
+    rows.forEach(p=>{
+      h+=`<tr><td>${esc(p.pay_date||'-')}</td><td>${esc(p.installment||'-')}</td>
+        <td class="right"><b>${money(p.amount)}</b></td>
+        <td class="right">${p.rate?esc(p.rate):'-'}</td>
+        <td class="right">${p.amount_thb?money(p.amount_thb):'-'}</td>
+        <td>${esc(p.channel||'-')}</td><td>${esc(p.responsible||'-')}</td>
+        <td><span class="pill ${p.status==='paid'?'p-paid':'p-plan'}">${p.status==='paid'?'✅ จ่ายแล้ว':'🗓️ วางแผน'}</span></td>
+        <td style="white-space:nowrap">${canEdit?(p.status!=='paid'?`<button class="btn mini green" onclick="markPaid(${p.id},${bid})">✔ จ่ายแล้ว</button> `:'')+`<button class="btn mini red" onclick="delPay(${p.id},${bid})">ลบ</button>`:''}</td></tr>`;
+    });
+    h+='</tbody></table>';
+  }
+  if(canEdit&&b.status!=='closed'&&remain<=0.001&&rows.length)
+    h+=`<div style="margin-top:12px"><button class="btn green" onclick="closeBill(${bid})">🔒 ปิดบิลนี้ (จ่ายครบแล้ว)</button></div>`;
+  $('histBody').innerHTML=h;
+  $('histBg').style.display='flex';
+}
+async function markPaid(pid,bid){
+  const {error}=await sb.from('pay_payments').update({status:'paid'}).eq('id',pid);
+  if(error)return toast('อัปเดตไม่สำเร็จ: '+error.message);
+  await loadAll();openHist(bid);toast('อัปเดตเป็นจ่ายแล้ว ✅');
+}
+async function delPay(pid,bid){
+  if(!confirm('ลบงวดนี้?'))return;
+  const {error}=await sb.from('pay_payments').delete().eq('id',pid);
+  if(error)return toast('ลบไม่สำเร็จ: '+error.message);
+  await loadAll();openHist(bid);toast('ลบแล้ว');
+}
+async function closeBill(bid){
+  const {error}=await sb.from('pay_bills').update({status:'closed',updated_at:new Date().toISOString()}).eq('id',bid);
+  if(error)return toast('ปิดบิลไม่สำเร็จ: '+error.message);
+  $('histBg').style.display='none';toast('ปิดบิลเรียบร้อย 🔒');loadAll();
+}
+
+/* ===== TAB 2: แผนจ่ายรายวัน ===== */
+function billOf(id){return BILLS.find(b=>b.id===id)||{};}
+function thbOf(p){const b=billOf(p.bill_id);if(+p.amount_thb)return +p.amount_thb;const r=+p.rate||0;return b.currency==='THB'?(+p.amount||0):(r?(+p.amount||0)*r:0);}
+function planToday(){$('plDate').value=new Date().toISOString().slice(0,10);renderPlan();}
+function planShift(d){const dt=new Date(($('plDate').value||new Date().toISOString().slice(0,10))+'T00:00:00');dt.setDate(dt.getDate()+d);$('plDate').value=dt.toISOString().slice(0,10);renderPlan();}
+function renderPlan(){
+  if(!$('plDate'))return;
+  if(!$('plDate').value)$('plDate').value=new Date().toISOString().slice(0,10);
+  const d=$('plDate').value;
+  const rows=PAYS.filter(p=>p.pay_date===d);
+  const planned=rows.filter(p=>p.status!=='paid'), paid=rows.filter(p=>p.status==='paid');
+  const sumThb=a=>a.reduce((s,p)=>s+thbOf(p),0);
+  $('planKpi').innerHTML=`
+    <div class="kpi"><div class="lbl">งวดวางแผนวันนี้</div><div class="val">${planned.length}</div></div>
+    <div class="kpi gold"><div class="lbl">ยอดตามแผน (บาท)</div><div class="val">${money(sumThb(planned))}</div></div>
+    <div class="kpi green"><div class="lbl">จ่ายแล้ววันนี้</div><div class="val">${paid.length}</div></div>
+    <div class="kpi"><div class="lbl">ยอดจ่ายแล้ว (บาท)</div><div class="val">${money(sumThb(paid))}</div></div>`;
+  if(!rows.length){$('planBody').innerHTML='<div class="empty">วันนี้ยังไม่มีงวดจ่าย — เพิ่มจากแท็บ Tracking บิล (+ งวดจ่าย โดยเลือกวันที่นี้)</div>';return;}
+  const cos=[...new Set(rows.map(p=>billOf(p.bill_id).company||'-'))];
+  let h='';
+  cos.forEach(co=>{
+    const grp=rows.filter(p=>(billOf(p.bill_id).company||'-')===co);
+    const cny=grp.filter(p=>billOf(p.bill_id).currency!=='THB').reduce((s,p)=>s+(+p.amount||0),0);
+    const thbD=grp.filter(p=>billOf(p.bill_id).currency==='THB').reduce((s,p)=>s+(+p.amount||0),0);
+    h+=`<h2 style="margin-top:16px">🏢 ${esc(co)}</h2>
+    <table><thead><tr><th>PO</th><th>SKU</th><th>งวด</th><th class="right">ยอด</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทาง</th><th>ผู้รับผิดชอบ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
+    grp.forEach(p=>{const b=billOf(p.bill_id);const s=curSym(b.currency);
+      h+=`<tr><td><b>${esc(b.po_number||'-')}</b></td><td>${esc(b.sku||'-')}</td><td>${esc(p.installment||'-')}</td>
+        <td class="right"><b>${money(p.amount)} ${s}</b></td>
+        <td class="right">${p.rate?esc(p.rate):'-'}</td><td class="right">${money(thbOf(p))}</td>
+        <td>${esc(p.channel||'-')}</td><td>${esc(p.responsible||'-')}</td>
+        <td><span class="pill ${p.status==='paid'?'p-paid':'p-plan'}">${p.status==='paid'?'✅ จ่ายแล้ว':'🗓️ วางแผน'}</span></td>
+        <td style="white-space:nowrap">${canEdit?((p.status!=='paid'?`<button class="btn mini green" onclick="planPaid(${p.id})">✔ จ่ายแล้ว</button> `:'')+`<button class="btn mini red" onclick="planDel(${p.id})">ลบ</button>`):''}</td></tr>`;});
+    h+=`</tbody></table>
+    <div class="muted" style="text-align:right;margin:6px 0 4px">รวม ${esc(co)}: `
+      +(cny?`<b>${money(cny)} ¥</b>`:'')+((cny&&thbD)?' + ':'')+(thbD?`<b>${money(thbD)} ฿</b>`:'')
+      +` · ประมาณบาท <b>${money(sumThb(grp))} ฿</b></div>`;
+  });
+  h+=`<div style="text-align:right;font-weight:800;font-size:15px;border-top:2px solid var(--navy);padding-top:8px;margin-top:6px">รวมทั้งวัน (บาทประมาณ): ${money(sumThb(rows))} ฿</div>`;
+  $('planBody').innerHTML=h;
+}
+async function planPaid(pid){
+  const {error}=await sb.from('pay_payments').update({status:'paid'}).eq('id',pid);
+  if(error)return toast('อัปเดตไม่สำเร็จ: '+error.message);
+  await loadAll();toast('อัปเดตเป็นจ่ายแล้ว ✅');
+}
+async function planDel(pid){
+  if(!confirm('ลบงวดนี้?'))return;
+  const {error}=await sb.from('pay_payments').delete().eq('id',pid);
+  if(error)return toast('ลบไม่สำเร็จ: '+error.message);
+  await loadAll();toast('ลบแล้ว');
+}
+
+/* ===== TAB 4: สรุปเดือน ===== */
+function renderMonth(){
+  if(!$('moMonth'))return;
+  if(!$('moMonth').value)$('moMonth').value=new Date().toISOString().slice(0,7);
+  const m=$('moMonth').value;
+  const rows=PAYS.filter(p=>(p.pay_date||'').startsWith(m));
+  const paid=rows.filter(p=>p.status==='paid'), planned=rows.filter(p=>p.status!=='paid');
+  const sumThb=a=>a.reduce((s,p)=>s+thbOf(p),0);
+  $('moKpi').innerHTML=`
+    <div class="kpi green"><div class="lbl">จ่ายแล้วทั้งเดือน (บาท)</div><div class="val">${money(sumThb(paid))}</div></div>
+    <div class="kpi"><div class="lbl">จำนวนงวดที่จ่าย</div><div class="val">${paid.length}</div></div>
+    <div class="kpi gold"><div class="lbl">ค้างตามแผน (บาท)</div><div class="val">${money(sumThb(planned))}</div></div>
+    <div class="kpi"><div class="lbl">งวดค้างแผน</div><div class="val">${planned.length}</div></div>`;
+  if(!rows.length){$('moBody').innerHTML='<div class="empty">เดือนนี้ยังไม่มีข้อมูล</div>';return;}
+  const days=[...new Set(rows.map(p=>p.pay_date))].sort();
+  let h='<h2>รายวัน</h2><table><thead><tr><th>วันที่</th><th class="right">งวดจ่ายแล้ว</th><th class="right">บาท (จ่ายแล้ว)</th><th class="right">งวดค้างแผน</th><th class="right">บาท (แผน)</th></tr></thead><tbody>';
+  days.forEach(d=>{const dp=paid.filter(p=>p.pay_date===d),dl=planned.filter(p=>p.pay_date===d);
+    h+=`<tr><td><b>${esc(d)}</b></td><td class="right">${dp.length||'-'}</td><td class="right">${dp.length?money(sumThb(dp)):'-'}</td><td class="right">${dl.length||'-'}</td><td class="right">${dl.length?money(sumThb(dl)):'-'}</td></tr>`;});
+  h+=`<tr style="background:#FFF7DF;font-weight:800"><td>รวมทั้งเดือน</td><td class="right">${paid.length}</td><td class="right">${money(sumThb(paid))}</td><td class="right">${planned.length}</td><td class="right">${money(sumThb(planned))}</td></tr></tbody></table>`;
+  const cos=[...new Set(rows.map(p=>billOf(p.bill_id).company||'-'))];
+  h+='<h2 style="margin-top:16px">รายบริษัท</h2><table><thead><tr><th>บริษัท</th><th class="right">จ่ายแล้ว (บาท)</th><th class="right">ค้างแผน (บาท)</th><th class="right">รวม (บาท)</th></tr></thead><tbody>';
+  cos.forEach(co=>{const g=p=>((billOf(p.bill_id).company||'-')===co);
+    const a=sumThb(paid.filter(g)),b2=sumThb(planned.filter(g));
+    h+=`<tr><td><b>${esc(co)}</b></td><td class="right">${money(a)}</td><td class="right">${money(b2)}</td><td class="right"><b>${money(a+b2)}</b></td></tr>`;});
+  h+='</tbody></table>';
+  $('moBody').innerHTML=h;
+}
+
+/* ===== TABS ===== */
+function goTab(t){
+  document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on',el.dataset.t===t));
+  ['bills','plan','doc','month'].forEach(k=>$('tab-'+k).style.display=k===t?'':'none');
+  if(t==='plan')renderPlan();
+  if(t==='month')renderMonth();
+}
+
+boot();
+</script>
+</body>
+</html>
