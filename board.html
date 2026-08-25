@@ -823,7 +823,7 @@ const SUPABASE_URL = 'https://unlvcdgqqljuoyvionqx.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let currentRole = null;
+let currentRole = null; let ROLE_LABEL = '';
 let allOrders = [];
 let canSeePrice = false, canEditPrice = false, ME_EMAIL = 'purchase', MASTERP = {};   // ราคาสินค้า (เห็นเฉพาะจัดซื้อ/หัวหน้า/ผู้บริหาร)
 let pendingFlash = new Set();   // id แถวที่เพิ่งเปลี่ยน รอ flash
@@ -954,18 +954,21 @@ function enterApp(session){
     location.replace('index.html');   // ไม่มีสิทธิ์ → กลับหน้ารวม HUB
     return;
   }
-  // มี purchase → แก้ไขได้ ; หัวหน้า/ผู้บริหาร/การตลาด → ดูอย่างเดียว
-  currentRole = roles.includes('purchase') ? 'purchase'
-              : (isMgr ? 'manager' : (isExec ? 'executive' : 'marketing'));
-  // ราคาสินค้า: เห็นเฉพาะ จัดซื้อ/หัวหน้า/ผู้บริหาร ; แก้ไข+อัพเดตราคากลางได้เฉพาะ จัดซื้อ+หัวหน้า
-  canSeePrice  = roles.includes('purchase') || isMgr || isExec;
-  canEditPrice = roles.includes('purchase') || isMgr;
+  // จัดซื้อ/หัวหน้า/ผู้บริหาร → แก้ไขได้ทั้งหมด ; การตลาด → ดูอย่างเดียว
+  const canManage = roles.includes('purchase') || isMgr || isExec;
+  currentRole = canManage ? 'purchase' : 'marketing';
+  ROLE_LABEL = roles.includes('purchase') ? '\ud83d\udce6 \u0e1d\u0e48\u0e32\u0e22\u0e08\u0e31\u0e14\u0e0b\u0e37\u0e49\u0e2d'
+             : (isMgr ? '\ud83e\uddd1\u200d\ud83d\udcbc \u0e2b\u0e31\u0e27\u0e2b\u0e19\u0e49\u0e32'
+             : (isExec ? '\ud83d\udc51 \u0e1c\u0e39\u0e49\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23' : '\ud83d\udc41\ufe0f \u0e1d\u0e48\u0e32\u0e22\u0e01\u0e32\u0e23\u0e15\u0e25\u0e32\u0e14'));
+  // ราคาสินค้า: เห็น+แก้ได้ เฉพาะ จัดซื้อ/หัวหน้า/ผู้บริหาร
+  canSeePrice  = canManage;
+  canEditPrice = canManage;
   $('loginScreen').style.display='none';
   $('app').style.display='block';
   updatePortalBtn(roles);   // โชว์ปุ่มหน้ารวมเฉพาะคนที่เข้าได้หลายเว็บ
   // role UI
   if(currentRole === 'purchase'){
-    $('rolePill').textContent = '📦 ฝ่ายจัดซื้อ';
+    $('rolePill').textContent = ROLE_LABEL;
     $('addBtn').style.display='block';
     $('poUpdateBtn').style.display='block';
     $('importBtn').style.display='block';
