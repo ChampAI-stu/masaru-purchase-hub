@@ -208,10 +208,13 @@ async function boot(){
   const md=session.user.app_metadata||{};
   const roles=Array.isArray(md.user_roles)?md.user_roles:(md.user_role?[md.user_role]:[]);
   const isExec=roles.includes('pr_exec')||roles.includes('executive');
-  if(!roles.includes('purchase')&&!roles.includes('accounting')&&!isExec){location.replace('index.html');return;}
-  canEdit=roles.includes('purchase')||roles.includes('accounting');
+  const isMgr=roles.includes('pr_manager');
+  // เข้าได้เฉพาะ จัดซื้อ / หัวหน้า / ผู้บริหาร
+  if(!roles.includes('purchase')&&!isMgr&&!isExec){location.replace('index.html');return;}
+  canEdit=roles.includes('purchase')||isMgr;   // ผู้บริหาร = ดูอย่างเดียว
   ME=session.user.email||'';
-  $('rolePill').textContent=canEdit?'บทบาท: จัดซื้อ (แก้ไขได้)':'👑 ผู้บริหาร (ดูอย่างเดียว)';
+  $('rolePill').textContent = roles.includes('purchase') ? '📦 จัดซื้อ (แก้ไขได้)'
+                            : (isMgr ? '🧑‍💼 หัวหน้า (แก้ไขได้)' : '👑 ผู้บริหาร (ดูอย่างเดียว)');
   if(!canEdit)$('addBillBtn').style.display='none';
   sb.auth.onAuthStateChange((_e,s)=>{if(!s)location.replace('index.html');});
   await loadAll();
