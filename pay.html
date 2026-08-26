@@ -1328,26 +1328,19 @@ function buildDoc(show){
     DAIKI:'บริษัท ไดกิ เทรดดิ้ง จำกัด',JMF:'JMF'}[cos[0]]||cos.join(', ');
   const showDetail=$('dcDetail')&&$('dcDetail').checked;
 
-  // แตกเป็นรายบรรทัด: 1 SKU = 1 แถว (ถ้าเปิด "แยกรายการ SKU")
-  const lines=[];
+  // 1 งวด = 1 กลุ่ม (SKU หลายแถว) — ช่องยอด/บาท/หมายเหตุ ผสานเซลล์ตามงวด
+  const groups=[];
   rows.forEach(p=>{
     const b=billOf(p.bill_id), s=curSym(b.currency);
     const its=showDetail?POROWS.filter(r=>String(r.po_number||'')===String(b.po_number||'')&&(+r.price>0||+r.quantity>0)):[];
     const remain=Math.max(0,(+b.total_amount||0)-paidSum(p.bill_id));
     const note=(p.installment||'')+' ยอด '+money(p.amount)+' '+s+(remain>0?(' ค้างชำระ '+money(remain)+' '+s):'');
-    if(its.length){
-      const tot=its.reduce((x,r)=>x+(+r.price||0)*(+r.quantity||0),0)||1;
-      its.forEach((r,k)=>{
-        const share=((+r.price||0)*(+r.quantity||0))/tot;
-        lines.push({po:b.po_number,sku:r.sku,qty:r.quantity,unit:r.price,
-          amt:(+p.amount||0)*share, rate:p.rate, fee:(k===0?(+p.fee||0):0),
-          thb:thbOf(p)*share, note:(k===0?note:''), cur:s});
-      });
-    }else{
-      lines.push({po:b.po_number,sku:b.sku||'-',qty:'',unit:'',
-        amt:+p.amount||0, rate:p.rate, fee:+p.fee||0, thb:thbOf(p), note, cur:s});
-    }
+    groups.push({po:b.po_number,cur:s,note,
+      amt:+p.amount||0, rate:p.rate, fee:+p.fee||0, thb:thbOf(p),
+      items: its.length?its.map(r=>({sku:r.sku,qty:r.quantity,unit:r.price}))
+                       :[{sku:b.sku||'-',qty:'',unit:''}]});
   });
+  const lines=groups;   // ใช้ชื่อเดิมสำหรับผลรวม
   const T=k=>lines.reduce((s,l)=>s+(+l[k]||0),0);
 
   let h=`<div class="doc-sheet">
@@ -1366,17 +1359,26 @@ function buildDoc(show){
       <tr><th class="num">จำนวนเงินต่อหน่วย</th><th class="num">จำนวนเงิน / หยวน</th>
         <th class="num">ค่าขนส่ง</th><th class="num">เรทโอน</th></tr>
     </thead><tbody>`;
-  lines.forEach((l,i)=>{
-    h+=`<tr><td style="text-align:center">${i+1}</td><td>${esc(l.po||'-')}</td><td>${esc(l.sku||'-')}</td>
-      <td class="num">${l.qty!==''?money(l.qty):''}</td>
-      <td class="num">${l.unit!==''?money2(l.unit):''}</td>
-      <td class="num">${money2(l.amt)}</td>
-      <td class="num"></td>
-      <td class="num">${l.rate?esc(l.rate):''}</td>
-      <td class="num">${money2(l.thb)}</td>
-      <td class="num">${l.fee?money2(l.fee):''}</td>
-      <td class="num">${money2(l.thb+(+l.fee||0))}</td>
-      <td style="font-size:11.5px">${esc(l.note)}</td></tr>`;});
+  let no=0;
+  groups.forEach(g=>{
+    const n=g.items.length;
+    g.items.forEach((it,k)=>{
+      no++;
+      h+=`<tr><td style="text-align:center">${no}</td>`
+        + (k===0?`<td rowspan="${n}">${esc(g.po||'-')}</td>`:'')
+        + `<td>${esc(it.sku||'-')}</td>`
+        + `<td class="num">${it.qty!==''?money(it.qty):''}</td>`
+        + `<td class="num">${it.unit!==''?money2(it.unit):''}</td>`
+        + (k===0?`<td rowspan="${n}" class="num">${money2(g.amt)}</td>`:'')
+        + (k===0?`<td rowspan="${n}" class="num"></td>`:'')
+        + (k===0?`<td rowspan="${n}" class="num">${g.rate?esc(g.rate):''}</td>`:'')
+        + (k===0?`<td rowspan="${n}" class="num">${money2(g.thb)}</td>`:'')
+        + (k===0?`<td rowspan="${n}" class="num">${g.fee?money2(g.fee):''}</td>`:'')
+        + (k===0?`<td rowspan="${n}" class="num">${money2(g.thb+(+g.fee||0))}</td>`:'')
+        + (k===0?`<td rowspan="${n}" style="font-size:11.5px">${esc(g.note)}</td>`:'')
+        + `</tr>`;
+    });
+  });
   h+=`<tr style="background:#EFEFEF;font-weight:800"><td colspan="4" style="text-align:center">รวม</td>
       <td class="num">-</td><td class="num">${money2(T('amt'))}</td><td class="num">0.00</td><td class="num">-</td>
       <td class="num">${money2(T('thb'))}</td><td class="num">${money2(T('fee'))}</td>
