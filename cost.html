@@ -431,7 +431,12 @@ const SUPABASE_KEY='sb_publishable_xTe43UOuDChtOsmY_BCsPg_FMJNE7Ma';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 const money=n=>Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2});
-const money2=n=>Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
+// แสดง 2 ตำแหน่งเสมอ และ "ตัดทศนิยมทิ้ง" ไม่ปัดขึ้น/ลง (68.6789 -> 68.67)
+const trunc2=n=>{const x=Number(n||0);if(!isFinite(x))return 0;const s=x<0?-1:1;
+  // ปัดเศษทศนิยมลอยตัวก่อน (0.1+0.2 = 0.30000000000000004) แล้วค่อยตัดที่ 2 ตำแหน่ง
+  const v=Math.abs(x)*100, r=Math.round(v*1e6)/1e6;
+  return s*Math.floor(r)/100;};
+const money2=n=>trunc2(n).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
 // สร้างข้อความ "จำนวนลัง × ต่อลัง = จำนวนชุด" — ถ้ามีลังเศษ (ลังไม่เต็ม) จะแยกให้เอง
 function pkgCartonLine(ctn,qty,per,unit){
   ctn=+ctn||0; qty=+qty||0; per=+per||0; unit=unit||'Pcs';
@@ -1159,8 +1164,8 @@ function renderDoc(){
         const up=(g.mixed&&g.qty)?(g.total/g.qty):g.price;
         out+=`<tr${g.foc?' style="background:#FFFBEB"':''}><td>${esc(p.name_en||p.product_name||g.sku)}<br>${esc(p.model||g.sku)}${g.foc?' <b style="color:#B45309">(FOC)</b>':''}</td><td style="text-align:center">${pic}</td>`+
           `<td style="white-space:pre-line">${esc(p.component||'')}</td><td>${esc(p.spec||'')}</td>`+
-          `<td style="text-align:right">${money(up)}</td><td style="text-align:right">${money(g.qty)}</td>`+
-          `<td style="text-align:right">${money(g.total)}</td>`+
+          `<td style="text-align:right">${money2(up)}</td><td style="text-align:right">${money(g.qty)}</td>`+
+          `<td style="text-align:right">${money2(g.total)}</td>`+
           `<td style="text-align:right;${(ri===0?'':'border-top:none;')+(ri===span-1?'':'border-bottom:none;')}">${ri===0?money(grpGw):''}</td>`+
           `<td class="rmark">${esc(remark)}</td></tr>`;});
       k+=span;
@@ -1200,7 +1205,7 @@ function renderDoc(){
     <td style="vertical-align:top"><b>Date :</b> ${fmtDate(d.date)}<br><b>${lbl} :</b> ${esc(d.invno)}<br><b>Gross Weight :</b> ${money2(totalGW)} Kg<br><b>Total Package :</b> ${money(totalCtn)} Cartons<br><b>TERM :</b> ${esc(d.term)}${d.port?`<br><b>PORT :</b> ${esc(d.port)}`:''}</td></tr></table>`;
   $('docPreview').innerHTML=`<div class="doc"><section class="inv-page"><h2 class="title">INVOICE</h2><div class="goldline"></div>${hdr('Invoice No')}
     <table class="items"><colgroup><col style="width:13%"><col style="width:13%"><col style="width:12%"><col style="width:10%"><col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:7%"><col style="width:20%"></colgroup><thead><tr><th>DESCRIPTION</th><th>Picture</th><th>COMPONENT</th><th>Specification</th><th>Unit Price</th><th>Qty (PCS)</th><th>Total/${esc(d.cur)}</th><th>GW (Kg)</th><th>Remark</th></tr></thead><tbody>${rowInv}
-      <tr><td colspan="4" style="text-align:right"><b>Logistics costs</b></td><td></td><td></td><td style="text-align:right">${money(d.logi)}</td><td></td><td></td></tr>
+      <tr><td colspan="4" style="text-align:right"><b>Logistics costs</b></td><td></td><td></td><td style="text-align:right">${money2(d.logi)}</td><td></td><td></td></tr>
       <tr><td colspan="5" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(totalQty)}</b></td><td style="text-align:right"><b>${money2(totalPrice+d.logi)}</b></td><td style="text-align:right"><b>${money2(totalGW)}</b></td><td></td></tr></tbody></table>
     <div class="sig">Signature and Company Stamp<br><br>________________________</div></section>
     <section class="pl-page"><h2 class="title">PACKING LIST</h2><div class="goldline"></div>${hdr('Reference Invoice No')}
