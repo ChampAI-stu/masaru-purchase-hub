@@ -159,12 +159,14 @@ td.num,th.num{text-align:right;white-space:nowrap}
         เอกสารที่ต้องแนบประกอบ: ใบเสนอราคาจีน+แปล · PO จากระบบ JST · หลักฐานการขอซื้อ · ใบปะหน้านี้
       </div>
       <div class="row">
-        <button class="btn mini" onclick="docShift(-1)">◀</button>
-        <input type="date" id="dcDate" onchange="renderDoc()" style="max-width:165px">
-        <button class="btn mini" onclick="docShift(1)">▶</button>
-        <button class="btn mini" onclick="$('dcDate').value=new Date().toISOString().slice(0,10);renderDoc()">วันนี้</button>
+        <span style="display:inline-flex;align-items:center;gap:8px;flex-wrap:nowrap">
+          <button class="btn mini" onclick="docShift(-1)" title="วันก่อนหน้า">◀</button>
+          <input type="date" id="dcDate" onchange="renderDoc()" style="width:175px;min-width:175px;flex:0 0 auto">
+          <button class="btn mini" onclick="docShift(1)" title="วันถัดไป">▶</button>
+          <button class="btn mini" onclick="docToday()">วันนี้</button>
+        </span>
         <label style="white-space:nowrap;margin-left:8px">ผู้รับเงิน</label>
-        <input id="dcPayee" placeholder="เช่น JMF CARGO" style="max-width:200px" oninput="buildDoc()">
+        <input id="dcPayee" placeholder="เช่น JMF CARGO" style="width:200px;min-width:200px;flex:0 0 auto" oninput="buildDoc()">
         <div style="flex:1"></div>
         <button class="btn" onclick="buildDoc(true)">📄 สร้างใบปะหน้า</button>
       </div>
@@ -404,6 +406,9 @@ td.num,th.num{text-align:right;white-space:nowrap}
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
 const SUPABASE_KEY='sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const PAY_VERSION='v2026-08-26e';
+console.log('%c pay.html '+PAY_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
+window.addEventListener('error',e=>{console.error('[pay] JS ERROR:',e.message,'@',e.filename+':'+e.lineno);});
 const $=id=>document.getElementById(id);
 const money=n=>Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2});
 const num=v=>{const n=parseFloat(String(v==null?'':v).replace(/,/g,''));return isNaN(n)?0:n;};
@@ -1186,6 +1191,7 @@ function exportLot(){
 
 /* ==================== เอกสารค่าใช้จ่ายประจำวัน (ใบปะหน้า) ==================== */
 let DOCS=[], DOCSEL=new Set();
+function docToday(){$('dcDate').value=new Date().toISOString().slice(0,10);renderDoc();}
 function docShift(k){const v=$('dcDate').value||new Date().toISOString().slice(0,10);
   const dt=new Date(v+'T00:00:00');dt.setDate(dt.getDate()+k);$('dcDate').value=dt.toISOString().slice(0,10);renderDoc();}
 function docRows(){
