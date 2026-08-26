@@ -1234,10 +1234,19 @@ async function saveDoc(){
     company:b0.company||null,payment_ids:rows.map(p=>p.id),
     note:'ยอดรวม '+money(rows.reduce((s,p)=>s+thbOf(p),0)+rows.reduce((s,p)=>s+num(p.fee),0))+' บาท',created_by:ME};
   const {error}=await sb.from('pay_docs').insert(row);
-  if(error)return toast('บันทึกไม่สำเร็จ: '+error.message);
+  if(error){
+    console.error('pay_docs:',error);
+    const miss=/does not exist|schema cache/i.test(error.message||'');
+    alert(miss ? 'ยังไม่ได้สร้างตาราง pay_docs ในฐานข้อมูล\n\nกรุณารันไฟล์ pay_docs_patch.sql บน Supabase (polikeshop) ก่อน แล้วลองใหม่\n\nรายละเอียด: '+error.message
+               : 'บันทึกไม่สำเร็จ: '+error.message);
+    return;
+  }
   toast('บันทึกเอกสารแล้ว ✅'); loadDocs();
 }
-async function loadDocs(){ DOCS=await pageAll('pay_docs','*','doc_date'); renderDocHist(); }
+async function loadDocs(){
+  try{ DOCS=await pageAll('pay_docs','*','doc_date'); }catch(e){ DOCS=[]; }
+  renderDocHist();
+}
 function renderDocHist(){
   if(!$('dcHist'))return;
   if(!DOCS.length){$('dcHist').innerHTML='<div class="empty">ยังไม่มีเอกสารที่บันทึก</div>';return;}
