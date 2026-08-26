@@ -145,8 +145,8 @@ td.num,th.num{text-align:right;white-space:nowrap}
         <div style="flex:1"></div>
         <span class="muted">เพิ่มงวดใหม่จากแท็บ Tracking บิล → + งวดจ่าย</span>
       </div>
-      <div id="planBody"></div>
-      <div id="planMonthBody" style="display:none"></div>
+      <div class="scroll"><div id="planBody"></div></div>
+      <div class="scroll"><div id="planMonthBody" style="display:none"></div></div>
     </div>
   </div>
 
@@ -172,7 +172,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
         <div style="flex:1"></div>
         <button class="btn" onclick="buildDoc(true)">📄 สร้างใบปะหน้า</button>
       </div>
-      <div id="dcPick"></div>
+      <div class="scroll"><div id="dcPick"></div></div>
     </div>
     <div class="card" id="dcPaper" style="display:none">
       <div class="row no-print" style="margin-bottom:10px">
@@ -199,7 +199,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
     <div class="card">
       <h2>📊 สรุปค่าใช้จ่ายทั้งเดือน</h2>
       <div class="row"><input type="month" id="moMonth" onchange="renderMonth()" style="max-width:180px"><div style="flex:1"></div></div>
-      <div id="moBody"></div>
+      <div class="scroll"><div id="moBody"></div></div>
     </div>
   </div>
 </div>
@@ -603,8 +603,10 @@ async function delBill(id){
 let payBillId=null;
 let payEditId=null;   // งวดที่กำลังแก้ไข (null = เพิ่มใหม่)
 function openPay(bid){
-  payBillId=bid; payEditId=null;
-  const b=BILLS.find(x=>x.id===bid); if(!b)return;
+  payEditId=null;
+  const b=BILLS.find(x=>String(x.id)===String(bid));
+  if(!b){console.warn('[pay] openPay: ไม่พบบิล',bid);return;}
+  payBillId=b.id;
   const paid=paidSum(bid), remain=Math.max(0,(+b.total_amount||0)-paid);
   $('payTitle').textContent='+ งวดจ่าย — '+(b.po_number||'');
   $('p_curlbl').textContent=curSym(b.currency);
@@ -618,7 +620,10 @@ function openPay(bid){
   $('payBg').style.display='flex';
 }
 function editPay(pid,bid){
-  const p=PAYS.find(x=>String(x.id)===String(pid)); if(!p)return;
+  const p=PAYS.find(x=>String(x.id)===String(pid));
+  if(!p){console.warn('[pay] editPay: ไม่พบงวด',pid);alert('ไม่พบงวดนี้ — ลองรีเฟรชหน้าแล้วกดใหม่');return;}
+  bid=bid||p.bill_id;
+  if(!BILLS.find(x=>String(x.id)===String(bid))){console.warn('[pay] editPay: ไม่พบบิล',bid);alert('ไม่พบบิลของงวดนี้');return;}
   openPay(bid);                       // เตรียมฟอร์ม + ข้อมูลบิล
   payEditId=p.id;
   $('payTitle').textContent='✏️ แก้ไขงวดจ่าย — '+((BILLS.find(x=>x.id===bid)||{}).po_number||'');
