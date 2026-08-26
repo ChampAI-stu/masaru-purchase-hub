@@ -165,8 +165,10 @@ td.num,th.num{text-align:right;white-space:nowrap}
           <button class="btn mini" onclick="docShift(1)" title="วันถัดไป">▶</button>
           <button class="btn mini" onclick="docToday()">วันนี้</button>
         </span>
-        <label style="white-space:nowrap;margin-left:8px">ผู้รับเงิน</label>
-        <input id="dcPayee" placeholder="เช่น JMF CARGO" style="width:200px;min-width:200px;flex:0 0 auto" oninput="buildDoc()">
+        <label style="white-space:nowrap;margin-left:8px">บริษัทที่จ่าย</label>
+        <select id="dcCompany" onchange="renderDoc()" style="width:165px;min-width:165px;flex:0 0 auto"><option value="">— ทุกบริษัท —</option></select>
+        <label style="white-space:nowrap">ผู้รับเงิน</label>
+        <input id="dcPayee" placeholder="เช่น JMF CARGO" style="width:200px;min-width:200px;flex:0 0 auto" oninput="this.dataset.touched='1';buildDoc()">
         <div style="flex:1"></div>
         <button class="btn" onclick="buildDoc(true)">📄 สร้างใบปะหน้า</button>
       </div>
@@ -1200,11 +1202,26 @@ function docShift(k){const v=$('dcDate').value||todayStr();
   const dt=new Date(v+'T00:00:00');dt.setDate(dt.getDate()+k);$('dcDate').value=ymdLocal(dt);renderDoc();}
 function docRows(){
   const d=$('dcDate').value;
-  return PAYS.filter(p=>p.pay_date===d&&p.status!=='rejected');
+  const co=($('dcCompany')&&$('dcCompany').value)||'';
+  return PAYS.filter(p=>p.pay_date===d&&p.status!=='rejected'
+    &&(!co||(billOf(p.bill_id).company||'')===co));
+}
+function fillDocCompany(){
+  if(!$('dcCompany'))return;
+  const d=$('dcDate').value;
+  const all=PAYS.filter(p=>p.pay_date===d&&p.status!=='rejected');
+  const cos=[...new Set(all.map(p=>billOf(p.bill_id).company).filter(Boolean))].sort();
+  const cur=$('dcCompany').value;
+  $('dcCompany').innerHTML='<option value="">— ทุกบริษัท —</option>'
+    +cos.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  if(cur&&cos.includes(cur))$('dcCompany').value=cur;
+  const vs=[...new Set(docRows().map(p=>billOf(p.bill_id).vendor).filter(Boolean))];
+  if(vs.length===1&&$('dcPayee').dataset.touched!=='1')$('dcPayee').value=vs[0];
 }
 function renderDoc(){
   if(!$('dcDate'))return;
   if(!$('dcDate').value)$('dcDate').value=todayStr();
+  fillDocCompany();
   const rows=docRows();
   DOCSEL=new Set(rows.map(p=>p.id));   // ติ๊กทั้งหมดไว้ก่อน
   if(!rows.length){$('dcPick').innerHTML='<div class="empty">วันนี้ยังไม่มีงวดจ่าย — เพิ่มจากแท็บ Tracking บิล</div>';
@@ -1229,7 +1246,8 @@ function buildDoc(show){
   const d=$('dcDate').value, payee=($('dcPayee').value||'').trim();
   const D=new Date(d+'T00:00:00');
   const thDate=D.toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
-  const cos=[...new Set(rows.map(p=>billOf(p.bill_id).company||'-'))];
+  const pickCo=($('dcCompany')&&$('dcCompany').value)||'';
+  const cos=pickCo?[pickCo]:[...new Set(rows.map(p=>billOf(p.bill_id).company||'-'))];
   const tThb=rows.reduce((s,p)=>s+thbOf(p),0), tFee=rows.reduce((s,p)=>s+num(p.fee),0);
   let h=`<div class="doc-sheet">
     <div class="doc-h">ใบสรุปค่าใช้จ่ายประจำวัน</div>
