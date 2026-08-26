@@ -169,8 +169,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
         <select id="dcCompany" onchange="renderDoc()" style="width:165px;min-width:165px;flex:0 0 auto"><option value="">— ทุกบริษัท —</option></select>
         <label style="white-space:nowrap">ช่องทาง</label>
         <select id="dcChannel" onchange="renderDoc()" style="width:140px;min-width:140px;flex:0 0 auto"><option value="">— ทุกช่องทาง —</option></select>
-        <label style="white-space:nowrap">ผู้รับเงิน</label>
-        <input id="dcPayee" placeholder="เช่น JMF CARGO" style="width:200px;min-width:200px;flex:0 0 auto" oninput="this.dataset.touched='1';buildDoc()">
+        <input type="hidden" id="dcPayee">
         <label style="white-space:nowrap">เรทโอน</label>
         <input type="number" id="dcRate" step="0.0001" placeholder="4.96" style="width:105px;min-width:105px;flex:0 0 auto">
         <button class="btn mini" onclick="applyRateAll()" title="ใส่เรทนี้ให้ทุกรายการที่ติ๊กไว้">ใช้ทุกรายการ</button>
@@ -1260,8 +1259,6 @@ function fillDocCompany(){
       +chs.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
     if(curCh&&chs.includes(curCh))$('dcChannel').value=curCh;
   }
-  const vs=[...new Set(docRows().map(p=>billOf(p.bill_id).vendor).filter(Boolean))];
-  if(vs.length===1&&$('dcPayee').dataset.touched!=='1')$('dcPayee').value=vs[0];
 }
 function renderDoc(){
   if(!$('dcDate'))return;
@@ -1312,7 +1309,8 @@ function buildDoc(show){
   if($('dcPaper').style.display==='none')return;
   const rows=docRows().filter(p=>DOCSEL.has(p.id));
   if(!rows.length){$('dcSheet').innerHTML='<div class="empty">ยังไม่ได้เลือกรายการ</div>';return;}
-  const d=$('dcDate').value, payee=($('dcPayee').value||'').trim();
+  const d=$('dcDate').value;
+  const payee=[...new Set(rows.map(p=>billOf(p.bill_id).vendor).filter(Boolean))].join(', ');
   const D=new Date(d+'T00:00:00');
   const thDate=D.toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
   const pickCo=($('dcCompany')&&$('dcCompany').value)||'';
@@ -1380,7 +1378,8 @@ async function saveDoc(){
   const rows=docRows().filter(p=>DOCSEL.has(p.id));
   if(!rows.length)return toast('ยังไม่ได้เลือกรายการ');
   const b0=billOf(rows[0].bill_id);
-  const row={doc_date:$('dcDate').value,payee:($('dcPayee').value||'').trim()||null,
+  const payee=[...new Set(rows.map(p=>billOf(p.bill_id).vendor).filter(Boolean))].join(', ')||null;
+  const row={doc_date:$('dcDate').value,payee,
     company:b0.company||null,payment_ids:rows.map(p=>p.id),
     note:'ยอดรวม '+money(rows.reduce((s,p)=>s+thbOf(p),0)+rows.reduce((s,p)=>s+num(p.fee),0))+' บาท',created_by:ME};
   const {error}=await sb.from('pay_docs').insert(row);
