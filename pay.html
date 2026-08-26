@@ -242,6 +242,16 @@ td.num,th.num{text-align:right;white-space:nowrap}
   <div class="modal" style="max-width:900px">
     <h3>📥 นำเข้าจาก Excel</h3>
     <div id="fimpInfo" class="sub-note"></div>
+    <div class="row" style="margin-bottom:10px">
+      <label style="white-space:nowrap">บริษัทขนส่ง <span class="muted">(ใส่ให้ทุกบิลที่นำเข้ารอบนี้)</span></label>
+      <input id="fimpCarrier" list="carrierList" placeholder="เช่น JMF CARGO" style="max-width:230px">
+      <datalist id="carrierList">
+        <option value="JMF CARGO"><option value="GTL"><option value="Angel"><option value="TSD">
+        <option value="สาย2 (168)"><option value="สาย3 (FCL)"><option value="ลำพยา (JMF)"><option value="ร่มเกล้า (NEXT)">
+      </datalist>
+      <label style="white-space:nowrap">ประเภท</label>
+      <select id="fimpType" style="max-width:190px"><option value="NO">NO — เหมาตู้/เรทขนส่ง</option><option value="YES">YES — นำเข้าถูกต้อง</option></select>
+    </div>
     <div class="scroll" style="max-height:340px"><div id="fimpPrev"></div></div>
     <div class="row" style="margin-top:14px;justify-content:flex-end">
       <button class="btn ghost" onclick="$('fimpBg').style.display='none'">ยกเลิก</button>
@@ -951,7 +961,7 @@ function fImportXlsx(ev){
             else if(d){const m=String(d).match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
               if(m)ds=`${m[3]}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;}
             cur={bill_no:billNo.replace(/\.0$/,''),arrive_date:ds,
-              carrier:c.carrier>=0?String(R[c.carrier]||'').trim()||null:null,
+              carrier:null,   // ไม่ดึงจากไฟล์ — กรอกเองตอนยืนยันนำเข้า
               ref_no:c.ref>=0?String(R[c.ref]||'').replace(/\n/g,' ').trim()||null:null,
               rate_cbm:rateCol>=0?num(R[rateCol]):0, import_type:'NO', items:[]};
             bills.push(cur);
@@ -973,7 +983,7 @@ function fImportXlsx(ev){
       const dup=bills.filter(b=>have.has(b.bill_no+'|'+(b.ref_no||''))).length;
       $('fimpInfo').innerHTML=`พบ <b>${bills.length}</b> บิล · <b>${rows}</b> รายการ จากชีต: ${esc(sheets.join(', '))}`
         +(dup?`<br><b style="color:var(--red)">⚠️ ซ้ำกับที่มีอยู่แล้ว ${dup} บิล — ระบบจะข้ามให้อัตโนมัติ</b>`:'')
-        +`<br>เรทคิวอ่านจากไฟล์ · ประเภทตั้งเป็น <b>NO (เหมาตู้)</b> ให้ก่อน แก้เป็น YES ทีหลังได้`;
+        +`<br>เรทคิวอ่านจากไฟล์ · <b>บริษัทขนส่ง + ประเภท</b> ใส่จากช่องด้านล่าง (แก้รายบิลทีหลังได้)`;
       $('fimpPrev').innerHTML='<table><thead><tr><th>บิล</th><th>วันที่</th><th>ตู้</th><th class="num">เรทคิว</th><th class="num">รายการ</th><th class="num">CBM</th><th class="num">ค่าขนส่ง (฿)</th></tr></thead><tbody>'
         +bills.slice(0,60).map(b=>{const cb=b.items.reduce((s,i)=>s+cbmPerCtn(i)*num(i.cartons),0);
           return `<tr><td><b>${esc(b.bill_no)}</b></td><td>${esc(b.arrive_date||'-')}</td><td>${esc(b.ref_no||'-')}</td>
@@ -991,10 +1001,12 @@ async function fDoImport(){
   const have=new Set(FBILLS.map(b=>b.bill_no+'|'+(b.ref_no||'')));
   const fresh=FIMP.filter(b=>!have.has(b.bill_no+'|'+(b.ref_no||'')));
   if(!fresh.length){$('fimpBg').style.display='none';return toast('ทุกบิลมีอยู่แล้ว ไม่มีอะไรให้นำเข้า');}
+  const carrier=($('fimpCarrier').value||'').trim()||null;
+  const itype=$('fimpType').value||'NO';
   let ok=0,fail=0;
   for(const b of fresh){
     const {items,...head}=b;
-    const {data,error}=await sb.from('freight_bills').insert({...head,created_by:ME}).select('id').single();
+    const {data,error}=await sb.from('freight_bills').insert({...head,carrier,import_type:itype,created_by:ME}).select('id').single();
     if(error){fail++;continue;}
     const rows=items.map(i=>({...i,bill_id:data.id}));
     for(let k=0;k<rows.length;k+=200){
