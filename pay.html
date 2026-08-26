@@ -406,7 +406,11 @@ td.num,th.num{text-align:right;white-space:nowrap}
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
 const SUPABASE_KEY='sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-const PAY_VERSION='v2026-08-26e';
+const PAY_VERSION='v2026-08-26f';
+// วันที่แบบเวลาไทย — ห้ามใช้ toISOString() เพราะจะเพี้ยนข้ามวัน (UTC ช้ากว่าไทย 7 ชม.)
+const ymdLocal=dt=>dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+const todayStr=()=>ymdLocal(new Date());
+const monthStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');};
 console.log('%c pay.html '+PAY_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 window.addEventListener('error',e=>{console.error('[pay] JS ERROR:',e.message,'@',e.filename+':'+e.lineno);});
 const $=id=>document.getElementById(id);
@@ -523,7 +527,7 @@ function renderBills(){
   // KPI
   const open=BILLS.filter(b=>b.status!=='closed');
   const remainTotal=open.reduce((s,b)=>s+Math.max(0,(+b.total_amount||0)-paidSum(b.id)),0);
-  const paidMonth=PAYS.filter(p=>p.status==='paid'&&p.pay_date&&p.pay_date.slice(0,7)===new Date().toISOString().slice(0,7))
+  const paidMonth=PAYS.filter(p=>p.status==='paid'&&p.pay_date&&p.pay_date.slice(0,7)===monthStr())
     .reduce((s,p)=>s+(+p.amount_thb||0),0);
   const planCnt=PAYS.filter(p=>p.status==='planned'||p.status==='submitted').length;
   $('billKpi').innerHTML=`
@@ -602,7 +606,7 @@ function openPay(bid){
   $('payTitle').textContent='+ งวดจ่าย — '+(b.po_number||'');
   $('p_curlbl').textContent=curSym(b.currency);
   $('payBillInfo').innerHTML=`ยอดเต็ม <b>${money(b.total_amount)} ${curSym(b.currency)}</b> · จ่ายแล้ว <b style="color:var(--green)">${money(paid)}</b> · <b style="color:var(--red)">ค้าง ${money(remain)}</b>`;
-  $('p_date').value=new Date().toISOString().slice(0,10);
+  $('p_date').value=todayStr();
   $('p_amount').value=''; $('p_rate').value=b.currency==='THB'?'1':''; $('p_thb').value='';
   $('p_fee').value='0'; $('p_channel').value=''; $('p_inst').value=''; $('p_resp').value=''; $('p_note').value='';
   $('p_status').value='planned';
@@ -682,7 +686,7 @@ async function setPayStatus(pid,st){
   if((st==='paid'||st==='rejected') && !IS_EXEC) return toast('เฉพาะผู้บริหารเท่านั้นที่อนุมัติได้');
   const L={planned:'กลับเป็น "วางแผน"',submitted:'ส่งยอดให้ผู้บริหารอนุมัติ',paid:'อนุมัติเป็น "จ่ายแล้ว"',rejected:'ทำเป็น "ไม่อนุมัติ"'};
   if(!confirm('ยืนยัน'+L[st]+'?'))return;
-  const up={status:st}; if(st==='paid')up.paid_at=new Date().toISOString().slice(0,10);
+  const up={status:st}; if(st==='paid')up.paid_at=todayStr();
   const {error}=await sb.from('pay_payments').update(up).eq('id',pid);
   if(error)return toast('อัปเดตไม่สำเร็จ: '+error.message);
   await loadAll(); toast('อัปเดตสถานะแล้ว ✅');
@@ -711,11 +715,11 @@ function thbOf(p){const b=billOf(p.bill_id);
   return (+p.amount||0)*(r||fxEst());   // ไม่มีเรท → ใช้เรทประมาณ
 }
 function isEst(p){const b=billOf(p.bill_id);return !(+p.amount_thb)&&b.currency!=='THB'&&!(+p.rate);}
-function planToday(){$('plDate').value=new Date().toISOString().slice(0,10);renderPlan();}
-function planShift(d){const dt=new Date(($('plDate').value||new Date().toISOString().slice(0,10))+'T00:00:00');dt.setDate(dt.getDate()+d);$('plDate').value=dt.toISOString().slice(0,10);renderPlan();}
+function planToday(){$('plDate').value=todayStr();renderPlan();}
+function planShift(d){const dt=new Date(($('plDate').value||todayStr())+'T00:00:00');dt.setDate(dt.getDate()+d);$('plDate').value=ymdLocal(dt);renderPlan();}
 function renderPlan(){
   if(!$('plDate'))return;
-  if(!$('plDate').value)$('plDate').value=new Date().toISOString().slice(0,10);
+  if(!$('plDate').value)$('plDate').value=todayStr();
   const d=$('plDate').value;
   const rows=PAYS.filter(p=>p.pay_date===d);
   const planned=rows.filter(p=>p.status==='planned'), sent=rows.filter(p=>p.status==='submitted'), paid=rows.filter(p=>p.status==='paid');
@@ -761,7 +765,7 @@ async function planDel(pid){
 /* ===== TAB 4: สรุปเดือน ===== */
 function renderMonth(){
   if(!$('moMonth'))return;
-  if(!$('moMonth').value)$('moMonth').value=new Date().toISOString().slice(0,7);
+  if(!$('moMonth').value)$('moMonth').value=monthStr();
   const m=$('moMonth').value;
   const rows=PAYS.filter(p=>(p.pay_date||'').startsWith(m));
   const paid=rows.filter(p=>p.status==='paid'), planned=rows.filter(p=>p.status==='planned'||p.status==='submitted');
@@ -842,16 +846,16 @@ function planView(v){
 function navShift(k){ PLANVIEW==='month'?monShift(k):planShift(k); }
 function navNow(){ PLANVIEW==='month'?monThis():planToday(); }
 function monShift(k){
-  const v=$('plMonth').value||new Date().toISOString().slice(0,7);
+  const v=$('plMonth').value||monthStr();
   const [y,m]=v.split('-').map(Number);
   const dt=new Date(y,(m-1)+k,1);
   $('plMonth').value=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
   renderPlanMonth();
 }
-function monThis(){$('plMonth').value=new Date().toISOString().slice(0,7);renderPlanMonth();}
+function monThis(){$('plMonth').value=monthStr();renderPlanMonth();}
 function renderPlanMonth(){
   if(!$('plMonth'))return;
-  if(!$('plMonth').value)$('plMonth').value=new Date().toISOString().slice(0,7);
+  if(!$('plMonth').value)$('plMonth').value=monthStr();
   const m=$('plMonth').value;
   const rows=PAYS.filter(p=>(p.pay_date||'').startsWith(m));
   const sumThb=a=>a.reduce((s,p)=>s+thbOf(p),0);
@@ -1191,16 +1195,16 @@ function exportLot(){
 
 /* ==================== เอกสารค่าใช้จ่ายประจำวัน (ใบปะหน้า) ==================== */
 let DOCS=[], DOCSEL=new Set();
-function docToday(){$('dcDate').value=new Date().toISOString().slice(0,10);renderDoc();}
-function docShift(k){const v=$('dcDate').value||new Date().toISOString().slice(0,10);
-  const dt=new Date(v+'T00:00:00');dt.setDate(dt.getDate()+k);$('dcDate').value=dt.toISOString().slice(0,10);renderDoc();}
+function docToday(){$('dcDate').value=todayStr();renderDoc();}
+function docShift(k){const v=$('dcDate').value||todayStr();
+  const dt=new Date(v+'T00:00:00');dt.setDate(dt.getDate()+k);$('dcDate').value=ymdLocal(dt);renderDoc();}
 function docRows(){
   const d=$('dcDate').value;
   return PAYS.filter(p=>p.pay_date===d&&p.status!=='rejected');
 }
 function renderDoc(){
   if(!$('dcDate'))return;
-  if(!$('dcDate').value)$('dcDate').value=new Date().toISOString().slice(0,10);
+  if(!$('dcDate').value)$('dcDate').value=todayStr();
   const rows=docRows();
   DOCSEL=new Set(rows.map(p=>p.id));   // ติ๊กทั้งหมดไว้ก่อน
   if(!rows.length){$('dcPick').innerHTML='<div class="empty">วันนี้ยังไม่มีงวดจ่าย — เพิ่มจากแท็บ Tracking บิล</div>';
@@ -1273,7 +1277,7 @@ async function approveDoc(st){
   const sum=money(rows.reduce((s,p)=>s+thbOf(p)+num(p.fee),0));
   const L=st==='paid'?'อนุมัติเป็น "จ่ายแล้ว"':'ทำเป็น "ไม่อนุมัติ"';
   if(!confirm(`${L} ทั้งใบ\n\nวันที่: ${$('dcDate').value}\nจำนวน ${wait.length} รายการ · ยอดรวม ${sum} บาท\n\nยืนยัน?`))return;
-  const up={status:st}; if(st==='paid')up.paid_at=$('dcDate').value||new Date().toISOString().slice(0,10);
+  const up={status:st}; if(st==='paid')up.paid_at=$('dcDate').value||todayStr();
   const ids=wait.map(p=>p.id);
   let fail=0;
   for(let i=0;i<ids.length;i+=50){
