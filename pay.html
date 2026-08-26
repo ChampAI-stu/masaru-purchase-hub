@@ -167,6 +167,8 @@ td.num,th.num{text-align:right;white-space:nowrap}
         </span>
         <label style="white-space:nowrap;margin-left:8px">บริษัทที่จ่าย</label>
         <select id="dcCompany" onchange="renderDoc()" style="width:165px;min-width:165px;flex:0 0 auto"><option value="">— ทุกบริษัท —</option></select>
+        <label style="white-space:nowrap">ช่องทาง</label>
+        <select id="dcChannel" onchange="renderDoc()" style="width:140px;min-width:140px;flex:0 0 auto"><option value="">— ทุกช่องทาง —</option></select>
         <label style="white-space:nowrap">ผู้รับเงิน</label>
         <input id="dcPayee" placeholder="เช่น JMF CARGO" style="width:200px;min-width:200px;flex:0 0 auto" oninput="this.dataset.touched='1';buildDoc()">
         <div style="flex:1"></div>
@@ -1229,8 +1231,10 @@ function docShift(k){const v=$('dcDate').value||todayStr();
 function docRows(){
   const d=$('dcDate').value;
   const co=($('dcCompany')&&$('dcCompany').value)||'';
+  const ch=($('dcChannel')&&$('dcChannel').value)||'';
   return PAYS.filter(p=>p.pay_date===d&&p.status!=='rejected'
-    &&(!co||(billOf(p.bill_id).company||'')===co));
+    &&(!co||(billOf(p.bill_id).company||'')===co)
+    &&(!ch||(p.channel||'')===ch));
 }
 function fillDocCompany(){
   if(!$('dcCompany'))return;
@@ -1241,6 +1245,16 @@ function fillDocCompany(){
   $('dcCompany').innerHTML='<option value="">— ทุกบริษัท —</option>'
     +cos.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
   if(cur&&cos.includes(cur))$('dcCompany').value=cur;
+  // ช่องทางที่มีจริงในวันนั้น (กรองตามบริษัทที่เลือกด้วย)
+  if($('dcChannel')){
+    const coSel=$('dcCompany').value;
+    const pool=all.filter(p=>!coSel||(billOf(p.bill_id).company||'')===coSel);
+    const chs=[...new Set(pool.map(p=>p.channel).filter(Boolean))].sort();
+    const curCh=$('dcChannel').value;
+    $('dcChannel').innerHTML='<option value="">— ทุกช่องทาง —</option>'
+      +chs.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    if(curCh&&chs.includes(curCh))$('dcChannel').value=curCh;
+  }
   const vs=[...new Set(docRows().map(p=>billOf(p.bill_id).vendor).filter(Boolean))];
   if(vs.length===1&&$('dcPayee').dataset.touched!=='1')$('dcPayee').value=vs[0];
 }
@@ -1281,6 +1295,7 @@ function buildDoc(show){
     <div class="doc-meta"><div><b>วันที่:</b> ${esc(thDate)}</div>
       <div><b>ผู้รับเงิน:</b> ${esc(payee||'-')}</div>
       <div><b>บริษัทที่จ่าย:</b> ${esc(cos.join(', '))}</div>
+      ${(($('dcChannel')&&$('dcChannel').value)||'')?`<div><b>ช่องทางจ่าย:</b> ${esc($('dcChannel').value)}</div>`:''}
       <div><b>จำนวนรายการ:</b> ${rows.length}</div></div>
     <table><thead><tr><th style="width:34px">#</th><th>เลขที่ PO</th><th>รายการ / SKU</th><th>งวด</th>
       <th class="num">ยอด</th><th class="num">เรทโอน</th><th class="num">จำนวนเงิน (บาท)</th><th class="num">ค่าธรรมเนียม</th></tr></thead><tbody>`;
