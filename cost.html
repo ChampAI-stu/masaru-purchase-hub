@@ -483,13 +483,11 @@ async function enterApp(session){
   const meta=session.user?.app_metadata||{};
   const roles=(Array.isArray(meta.user_roles)&&meta.user_roles.length)?meta.user_roles:(meta.user_role?[meta.user_role]:[]);
   const isExec=roles.includes('pr_exec')||roles.includes('executive');
-  const isMgr=roles.includes('pr_manager');
   const isShip=roles.includes('shipping');
-  // เข้าได้: จัดซื้อ / หัวหน้า / ผู้บริหาร / ขนส่ง — ทุก role ที่เข้าได้ แก้ไขได้ทั้งหมด
-  if(!roles.includes('purchase')&&!isMgr&&!isShip&&!isExec){location.replace('index.html');return;}
-  currentRole=roles.includes('purchase')?'purchase':(isMgr?'manager':(isShip?'shipping':'executive'));
-  canEdit=true;
-  $('rolePill').textContent='บทบาท: '+({purchase:'จัดซื้อ (แก้ข้อมูลส่งออก/เอกสารได้)',manager:'หัวหน้า (แก้ไขได้)',shipping:'ขนส่ง/Shipping (สิทธิ์เท่าจัดซื้อ)',executive:'ผู้บริหาร (แก้ไขได้)'}[currentRole]);
+  if(!roles.includes('purchase')&&!isShip&&!isExec){location.replace('index.html');return;}
+  currentRole=roles.includes('purchase')?'purchase':(isShip?'shipping':'executive');
+  canEdit=(currentRole==='purchase'||currentRole==='shipping');   // shipping มีสิทธิ์เท่าจัดซื้อ
+  $('rolePill').textContent='บทบาท: '+({purchase:'จัดซื้อ (แก้ข้อมูลส่งออก/เอกสารได้)',shipping:'ขนส่ง/Shipping (สิทธิ์เท่าจัดซื้อ)',executive:'ผู้บริหาร (ดูอย่างเดียว)'}[currentRole]);
   if(!canEdit)document.body.classList.add('view-only');
   $('boot').style.display='none';$('app').style.display='block';
   await loadAll();bindDoc();go('dashboard');
