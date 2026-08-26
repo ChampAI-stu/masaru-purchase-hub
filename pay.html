@@ -131,17 +131,12 @@ td.num,th.num{text-align:right;white-space:nowrap}
         <button class="btn mini" id="vDay" onclick="planView('day')">รายวัน</button>
         <button class="btn mini" id="vMonth" onclick="planView('month')" style="background:#fff;color:var(--navy);border:1px solid var(--line)">รายเดือน</button>
         <span style="width:12px"></span>
-        <span id="dayCtl" style="display:inline-flex;align-items:center;gap:8px;flex-wrap:nowrap">
-          <button class="btn mini" onclick="planShift(-1)" title="วันก่อนหน้า">◀</button>
-          <input type="date" id="plDate" onchange="renderPlan()" style="width:175px;min-width:175px;flex:0 0 auto">
-          <button class="btn mini" onclick="planShift(1)" title="วันถัดไป">▶</button>
-          <button class="btn mini" onclick="planToday()">วันนี้</button>
-        </span>
-        <span id="monCtl" style="display:none;align-items:center;gap:8px;flex-wrap:nowrap">
-          <button class="btn mini" onclick="monShift(-1)" title="เดือนก่อนหน้า">◀</button>
-          <input type="month" id="plMonth" onchange="renderPlanMonth()" style="width:185px;min-width:185px;flex:0 0 auto">
-          <button class="btn mini" onclick="monShift(1)" title="เดือนถัดไป">▶</button>
-          <button class="btn mini" onclick="monThis()">เดือนนี้</button>
+        <span style="display:inline-flex;align-items:center;gap:8px;flex-wrap:nowrap">
+          <button class="btn mini" onclick="navShift(-1)" title="ก่อนหน้า">◀</button>
+          <span id="dayCtl" style="display:inline-flex"><input type="date" id="plDate" onchange="renderPlan()" style="width:175px;min-width:175px;flex:0 0 auto"></span>
+          <span id="monCtl" style="display:none"><input type="month" id="plMonth" onchange="renderPlanMonth()" style="width:185px;min-width:185px;flex:0 0 auto"></span>
+          <button class="btn mini" onclick="navShift(1)" title="ถัดไป">▶</button>
+          <button class="btn mini" onclick="navNow()" id="navNowBtn">วันนี้</button>
         </span>
         <span style="display:inline-flex;align-items:center;gap:6px;margin-left:10px" title="ใช้แปลงเป็นบาทเฉพาะงวดที่ยังไม่ได้ใส่เรทโอน">
           <label style="white-space:nowrap;margin:0">เรทประมาณ ¥→฿</label>
@@ -835,9 +830,12 @@ function planView(v){
   const on='background:var(--navy);color:#fff;border:0', off='background:#fff;color:var(--navy);border:1px solid var(--line)';
   $('vDay').style.cssText=(v==='day'?on:off); $('vMonth').style.cssText=(v==='month'?on:off);
   $('dayCtl').style.display=v==='day'?'inline-flex':'none'; $('monCtl').style.display=v==='month'?'inline-flex':'none';
+  if($('navNowBtn'))$('navNowBtn').textContent=v==='month'?'เดือนนี้':'วันนี้';
   $('planBody').style.display=v==='day'?'':'none'; $('planMonthBody').style.display=v==='month'?'':'none';
   v==='day'?renderPlan():renderPlanMonth();
 }
+function navShift(k){ PLANVIEW==='month'?monShift(k):planShift(k); }
+function navNow(){ PLANVIEW==='month'?monThis():planToday(); }
 function monShift(k){
   const v=$('plMonth').value||new Date().toISOString().slice(0,7);
   const [y,m]=v.split('-').map(Number);
