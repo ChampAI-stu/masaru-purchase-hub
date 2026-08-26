@@ -483,11 +483,13 @@ async function enterApp(session){
   const meta=session.user?.app_metadata||{};
   const roles=(Array.isArray(meta.user_roles)&&meta.user_roles.length)?meta.user_roles:(meta.user_role?[meta.user_role]:[]);
   const isExec=roles.includes('pr_exec')||roles.includes('executive');
+  const isMgr=roles.includes('pr_manager');
   const isShip=roles.includes('shipping');
-  if(!roles.includes('purchase')&&!isShip&&!isExec){location.replace('index.html');return;}
-  currentRole=roles.includes('purchase')?'purchase':(isShip?'shipping':'executive');
-  canEdit=(currentRole==='purchase'||currentRole==='shipping');   // shipping มีสิทธิ์เท่าจัดซื้อ
-  $('rolePill').textContent='บทบาท: '+({purchase:'จัดซื้อ (แก้ข้อมูลส่งออก/เอกสารได้)',shipping:'ขนส่ง/Shipping (สิทธิ์เท่าจัดซื้อ)',executive:'ผู้บริหาร (ดูอย่างเดียว)'}[currentRole]);
+  // เข้าได้: จัดซื้อ / หัวหน้า / ผู้บริหาร / ขนส่ง — ทุก role ที่เข้าได้ แก้ไขได้ทั้งหมด
+  if(!roles.includes('purchase')&&!isMgr&&!isShip&&!isExec){location.replace('index.html');return;}
+  currentRole=roles.includes('purchase')?'purchase':(isMgr?'manager':(isShip?'shipping':'executive'));
+  canEdit=true;
+  $('rolePill').textContent='บทบาท: '+({purchase:'จัดซื้อ (แก้ข้อมูลส่งออก/เอกสารได้)',manager:'หัวหน้า (แก้ไขได้)',shipping:'ขนส่ง/Shipping (สิทธิ์เท่าจัดซื้อ)',executive:'ผู้บริหาร (แก้ไขได้)'}[currentRole]);
   if(!canEdit)document.body.classList.add('view-only');
   $('boot').style.display='none';$('app').style.display='block';
   await loadAll();bindDoc();go('dashboard');
@@ -1168,7 +1170,7 @@ function renderDoc(){
   const rowPl=(()=>{
     let out='',idx=0,i=0;
     const thName=p=>esc(p.name_th||p.product_name||'');
-    const dimOf=(ctn,qty,p,w,l,h,perOv)=>{const per=+perOv||(+p.per_ctn||0); const cbmCtn=((w&&l&&h)?(w*l*h)/1e6:(+p.cbm_ctn||0)); const box=(w&&l&&h)?`${w}*${l}*${h} Cm`:(p.box_size||''); return `${pkgCartonLine(ctn,qty,per,p.unit||'Pcs')}\nCartons : ${box}\n${money((ctn||0)*cbmCtn)} CBM\n1 Cartons = ${per||''} ${p.unit||''} = ${p.w_ctn||''} Kg`;};
+    const dimOf=(ctn,qty,p,w,l,h,perOv)=>{const per=+perOv||(+p.per_ctn||0); const cbmCtn=((w&&l&&h)?(w*l*h)/1e6:(+p.cbm_ctn||0)); const box=(w&&l&&h)?`${w}*${l}*${h} Cm`:(p.box_size||''); return `${pkgCartonLine(ctn,qty,per,p.unit||'Pcs')}\nCartons : ${box}\n${money2((ctn||0)*cbmCtn)} CBM\n1 Cartons = ${per||''} ${p.unit||''} = ${p.w_ctn||''} Kg`;};
     while(i<d.items.length){
       const it=d.items[i], gid=it.gid; let members=[it];
       if(gid){let j=i+1;while(j<d.items.length&&d.items[j].gid===gid){members.push(d.items[j]);j++;}}
@@ -1177,7 +1179,7 @@ function renderDoc(){
         const p=prod(it.sku)||{}; idx++;
         const dim=dimOf(it.ctn,it.qty,p,it.w,it.l,it.h,it.perctn);
         out+=`<tr${it.foc?' style="background:#FFFBEB"':''}><td style="text-align:center">${idx}</td><td>${esc(p.name_en||it.sku)}<br>${thName(p)}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||it.sku)}${it.foc?'<br><b style="color:#B45309">*** FREE OF CHARGE — ของแถม ***</b>':''}</td>
-          <td style="white-space:pre-line">${esc(dim)}</td><td style="text-align:right">${money(it.gw)}</td><td style="white-space:pre-line">${esc(it.mark||'')}</td></tr>`;
+          <td style="white-space:pre-line">${esc(dim)}</td><td style="text-align:right">${money2(it.gw)}</td><td style="white-space:pre-line">${esc(it.mark||'')}</td></tr>`;
       } else {
         const p0=prod(it.sku)||{};
         const grpCtn=members.reduce((s,m)=>s+(+m.ctn||0),0), grpQty=members.reduce((s,m)=>s+(+m.qty||0),0);
@@ -1187,7 +1189,7 @@ function renderDoc(){
           const nb=(first?'':'border-top:none;')+(last?'':'border-bottom:none;');
           out+=`<tr${m.foc?' style="background:#FFFBEB"':''}><td style="text-align:center">${idx}</td><td>${esc(p.name_en||m.sku)}<br>${thName(p)}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||m.sku)}${m.foc?'<br><b style="color:#B45309">*** FREE OF CHARGE — ของแถม ***</b>':''}</td>
             <td style="white-space:pre-line;${nb}">${first?esc(dimG):''}</td>
-            <td style="text-align:right;${nb}">${first?money(it.gw):''}</td>
+            <td style="text-align:right;${nb}">${first?money2(it.gw):''}</td>
             <td style="white-space:pre-line;${nb}">${first?esc(it.mark||''):''}</td></tr>`;});
       }
       i+=span;
@@ -1195,14 +1197,14 @@ function renderDoc(){
     return out;
   })();
   const hdr=lbl=>`<table class="hdr"><tr><td style="width:60%"><b>Vender Name :</b> ${esc(d.sname)}<br><b>Company :</b> ${esc(d.scomp)}${d.slic?'<br><b>Export Licence :</b> '+esc(d.slic):''}${d.stax?'<br><b>Tax ID :</b> '+esc(d.stax):''}<br><b>Address :</b> ${esc(d.saddr)}<br><b>Tel :</b> ${esc(d.stel)}<br><b>Consignee :</b> ${esc(d.cname)}<br><b>Address :</b> ${esc(d.caddr)}</td>
-    <td style="vertical-align:top"><b>Date :</b> ${fmtDate(d.date)}<br><b>${lbl} :</b> ${esc(d.invno)}<br><b>Gross Weight :</b> ${money(totalGW)} Kg<br><b>Total Package :</b> ${money(totalCtn)} Cartons<br><b>TERM :</b> ${esc(d.term)}${d.port?`<br><b>PORT :</b> ${esc(d.port)}`:''}</td></tr></table>`;
+    <td style="vertical-align:top"><b>Date :</b> ${fmtDate(d.date)}<br><b>${lbl} :</b> ${esc(d.invno)}<br><b>Gross Weight :</b> ${money2(totalGW)} Kg<br><b>Total Package :</b> ${money(totalCtn)} Cartons<br><b>TERM :</b> ${esc(d.term)}${d.port?`<br><b>PORT :</b> ${esc(d.port)}`:''}</td></tr></table>`;
   $('docPreview').innerHTML=`<div class="doc"><section class="inv-page"><h2 class="title">INVOICE</h2><div class="goldline"></div>${hdr('Invoice No')}
     <table class="items"><colgroup><col style="width:13%"><col style="width:13%"><col style="width:12%"><col style="width:10%"><col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:7%"><col style="width:20%"></colgroup><thead><tr><th>DESCRIPTION</th><th>Picture</th><th>COMPONENT</th><th>Specification</th><th>Unit Price</th><th>Qty (PCS)</th><th>Total/${esc(d.cur)}</th><th>GW (Kg)</th><th>Remark</th></tr></thead><tbody>${rowInv}
       <tr><td colspan="4" style="text-align:right"><b>Logistics costs</b></td><td></td><td></td><td style="text-align:right">${money(d.logi)}</td><td></td><td></td></tr>
-      <tr><td colspan="5" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(totalQty)}</b></td><td style="text-align:right"><b>${money(totalPrice+d.logi)}</b></td><td style="text-align:right"><b>${money(totalGW)}</b></td><td></td></tr></tbody></table>
+      <tr><td colspan="5" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(totalQty)}</b></td><td style="text-align:right"><b>${money2(totalPrice+d.logi)}</b></td><td style="text-align:right"><b>${money2(totalGW)}</b></td><td></td></tr></tbody></table>
     <div class="sig">Signature and Company Stamp<br><br>________________________</div></section>
     <section class="pl-page"><h2 class="title">PACKING LIST</h2><div class="goldline"></div>${hdr('Reference Invoice No')}
-    <table class="items"><colgroup><col style="width:7%"><col style="width:33%"><col style="width:30%"><col style="width:10%"><col style="width:20%"></colgroup><thead><tr><th>ITEM</th><th>DESCRIPTION OF GOODS</th><th>Dimension</th><th>GW (Kg)</th><th>Shipping Mark</th></tr></thead><tbody>${rowPl}<tr><td colspan="2" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(totalCtn)} Cartons · ${money(totalCBM)} CBM</b></td><td style="text-align:right"><b>${money(totalGW)}</b></td><td></td></tr></tbody></table>
+    <table class="items"><colgroup><col style="width:7%"><col style="width:33%"><col style="width:30%"><col style="width:10%"><col style="width:20%"></colgroup><thead><tr><th>ITEM</th><th>DESCRIPTION OF GOODS</th><th>Dimension</th><th>GW (Kg)</th><th>Shipping Mark</th></tr></thead><tbody>${rowPl}<tr><td colspan="2" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(totalCtn)} Cartons · ${money2(totalCBM)} CBM</b></td><td style="text-align:right"><b>${money2(totalGW)}</b></td><td></td></tr></tbody></table>
     <div class="sig">Signature and Company Stamp<br><br>________________________</div></section></div>`;
 }
 function exportInvPlExcel(){
@@ -1281,7 +1283,7 @@ function renderTaxLines(){
       '<td><input style="width:70px" type="number" value="'+(it.qty||0)+'" onchange="updTaxItem('+i+",'qty',this.value)\"></td>"+
       '<td><input style="width:120px" type="number" step="0.01" value="'+(it.amount||0)+'" onchange="updTaxItem('+i+",'amount',this.value)\"></td>"+
       '<td>'+(it.fee?'<span class="muted">-</span>':'<input style="width:55px" type="number" step="0.01" value="'+(it.duty||0)+'" onchange="updTaxItem('+i+",'duty',this.value)\">")+"</td>"+
-      '<td style="text-align:right">'+money(c.duty)+'</td><td style="text-align:right">'+money(c.vat)+'</td><td style="text-align:right"><b>'+money2(c.total)+'</b></td>'+
+      '<td style="text-align:right">'+money2(c.duty)+'</td><td style="text-align:right">'+money2(c.vat)+'</td><td style="text-align:right"><b>'+money2(c.total)+'</b></td>'+
       (canEdit?'<td><button class="mini btn red" onclick="delTaxLine('+i+')">✕</button></td>':'')+'</tr>';});
   h+='</tbody></table>'; $('taxLines').innerHTML=h; renderTaxDoc();
 }
@@ -1289,14 +1291,14 @@ function renderTaxDoc(){
   const d=taxFormData(); let rows=''; let tAmt=0,tVat=0,tDuty=0,tTot=0,tFee=0;
   d.items.forEach(it=>{const c=taxCalc(it);tAmt+=c.amount;tVat+=c.vat;tDuty+=c.duty;tTot+=c.total;tFee+=it.fee?c.total:0;
     rows+='<tr><td style="padding:4px 8px">'+esc(it.sku||'')+'</td><td style="text-align:center">'+(it.qty?money(it.qty):'')+'</td>'+
-      '<td style="text-align:right">'+money(c.amount)+'</td><td style="text-align:right">'+(it.fee?'':money(c.vat))+'</td>'+
-      '<td style="text-align:right">'+(it.fee?'':money(c.duty))+'</td><td style="text-align:right">'+money2(c.total)+'</td></tr>';});
+      '<td style="text-align:right">'+money2(c.amount)+'</td><td style="text-align:right">'+(it.fee?'':money2(c.vat))+'</td>'+
+      '<td style="text-align:right">'+(it.fee?'':money2(c.duty))+'</td><td style="text-align:right">'+money2(c.total)+'</td></tr>';});
   const preview='<section class="tax-page" style="background:#fff;padding:20px;font-family:Sarabun,sans-serif;color:#111">'+
     '<h2 style="text-align:center;margin:0 0 12px;font-size:18px">'+esc(d.title||'สรุปภาษีนำเข้า')+'</h2>'+
     '<table style="width:100%;border-collapse:collapse;font-size:13px" border="1" cellpadding="5">'+
     '<thead><tr style="background:#dfe9d9;font-weight:700"><th>SKU</th><th>จำนวน/ชุด</th><th>จำนวนเงินบาท</th><th>ภาษี 7%</th><th>ภาษีอากรขาเข้า</th><th>รวมชำระค่าภาษีทั้งหมด</th></tr></thead>'+
     '<tbody>'+rows+
-    '<tr style="background:#fff2b2;font-weight:700"><td>ยอดรวมทั้งหมด</td><td></td><td style="text-align:right">'+money(tAmt)+'</td><td style="text-align:right">'+money(Math.floor(tVat))+'</td><td style="text-align:right">'+money(Math.floor(tDuty))+'</td><td style="text-align:right">'+money(Math.floor(tVat)+Math.floor(tDuty)+tFee)+'</td></tr>'+
+    '<tr style="background:#fff2b2;font-weight:700"><td>ยอดรวมทั้งหมด</td><td></td><td style="text-align:right">'+money2(tAmt)+'</td><td style="text-align:right">'+money2(tVat)+'</td><td style="text-align:right">'+money2(tDuty)+'</td><td style="text-align:right">'+money2(tTot)+'</td></tr>'+
     '</tbody></table>'+
     '<div style="margin-top:12px;font-size:13px;line-height:1.6">'+
     '<div><b>หมายเหตุ:</b> ดราฟใบขน '+esc(d.draft_no||'')+' '+(d.carrier?'('+esc(d.carrier)+')':'')+'</div>'+
@@ -1416,7 +1418,7 @@ function exportInvoiceExcel(ev){
     const left=[['Vender Name',d.sname],['Company',d.scomp]];
     if(d.slic)left.push(['Export Licence',d.slic]); if(d.stax)left.push(['Tax ID',d.stax]);
     left.push(['Address',d.saddr],['Tel',d.stel],['Consignee',d.cname],['Address',d.caddr]);
-    const right=[['Date',fmtDate(d.date)],['Invoice No',d.invno],['Gross Weight',money(totalGW)+' Kg'],['Total Package',money(totalCtn)+' Cartons'],['TERM',d.term],['PORT',d.port]];
+    const right=[['Date',fmtDate(d.date)],['Invoice No',d.invno],['Gross Weight',money2(totalGW)+' Kg'],['Total Package',money(totalCtn)+' Cartons'],['TERM',d.term],['PORT',d.port]];
     const mid=Math.ceil(nCols/2), start=4, n=Math.max(left.length,right.length);
     for(let i=0;i<n;i++){const r=start+i; ws.mergeCells(r,1,r,mid-1); ws.mergeCells(r,mid+1,r,nCols);
       if(left[i])ws.getCell(r,1).value={richText:[{text:left[i][0]+' : ',font:{bold:true}},{text:String(left[i][1]||'')}]};
@@ -1457,7 +1459,7 @@ function exportInvoiceExcel(ev){
   const ph=['ITEM','DESCRIPTION OF GOODS','Dimension','GW (Kg)','Shipping Mark'];
   const phr=wsP.getRow(top); ph.forEach((h,i)=>{const c=phr.getCell(i+1);c.value=h;c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:navy}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=border;}); phr.height=22;
   let pr=top+1; let ii=0;
-  const dimOfX=(ctn,qty,p,w,l,h,perOv)=>{const per=+perOv||(+p.per_ctn||0); const cbmCtn=((w&&l&&h)?(w*l*h)/1e6:(+p.cbm_ctn||0)); const box=(w&&l&&h)?(w+'*'+l+'*'+h+' Cm'):(p.box_size||''); return pkgCartonLine(ctn,qty,per,p.unit||'Pcs')+'\nCartons : '+box+'\n'+money((ctn||0)*cbmCtn)+' CBM\n1 Cartons = '+(per||'')+' '+(p.unit||'')+' = '+(p.w_ctn||'')+' Kg';};
+  const dimOfX=(ctn,qty,p,w,l,h,perOv)=>{const per=+perOv||(+p.per_ctn||0); const cbmCtn=((w&&l&&h)?(w*l*h)/1e6:(+p.cbm_ctn||0)); const box=(w&&l&&h)?(w+'*'+l+'*'+h+' Cm'):(p.box_size||''); return pkgCartonLine(ctn,qty,per,p.unit||'Pcs')+'\nCartons : '+box+'\n'+money2((ctn||0)*cbmCtn)+' CBM\n1 Cartons = '+(per||'')+' '+(p.unit||'')+' = '+(p.w_ctn||'')+' Kg';};
   const thNameX=p=>(p.name_th||p.product_name||'');
   while(ii<d.items.length){
     const it=d.items[ii], gid=it.gid; let members=[it];
@@ -1480,7 +1482,7 @@ function exportInvoiceExcel(ev){
   }
   // แถวรวม Total (จำนวนลัง · CBM · GW) — ให้ตรงกับ PDF
   {const trp=wsP.getRow(pr); wsP.mergeCells(pr,1,pr,2); trp.getCell(1).value='Total'; trp.getCell(1).font={bold:true}; trp.getCell(1).alignment={horizontal:'right'};
-   trp.getCell(3).value=money(totalCtn)+' Cartons · '+money(totalCBM)+' CBM'; trp.getCell(3).font={bold:true}; trp.getCell(3).alignment={horizontal:'right',wrapText:true};
+   trp.getCell(3).value=money(totalCtn)+' Cartons · '+money2(totalCBM)+' CBM'; trp.getCell(3).font={bold:true}; trp.getCell(3).alignment={horizontal:'right',wrapText:true};
    trp.getCell(4).value=totalGW; trp.getCell(4).numFmt='#,##0.00'; trp.getCell(4).font={bold:true}; trp.getCell(4).alignment={horizontal:'right'};
    for(let i=1;i<=5;i++)trp.getCell(i).border=border; pr++;}
   // ช่องลายเซ็น/ประทับตราบริษัท ท้าย Packing List (เหมือน PDF)
