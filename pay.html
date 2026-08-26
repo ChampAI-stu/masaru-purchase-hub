@@ -941,7 +941,13 @@ async function saveFBill(){
   if(!row.bill_no)return toast('ใส่เลขที่บิลก่อน');
   const {error}=id?await sb.from('freight_bills').update(row).eq('id',id)
                  :await sb.from('freight_bills').insert({...row,created_by:ME});
-  if(error)return toast('บันทึกไม่สำเร็จ: '+error.message);
+  if(error){
+    console.error('freight_bills:',error);
+    const miss=/does not exist|schema cache/i.test(error.message||'');
+    alert(miss ? 'ยังไม่ได้สร้างตารางในฐานข้อมูล\n\nกรุณารันไฟล์ freight_setup.sql บน Supabase (polikeshop) ก่อน แล้วลองใหม่\n\nรายละเอียด: '+error.message
+               : 'บันทึกไม่สำเร็จ: '+error.message);
+    return;
+  }
   $('fbillBg').style.display='none';toast('บันทึกแล้ว ✅');loadAll();
 }
 async function delFBill(id){
@@ -961,7 +967,7 @@ async function saveFItem(){
     h:num($('i_h').value),weight:num($('i_wt').value)};
   if(!row.sku&&!row.po_number)return toast('ใส่ SKU หรือ PO อย่างน้อย 1 ช่อง');
   const {error}=await sb.from('freight_items').insert(row);
-  if(error)return toast('บันทึกไม่สำเร็จ: '+error.message);
+  if(error){console.error(error);alert('บันทึกไม่สำเร็จ: '+error.message);return;}
   $('fitemBg').style.display='none';toast('เพิ่มรายการแล้ว ✅');loadAll();
 }
 async function delFItem(id){
