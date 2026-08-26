@@ -50,6 +50,20 @@ tr:nth-child(even) td{background:#F8FAFD}
 .diff-ok{color:var(--green);font-weight:700}.diff-bad{color:var(--red);font-weight:700}
 td.num,th.num{text-align:right;white-space:nowrap}
 .billhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#F1F5F9;border-radius:9px;padding:9px 13px;margin:14px 0 8px}
+.doc-sheet{background:#fff;color:#111;padding:8px 4px}
+.doc-h{text-align:center;font-size:19px;font-weight:800;color:var(--navy);margin-bottom:2px}
+.doc-sub{text-align:center;font-size:13px;color:#555;margin-bottom:12px}
+.doc-meta{display:flex;gap:24px;flex-wrap:wrap;font-size:13px;margin-bottom:10px}
+.doc-sheet table{width:100%;border-collapse:collapse;font-size:12.5px}
+.doc-sheet th,.doc-sheet td{border:1px solid #94A3B8;padding:6px 8px}
+.doc-sheet thead th{background:var(--navy);color:#fff}
+.sign-row{display:flex;gap:26px;margin-top:34px;font-size:12.5px}
+.sign-box{flex:1;text-align:center}
+.sign-line{border-top:1px dotted #333;margin:38px 12px 6px}
+.chk{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;margin:10px 0}
+@media print{body *{visibility:hidden}#dcPaper,#dcPaper *{visibility:visible}
+  #dcPaper{position:absolute;left:0;top:0;width:100%;box-shadow:none;border:0}
+  .no-print{display:none!important}@page{margin:12mm}}
 .bar{background:#E9EEF5;border-radius:20px;height:8px;overflow:hidden;min-width:90px}
 .bar>i{display:block;height:100%;background:var(--green)}
 .empty{text-align:center;color:var(--muted);padding:26px}
@@ -131,7 +145,39 @@ td.num,th.num{text-align:right;white-space:nowrap}
   </div>
 
   <!-- ============ TAB 3: เอกสารประจำวัน (เฟส 3) ============ -->
-  <div id="tab-doc" style="display:none"><div class="card"><h2>🧾 เอกสารค่าใช้จ่ายประจำวัน</h2><div class="empty">เฟส 3 — กำลังพัฒนา (ใบปะหน้าสรุปค่าใช้จ่าย + PDF + แนบรูปหลักฐานผ่าน Google Drive)</div></div></div>
+  <div id="tab-doc" style="display:none">
+    <div class="card no-print">
+      <h2>🧾 เอกสารค่าใช้จ่ายประจำวัน</h2>
+      <div class="sub-note">
+        เลือกวันที่ → ติ๊กรายการที่จะรวมในใบปะหน้า → กด <b>สร้างใบปะหน้า</b> → พิมพ์/บันทึก PDF<br>
+        เอกสารที่ต้องแนบประกอบ: ใบเสนอราคาจีน+แปล · PO จากระบบ JST · หลักฐานการขอซื้อ · ใบปะหน้านี้
+      </div>
+      <div class="row">
+        <button class="btn mini" onclick="docShift(-1)">◀</button>
+        <input type="date" id="dcDate" onchange="renderDoc()" style="max-width:165px">
+        <button class="btn mini" onclick="docShift(1)">▶</button>
+        <button class="btn mini" onclick="$('dcDate').value=new Date().toISOString().slice(0,10);renderDoc()">วันนี้</button>
+        <label style="white-space:nowrap;margin-left:8px">ผู้รับเงิน</label>
+        <input id="dcPayee" placeholder="เช่น JMF CARGO" style="max-width:200px" oninput="buildDoc()">
+        <div style="flex:1"></div>
+        <button class="btn" onclick="buildDoc(true)">📄 สร้างใบปะหน้า</button>
+      </div>
+      <div id="dcPick"></div>
+    </div>
+    <div class="card" id="dcPaper" style="display:none">
+      <div class="row no-print" style="margin-bottom:10px">
+        <b>ตัวอย่างใบปะหน้า</b><div style="flex:1"></div>
+        <button class="btn mini ghost" onclick="$('dcPaper').style.display='none'">ปิด</button>
+        <button class="btn mini" onclick="saveDoc()">💾 บันทึกเอกสาร</button>
+        <button class="btn" onclick="window.print()">🖨️ พิมพ์ / บันทึก PDF</button>
+      </div>
+      <div id="dcSheet"></div>
+    </div>
+    <div class="card no-print" id="dcHistCard">
+      <h2>📚 เอกสารที่บันทึกไว้</h2>
+      <div id="dcHist"></div>
+    </div>
+  </div>
 
   <!-- ============ TAB 4: สรุปเดือน ============ -->
   <div id="tab-month" style="display:none">
@@ -352,6 +398,7 @@ const SUPABASE_KEY='sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 const money=n=>Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2});
+const num=v=>{const n=parseFloat(String(v==null?'':v).replace(/,/g,''));return isNaN(n)?0:n;};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const curSym=c=>c==='THB'?'฿':'¥';
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2600);}
@@ -423,6 +470,7 @@ async function loadAll(){
     pageAll('tax_summaries','*',null),
     pageAll('shipment_tracking','*',null)
   ]);
+  if($('tab-doc').style.display!=='none')renderDoc();
   if($('tab-freight').style.display!=='none')renderFreight();
   if($('tab-lot').style.display!=='none'){fillLotSelect();renderLot();}
   renderBills();
@@ -1102,12 +1150,114 @@ function exportLot(){
 }
 
 
+
+/* ==================== เอกสารค่าใช้จ่ายประจำวัน (ใบปะหน้า) ==================== */
+let DOCS=[], DOCSEL=new Set();
+function docShift(k){const v=$('dcDate').value||new Date().toISOString().slice(0,10);
+  const dt=new Date(v+'T00:00:00');dt.setDate(dt.getDate()+k);$('dcDate').value=dt.toISOString().slice(0,10);renderDoc();}
+function docRows(){
+  const d=$('dcDate').value;
+  return PAYS.filter(p=>p.pay_date===d&&p.status!=='rejected');
+}
+function renderDoc(){
+  if(!$('dcDate'))return;
+  if(!$('dcDate').value)$('dcDate').value=new Date().toISOString().slice(0,10);
+  const rows=docRows();
+  DOCSEL=new Set(rows.map(p=>p.id));   // ติ๊กทั้งหมดไว้ก่อน
+  if(!rows.length){$('dcPick').innerHTML='<div class="empty">วันนี้ยังไม่มีงวดจ่าย — เพิ่มจากแท็บ Tracking บิล</div>';
+    $('dcPaper').style.display='none';renderDocHist();return;}
+  let h='<table><thead><tr><th style="width:38px"></th><th>PO</th><th>Vendor / SKU</th><th>งวด</th><th class="num">ยอด</th><th class="num">เรท</th><th class="num">บาท</th><th class="num">ค่าธรรมเนียม</th><th>สถานะ</th></tr></thead><tbody>';
+  rows.forEach(p=>{const b=billOf(p.bill_id);
+    h+=`<tr><td style="text-align:center"><input type="checkbox" class="dc-ck" data-id="${p.id}" checked style="width:16px;height:16px;cursor:pointer" onchange="pickDoc(this)"></td>
+      <td><b>${esc(b.po_number||'-')}</b></td><td>${esc(b.vendor||'')}<span class="muted"> ${esc(b.sku||'')}</span></td>
+      <td>${esc(p.installment||'-')}</td><td class="num">${money(p.amount)} ${curSym(b.currency)}</td>
+      <td class="num">${p.rate?esc(p.rate):'-'}</td><td class="num">${money(thbOf(p))}</td>
+      <td class="num">${money(p.fee)}</td><td>${stPill(p.status)}</td></tr>`;});
+  h+='</tbody></table>';
+  $('dcPick').innerHTML=h;
+  renderDocHist();
+}
+function pickDoc(el){el.checked?DOCSEL.add(el.dataset.id):DOCSEL.delete(el.dataset.id);}
+function buildDoc(show){
+  if(show===true)$('dcPaper').style.display='';
+  if($('dcPaper').style.display==='none')return;
+  const rows=docRows().filter(p=>DOCSEL.has(p.id));
+  if(!rows.length){$('dcSheet').innerHTML='<div class="empty">ยังไม่ได้เลือกรายการ</div>';return;}
+  const d=$('dcDate').value, payee=($('dcPayee').value||'').trim();
+  const D=new Date(d+'T00:00:00');
+  const thDate=D.toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+  const cos=[...new Set(rows.map(p=>billOf(p.bill_id).company||'-'))];
+  const tThb=rows.reduce((s,p)=>s+thbOf(p),0), tFee=rows.reduce((s,p)=>s+num(p.fee),0);
+  let h=`<div class="doc-sheet">
+    <div class="doc-h">ใบสรุปค่าใช้จ่ายประจำวัน</div>
+    <div class="doc-sub">MASARU GROUP — ฝ่ายจัดซื้อ</div>
+    <div class="doc-meta"><div><b>วันที่:</b> ${esc(thDate)}</div>
+      <div><b>ผู้รับเงิน:</b> ${esc(payee||'-')}</div>
+      <div><b>บริษัทที่จ่าย:</b> ${esc(cos.join(', '))}</div>
+      <div><b>จำนวนรายการ:</b> ${rows.length}</div></div>
+    <table><thead><tr><th style="width:34px">#</th><th>เลขที่ PO</th><th>รายการ / SKU</th><th>งวด</th>
+      <th class="num">ยอด</th><th class="num">เรทโอน</th><th class="num">จำนวนเงิน (บาท)</th><th class="num">ค่าธรรมเนียม</th></tr></thead><tbody>`;
+  rows.forEach((p,i)=>{const b=billOf(p.bill_id);
+    h+=`<tr><td style="text-align:center">${i+1}</td><td>${esc(b.po_number||'-')}</td>
+      <td>${esc(b.vendor||'')}${b.vendor&&b.sku?' — ':''}${esc(b.sku||'')}</td>
+      <td>${esc(p.installment||'-')}</td>
+      <td class="num">${money(p.amount)} ${curSym(b.currency)}</td>
+      <td class="num">${p.rate?esc(p.rate):'-'}</td>
+      <td class="num">${money(thbOf(p))}</td><td class="num">${money(p.fee)}</td></tr>`;});
+  h+=`<tr style="background:#FFF7DF;font-weight:800"><td colspan="6" style="text-align:right">รวมทั้งสิ้น</td>
+      <td class="num">${money(tThb)}</td><td class="num">${money(tFee)}</td></tr>
+    <tr style="background:#EAF3DE;font-weight:800"><td colspan="6" style="text-align:right">ยอดโอนรวม (บาท + ค่าธรรมเนียม)</td>
+      <td class="num" colspan="2">${money(tThb+tFee)}</td></tr></tbody></table>
+    <div class="chk"><b>เอกสารแนบ:</b>
+      <label><input type="checkbox" checked disabled> ใบเสนอราคาจีน + คำแปล</label>
+      <label><input type="checkbox" checked disabled> PO จากระบบ JST</label>
+      <label><input type="checkbox" checked disabled> หลักฐานการขอซื้อ</label>
+      <label><input type="checkbox" checked disabled> ใบปะหน้าสรุปนี้</label></div>
+    <div class="sign-row">
+      <div class="sign-box"><div class="sign-line"></div>ผู้จัดทำ (จัดซื้อ)<div style="color:#666">${esc(ME)}</div></div>
+      <div class="sign-box"><div class="sign-line"></div>ผู้ตรวจสอบ (หัวหน้า)</div>
+      <div class="sign-box"><div class="sign-line"></div>ผู้อนุมัติ (ผู้บริหาร)</div>
+    </div>
+    <div class="muted" style="margin-top:14px;font-size:11.5px">พิมพ์เมื่อ ${new Date().toLocaleString('th-TH')} · เอกสารภายใน (ความลับ)</div>
+  </div>`;
+  $('dcSheet').innerHTML=h;
+}
+async function saveDoc(){
+  const rows=docRows().filter(p=>DOCSEL.has(p.id));
+  if(!rows.length)return toast('ยังไม่ได้เลือกรายการ');
+  const b0=billOf(rows[0].bill_id);
+  const row={doc_date:$('dcDate').value,payee:($('dcPayee').value||'').trim()||null,
+    company:b0.company||null,payment_ids:rows.map(p=>p.id),
+    note:'ยอดรวม '+money(rows.reduce((s,p)=>s+thbOf(p),0)+rows.reduce((s,p)=>s+num(p.fee),0))+' บาท',created_by:ME};
+  const {error}=await sb.from('pay_docs').insert(row);
+  if(error)return toast('บันทึกไม่สำเร็จ: '+error.message);
+  toast('บันทึกเอกสารแล้ว ✅'); loadDocs();
+}
+async function loadDocs(){ DOCS=await pageAll('pay_docs','*','doc_date'); renderDocHist(); }
+function renderDocHist(){
+  if(!$('dcHist'))return;
+  if(!DOCS.length){$('dcHist').innerHTML='<div class="empty">ยังไม่มีเอกสารที่บันทึก</div>';return;}
+  let h='<table><thead><tr><th>วันที่</th><th>ผู้รับเงิน</th><th>บริษัท</th><th class="num">รายการ</th><th>สรุป</th><th>ผู้จัดทำ</th><th></th></tr></thead><tbody>';
+  DOCS.slice(0,60).forEach(x=>{
+    h+=`<tr><td><b>${esc(x.doc_date||'-')}</b></td><td>${esc(x.payee||'-')}</td><td>${esc(x.company||'-')}</td>
+      <td class="num">${(x.payment_ids||[]).length}</td><td>${esc(x.note||'')}</td><td class="muted">${esc(x.created_by||'')}</td>
+      <td class="num">${canEdit?`<button class="btn mini red" onclick="delDoc('${x.id}')">ลบ</button>`:''}</td></tr>`;});
+  $('dcHist').innerHTML=h+'</tbody></table>';
+}
+async function delDoc(id){
+  if(!confirm('ลบเอกสารนี้?'))return;
+  const {error}=await sb.from('pay_docs').delete().eq('id',id);
+  if(error)return toast('ลบไม่สำเร็จ: '+error.message);
+  toast('ลบแล้ว'); loadDocs();
+}
+
 /* ===== TABS ===== */
 function goTab(t){
   document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on',el.dataset.t===t));
   ['bills','plan','doc','month','freight','lot'].forEach(k=>$('tab-'+k).style.display=k===t?'':'none');
   if(t==='plan')planView(PLANVIEW);
   if(t==='month')renderMonth();
+  if(t==='doc'){renderDoc();loadDocs();}
   if(t==='freight')renderFreight();
   if(t==='lot'){fillLotSelect();renderLot();}
 }
