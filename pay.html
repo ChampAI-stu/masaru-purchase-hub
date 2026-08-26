@@ -43,6 +43,7 @@ tr:nth-child(even) td{background:#F8FAFD}
 .pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:700;white-space:nowrap}
 .p-open{background:#E6F1FB;color:#3A5A8C}.p-closed{background:#EAF3DE;color:var(--green)}
 .p-paid{background:#EAF3DE;color:var(--green)}.p-plan{background:#FFF3CC;color:var(--amber)}
+.p-sent{background:#E6F1FB;color:#2E75B6}.p-rej{background:#FCE4E4;color:var(--red)}
 .bar{background:#E9EEF5;border-radius:20px;height:8px;overflow:hidden;min-width:90px}
 .bar>i{display:block;height:100%;background:var(--green)}
 .empty{text-align:center;color:var(--muted);padding:26px}
@@ -166,7 +167,7 @@ tr:nth-child(even) td{background:#F8FAFD}
       <div class="fld"><label>วันที่จ่าย ★</label><input id="p_date" type="date"></div>
       <div class="fld"><label>ยอดงวด (<span id="p_curlbl">¥</span>) ★</label><input id="p_amount" type="number" step="0.01" oninput="calcThb()"></div>
       <div class="fld"><label>สถานะ</label>
-        <select id="p_status"><option value="planned">🗓️ วางแผน</option><option value="paid">✅ จ่ายแล้ว</option></select></div>
+        <select id="p_status"><option value="planned">🗓️ วางแผน</option><option value="submitted">📤 ส่งยอด</option><option value="paid" id="p_optPaid">✅ จ่ายแล้ว (ผู้บริหารอนุมัติ)</option></select></div>
       <div class="fld"><label>เรทโอน (฿/¥)</label><input id="p_rate" type="number" step="0.0001" oninput="calcThb()"></div>
       <div class="fld"><label>ยอดบาท</label><input id="p_thb" type="number" step="0.01"></div>
       <div class="fld"><label>ค่าธรรมเนียม (฿)</label><input id="p_fee" type="number" step="0.01" value="0"></div>
@@ -228,7 +229,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const curSym=c=>c==='THB'?'฿':'¥';
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2600);}
 
-let canEdit=false, ME='', BILLS=[], PAYS=[];
+let canEdit=false, IS_EXEC=false, ME='', BILLS=[], PAYS=[];
 
 /* ===== AUTH ===== */
 async function boot(){
@@ -241,6 +242,7 @@ async function boot(){
   // เข้าได้เฉพาะ จัดซื้อ / หัวหน้า / ผู้บริหาร
   if(!roles.includes('purchase')&&!isMgr&&!isExec){location.replace('index.html');return;}
   canEdit=true;   // จัดซื้อ + หัวหน้า + ผู้บริหาร แก้ไขได้ทั้งหมด
+  IS_EXEC=isExec;   // ผู้บริหารเท่านั้นที่อนุมัติ/ไม่อนุมัติได้
   ME=session.user.email||'';
   $('rolePill').textContent = roles.includes('purchase') ? '📦 จัดซื้อ (แก้ไขได้)'
                             : (isMgr ? '🧑‍💼 หัวหน้า (แก้ไขได้)' : '👑 ผู้บริหาร (แก้ไขได้)');
@@ -292,7 +294,23 @@ async function loadAll(){
 }
 function billPays(bid){return PAYS.filter(p=>p.bill_id===bid);}
 function paidSum(bid){return billPays(bid).filter(p=>p.status==='paid').reduce((s,p)=>s+(+p.amount||0),0);}
-function planSum(bid){return billPays(bid).filter(p=>p.status==='planned').reduce((s,p)=>s+(+p.amount||0),0);}
+function planSum(bid){return billPays(bid).filter(p=>p.status==='planned'||p.status==='submitted').reduce((s,p)=>s+(+p.amount||0),0);}
+const PAY_ST={planned:{c:'p-plan',t:'🗓️ วางแผน'},submitted:{c:'p-sent',t:'📤 ส่งยอด'},paid:{c:'p-paid',t:'✅ จ่ายแล้ว'},rejected:{c:'p-rej',t:'✖ ไม่อนุมัติ'}};
+function stPill(s){const m=PAY_ST[s]||PAY_ST.planned;return `<span class="pill ${m.c}">${m.t}</span>`;}
+// ปุ่มตามสิทธิ์: จัดซื้อ/หัวหน้า = ส่งยอด · ผู้บริหาร = อนุมัติ/ไม่อนุมัติ
+function stBtns(p,fn){
+  if(!canEdit)return '';
+  let h='';
+  if(IS_EXEC){
+    if(p.status!=='paid')h+=`<button class="btn mini green" onclick="${fn}('${p.id}','paid')">✔ อนุมัติ</button> `;
+    if(p.status!=='rejected'&&p.status!=='paid')h+=`<button class="btn mini" style="background:#B45309" onclick="${fn}('${p.id}','rejected')">✖ ไม่อนุมัติ</button> `;
+    if(p.status==='paid'||p.status==='rejected')h+=`<button class="btn mini ghost" onclick="${fn}('${p.id}','planned')">↩ คืนสถานะ</button> `;
+  }else{
+    if(p.status==='planned')h+=`<button class="btn mini" style="background:#2E75B6" onclick="${fn}('${p.id}','submitted')">📤 ส่งยอด</button> `;
+    else if(p.status==='submitted')h+='<span class="muted" style="font-size:11.5px">รอผู้บริหารอนุมัติ</span> ';
+  }
+  return h;
+}
 
 /* ===== RENDER BILLS ===== */
 function renderBills(){
@@ -308,7 +326,7 @@ function renderBills(){
   const remainTotal=open.reduce((s,b)=>s+Math.max(0,(+b.total_amount||0)-paidSum(b.id)),0);
   const paidMonth=PAYS.filter(p=>p.status==='paid'&&p.pay_date&&p.pay_date.slice(0,7)===new Date().toISOString().slice(0,7))
     .reduce((s,p)=>s+(+p.amount_thb||0),0);
-  const planCnt=PAYS.filter(p=>p.status==='planned').length;
+  const planCnt=PAYS.filter(p=>p.status==='planned'||p.status==='submitted').length;
   $('billKpi').innerHTML=`
     <div class="kpi"><div class="lbl">บิลทั้งหมด</div><div class="val">${BILLS.length}</div></div>
     <div class="kpi gold"><div class="lbl">บิลยังไม่ปิด</div><div class="val">${open.length}</div></div>
@@ -389,6 +407,7 @@ function openPay(bid){
   $('p_amount').value=''; $('p_rate').value=b.currency==='THB'?'1':''; $('p_thb').value='';
   $('p_fee').value='0'; $('p_channel').value=''; $('p_inst').value=''; $('p_resp').value=''; $('p_note').value='';
   $('p_status').value='planned';
+  if($('p_optPaid'))$('p_optPaid').style.display=IS_EXEC?'':'none';   // เฉพาะผู้บริหารตั้ง 'จ่ายแล้ว' ได้
   $('payWarn').style.display='none';
   $('payBg').style.display='flex';
 }
@@ -424,7 +443,7 @@ async function savePayment(){
     rate:parseFloat($('p_rate').value)||null,amount_thb:parseFloat($('p_thb').value)||null,
     fee:parseFloat($('p_fee').value)||0,channel:$('p_channel').value.trim()||null,
     installment:$('p_inst').value.trim()||null,responsible:$('p_resp').value.trim()||null,
-    status:$('p_status').value,note:$('p_note').value.trim()||null,created_by:ME};
+    status:((!IS_EXEC&&$('p_status').value==='paid')?'submitted':$('p_status').value),note:$('p_note').value.trim()||null,created_by:ME};
   const {error}=await sb.from('pay_payments').insert(row);
   if(error)return toast('บันทึกไม่สำเร็จ: '+error.message);
   $('payBg').style.display='none';toast('บันทึกงวดเรียบร้อย ✅');loadAll();
@@ -449,8 +468,8 @@ function openHist(bid){
         <td class="right">${p.rate?esc(p.rate):'-'}</td>
         <td class="right">${p.amount_thb?money(p.amount_thb):'-'}</td>
         <td>${esc(p.channel||'-')}</td><td>${esc(p.responsible||'-')}</td>
-        <td><span class="pill ${p.status==='paid'?'p-paid':'p-plan'}">${p.status==='paid'?'✅ จ่ายแล้ว':'🗓️ วางแผน'}</span></td>
-        <td style="white-space:nowrap">${canEdit?(p.status!=='paid'?`<button class="btn mini green" onclick="markPaid(${p.id},${bid})">✔ จ่ายแล้ว</button> `:'')+`<button class="btn mini red" onclick="delPay(${p.id},${bid})">ลบ</button>`:''}</td></tr>`;
+        <td>${stPill(p.status)}</td>
+        <td style="white-space:nowrap">${stBtns(p,'setPayStatus')}${canEdit?`<button class="btn mini red" onclick="delPay('${p.id}','${bid}')">ลบ</button>`:''}</td></tr>`;
     });
     h+='</tbody></table>';
   }
@@ -459,10 +478,16 @@ function openHist(bid){
   $('histBody').innerHTML=h;
   $('histBg').style.display='flex';
 }
-async function markPaid(pid,bid){
-  const {error}=await sb.from('pay_payments').update({status:'paid'}).eq('id',pid);
+async function setPayStatus(pid,st){
+  // ผู้บริหารเท่านั้นที่อนุมัติ (paid) / ไม่อนุมัติ (rejected)
+  if((st==='paid'||st==='rejected') && !IS_EXEC) return toast('เฉพาะผู้บริหารเท่านั้นที่อนุมัติได้');
+  const L={planned:'กลับเป็น "วางแผน"',submitted:'ส่งยอดให้ผู้บริหารอนุมัติ',paid:'อนุมัติเป็น "จ่ายแล้ว"',rejected:'ทำเป็น "ไม่อนุมัติ"'};
+  if(!confirm('ยืนยัน'+L[st]+'?'))return;
+  const up={status:st}; if(st==='paid')up.paid_at=new Date().toISOString().slice(0,10);
+  const {error}=await sb.from('pay_payments').update(up).eq('id',pid);
   if(error)return toast('อัปเดตไม่สำเร็จ: '+error.message);
-  await loadAll();openHist(bid);toast('อัปเดตเป็นจ่ายแล้ว ✅');
+  await loadAll(); toast('อัปเดตสถานะแล้ว ✅');
+  if(HIST_BID && $('histBg').style.display==='flex') openHist(HIST_BID);
 }
 async function delPay(pid,bid){
   if(!confirm('ลบงวดนี้?'))return;
@@ -486,11 +511,12 @@ function renderPlan(){
   if(!$('plDate').value)$('plDate').value=new Date().toISOString().slice(0,10);
   const d=$('plDate').value;
   const rows=PAYS.filter(p=>p.pay_date===d);
-  const planned=rows.filter(p=>p.status!=='paid'), paid=rows.filter(p=>p.status==='paid');
+  const planned=rows.filter(p=>p.status==='planned'), sent=rows.filter(p=>p.status==='submitted'), paid=rows.filter(p=>p.status==='paid');
   const sumThb=a=>a.reduce((s,p)=>s+thbOf(p),0);
   $('planKpi').innerHTML=`
-    <div class="kpi"><div class="lbl">งวดวางแผนวันนี้</div><div class="val">${planned.length}</div></div>
-    <div class="kpi gold"><div class="lbl">ยอดตามแผน (บาท)</div><div class="val">${money(sumThb(planned))}</div></div>
+    <div class="kpi"><div class="lbl">วางแผนวันนี้</div><div class="val">${planned.length}</div></div>
+    <div class="kpi" style="background:#2E75B6"><div class="lbl">ส่งยอด (รออนุมัติ)</div><div class="val">${sent.length}</div></div>
+    <div class="kpi gold"><div class="lbl">ยอดรอจ่าย (บาท)</div><div class="val">${money(sumThb(planned.concat(sent)))}</div></div>
     <div class="kpi green"><div class="lbl">จ่ายแล้ววันนี้</div><div class="val">${paid.length}</div></div>
     <div class="kpi"><div class="lbl">ยอดจ่ายแล้ว (บาท)</div><div class="val">${money(sumThb(paid))}</div></div>`;
   if(!rows.length){$('planBody').innerHTML='<div class="empty">วันนี้ยังไม่มีงวดจ่าย — เพิ่มจากแท็บ Tracking บิล (+ งวดจ่าย โดยเลือกวันที่นี้)</div>';return;}
@@ -507,8 +533,8 @@ function renderPlan(){
         <td class="right"><b>${money(p.amount)} ${s}</b></td>
         <td class="right">${p.rate?esc(p.rate):'-'}</td><td class="right">${money(thbOf(p))}</td>
         <td>${esc(p.channel||'-')}</td><td>${esc(p.responsible||'-')}</td>
-        <td><span class="pill ${p.status==='paid'?'p-paid':'p-plan'}">${p.status==='paid'?'✅ จ่ายแล้ว':'🗓️ วางแผน'}</span></td>
-        <td style="white-space:nowrap">${canEdit?((p.status!=='paid'?`<button class="btn mini green" onclick="planPaid(${p.id})">✔ จ่ายแล้ว</button> `:'')+`<button class="btn mini red" onclick="planDel(${p.id})">ลบ</button>`):''}</td></tr>`;});
+        <td>${stPill(p.status)}</td>
+        <td style="white-space:nowrap">${stBtns(p,'setPayStatus')}${canEdit?`<button class="btn mini red" onclick="planDel('${p.id}')">ลบ</button>`:''}</td></tr>`;});
     h+=`</tbody></table>
     <div class="muted" style="text-align:right;margin:6px 0 4px">รวม ${esc(co)}: `
       +(cny?`<b>${money(cny)} ¥</b>`:'')+((cny&&thbD)?' + ':'')+(thbD?`<b>${money(thbD)} ฿</b>`:'')
@@ -517,11 +543,7 @@ function renderPlan(){
   h+=`<div style="text-align:right;font-weight:800;font-size:15px;border-top:2px solid var(--navy);padding-top:8px;margin-top:6px">รวมทั้งวัน (บาทประมาณ): ${money(sumThb(rows))} ฿</div>`;
   $('planBody').innerHTML=h;
 }
-async function planPaid(pid){
-  const {error}=await sb.from('pay_payments').update({status:'paid'}).eq('id',pid);
-  if(error)return toast('อัปเดตไม่สำเร็จ: '+error.message);
-  await loadAll();toast('อัปเดตเป็นจ่ายแล้ว ✅');
-}
+
 async function planDel(pid){
   if(!confirm('ลบงวดนี้?'))return;
   const {error}=await sb.from('pay_payments').delete().eq('id',pid);
@@ -535,7 +557,7 @@ function renderMonth(){
   if(!$('moMonth').value)$('moMonth').value=new Date().toISOString().slice(0,7);
   const m=$('moMonth').value;
   const rows=PAYS.filter(p=>(p.pay_date||'').startsWith(m));
-  const paid=rows.filter(p=>p.status==='paid'), planned=rows.filter(p=>p.status!=='paid');
+  const paid=rows.filter(p=>p.status==='paid'), planned=rows.filter(p=>p.status==='planned'||p.status==='submitted');
   const sumThb=a=>a.reduce((s,p)=>s+thbOf(p),0);
   $('moKpi').innerHTML=`
     <div class="kpi green"><div class="lbl">จ่ายแล้วทั้งเดือน (บาท)</div><div class="val">${money(sumThb(paid))}</div></div>
@@ -615,7 +637,7 @@ function renderPlanMonth(){
   const m=$('plMonth').value;
   const rows=PAYS.filter(p=>(p.pay_date||'').startsWith(m));
   const sumThb=a=>a.reduce((s,p)=>s+thbOf(p),0);
-  const planned=rows.filter(p=>p.status!=='paid'), paid=rows.filter(p=>p.status==='paid');
+  const planned=rows.filter(p=>p.status==='planned'||p.status==='submitted'), paid=rows.filter(p=>p.status==='paid');
   $('planKpi').innerHTML=`
     <div class="kpi"><div class="lbl">งวดทั้งเดือน</div><div class="val">${rows.length}</div></div>
     <div class="kpi gold"><div class="lbl">ยังไม่จ่าย (บาท)</div><div class="val">${money(sumThb(planned))}</div></div>
