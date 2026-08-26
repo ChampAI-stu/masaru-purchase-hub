@@ -171,6 +171,9 @@ td.num,th.num{text-align:right;white-space:nowrap}
         <select id="dcChannel" onchange="renderDoc()" style="width:140px;min-width:140px;flex:0 0 auto"><option value="">— ทุกช่องทาง —</option></select>
         <label style="white-space:nowrap">ผู้รับเงิน</label>
         <input id="dcPayee" placeholder="เช่น JMF CARGO" style="width:200px;min-width:200px;flex:0 0 auto" oninput="this.dataset.touched='1';buildDoc()">
+        <label style="white-space:nowrap">เรทโอน</label>
+        <input type="number" id="dcRate" step="0.0001" placeholder="4.96" style="width:105px;min-width:105px;flex:0 0 auto">
+        <button class="btn mini" onclick="applyRateAll()" title="ใส่เรทนี้ให้ทุกรายการที่ติ๊กไว้">ใช้ทุกรายการ</button>
         <div style="flex:1"></div>
         <button class="btn" onclick="buildDoc(true)">📄 สร้างใบปะหน้า</button>
       </div>
@@ -352,13 +355,14 @@ td.num,th.num{text-align:right;white-space:nowrap}
   <div class="modal">
     <h3 id="payTitle">+ งวดจ่าย</h3>
     <div class="muted" id="payBillInfo" style="margin-bottom:8px"></div>
+    <div class="muted" style="font-size:12px;margin-bottom:8px">💡 ไม่ต้องใส่เรทตอนนี้ — ไประบุเรทโอนที่ <b>แท็บเอกสารประจำวัน</b> ตอนทำใบปะหน้า</div>
     <div class="grid3">
       <div class="fld"><label>วันที่จ่าย ★</label><input id="p_date" type="date"></div>
       <div class="fld"><label>ยอดงวด (<span id="p_curlbl">¥</span>) ★</label><input id="p_amount" type="number" step="0.01" oninput="calcThb()"></div>
       <div class="fld"><label>สถานะ</label>
         <select id="p_status"><option value="planned">🗓️ วางแผน</option><option value="submitted">📤 ส่งยอด</option><option value="paid" id="p_optPaid">✅ จ่ายแล้ว (ผู้บริหารอนุมัติ)</option></select></div>
-      <div class="fld"><label>เรทโอน (฿/¥)</label><input id="p_rate" type="number" step="0.0001" oninput="calcThb()"></div>
-      <div class="fld"><label>ยอดบาท</label><input id="p_thb" type="number" step="0.01"></div>
+      <div class="fld" id="p_rateWrap" style="display:none"><label>เรทโอน (฿/¥)</label><input id="p_rate" type="number" step="0.0001" oninput="calcThb()"></div>
+      <div class="fld" id="p_thbWrap" style="display:none"><label>ยอดบาท</label><input id="p_thb" type="number" step="0.01"></div>
       <div class="fld"><label>ค่าธรรมเนียม (฿)</label><input id="p_fee" type="number" step="0.01" value="0"></div>
       <div class="fld"><label>ช่องทาง</label>
         <input id="p_channel" list="chList" placeholder="KSHER / SWIFT"><datalist id="chList"><option value="KSHER"><option value="SWIFT"><option value="โอนธนาคาร"></datalist></div>
@@ -639,6 +643,7 @@ function editPay(pid,bid){
   $('p_resp').value=p.responsible||'';
   $('p_note').value=p.note||'';
   $('p_status').value=p.status||'planned';
+  if($('p_rateWrap')){const show=(+p.rate||+p.amount_thb)?'':'none';$('p_rateWrap').style.display=show;$('p_thbWrap').style.display=show;}
   if(!IS_EXEC&&p.status==='paid'&&$('p_optPaid'))$('p_optPaid').style.display='';   // ให้เห็นสถานะเดิม
 }
 function calcThb(){
@@ -1271,11 +1276,35 @@ function renderDoc(){
     h+=`<tr><td style="text-align:center"><input type="checkbox" class="dc-ck" data-id="${p.id}" checked style="width:16px;height:16px;cursor:pointer" onchange="pickDoc(this)"></td>
       <td><b>${esc(b.po_number||'-')}</b></td><td>${esc(b.vendor||'')}<span class="muted"> ${esc(b.sku||'')}</span></td>
       <td>${esc(p.installment||'-')}</td><td class="num">${money(p.amount)} ${curSym(b.currency)}</td>
-      <td class="num">${p.rate?esc(p.rate):'<span class="muted">~'+fxEst()+'</span>'}</td><td class="num">${isEst(p)?'<span class="muted">~</span> ':''}${money(thbOf(p))}</td>
+      <td class="num">${b.currency==='THB'?'<span class="muted">-</span>':`<input type="number" step="0.0001" value="${p.rate||''}" placeholder="ใส่เรท" style="width:92px;text-align:right;padding:5px 7px" onchange="setPayRate('${p.id}',this.value)">`}</td>
+      <td class="num">${isEst(p)?'<span class="muted">~</span> ':''}${money(thbOf(p))}</td>
       <td class="num">${money(p.fee)}</td><td>${stPill(p.status)}</td></tr>`;});
   h+='</tbody></table>';
   $('dcPick').innerHTML=h;
   renderDocHist();
+}
+async function setPayRate(pid,v){
+  const p=PAYS.find(x=>String(x.id)===String(pid)); if(!p)return;
+  const r=parseFloat(v)||0;
+  const up={rate:r||null, amount_thb:r?+(((+p.amount||0)*r).toFixed(2)):null};
+  const {error}=await sb.from('pay_payments').update(up).eq('id',pid);
+  if(error){alert('บันทึกเรทไม่สำเร็จ: '+error.message);return;}
+  await loadAll(); renderDoc(); buildDoc(); toast('บันทึกเรทแล้ว ✅');
+}
+async function applyRateAll(){
+  const r=parseFloat($('dcRate').value)||0;
+  if(!(r>0))return toast('ใส่เรทก่อน');
+  const rows=docRows().filter(p=>DOCSEL.has(p.id)&&billOf(p.bill_id).currency!=='THB');
+  if(!rows.length)return toast('ไม่มีรายการที่ต้องใส่เรท');
+  if(!confirm('ใส่เรท '+r+' ให้ '+rows.length+' รายการที่เลือกไว้?'))return;
+  let fail=0;
+  for(const p of rows){
+    const {error}=await sb.from('pay_payments')
+      .update({rate:r, amount_thb:+(((+p.amount||0)*r).toFixed(2))}).eq('id',p.id);
+    if(error)fail++;
+  }
+  await loadAll(); renderDoc(); buildDoc();
+  toast(fail?('มีปัญหา '+fail+' รายการ'):('ใส่เรทให้ '+rows.length+' รายการแล้ว ✅'));
 }
 function pickDoc(el){el.checked?DOCSEL.add(el.dataset.id):DOCSEL.delete(el.dataset.id);}
 function buildDoc(show){
