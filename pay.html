@@ -168,6 +168,10 @@ td.num,th.num{text-align:right;white-space:nowrap}
       <div class="row no-print" style="margin-bottom:10px">
         <b>ตัวอย่างใบปะหน้า</b><div style="flex:1"></div>
         <button class="btn mini ghost" onclick="$('dcPaper').style.display='none'">ปิด</button>
+        <span id="dcExecBtns" style="display:none">
+          <button class="btn mini green" onclick="approveDoc('paid')">✔ อนุมัติทั้งใบ</button>
+          <button class="btn mini" style="background:#B45309" onclick="approveDoc('rejected')">✖ ไม่อนุมัติทั้งใบ</button>
+        </span>
         <button class="btn mini" onclick="saveDoc()">💾 บันทึกเอกสาร</button>
         <button class="btn" onclick="window.print()">🖨️ พิมพ์ / บันทึก PDF</button>
       </div>
@@ -1225,6 +1229,29 @@ function buildDoc(show){
     <div class="muted" style="margin-top:14px;font-size:11.5px">พิมพ์เมื่อ ${new Date().toLocaleString('th-TH')} · เอกสารภายใน (ความลับ)</div>
   </div>`;
   $('dcSheet').innerHTML=h;
+  const eb=$('dcExecBtns'); if(eb)eb.style.display=IS_EXEC?'':'none';
+}
+
+/* อนุมัติ/ไม่อนุมัติ ทุกงวดในใบปะหน้า — ปุ่มเดียวจบ (เฉพาะผู้บริหาร) */
+async function approveDoc(st){
+  if(!IS_EXEC)return toast('เฉพาะผู้บริหารเท่านั้นที่อนุมัติได้');
+  const rows=docRows().filter(p=>DOCSEL.has(p.id));
+  if(!rows.length)return toast('ยังไม่ได้เลือกรายการ');
+  const wait=rows.filter(p=>p.status!==st);
+  if(!wait.length)return toast('ทุกรายการอยู่ในสถานะนี้แล้ว');
+  const sum=money(rows.reduce((s,p)=>s+thbOf(p)+num(p.fee),0));
+  const L=st==='paid'?'อนุมัติเป็น "จ่ายแล้ว"':'ทำเป็น "ไม่อนุมัติ"';
+  if(!confirm(`${L} ทั้งใบ\n\nวันที่: ${$('dcDate').value}\nจำนวน ${wait.length} รายการ · ยอดรวม ${sum} บาท\n\nยืนยัน?`))return;
+  const up={status:st}; if(st==='paid')up.paid_at=$('dcDate').value||new Date().toISOString().slice(0,10);
+  const ids=wait.map(p=>p.id);
+  let fail=0;
+  for(let i=0;i<ids.length;i+=50){
+    const {error}=await sb.from('pay_payments').update(up).in('id',ids.slice(i,i+50));
+    if(error){console.error(error);fail++;}
+  }
+  if(fail)return toast('อัปเดตไม่สำเร็จบางรายการ — ลองใหม่');
+  await loadAll(); renderDoc(); buildDoc();
+  toast(`${st==='paid'?'อนุมัติ':'ไม่อนุมัติ'} ${ids.length} รายการเรียบร้อย ✅`);
 }
 async function saveDoc(){
   const rows=docRows().filter(p=>DOCSEL.has(p.id));
