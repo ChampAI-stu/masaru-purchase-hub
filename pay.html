@@ -137,7 +137,12 @@ td.num,th.num{text-align:right;white-space:nowrap}
           <button class="btn mini" onclick="planShift(1)" title="วันถัดไป">▶</button>
           <button class="btn mini" onclick="planToday()">วันนี้</button>
         </span>
-        <span id="monCtl" style="display:none;align-items:center;gap:8px"><input type="month" id="plMonth" onchange="renderPlanMonth()" style="width:185px;min-width:185px"></span>
+        <span id="monCtl" style="display:none;align-items:center;gap:8px;flex-wrap:nowrap">
+          <button class="btn mini" onclick="monShift(-1)" title="เดือนก่อนหน้า">◀</button>
+          <input type="month" id="plMonth" onchange="renderPlanMonth()" style="width:185px;min-width:185px;flex:0 0 auto">
+          <button class="btn mini" onclick="monShift(1)" title="เดือนถัดไป">▶</button>
+          <button class="btn mini" onclick="monThis()">เดือนนี้</button>
+        </span>
         <span style="display:inline-flex;align-items:center;gap:6px;margin-left:10px" title="ใช้แปลงเป็นบาทเฉพาะงวดที่ยังไม่ได้ใส่เรทโอน">
           <label style="white-space:nowrap;margin:0">เรทประมาณ ¥→฿</label>
           <input type="number" id="fxEst" value="5.2" step="0.01" style="width:80px" oninput="PLANVIEW==='month'?renderPlanMonth():renderPlan()">
@@ -833,6 +838,14 @@ function planView(v){
   $('planBody').style.display=v==='day'?'':'none'; $('planMonthBody').style.display=v==='month'?'':'none';
   v==='day'?renderPlan():renderPlanMonth();
 }
+function monShift(k){
+  const v=$('plMonth').value||new Date().toISOString().slice(0,7);
+  const [y,m]=v.split('-').map(Number);
+  const dt=new Date(y,(m-1)+k,1);
+  $('plMonth').value=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
+  renderPlanMonth();
+}
+function monThis(){$('plMonth').value=new Date().toISOString().slice(0,7);renderPlanMonth();}
 function renderPlanMonth(){
   if(!$('plMonth'))return;
   if(!$('plMonth').value)$('plMonth').value=new Date().toISOString().slice(0,7);
