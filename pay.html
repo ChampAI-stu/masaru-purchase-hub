@@ -425,6 +425,7 @@ console.log('%c pay.html '+PAY_VERSION+' ','background:#1A2942;color:#fff;paddin
 window.addEventListener('error',e=>{console.error('[pay] JS ERROR:',e.message,'@',e.filename+':'+e.lineno);});
 const $=id=>document.getElementById(id);
 const money=n=>Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2});
+const money2=n=>Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
 const num=v=>{const n=parseFloat(String(v==null?'':v).replace(/,/g,''));return isNaN(n)?0:n;};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const curSym=c=>c==='THB'?'฿':'¥';
@@ -1320,46 +1321,68 @@ function buildDoc(show){
   const d=$('dcDate').value;
   const payee=[...new Set(rows.map(p=>billOf(p.bill_id).vendor).filter(Boolean))].join(', ');
   const D=new Date(d+'T00:00:00');
-  const thDate=D.toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+  const thDate=D.toLocaleDateString('th-TH',{day:'numeric',month:'long'})+' '+(D.getFullYear()+543);
   const pickCo=($('dcCompany')&&$('dcCompany').value)||'';
   const cos=pickCo?[pickCo]:[...new Set(rows.map(p=>billOf(p.bill_id).company||'-'))];
-  const tThb=rows.reduce((s,p)=>s+thbOf(p),0), tFee=rows.reduce((s,p)=>s+num(p.fee),0);
-  let h=`<div class="doc-sheet">
-    <div class="doc-h">ใบสรุปค่าใช้จ่ายประจำวัน</div>
-    <div class="doc-sub">MASARU GROUP — ฝ่ายจัดซื้อ</div>
-    <div class="doc-meta"><div><b>วันที่:</b> ${esc(thDate)}</div>
-      <div><b>ผู้รับเงิน:</b> ${esc(payee||'-')}</div>
-      <div><b>บริษัทที่จ่าย:</b> ${esc(cos.join(', '))}</div>
-      ${(($('dcChannel')&&$('dcChannel').value)||'')?`<div><b>ช่องทางจ่าย:</b> ${esc($('dcChannel').value)}</div>`:''}
-      <div><b>จำนวนรายการ:</b> ${rows.length}</div></div>
-    <table><thead><tr><th style="width:34px">#</th><th>เลขที่ PO</th><th>รายการ / SKU</th><th>งวด</th>
-      <th class="num">ยอด</th><th class="num">เรทโอน</th><th class="num">จำนวนเงิน (บาท)</th><th class="num">ค่าธรรมเนียม</th></tr></thead><tbody>`;
+  const coName={LIKESHOP:'บริษัท ไลค์ช็อป มอลล์ จำกัด',MASARU:'บริษัท มาซารุ มาร์เก็ตติ้ง จำกัด',
+    DAIKI:'บริษัท ไดกิ เทรดดิ้ง จำกัด',JMF:'JMF'}[cos[0]]||cos.join(', ');
   const showDetail=$('dcDetail')&&$('dcDetail').checked;
-  rows.forEach((p,i)=>{const b=billOf(p.bill_id);
-    h+=`<tr><td style="text-align:center">${i+1}</td><td>${esc(b.po_number||'-')}</td>
-      <td>${esc(b.vendor||'')}${b.vendor&&b.sku?' — ':''}${esc(b.sku||'')}</td>
-      <td>${esc(p.installment||'-')}</td>
-      <td class="num">${money(p.amount)} ${curSym(b.currency)}</td>
-      <td class="num">${p.rate?esc(p.rate):'-'}</td>
-      <td class="num">${money(thbOf(p))}</td><td class="num">${money(p.fee)}</td></tr>`;
-    if(showDetail){
-      const its=POROWS.filter(r=>String(r.po_number||'')===String(b.po_number||'')&&(+r.price>0||+r.quantity>0));
-      its.forEach(r=>{
-        h+=`<tr style="background:#F8FAFC;font-size:11.5px">
-          <td></td><td></td>
-          <td style="padding-left:18px">↳ ${esc(r.sku||'-')}</td>
-          <td class="num">${money(r.quantity)} ชิ้น</td>
-          <td class="num">@ ${money(r.price)} ${curSym(b.currency)}</td>
-          <td colspan="2" class="num">= ${money((+r.price||0)*(+r.quantity||0))} ${curSym(b.currency)}</td>
-          <td></td></tr>`;});
-      if(!its.length&&b.sku)
-        h+=`<tr style="background:#F8FAFC;font-size:11.5px"><td></td><td></td>
-          <td colspan="6" style="padding-left:18px" class="muted">↳ ${esc(b.sku)} (ไม่พบราคา/หน่วยใน Purchase Board)</td></tr>`;
-    }});
-  h+=`<tr style="background:#FFF7DF;font-weight:800"><td colspan="6" style="text-align:right">รวมทั้งสิ้น</td>
-      <td class="num">${money(tThb)}</td><td class="num">${money(tFee)}</td></tr>
-    <tr style="background:#EAF3DE;font-weight:800"><td colspan="6" style="text-align:right">ยอดโอนรวม (บาท + ค่าธรรมเนียม)</td>
-      <td class="num" colspan="2">${money(tThb+tFee)}</td></tr></tbody></table>
+
+  // แตกเป็นรายบรรทัด: 1 SKU = 1 แถว (ถ้าเปิด "แยกรายการ SKU")
+  const lines=[];
+  rows.forEach(p=>{
+    const b=billOf(p.bill_id), s=curSym(b.currency);
+    const its=showDetail?POROWS.filter(r=>String(r.po_number||'')===String(b.po_number||'')&&(+r.price>0||+r.quantity>0)):[];
+    const remain=Math.max(0,(+b.total_amount||0)-paidSum(p.bill_id));
+    const note=(p.installment||'')+' ยอด '+money(p.amount)+' '+s+(remain>0?(' ค้างชำระ '+money(remain)+' '+s):'');
+    if(its.length){
+      const tot=its.reduce((x,r)=>x+(+r.price||0)*(+r.quantity||0),0)||1;
+      its.forEach((r,k)=>{
+        const share=((+r.price||0)*(+r.quantity||0))/tot;
+        lines.push({po:b.po_number,sku:r.sku,qty:r.quantity,unit:r.price,
+          amt:(+p.amount||0)*share, rate:p.rate, fee:(k===0?(+p.fee||0):0),
+          thb:thbOf(p)*share, note:(k===0?note:''), cur:s});
+      });
+    }else{
+      lines.push({po:b.po_number,sku:b.sku||'-',qty:'',unit:'',
+        amt:+p.amount||0, rate:p.rate, fee:+p.fee||0, thb:thbOf(p), note, cur:s});
+    }
+  });
+  const T=k=>lines.reduce((s,l)=>s+(+l[k]||0),0);
+
+  let h=`<div class="doc-sheet">
+    <div style="text-align:center;line-height:1.65;margin-bottom:12px">
+      <div style="font-weight:700">${esc(coName)}</div>
+      <div>นามบุคคล</div>
+      <div>รายงาน สรุปค่าใช้จ่ายจัดซื้อ ประจำวัน</div>
+      <div style="font-weight:700">${esc(payee||'-')}</div>
+      <div>วันที่ ${esc(thDate)}</div>
+    </div>
+    <table><thead>
+      <tr><th rowspan="2">รายการ</th><th rowspan="2">รหัสใบจัดซื้อ</th><th rowspan="2">รายการ</th>
+        <th rowspan="2" class="num">จำนวนสินค้า</th>
+        <th colspan="4" style="text-align:center">หยวน</th>
+        <th rowspan="2" class="num">จำนวนเงินบาท</th><th rowspan="2" class="num">ค่าธรรมเนียม</th>
+        <th rowspan="2" class="num">รวมจำนวนเงินบาท</th><th rowspan="2">หมายเหตุ</th></tr>
+      <tr><th class="num">จำนวนเงินต่อหน่วย</th><th class="num">จำนวนเงิน / หยวน</th>
+        <th class="num">ค่าขนส่ง</th><th class="num">เรทโอน</th></tr>
+    </thead><tbody>`;
+  lines.forEach((l,i)=>{
+    h+=`<tr><td style="text-align:center">${i+1}</td><td>${esc(l.po||'-')}</td><td>${esc(l.sku||'-')}</td>
+      <td class="num">${l.qty!==''?money(l.qty):''}</td>
+      <td class="num">${l.unit!==''?money2(l.unit):''}</td>
+      <td class="num">${money2(l.amt)}</td>
+      <td class="num"></td>
+      <td class="num">${l.rate?esc(l.rate):''}</td>
+      <td class="num">${money2(l.thb)}</td>
+      <td class="num">${l.fee?money2(l.fee):''}</td>
+      <td class="num">${money2(l.thb+(+l.fee||0))}</td>
+      <td style="font-size:11.5px">${esc(l.note)}</td></tr>`;});
+  h+=`<tr style="background:#EFEFEF;font-weight:800"><td colspan="4" style="text-align:center">รวม</td>
+      <td class="num">-</td><td class="num">${money2(T('amt'))}</td><td class="num">0.00</td><td class="num">-</td>
+      <td class="num">${money2(T('thb'))}</td><td class="num">${money2(T('fee'))}</td>
+      <td class="num">${money2(T('thb')+T('fee'))}</td><td></td></tr>
+    </tbody></table>
     <div class="chk"><b>เอกสารแนบ:</b>
       <label><input type="checkbox" checked disabled> ใบเสนอราคาจีน + คำแปล</label>
       <label><input type="checkbox" checked disabled> PO จากระบบ JST</label>
@@ -1370,33 +1393,12 @@ function buildDoc(show){
       <div class="sign-box"><div class="sign-line"></div>ผู้ตรวจสอบ (หัวหน้า)</div>
       <div class="sign-box"><div class="sign-line"></div>ผู้อนุมัติ (ผู้บริหาร)</div>
     </div>
-    <div class="muted" style="margin-top:14px;font-size:11.5px">พิมพ์เมื่อ ${new Date().toLocaleString('th-TH')} · เอกสารภายใน (ความลับ)</div>
+    <div class="muted" style="margin-top:12px;font-size:11px">พิมพ์เมื่อ ${new Date().toLocaleString('th-TH')} · เอกสารภายใน (ความลับ)</div>
   </div>`;
   $('dcSheet').innerHTML=h;
   const eb=$('dcExecBtns'); if(eb)eb.style.display=IS_EXEC?'':'none';
 }
 
-/* อนุมัติ/ไม่อนุมัติ ทุกงวดในใบปะหน้า — ปุ่มเดียวจบ (เฉพาะผู้บริหาร) */
-async function approveDoc(st){
-  if(!IS_EXEC)return toast('เฉพาะผู้บริหารเท่านั้นที่อนุมัติได้');
-  const rows=docRows().filter(p=>DOCSEL.has(p.id));
-  if(!rows.length)return toast('ยังไม่ได้เลือกรายการ');
-  const wait=rows.filter(p=>p.status!==st);
-  if(!wait.length)return toast('ทุกรายการอยู่ในสถานะนี้แล้ว');
-  const sum=money(rows.reduce((s,p)=>s+thbOf(p)+num(p.fee),0));
-  const L=st==='paid'?'อนุมัติเป็น "จ่ายแล้ว"':'ทำเป็น "ไม่อนุมัติ"';
-  if(!confirm(`${L} ทั้งใบ\n\nวันที่: ${$('dcDate').value}\nจำนวน ${wait.length} รายการ · ยอดรวม ${sum} บาท\n\nยืนยัน?`))return;
-  const up={status:st}; if(st==='paid')up.paid_at=$('dcDate').value||todayStr();
-  const ids=wait.map(p=>p.id);
-  let fail=0;
-  for(let i=0;i<ids.length;i+=50){
-    const {error}=await sb.from('pay_payments').update(up).in('id',ids.slice(i,i+50));
-    if(error){console.error(error);fail++;}
-  }
-  if(fail)return toast('อัปเดตไม่สำเร็จบางรายการ — ลองใหม่');
-  await loadAll(); renderDoc(); buildDoc();
-  toast(`${st==='paid'?'อนุมัติ':'ไม่อนุมัติ'} ${ids.length} รายการเรียบร้อย ✅`);
-}
 async function saveDoc(){
   const rows=docRows().filter(p=>DOCSEL.has(p.id));
   if(!rows.length)return toast('ยังไม่ได้เลือกรายการ');
