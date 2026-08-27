@@ -639,15 +639,26 @@ async function saveBill(){
     note:$('f_note').value.trim()||null,updated_at:new Date().toISOString()};
   if(!row.po_number)return toast('ใส่รหัส PO ก่อน');
   if(!(row.total_amount>0))return toast('ใส่ยอดเต็มของบิลก่อน');
-  let error;
+  let error, newId=null;
   if(editBillId){({error}=await sb.from('pay_bills').update(row).eq('id',editBillId));}
-  else{row.created_by=ME;({error}=await sb.from('pay_bills').insert(row));}
+  else{row.created_by=ME;
+    const r=await sb.from('pay_bills').insert(row).select('id').single();
+    error=r.error; newId=r.data&&r.data.id;}
   if(error)return toast('บันทึกไม่สำเร็จ: '+error.message);
-    {const before=BILLS.find(x=>x.id===id);
-   if(id&&before){const ch=[];['po_number','company','vendor','sku','total_amount','currency','status','note']
-     .forEach(k=>{if(String(before[k]??'')!==String(row[k]??''))ch.push(k+': '+(before[k]??'-')+' → '+(row[k]??'-'));});
-     if(ch.length)addLog({id,po_number:row.po_number},'updated',ch.join(' · '));}
-   else addLog({id:null,po_number:row.po_number},'created','สร้างบิล ยอด '+money(row.total_amount)+' '+curSym(row.currency));}
+  // บันทึกประวัติการแก้ไข
+  {const before=BILLS.find(x=>String(x.id)===String(editBillId));
+   if(editBillId&&before){
+     const LB={po_number:'เลข PO',company:'บริษัท',vendor:'Vendor',sku:'SKU',
+       total_amount:'ยอดเต็ม',currency:'สกุลเงิน',status:'สถานะ',note:'หมายเหตุ'};
+     const ch=[];
+     Object.keys(LB).forEach(k=>{
+       const a=String(before[k]??''), b=String(row[k]??'');
+       if(a!==b)ch.push(LB[k]+': '+(a||'-')+' → '+(b||'-'));});
+     if(ch.length)await addLog({id:editBillId,po_number:row.po_number},'updated',ch.join(' · '));
+   }else if(!editBillId){
+     await addLog({id:newId,po_number:row.po_number},'created',
+       'สร้างบิล ยอด '+money(row.total_amount)+' '+curSym(row.currency));
+   }}
   $('billBg').style.display='none';toast('บันทึกบิลเรียบร้อย ✅');loadAll();
 }
 async function delBill(id){
@@ -738,8 +749,8 @@ async function savePayment(){
     ? await sb.from('pay_payments').update(row).eq('id',payEditId)
     : await sb.from('pay_payments').insert(row);
   if(error)return toast('บันทึกไม่สำเร็จ: '+error.message);
-    {const b=BILLS.find(x=>x.id===payBillId);
-   addLog(b, payEditId?'payment_edit':'payment_add',
+  {const b=BILLS.find(x=>String(x.id)===String(payBillId));
+   await addLog(b, payEditId?'payment_edit':'payment_add',
      (payEditId?'แก้งวด ':'เพิ่มงวด ')+(row.installment||'')+' ยอด '+money(row.amount)+' '+curSym(b&&b.currency)
      +(row.rate?(' เรท '+row.rate):'')+' วันที่ '+(row.pay_date||'-'));}
   $('payBg').style.display='none';toast('บันทึกงวดเรียบร้อย ✅');loadAll();
@@ -850,12 +861,20 @@ async function closeBill(bid){
 }
 
 /* ===== TAB 2: แผนจ่ายรายวัน ===== */
+let LOG_WARNED=false;
 async function addLog(bill,action,detail,field,oldV,newV){
   try{
-    await sb.from('pay_logs').insert({bill_id:(bill&&bill.id)||null,po_number:(bill&&bill.po_number)||null,
+    const {error}=await sb.from('pay_logs').insert({bill_id:(bill&&bill.id)||null,po_number:(bill&&bill.po_number)||null,
       action,detail:detail||null,field:field||null,
       old_value:oldV!=null?String(oldV):null,new_value:newV!=null?String(newV):null,actor:ME});
-  }catch(e){console.warn('log:',e.message);}
+    if(error){
+      console.warn('[pay] log:',error.message);
+      if(!LOG_WARNED&&/does not exist|schema cache/i.test(error.message||'')){
+        LOG_WARNED=true;
+        alert('ยังไม่ได้สร้างตาราง pay_logs — ประวัติการแก้ไขจะยังไม่ถูกบันทึก\n\nกรุณารันไฟล์ pay_memo_log.sql บน Supabase (polikeshop) ก่อน');
+      }
+    }
+  }catch(e){console.warn('[pay] log:',e.message);}
 }
 function billOf(id){return BILLS.find(b=>String(b.id)===String(id))||{};}
 let FX_EST={CNY:5.2, USD:34, THB:1};   // เรทประมาณต่อสกุล (ใช้เมื่องวดยังไม่ได้ใส่เรทโอน)
