@@ -538,7 +538,7 @@ async function loadAll(){
   if(HIST_BID && $('histBg').style.display==='flex') openHist(HIST_BID);   // ประวัติที่เปิดค้างอยู่ก็อัปเดตตาม
   if(MEMO_BID && $('memoBg').style.display==='flex') renderMemo();
 }
-function billPays(bid){return PAYS.filter(p=>p.bill_id===bid);}
+function billPays(bid){return PAYS.filter(p=>String(p.bill_id)===String(bid));}
 function paidSum(bid){return billPays(bid).filter(p=>p.status==='paid').reduce((s,p)=>s+(+p.amount||0),0);}
 function planSum(bid){return billPays(bid).filter(p=>p.status==='planned'||p.status==='submitted').reduce((s,p)=>s+(+p.amount||0),0);}
 const PAY_ST={planned:{c:'p-plan',t:'🗓️ วางแผน'},submitted:{c:'p-sent',t:'📤 ส่งยอด'},paid:{c:'p-paid',t:'✅ จ่ายแล้ว'},rejected:{c:'p-rej',t:'✖ ไม่อนุมัติ'}};
@@ -792,8 +792,9 @@ async function delMemo(id){
 }
 let HIST_BID=null;
 function openHist(bid){
-  const b=BILLS.find(x=>x.id===bid); if(!b)return;
-  HIST_BID=bid;
+  const b=BILLS.find(x=>String(x.id)===String(bid));
+  if(!b){console.warn('[pay] openHist: ไม่พบบิล',bid);alert('ไม่พบบิลนี้ — ลองรีเฟรชหน้าแล้วกดใหม่');return;}
+  HIST_BID=b.id; bid=b.id;
   const s=curSym(b.currency);
   const rows=billPays(bid).sort((a,c)=>String(a.pay_date||'').localeCompare(String(c.pay_date||'')));
   $('histTitle').textContent='ประวัติงวดจ่าย — '+(b.po_number||'')+' ('+(b.company||'')+')';
@@ -856,7 +857,7 @@ async function addLog(bill,action,detail,field,oldV,newV){
       old_value:oldV!=null?String(oldV):null,new_value:newV!=null?String(newV):null,actor:ME});
   }catch(e){console.warn('log:',e.message);}
 }
-function billOf(id){return BILLS.find(b=>b.id===id)||{};}
+function billOf(id){return BILLS.find(b=>String(b.id)===String(id))||{};}
 let FX_EST={CNY:5.2, USD:34, THB:1};   // เรทประมาณต่อสกุล (ใช้เมื่องวดยังไม่ได้ใส่เรทโอน)
 function fxEst(cur){
   cur=cur||'CNY';
