@@ -141,7 +141,9 @@ td.num,th.num{text-align:right;white-space:nowrap}
         </span>
         <span style="display:inline-flex;align-items:center;gap:6px;margin-left:10px" title="ใช้แปลงเป็นบาทเฉพาะงวดที่ยังไม่ได้ใส่เรทโอน">
           <label style="white-space:nowrap;margin:0">เรทประมาณ ¥→฿</label>
-          <input type="number" id="fxEst" value="5.2" step="0.01" style="width:80px" oninput="PLANVIEW==='month'?renderPlanMonth():renderPlan()">
+          <input type="number" id="fxEst" value="5.2" step="0.01" style="width:72px" oninput="PLANVIEW==='month'?renderPlanMonth():renderPlan()">
+          <label style="white-space:nowrap;margin:0">$→฿</label>
+          <input type="number" id="fxEstUsd" value="34" step="0.01" style="width:66px" oninput="PLANVIEW==='month'?renderPlanMonth():renderPlan()">
         </span>
         <div style="flex:1"></div>
         <span class="muted">เพิ่มงวดใหม่จากแท็บ Tracking บิล → + งวดจ่าย</span>
@@ -342,7 +344,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
       <div class="fld"><label>Vendor / ร้านค้า</label><input id="f_vendor"></div>
       <div class="fld"><label>SKU / สินค้า</label><input id="f_sku"></div>
       <div class="fld"><label>สกุลเงิน</label>
-        <select id="f_cur"><option value="CNY">¥ CNY</option><option value="THB">฿ THB</option></select></div>
+        <select id="f_cur"><option value="CNY">¥ CNY (หยวน)</option><option value="USD">$ USD (ดอลลาร์)</option><option value="THB">฿ THB (บาท)</option></select></div>
       <div class="fld"><label>ยอดเต็มของบิล ★</label><input id="f_total" type="number" step="0.01"></div>
     </div>
     <div class="fld"><label>หมายเหตุ</label><textarea id="f_note" rows="2"></textarea></div>
@@ -429,7 +431,8 @@ const money=n=>Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2});
 const money2=n=>Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
 const num=v=>{const n=parseFloat(String(v==null?'':v).replace(/,/g,''));return isNaN(n)?0:n;};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const curSym=c=>c==='THB'?'฿':'¥';
+const curSym=c=>c==='THB'?'฿':(c==='USD'?'$':'¥');
+const CURRENCIES=['CNY','USD','THB'];
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2600);}
 
 let canEdit=false, IS_EXEC=false, ME='', BILLS=[], PAYS=[];
@@ -756,13 +759,19 @@ async function closeBill(bid){
 
 /* ===== TAB 2: แผนจ่ายรายวัน ===== */
 function billOf(id){return BILLS.find(b=>b.id===id)||{};}
-let FX_EST=5.2;   // เรทประมาณ ใช้เมื่องวดยังไม่ได้ใส่เรทโอน
-function fxEst(){const el=$('fxEst');const v=el?parseFloat(el.value):NaN;return (isFinite(v)&&v>0)?v:FX_EST;}
+let FX_EST={CNY:5.2, USD:34, THB:1};   // เรทประมาณต่อสกุล (ใช้เมื่องวดยังไม่ได้ใส่เรทโอน)
+function fxEst(cur){
+  cur=cur||'CNY';
+  if(cur==='THB')return 1;
+  if(cur==='CNY'){const el=$('fxEst');const v=el?parseFloat(el.value):NaN;if(isFinite(v)&&v>0)return v;}
+  if(cur==='USD'){const el=$('fxEstUsd');const v=el?parseFloat(el.value):NaN;if(isFinite(v)&&v>0)return v;}
+  return FX_EST[cur]||1;
+}
 function thbOf(p){const b=billOf(p.bill_id);
   if(+p.amount_thb)return +p.amount_thb;
   if(b.currency==='THB')return +p.amount||0;
   const r=+p.rate||0;
-  return (+p.amount||0)*(r||fxEst());   // ไม่มีเรท → ใช้เรทประมาณ
+  return (+p.amount||0)*(r||fxEst(b.currency));   // ไม่มีเรท → ใช้เรทประมาณของสกุลนั้น
 }
 function isEst(p){const b=billOf(p.bill_id);return !(+p.amount_thb)&&b.currency!=='THB'&&!(+p.rate);}
 function planToday(){$('plDate').value=todayStr();renderPlan();}
@@ -785,20 +794,21 @@ function renderPlan(){
   let h='';
   cos.forEach(co=>{
     const grp=rows.filter(p=>(billOf(p.bill_id).company||'-')===co);
-    const cny=grp.filter(p=>billOf(p.bill_id).currency!=='THB').reduce((s,p)=>s+(+p.amount||0),0);
-    const thbD=grp.filter(p=>billOf(p.bill_id).currency==='THB').reduce((s,p)=>s+(+p.amount||0),0);
+    const sumCur=c=>grp.filter(p=>(billOf(p.bill_id).currency||'CNY')===c).reduce((s,p)=>s+(+p.amount||0),0);
+    const cny=sumCur('CNY'), usd=sumCur('USD'), thbD=sumCur('THB');
     h+=`<h2 style="margin-top:16px">🏢 ${esc(co)}</h2>
     <table><thead><tr><th>PO</th><th>SKU</th><th>งวด</th><th class="right">ยอด</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทาง</th><th>ผู้รับผิดชอบ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
     grp.forEach(p=>{const b=billOf(p.bill_id);const s=curSym(b.currency);
       h+=`<tr><td><b>${esc(b.po_number||'-')}</b></td><td>${esc(b.sku||'-')}</td><td>${esc(p.installment||'-')}</td>
         <td class="right"><b>${money(p.amount)} ${s}</b></td>
-        <td class="right">${p.rate?esc(p.rate):'<span class="muted">~'+fxEst()+'</span>'}</td><td class="right">${isEst(p)?'<span class="muted">~</span> ':''}${money(thbOf(p))}</td>
+        <td class="right">${p.rate?esc(p.rate):(b.currency==='THB'?'<span class="muted">-</span>':'<span class="muted">~'+fxEst(b.currency)+'</span>')}</td><td class="right">${isEst(p)?'<span class="muted">~</span> ':''}${money(thbOf(p))}</td>
         <td>${esc(p.channel||'-')}</td><td>${esc(p.responsible||'-')}</td>
         <td>${stPill(p.status)}</td>
         <td style="white-space:nowrap">${stBtns(p,'setPayStatus')}${(canEdit&&p.status!=='paid')?`<button class="btn mini ghost" onclick="editPay('${p.id}','${p.bill_id}')">✏️ แก้</button> <button class="btn mini red" onclick="planDel('${p.id}')">ลบ</button>`:''}${p.status==='paid'?'<span class="muted" style="font-size:11.5px">🔒 ล็อก</span>':''}</td></tr>`;});
+    const parts=[]; if(cny)parts.push(`<b>${money(cny)} ¥</b>`); if(usd)parts.push(`<b>${money(usd)} $</b>`); if(thbD)parts.push(`<b>${money(thbD)} ฿</b>`);
     h+=`</tbody></table>
     <div class="muted" style="text-align:right;margin:6px 0 4px">รวม ${esc(co)}: `
-      +(cny?`<b>${money(cny)} ¥</b>`:'')+((cny&&thbD)?' + ':'')+(thbD?`<b>${money(thbD)} ฿</b>`:'')
+      +parts.join(' + ')
       +` · ประมาณบาท <b>${money(sumThb(grp))} ฿</b></div>`;
   });
   h+=`<div style="text-align:right;font-weight:800;font-size:15px;border-top:2px solid var(--navy);padding-top:8px;margin-top:6px">รวมทั้งวัน (บาทประมาณ): ${money(sumThb(rows))} ฿</div>`;
@@ -1202,7 +1212,7 @@ function renderLot(){
   const rows=its.map(i=>{
     const pi=skuPrice(i.sku,i.po_number);
     const goodsCur=pi.price*num(i.qty);
-    const goods=(pi.cur==='THB')?goodsCur:goodsCur*fx;
+    const goods=(pi.cur==='THB')?goodsCur:goodsCur*fx;   // fx = เรทที่กรอกในแท็บต้นทุนล็อต
     const cbm=cbmTotal(i);
     const fr=itemFreight(i,b);
     const share=totCbm>0?(cbm/totCbm):0;
@@ -1311,6 +1321,8 @@ async function applyRateAll(){
   if(!(r>0))return toast('ใส่เรทก่อน');
   const rows=docRows().filter(p=>DOCSEL.has(p.id)&&billOf(p.bill_id).currency!=='THB');
   if(!rows.length)return toast('ไม่มีรายการที่ต้องใส่เรท');
+  const curs=[...new Set(rows.map(p=>billOf(p.bill_id).currency||'CNY'))];
+  if(curs.length>1&&!confirm('รายการที่เลือกมีหลายสกุล ('+curs.join(', ')+')\n\nเรทเดียวกันอาจไม่ถูกต้อง — ยืนยันใส่ทั้งหมด?'))return;
   if(!confirm('ใส่เรท '+r+' ให้ '+rows.length+' รายการที่เลือกไว้?'))return;
   let fail=0;
   for(const p of rows){
