@@ -1334,6 +1334,34 @@ async function applyRateAll(){
   toast(fail?('มีปัญหา '+fail+' รายการ'):('ใส่เรทให้ '+rows.length+' รายการแล้ว ✅'));
 }
 function pickDoc(el){el.checked?DOCSEL.add(el.dataset.id):DOCSEL.delete(el.dataset.id);}
+// รายละเอียดการแบ่งงวดชำระ + ยอดค้างจ่าย ของแต่ละ PO ในใบนี้
+function histBlock(rows){
+  const bids=[...new Set(rows.map(p=>p.bill_id))];
+  if(!bids.length)return '';
+  const dth=s=>{if(!s)return '-';const [y,m,dd]=String(s).split('-');return `${dd}.${m}.${y}`;};
+  const unit=c=>c==='THB'?'บาท':(c==='USD'?'ดอลลาร์':'หยวน');
+  let h='<div style="margin-top:22px"><div style="font-weight:700;margin-bottom:8px">รายละเอียดการแบ่งงวดชำระ และยอดค้างจ่าย</div>';
+  bids.forEach(bid=>{
+    const b=billOf(bid); if(!b)return;
+    const u=unit(b.currency);
+    const all=billPays(bid).filter(p=>p.status!=='rejected')
+      .slice().sort((x,y)=>String(x.pay_date||'').localeCompare(String(y.pay_date||'')));
+    h+=`<div style="margin:10px 0 4px;font-weight:700;font-size:12.5px">
+      หมายเหตุ ${esc(b.po_number||'-')} ${esc(b.sku||'')} &nbsp;ยอดเต็ม ${money(b.total_amount)} ${u}</div>`;
+    let run=0;
+    all.forEach(p=>{
+      run+=(+p.amount||0);
+      const left=Math.max(0,(+b.total_amount||0)-run);
+      h+=`<div style="font-size:12px;padding-left:14px;line-height:1.75">
+        ${dth(p.pay_date)} ${esc(p.installment||'')} ยอด ${money(p.amount)} ${u}`
+        +(left>0?` ค้างชำระ ${money(left)} ${u}`:` <b style="color:#1E7145">ชำระครบแล้ว</b>`)
+        +(p.status!=='paid'?` <span style="color:#854F0B">(${p.status==='submitted'?'ส่งยอด รออนุมัติ':'วางแผน'})</span>`:'')
+        +`</div>`;
+    });
+    if(!all.length)h+='<div style="font-size:12px;padding-left:14px" class="muted">— ยังไม่มีงวดชำระ —</div>';
+  });
+  return h+'</div>';
+}
 function buildDoc(show){
   if(show===true)$('dcPaper').style.display='';
   if($('dcPaper').style.display==='none')return;
@@ -1405,6 +1433,7 @@ function buildDoc(show){
       <td class="num">${money2(T('thb'))}</td><td class="num">${money2(T('fee'))}</td>
       <td class="num">${money2(T('thb')+T('fee'))}</td><td></td></tr>
     </tbody></table>
+    ${histBlock(rows)}
     <div class="chk"><b>เอกสารแนบ:</b>
       <label><input type="checkbox" checked disabled> ใบเสนอราคาจีน + คำแปล</label>
       <label><input type="checkbox" checked disabled> PO จากระบบ JST</label>
