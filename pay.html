@@ -386,6 +386,23 @@ td.num,th.num{text-align:right;white-space:nowrap}
 </div>
 
 <!-- ============ MODAL: ประวัติงวด ============ -->
+<div class="modal-bg" id="memoBg">
+  <div class="modal" style="max-width:760px">
+    <h3 id="memoTitle">📝 เมโม & ประวัติการแก้ไข</h3>
+    <div class="row" style="margin:10px 0">
+      <input id="memoText" placeholder="พิมพ์บันทึกเมโม… (เช่น ตกลงเลื่อนจ่ายสิ้นเดือน / รอใบเสนอราคาใหม่)" style="flex:1">
+      <button class="btn" onclick="saveMemo()">บันทึกเมโม</button>
+    </div>
+    <div style="font-weight:700;margin:14px 0 6px">📌 เมโม</div>
+    <div id="memoList" class="scroll" style="max-height:220px"></div>
+    <div style="font-weight:700;margin:16px 0 6px">🕘 ประวัติการแก้ไข</div>
+    <div id="logList" class="scroll" style="max-height:260px"></div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('memoBg').style.display='none'">ปิด</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="histBg">
   <div class="modal" style="max-width:820px">
     <h3 id="histTitle">ประวัติงวดจ่าย</h3>
@@ -441,7 +458,7 @@ const CURRENCIES=['CNY','USD','THB'];
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2600);}
 
 let canEdit=false, IS_EXEC=false, ME='', BILLS=[], PAYS=[];
-let FBILLS=[], FITEMS=[], MASTER=[], POROWS=[], TAXES=[], TRACKS=[];
+let FBILLS=[], FITEMS=[], MASTER=[], POROWS=[], TAXES=[], TRACKS=[], LOGS=[], MEMOS=[];
 
 /* ===== AUTH ===== */
 async function boot(){
@@ -474,6 +491,8 @@ function subscribeRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'pay_payments'},bump)
     .on('postgres_changes',{event:'*',schema:'public',table:'freight_bills'},bump)
     .on('postgres_changes',{event:'*',schema:'public',table:'freight_items'},bump)
+    .on('postgres_changes',{event:'*',schema:'public',table:'pay_memos'},bump)
+    .on('postgres_changes',{event:'*',schema:'public',table:'pay_logs'},bump)
     .subscribe();
 }
 function flashLive(){
@@ -498,9 +517,11 @@ async function pageAll(table,sel,order){
   return out;
 }
 async function loadAll(){
-  [BILLS,PAYS,FBILLS,FITEMS,MASTER,POROWS,TAXES,TRACKS]=await Promise.all([
+  [BILLS,PAYS,LOGS,MEMOS,FBILLS,FITEMS,MASTER,POROWS,TAXES,TRACKS]=await Promise.all([
     pageAll('pay_bills','*','created_at'),
     pageAll('pay_payments','*','created_at'),
+    pageAll('pay_logs','*','created_at'),
+    pageAll('pay_memos','*','created_at'),
     pageAll('freight_bills','*','arrive_date'),
     pageAll('freight_items','*',null),
     pageAll('sku_master','sku,supplier,standard_price,currency',null),
@@ -515,6 +536,7 @@ async function loadAll(){
   if($('tab-plan').style.display!=='none'){ PLANVIEW==='month'?renderPlanMonth():renderPlan(); }
   if($('tab-month').style.display!=='none')renderMonth();
   if(HIST_BID && $('histBg').style.display==='flex') openHist(HIST_BID);   // ประวัติที่เปิดค้างอยู่ก็อัปเดตตาม
+  if(MEMO_BID && $('memoBg').style.display==='flex') renderMemo();
 }
 function billPays(bid){return PAYS.filter(p=>p.bill_id===bid);}
 function paidSum(bid){return billPays(bid).filter(p=>p.status==='paid').reduce((s,p)=>s+(+p.amount||0),0);}
@@ -591,7 +613,7 @@ function renderBills(){
       <td><span class="pill ${b.status==='closed'?'p-closed':'p-open'}">${b.status==='closed'?'ปิดบิลแล้ว':'ยังไม่ปิด'}</span></td>
       <td style="white-space:nowrap">
         ${canEdit?`<button class="btn mini green" onclick="openPay(${b.id})">+ งวดจ่าย</button> `:''}
-        <button class="btn mini ghost" onclick="openHist(${b.id})">ประวัติ (${billPays(b.id).length})</button>
+        <button class="btn mini ghost" onclick="openHist('${b.id}')">ประวัติ (${billPays(b.id).length})</button> <button class="btn mini ghost" onclick="openMemo('${b.id}')" title="เมโม + ประวัติการแก้ไข">📝${MEMOS.filter(m=>String(m.bill_id)===String(b.id)).length?' '+MEMOS.filter(m=>String(m.bill_id)===String(b.id)).length:''}</button>
         ${canEdit?` <button class="btn mini ghost" onclick="openBill(${b.id})">แก้</button>
         <button class="btn mini red" onclick="delBill(${b.id})">ลบ</button>`:''}
       </td></tr>`;
@@ -621,6 +643,11 @@ async function saveBill(){
   if(editBillId){({error}=await sb.from('pay_bills').update(row).eq('id',editBillId));}
   else{row.created_by=ME;({error}=await sb.from('pay_bills').insert(row));}
   if(error)return toast('บันทึกไม่สำเร็จ: '+error.message);
+    {const before=BILLS.find(x=>x.id===id);
+   if(id&&before){const ch=[];['po_number','company','vendor','sku','total_amount','currency','status','note']
+     .forEach(k=>{if(String(before[k]??'')!==String(row[k]??''))ch.push(k+': '+(before[k]??'-')+' → '+(row[k]??'-'));});
+     if(ch.length)addLog({id,po_number:row.po_number},'updated',ch.join(' · '));}
+   else addLog({id:null,po_number:row.po_number},'created','สร้างบิล ยอด '+money(row.total_amount)+' '+curSym(row.currency));}
   $('billBg').style.display='none';toast('บันทึกบิลเรียบร้อย ✅');loadAll();
 }
 async function delBill(id){
@@ -711,10 +738,58 @@ async function savePayment(){
     ? await sb.from('pay_payments').update(row).eq('id',payEditId)
     : await sb.from('pay_payments').insert(row);
   if(error)return toast('บันทึกไม่สำเร็จ: '+error.message);
+    {const b=BILLS.find(x=>x.id===payBillId);
+   addLog(b, payEditId?'payment_edit':'payment_add',
+     (payEditId?'แก้งวด ':'เพิ่มงวด ')+(row.installment||'')+' ยอด '+money(row.amount)+' '+curSym(b&&b.currency)
+     +(row.rate?(' เรท '+row.rate):'')+' วันที่ '+(row.pay_date||'-'));}
   $('payBg').style.display='none';toast('บันทึกงวดเรียบร้อย ✅');loadAll();
 }
 
 /* ===== HISTORY ===== */
+let MEMO_BID=null;
+function fmtWhen(t){ if(!t)return '-'; const dt=new Date(t);
+  return dt.toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'2-digit'})+' '+dt.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}); }
+function openMemo(bid){
+  const b=BILLS.find(x=>String(x.id)===String(bid)); if(!b)return;
+  MEMO_BID=b.id;
+  $('memoTitle').textContent='📝 เมโม & ประวัติ — '+(b.po_number||'')+' ('+(b.company||'-')+')';
+  $('memoText').value=''; renderMemo(); $('memoBg').style.display='flex';
+}
+function renderMemo(){
+  const ms=MEMOS.filter(m=>String(m.bill_id)===String(MEMO_BID))
+    .slice().sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+  $('memoList').innerHTML = ms.length
+    ? ms.map(m=>`<div style="border-left:3px solid var(--gold);background:#FFFBEB;border-radius:6px;padding:8px 11px;margin-bottom:7px">
+        <div style="font-size:13px;white-space:pre-wrap">${esc(m.memo)}</div>
+        <div class="muted" style="font-size:11px;margin-top:3px">${esc(m.actor||'')} · ${esc(fmtWhen(m.created_at))}
+        ${canEdit?`<a href="#" onclick="delMemo('${m.id}');return false" style="color:var(--red);margin-left:8px">ลบ</a>`:''}</div>
+      </div>`).join('')
+    : '<div class="empty" style="padding:14px">ยังไม่มีเมโม</div>';
+  const ls=LOGS.filter(l=>String(l.bill_id)===String(MEMO_BID))
+    .slice().sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+  const AC={created:'🆕 สร้างบิล',updated:'✏️ แก้ไขบิล',payment_add:'➕ เพิ่มงวด',payment_edit:'✏️ แก้งวด',status:'🔁 เปลี่ยนสถานะ',deleted:'🗑️ ลบ'};
+  $('logList').innerHTML = ls.length
+    ? '<table><thead><tr><th style="width:145px">เมื่อ</th><th style="width:125px">รายการ</th><th>รายละเอียด</th><th style="width:145px">โดย</th></tr></thead><tbody>'
+      +ls.map(l=>`<tr><td style="font-size:12px">${esc(fmtWhen(l.created_at))}</td>
+        <td style="font-size:12px">${esc(AC[l.action]||l.action||'-')}</td>
+        <td style="font-size:12px">${esc(l.detail||'')}</td>
+        <td class="muted" style="font-size:11.5px">${esc(l.actor||'')}</td></tr>`).join('')
+      +'</tbody></table>'
+    : '<div class="empty" style="padding:14px">ยังไม่มีประวัติ (เริ่มบันทึกตั้งแต่ตอนนี้เป็นต้นไป)</div>';
+}
+async function saveMemo(){
+  const t=($('memoText').value||'').trim();
+  if(!t)return toast('พิมพ์เมโมก่อน');
+  const {error}=await sb.from('pay_memos').insert({bill_id:MEMO_BID,memo:t,actor:ME});
+  if(error){alert('บันทึกไม่สำเร็จ: '+error.message+'\n\nถ้ายังไม่ได้สร้างตาราง ให้รัน pay_memo_log.sql ก่อน');return;}
+  $('memoText').value=''; await loadAll(); renderMemo(); toast('บันทึกเมโมแล้ว ✅');
+}
+async function delMemo(id){
+  if(!confirm('ลบเมโมนี้?'))return;
+  const {error}=await sb.from('pay_memos').delete().eq('id',id);
+  if(error)return toast('ลบไม่สำเร็จ: '+error.message);
+  await loadAll(); renderMemo();
+}
 let HIST_BID=null;
 function openHist(bid){
   const b=BILLS.find(x=>x.id===bid); if(!b)return;
@@ -749,8 +824,10 @@ async function setPayStatus(pid,st){
   const L={planned:'กลับเป็น "วางแผน"',submitted:'ส่งยอดให้ผู้บริหารอนุมัติ',paid:'อนุมัติเป็น "จ่ายแล้ว"',rejected:'ทำเป็น "ไม่อนุมัติ"'};
   if(!confirm('ยืนยัน'+L[st]+'?'))return;
   const up={status:st}; if(st==='paid')up.paid_at=todayStr();
+  const _p=PAYS.find(x=>String(x.id)===String(pid)), _b=_p?billOf(_p.bill_id):null;
   const {error}=await sb.from('pay_payments').update(up).eq('id',pid);
   if(error)return toast('อัปเดตไม่สำเร็จ: '+error.message);
+  addLog(_b,'status','เปลี่ยนสถานะงวด '+((_p&&_p.installment)||'')+' → '+({planned:'วางแผน',submitted:'ส่งยอด',paid:'จ่ายแล้ว',rejected:'ไม่อนุมัติ'}[st]||st),'status',_p&&_p.status,st);
   await loadAll(); toast('อัปเดตสถานะแล้ว ✅');
   if(HIST_BID && $('histBg').style.display==='flex') openHist(HIST_BID);
 }
@@ -758,8 +835,10 @@ async function delPay(pid,bid){
   const pp=PAYS.find(x=>String(x.id)===String(pid));
   if(pp&&pp.status==='paid')return alert('งวดนี้จ่ายแล้ว ลบไม่ได้');
   if(!confirm('ลบงวดนี้?'))return;
+  const _b=pp?billOf(pp.bill_id):null;
   const {error}=await sb.from('pay_payments').delete().eq('id',pid);
   if(error)return toast('ลบไม่สำเร็จ: '+error.message);
+  addLog(_b,'deleted','ลบงวด '+((pp&&pp.installment)||'')+' ยอด '+money(pp&&pp.amount));
   await loadAll();openHist(bid);toast('ลบแล้ว');
 }
 async function closeBill(bid){
@@ -769,6 +848,13 @@ async function closeBill(bid){
 }
 
 /* ===== TAB 2: แผนจ่ายรายวัน ===== */
+async function addLog(bill,action,detail,field,oldV,newV){
+  try{
+    await sb.from('pay_logs').insert({bill_id:(bill&&bill.id)||null,po_number:(bill&&bill.po_number)||null,
+      action,detail:detail||null,field:field||null,
+      old_value:oldV!=null?String(oldV):null,new_value:newV!=null?String(newV):null,actor:ME});
+  }catch(e){console.warn('log:',e.message);}
+}
 function billOf(id){return BILLS.find(b=>b.id===id)||{};}
 let FX_EST={CNY:5.2, USD:34, THB:1};   // เรทประมาณต่อสกุล (ใช้เมื่องวดยังไม่ได้ใส่เรทโอน)
 function fxEst(cur){
@@ -830,8 +916,10 @@ async function planDel(pid){
   const pp=PAYS.find(x=>String(x.id)===String(pid));
   if(pp&&pp.status==='paid')return alert('งวดนี้จ่ายแล้ว ลบไม่ได้');
   if(!confirm('ลบงวดนี้?'))return;
+  const _b=pp?billOf(pp.bill_id):null;
   const {error}=await sb.from('pay_payments').delete().eq('id',pid);
   if(error)return toast('ลบไม่สำเร็จ: '+error.message);
+  addLog(_b,'deleted','ลบงวด '+((pp&&pp.installment)||'')+' ยอด '+money(pp&&pp.amount));
   await loadAll();toast('ลบแล้ว');
 }
 
