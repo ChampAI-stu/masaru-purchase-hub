@@ -951,6 +951,7 @@ function renderCheck(res, summary){
           `<li class="f-${f.lv}"><b>แถว ${f.seq}</b> (${f.sku||'-'}): ${f.t}</li>`).join('')}</ul>`
           : `<div class="muted">ไม่พบความผิดปกติ 🎉</div>`}
         ${summary? `<div class="ai-summary"><b>📝 สรุปโดย AI:</b>\n${summary}</div>`:''}
+        ${(($('h-note').value||'').trim())? `<div class="ai-summary" style="background:#FFFBEB;border-color:#C9A84C"><b>📝 หมายเหตุ (จะขึ้นในใบ PR):</b>\n${esc($('h-note').value.trim())}</div>`:''}
       </div>
     </div>`;
 }
