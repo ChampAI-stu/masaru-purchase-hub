@@ -108,10 +108,10 @@ td.num,th.num{text-align:right;white-space:nowrap}
     <div class="card">
       <h2>📋 Tracking บิลค่าสินค้า — จ่ายแล้ว / ค้างจ่าย</h2>
       <div class="row">
-        <input id="bSearch" placeholder="ค้นหา PO / SKU / Vendor / ผู้รับผิดชอบ" style="max-width:230px" oninput="renderBills()">
-        <select id="bCo" onchange="renderBills()"><option value="">— ทุกบริษัท —</option></select>
-        <select id="bResp" onchange="renderBills()" style="max-width:170px"><option value="">— ทุกผู้รับผิดชอบ —</option></select>
-        <select id="bStatus" onchange="renderBills()">
+        <input id="bSearch" placeholder="ค้นหา PO / SKU / Vendor / ผู้รับผิดชอบ" style="max-width:230px" oninput="BILL_PAGE=1;renderBills()">
+        <select id="bCo" onchange="BILL_PAGE=1;renderBills()"><option value="">— ทุกบริษัท —</option></select>
+        <select id="bResp" onchange="BILL_PAGE=1;renderBills()" style="max-width:170px"><option value="">— ทุกผู้รับผิดชอบ —</option></select>
+        <select id="bStatus" onchange="BILL_PAGE=1;renderBills()">
           <option value="">— ทุกสถานะ —</option>
           <option value="open">ยังไม่ปิดบิล</option>
           <option value="closed">ปิดบิลแล้ว</option>
@@ -539,6 +539,21 @@ async function loadAll(){
   if(MEMO_BID && $('memoBg').style.display==='flex') renderMemo();
 }
 function billPays(bid){return PAYS.filter(p=>String(p.bill_id)===String(bid));}
+// แสดงยอดบาทใต้ยอดสกุลเดิม (บิลบาทอยู่แล้วไม่ต้องซ้ำ)
+function b2(v,bill){
+  if(!v)return '';
+  const cur=(bill&&bill.currency)||'CNY';
+  if(cur==='THB')return '';
+  const r=billRate(bill)||fxEst(cur);
+  return `<div class="muted" style="font-size:11px;font-weight:400">≈ ${money(v*r)} ฿</div>`;
+}
+// เรทที่ใช้จริงของบิล (ถ้ามีงวดที่ใส่เรทแล้ว ใช้เรทล่าสุด)
+function billRate(bill){
+  if(!bill)return 0;
+  const ps=billPays(bill.id).filter(p=>+p.rate>0)
+    .sort((a,b)=>String(b.pay_date||'').localeCompare(String(a.pay_date||'')));
+  return ps.length?(+ps[0].rate):0;
+}
 function paidSum(bid){return billPays(bid).filter(p=>p.status==='paid').reduce((s,p)=>s+(+p.amount||0),0);}
 function planSum(bid){return billPays(bid).filter(p=>p.status==='planned'||p.status==='submitted').reduce((s,p)=>s+(+p.amount||0),0);}
 const PAY_ST={planned:{c:'p-plan',t:'🗓️ วางแผน'},submitted:{c:'p-sent',t:'📤 ส่งยอด'},paid:{c:'p-paid',t:'✅ จ่ายแล้ว'},rejected:{c:'p-rej',t:'✖ ไม่อนุมัติ'}};
@@ -596,7 +611,10 @@ function renderBills(){
   let h=`<table><thead><tr><th>PO</th><th>บริษัท</th><th>Vendor / SKU</th>
     <th class="right">ยอดเต็ม</th><th class="right">จ่ายแล้ว</th><th class="right">วางแผน</th><th class="right">ค้างจ่าย</th>
     <th style="min-width:110px">ความคืบหน้า</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
-  list.forEach(b=>{
+  const _tot=list.length, _pages=Math.max(1,Math.ceil(_tot/BILL_PER));
+  if(BILL_PAGE>_pages)BILL_PAGE=_pages; if(BILL_PAGE<1)BILL_PAGE=1;
+  const pageList=list.slice((BILL_PAGE-1)*BILL_PER, BILL_PAGE*BILL_PER);
+  pageList.forEach(b=>{
     const total=+b.total_amount||0, paid=paidSum(b.id), plan=planSum(b.id);
     const remain=Math.max(0,total-paid);
     const pct=total>0?Math.min(100,Math.round(paid/total*100)):0;
@@ -605,20 +623,29 @@ function renderBills(){
       <td><b>${esc(b.po_number)}</b></td>
       <td>${b.company?`<span class="tag-co">${esc(b.company)}</span>`:'<span class="muted" style="font-size:11.5px">— ยังไม่ระบุ —</span>'}</td>
       <td>${esc(b.vendor||'')}${b.vendor&&b.sku?' · ':''}<span class="muted">${esc(b.sku||'')}</span></td>
-      <td class="right"><b>${money(total)} ${s}</b></td>
-      <td class="right" style="color:var(--green);font-weight:700">${money(paid)}</td>
-      <td class="right" style="color:var(--amber)">${plan?money(plan):'—'}</td>
-      <td class="right" style="color:${remain>0?'var(--red)':'var(--green)'};font-weight:700">${money(remain)}</td>
+      <td class="right"><b>${money(total)} ${s}</b>${b2(total,b)}</td>
+      <td class="right" style="color:var(--green);font-weight:700">${money(paid)}${b2(paid,b)}</td>
+      <td class="right" style="color:var(--amber)">${plan?money(plan)+b2(plan,b):'—'}</td>
+      <td class="right" style="color:${remain>0?'var(--red)':'var(--green)'};font-weight:700">${money(remain)}${b2(remain,b)}</td>
       <td><div class="bar"><i style="width:${pct}%"></i></div><span class="muted" style="font-size:11px">${pct}%</span></td>
       <td><span class="pill ${b.status==='closed'?'p-closed':'p-open'}">${b.status==='closed'?'ปิดบิลแล้ว':'ยังไม่ปิด'}</span></td>
       <td style="white-space:nowrap">
-        ${canEdit?`<button class="btn mini green" onclick="openPay(${b.id})">+ งวดจ่าย</button> `:''}
+        ${canEdit?`<button class="btn mini green" onclick="openPay('${b.id}')">+ งวดจ่าย</button> `:''}
         <button class="btn mini ghost" onclick="openHist('${b.id}')">ประวัติ (${billPays(b.id).length})</button> <button class="btn mini ghost" onclick="openMemo('${b.id}')" title="เมโม + ประวัติการแก้ไข">📝${MEMOS.filter(m=>String(m.bill_id)===String(b.id)).length?' '+MEMOS.filter(m=>String(m.bill_id)===String(b.id)).length:''}</button>
-        ${canEdit?` <button class="btn mini ghost" onclick="openBill(${b.id})">แก้</button>
-        <button class="btn mini red" onclick="delBill(${b.id})">ลบ</button>`:''}
+        ${canEdit?` <button class="btn mini ghost" onclick="openBill('${b.id}')">แก้</button>
+        <button class="btn mini red" onclick="delBill('${b.id}')">ลบ</button>`:''}
       </td></tr>`;
   });
-  $('billTable').innerHTML=h+'</tbody></table>';
+  let pg='';
+  if(_pages>1){
+    const from=(BILL_PAGE-1)*BILL_PER+1, to=Math.min(BILL_PAGE*BILL_PER,_tot);
+    pg='<div style="display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap;font-size:13px">'
+      +`<span class="muted">แสดง ${from}–${to} จาก ${_tot} บิล</span>`
+      +`<button class="btn mini ghost" ${BILL_PAGE<=1?'disabled':''} onclick="billGo(${BILL_PAGE-1})">‹ ก่อนหน้า</button>`
+      +`<span style="font-weight:700">หน้า ${BILL_PAGE}/${_pages}</span>`
+      +`<button class="btn mini ghost" ${BILL_PAGE>=_pages?'disabled':''} onclick="billGo(${BILL_PAGE+1})">ถัดไป ›</button></div>`;
+  }
+  $('billTable').innerHTML=h+'</tbody></table>'+pg;
 }
 
 /* ===== BILL CRUD ===== */
@@ -757,6 +784,8 @@ async function savePayment(){
 }
 
 /* ===== HISTORY ===== */
+let BILL_PAGE=1; const BILL_PER=50;
+function billGo(p){BILL_PAGE=p;renderBills();window.scrollTo({top:0,behavior:'smooth'});}
 let MEMO_BID=null;
 function fmtWhen(t){ if(!t)return '-'; const dt=new Date(t);
   return dt.toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'2-digit'})+' '+dt.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}); }
