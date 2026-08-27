@@ -801,13 +801,14 @@ function openHist(bid){
   let h=`<div class="muted" style="margin-bottom:10px">ยอดเต็ม <b>${money(b.total_amount)} ${s}</b> · จ่ายแล้ว <b style="color:var(--green)">${money(paid)}</b> · ค้าง <b style="color:var(--red)">${money(remain)}</b></div>`;
   if(!rows.length){h+='<div class="empty">ยังไม่มีงวดจ่าย</div>';}
   else{
-    h+=`<table><thead><tr><th>วันที่</th><th>งวด</th><th class="right">ยอด (${s})</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทาง</th><th>ผู้รับผิดชอบ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
+    h+=`<table><thead><tr><th>วันที่</th><th>งวด</th><th class="right">ยอด (${s})</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทาง</th><th>ผู้รับผิดชอบ</th><th>หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
     rows.forEach(p=>{
       h+=`<tr><td>${esc(p.pay_date||'-')}</td><td>${esc(p.installment||'-')}</td>
         <td class="right"><b>${money(p.amount)}</b></td>
         <td class="right">${p.rate?esc(p.rate):'-'}</td>
         <td class="right">${p.amount_thb?money(p.amount_thb):'-'}</td>
         <td>${esc(p.channel||'-')}</td><td>${esc(p.responsible||'-')}</td>
+        <td style="font-size:12px;max-width:220px">${p.note?esc(p.note):'<span class="muted">-</span>'}</td>
         <td>${stPill(p.status)}</td>
         <td style="white-space:nowrap">${stBtns(p,'setPayStatus')}${(canEdit&&p.status!=='paid')?`<button class="btn mini ghost" onclick="editPay('${p.id}','${bid}')">✏️ แก้</button> <button class="btn mini red" onclick="delPay('${p.id}','${bid}')">ลบ</button>`:''}${p.status==='paid'?'<span class="muted" style="font-size:11.5px">🔒 จ่ายแล้ว — ล็อก</span>':''}</td></tr>`;
     });
@@ -894,12 +895,13 @@ function renderPlan(){
     const sumCur=c=>grp.filter(p=>(billOf(p.bill_id).currency||'CNY')===c).reduce((s,p)=>s+(+p.amount||0),0);
     const cny=sumCur('CNY'), usd=sumCur('USD'), thbD=sumCur('THB');
     h+=`<h2 style="margin-top:16px">🏢 ${esc(co)}</h2>
-    <table><thead><tr><th>PO</th><th>SKU</th><th>งวด</th><th class="right">ยอด</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทาง</th><th>ผู้รับผิดชอบ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
+    <table><thead><tr><th>PO</th><th>SKU</th><th>งวด</th><th class="right">ยอด</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทาง</th><th>ผู้รับผิดชอบ</th><th>หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
     grp.forEach(p=>{const b=billOf(p.bill_id);const s=curSym(b.currency);
       h+=`<tr><td><b>${esc(b.po_number||'-')}</b></td><td>${esc(b.sku||'-')}</td><td>${esc(p.installment||'-')}</td>
         <td class="right"><b>${money(p.amount)} ${s}</b></td>
         <td class="right">${p.rate?esc(p.rate):(b.currency==='THB'?'<span class="muted">-</span>':'<span class="muted">~'+fxEst(b.currency)+'</span>')}</td><td class="right">${isEst(p)?'<span class="muted">~</span> ':''}${money(thbOf(p))}</td>
         <td>${esc(p.channel||'-')}</td><td>${esc(p.responsible||'-')}</td>
+        <td style="font-size:12px;max-width:220px">${p.note?esc(p.note):'<span class="muted">-</span>'}</td>
         <td>${stPill(p.status)}</td>
         <td style="white-space:nowrap">${stBtns(p,'setPayStatus')}${(canEdit&&p.status!=='paid')?`<button class="btn mini ghost" onclick="editPay('${p.id}','${p.bill_id}')">✏️ แก้</button> <button class="btn mini red" onclick="planDel('${p.id}')">ลบ</button>`:''}${p.status==='paid'?'<span class="muted" style="font-size:11.5px">🔒 ล็อก</span>':''}</td></tr>`;});
     const parts=[]; if(cny)parts.push(`<b>${money(cny)} ¥</b>`); if(usd)parts.push(`<b>${money(usd)} $</b>`); if(thbD)parts.push(`<b>${money(thbD)} ฿</b>`);
