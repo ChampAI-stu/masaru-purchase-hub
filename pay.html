@@ -892,9 +892,22 @@ function renderPlan(){
   let h='';
   cos.forEach(co=>{
     const grp=rows.filter(p=>(billOf(p.bill_id).company||'-')===co);
+
     const sumCur=c=>grp.filter(p=>(billOf(p.bill_id).currency||'CNY')===c).reduce((s,p)=>s+(+p.amount||0),0);
     const cny=sumCur('CNY'), usd=sumCur('USD'), thbD=sumCur('THB');
-    h+=`<h2 style="margin-top:16px">🏢 ${esc(co)}</h2>
+    const done=grp.filter(p=>p.status==='paid').length;
+    const CO_COLOR={LIKESHOP:'#1F3864',MASARU:'#D0212B',DAIKI:'#B45309',JMF:'#1E7145'};
+    const cc=CO_COLOR[co]||'#334155';
+    const chips=[]; if(cny)chips.push(money(cny)+' ¥'); if(usd)chips.push(money(usd)+' $'); if(thbD)chips.push(money(thbD)+' ฿');
+    h+=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:22px 0 0;padding:11px 15px;
+        background:${cc}12;border-left:6px solid ${cc};border-radius:10px">
+      <span style="font-size:16px;font-weight:800;color:${cc}">🏢 ${esc(co)}</span>
+      <span style="background:${cc};color:#fff;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:20px">${grp.length} งวด</span>
+      ${done?`<span style="background:#EAF3DE;color:var(--green);font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:20px">✅ จ่ายแล้ว ${done}</span>`:''}
+      <div style="flex:1"></div>
+      <span style="font-size:13px;color:${cc}">${esc(chips.join(' + '))}</span>
+      <span style="font-size:15px;font-weight:800;color:${cc}">≈ ${money(sumThb(grp))} ฿</span>
+    </div>
     <table><thead><tr><th>PO</th><th>SKU</th><th>งวด</th><th class="right">ยอด</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทาง</th><th>ผู้รับผิดชอบ</th><th>หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
     grp.forEach(p=>{const b=billOf(p.bill_id);const s=curSym(b.currency);
       h+=`<tr><td><b>${esc(b.po_number||'-')}</b></td><td>${esc(b.sku||'-')}</td><td>${esc(p.installment||'-')}</td>
@@ -904,11 +917,7 @@ function renderPlan(){
         <td style="font-size:12px;max-width:220px">${p.note?esc(p.note):'<span class="muted">-</span>'}</td>
         <td>${stPill(p.status)}</td>
         <td style="white-space:nowrap">${stBtns(p,'setPayStatus')}${(canEdit&&p.status!=='paid')?`<button class="btn mini ghost" onclick="editPay('${p.id}','${p.bill_id}')">✏️ แก้</button> <button class="btn mini red" onclick="planDel('${p.id}')">ลบ</button>`:''}${p.status==='paid'?'<span class="muted" style="font-size:11.5px">🔒 ล็อก</span>':''}</td></tr>`;});
-    const parts=[]; if(cny)parts.push(`<b>${money(cny)} ¥</b>`); if(usd)parts.push(`<b>${money(usd)} $</b>`); if(thbD)parts.push(`<b>${money(thbD)} ฿</b>`);
-    h+=`</tbody></table>
-    <div class="muted" style="text-align:right;margin:6px 0 4px">รวม ${esc(co)}: `
-      +parts.join(' + ')
-      +` · ประมาณบาท <b>${money(sumThb(grp))} ฿</b></div>`;
+    h+='</tbody></table>';
   });
   h+=`<div style="text-align:right;font-weight:800;font-size:15px;border-top:2px solid var(--navy);padding-top:8px;margin-top:6px">รวมทั้งวัน (บาทประมาณ): ${money(sumThb(rows))} ฿</div>`;
   $('planBody').innerHTML=h;
