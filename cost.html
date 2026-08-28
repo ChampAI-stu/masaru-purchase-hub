@@ -246,6 +246,8 @@
           <input type="file" id="lineImgFile" accept="image/*" style="display:none" onchange="onLineImg(this)">
           <div class="toolbar" style="margin-top:12px">
             <button class="btn green edit-only" onclick="saveShipment()">💾 บันทึกเอกสาร</button>
+            <label class="edit-only" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;white-space:nowrap" title="บันทึกอัตโนมัติหลังหยุดพิมพ์ 5 วินาที (เฉพาะเอกสารที่บันทึกลงระบบแล้ว) · ร่างถูกเก็บในเครื่องตลอดเวลา"><input type="checkbox" id="autoSaveOn" checked onchange="toggleAutoSave()"> 🔄 Auto Save</label>
+            <span id="autoSaveStat" class="muted" style="font-size:12px"></span>
             <button class="btn ghost" onclick="clearAllImages()" title="ล้างรูปในเอกสารนี้เพื่อคืนพื้นที่ DB">🧹 ล้างรูป</button>
             <span class="sp"></span>
             <button class="btn" onclick="savePdf(event)">📄 บันทึก PDF</button>
@@ -766,7 +768,23 @@ function fillTrackFilters(){
   if($('trkCo'))$('trkCo').innerHTML='<option value="">— ทุกบริษัท —</option>'+[...new Set([...consigneeNames(),...cos])].map(c=>`<option>${esc(c)}</option>`).join('');
   if($('trkOp'))$('trkOp').innerHTML='<option value="">— ทุกสถานะ —</option>'+OP_ST.map(c=>`<option>${esc(c)}</option>`).join('');
 }
-let trkSort={key:"start_date",dir:"desc"}; let trkPage=1; const TRK_PER=20;
+let trkSort={key:"start_date",dir:"desc"}; let trkPage=1; const TRK_PER=30;
+/* SKU ของแต่ละแถว Shipment — ดึงจากใบ INV ที่ผูกไว้ก่อน ถ้าไม่มีค่อยแกะจาก product_list */
+function trkSkus(t){
+  if(t.shipment_id){
+    const s=db.shipments.find(x=>x.id===t.shipment_id);
+    if(s&&Array.isArray(s.items)){
+      const a=[...new Set(s.items.map(i=>String(i.sku||'').trim()).filter(Boolean))];
+      if(a.length)return a;
+    }
+  }
+  return [...new Set(String(t.product_list||'').split(/\r?\n/).map(l=>String(l).split('=')[0].trim()).filter(Boolean))];
+}
+function trkSkuCell(t){
+  const a=trkSkus(t); if(!a.length)return'<span class="muted">—</span>';
+  const shown=a.slice(0,3).map(s=>`<span class="pill" style="background:#EEF2F7;color:#1F3864;font-size:10px;display:inline-block;margin:1px 2px 1px 0">${esc(s)}</span>`).join('');
+  return shown+(a.length>3?`<span class="muted" style="font-size:10px" title="${esc(a.join(', '))}">+${a.length-3}</span>`:'');
+}
 function sortTrack(k){ if(trkSort.key===k) trkSort.dir=(trkSort.dir==="asc"?"desc":"asc"); else {trkSort.key=k;trkSort.dir="asc";} trkPage=1; renderTrack(); }
 function trkGo(p){ trkPage=p; renderTrack(); }
 function renderTrack(){
@@ -780,6 +798,7 @@ function renderTrack(){
   {const NUMK={tax_amount:1,ship_cost:1,_docs:1};const k=trkSort.key,dir=trkSort.dir==="asc"?1:-1;
    list=list.slice().sort((a,b)=>{let va,vb;
      if(k==="_docs"){va=docCount(a);vb=docCount(b);}
+     else if(k==="_sku"){va=trkSkus(a).join(',').toLowerCase();vb=trkSkus(b).join(',').toLowerCase();}
      else if(NUMK[k]){va=+a[k]||0;vb=+b[k]||0;}
      else {va=String(a[k]||"").toLowerCase();vb=String(b[k]||"").toLowerCase();}
      if(va<vb)return -1*dir; if(va>vb)return 1*dir; return 0;});}
@@ -800,9 +819,9 @@ function renderTrack(){
   const _total=list.length, _pages=Math.max(1,Math.ceil(_total/TRK_PER));
   if(trkPage>_pages)trkPage=_pages; if(trkPage<1)trkPage=1;
   const pageList=list.slice((trkPage-1)*TRK_PER,trkPage*TRK_PER);
-  const _cols=['9%','8%','9%','9%','9%','6%','6%','6%','6%','8%','9%','9%','5%']; if(canEdit)_cols.push('6%');
+  const _cols=['9%','10%','7%','8%','7%','8%','5%','5%','5%','5%','6%','8%','8%','4%']; if(canEdit)_cols.push('5%');
   const _colg='<colgroup>'+_cols.map(w=>'<col style="width:'+w+'">').join('')+'</colgroup>';
-  const _skcols=[['invoice_no','อินวอยซ์'],['bl_no','B/L No'],['import_company','บริษัท'],['mor_status','ยื่นสมอ.'],['op_status','ดำเนินการ'],['shipping','ขนส่ง'],['cls_date','CLS'],['export_date','ETD'],['arrival_date','ETA'],['dem_due_date','DEM'],['tax_amount','ค่าภาษี'],['ship_cost','ค่าขนส่ง'],['_docs','เอกสาร']];
+  const _skcols=[['invoice_no','อินวอยซ์'],['_sku','SKU'],['bl_no','B/L No'],['import_company','บริษัท'],['mor_status','ยื่นสมอ.'],['op_status','ดำเนินการ'],['shipping','ขนส่ง'],['cls_date','CLS'],['export_date','ETD'],['arrival_date','ETA'],['dem_due_date','DEM'],['tax_amount','ค่าภาษี'],['ship_cost','ค่าขนส่ง'],['_docs','เอกสาร']];
   const _arr=k=>trkSort.key===k?(trkSort.dir==='asc'?' ▲':' ▼'):'';
   let _th=_skcols.map(c=>`<th onclick="sortTrack('${c[0]}')" style="cursor:pointer;user-select:none;white-space:nowrap" title="คลิกเพื่อเรียง">${c[1]}<span style="color:#C9A84C;font-size:10px">${_arr(c[0])}</span></th>`).join('');
   if(canEdit)_th+='<th class="no-print">จัดการ</th>';
@@ -814,6 +833,7 @@ function renderTrack(){
     const dem=demDaysLeft(t);
     const demBadge=(dem!=null&&dem<=7)?`<br><span class="pill" style="background:#C2410C;color:#fff;white-space:nowrap">${dem<0?'⚠️ DEM เกิน '+(-dem)+' วัน':'⏳ DEM เหลือ '+dem+' วัน'}</span>`:'';
     h+=`<tr><td><b>${esc(t.invoice_no||'')}</b>${t.shipment_id?` <button class="mini btn" onclick="openInvoiceFromTrack('${t.shipment_id}')" title="เปิดใบ INV จริง">📄 ใบ</button>`:''}<br><span class="muted">${esc(t.start_date||'')}</span></td>
+      <td>${trkSkuCell(t)}</td>
       <td>${esc(t.bl_no||'')}</td>
       <td>${tag(t.import_company,coColor(t.import_company))}</td>
       <td>${tag(t.mor_status,morColor(t.mor_status))}</td><td>${tag(t.op_status,opColor(t.op_status))}</td>
@@ -887,10 +907,10 @@ async function delTrack(id){
   if(ok){await Promise.all([reload('tracking'),reload('shipments')]);renderTrack();}
 }
 function exportTrack(){
-  const rows=[['เดือน','อินวอยซ์','PO JST','บริษัทนำเข้า','วันที่เริ่ม','ผู้รับผิดชอบ','รายการสินค้า','ยื่นสมอ.','ดำเนินการ','ขนส่ง','ETD (ส่งออก)','ETA (ถึงไทย)','B/L No.','Vessel No.','Container No.','เลขที่ใบขน','เลขที่ดราฟใบขน','ค่าธรรมเนียมศุลกากร','วันครบ DEM','ค่าภาษี','จ่ายภาษีแล้ว','วันจ่ายภาษี','ค่าขนส่ง','จ่ายขนส่งแล้ว','กำหนดชำระขนส่ง','ใบวางบิล','บช.แจ้งจ่ายภาษี','บช.ใบเสร็จ+ใบขน04','บช.วางบิลขนส่ง','คุณวุฒิบช.ส่ง','จัดซื้อชุดพร้อม','หมายเหตุ']];
+  const rows=[['เดือน','อินวอยซ์','SKU','PO JST','บริษัทนำเข้า','วันที่เริ่ม','ผู้รับผิดชอบ','รายการสินค้า','ยื่นสมอ.','ดำเนินการ','ขนส่ง','ETD (ส่งออก)','ETA (ถึงไทย)','B/L No.','Vessel No.','Container No.','เลขที่ใบขน','เลขที่ดราฟใบขน','ค่าธรรมเนียมศุลกากร','วันครบ DEM','ค่าภาษี','จ่ายภาษีแล้ว','วันจ่ายภาษี','ค่าขนส่ง','จ่ายขนส่งแล้ว','กำหนดชำระขนส่ง','ใบวางบิล','บช.แจ้งจ่ายภาษี','บช.ใบเสร็จ+ใบขน04','บช.วางบิลขนส่ง','คุณวุฒิบช.ส่ง','จัดซื้อชุดพร้อม','หมายเหตุ']];
   const yn=b=>b?'✓':'';
   db.tracking.slice().sort((a,b)=>String(a.start_date||'').localeCompare(String(b.start_date||''))).forEach(t=>{
-    rows.push([t.period||'',t.invoice_no||'',t.jst_po||'',t.import_company||'',t.start_date||'',t.responsible||'',t.product_list||'',
+    rows.push([t.period||'',t.invoice_no||'',trkSkus(t).join(', '),t.jst_po||'',t.import_company||'',t.start_date||'',t.responsible||'',t.product_list||'',
       t.mor_status||'',t.op_status||'',t.shipping||'',t.export_date||'',t.arrival_date||'',t.bl_no||'',t.vessel_no||'',t.container_no||'',t.draft_bill_no||'',t.draft_no||'',t.customs_fee||'',t.dem_due_date||'',
       t.tax_amount||'',yn(t.tax_paid),t.tax_pay_date||'',t.ship_cost||'',yn(t.ship_paid),t.ship_due||'',t.billing||'',
       yn(t.doc_acc_tax),yn(t.doc_acc_receipt),yn(t.doc_acc_billing),yn(t.doc_quality),yn(t.doc_purchase),t.note||'']);});
@@ -983,11 +1003,102 @@ function exportSummary(){
 
 /* ===== INV + PL ===== */
 let curItems=[];
+/* ===== สถานะหน้าออกบิล + Auto Save ===== */
+let invplReady=false;        // เคยเปิดหน้านี้แล้วหรือยัง (กันการล้างฟอร์มซ้ำเมื่อสลับแท็บกลับมา)
+let invplLoading=false;      // กำลังโหลด/รีเซ็ตฟอร์มอยู่ → ห้ามนับว่าผู้ใช้แก้ไข
+let asTimer=null, asDraftTimer=null, asBusy=false, asPending=false;
+const INVPL_DRAFT_KEY='masaru_cost_invpl_draft_v1';
+
+function asStat(msg,color){const el=$('autoSaveStat');if(!el)return;el.textContent=msg||'';el.style.color=color||'';}
+function autoSaveEnabled(){const c=$('autoSaveOn');return canEdit && c && c.checked;}
+function toggleAutoSave(){ if(autoSaveEnabled()){asStat('Auto Save เปิดอยู่');} else {clearTimeout(asTimer);asStat('Auto Save ปิดอยู่ — ต้องกดบันทึกเอง','#B45309');} }
+
+/* เก็บร่างลงเครื่อง (กันรีเฟรช/ปิดแท็บแล้วข้อมูลหาย) */
+function saveInvplDraft(){
+  try{
+    const d=formData();
+    localStorage.setItem(INVPL_DRAFT_KEY,JSON.stringify({sid:comboVal('loadShipment')||'',ts:Date.now(),d}));
+  }catch(e){
+    // พื้นที่ไม่พอ (รูป base64 ใหญ่) → เก็บร่างแบบไม่มีรูปแทน ดีกว่าไม่เก็บเลย
+    try{
+      const d2=formData(); (d2.items||[]).forEach(it=>{if(it.pic&&it.pic.startsWith('data:'))it.pic='';});
+      localStorage.setItem(INVPL_DRAFT_KEY,JSON.stringify({sid:comboVal('loadShipment')||'',ts:Date.now(),noPic:1,d:d2}));
+    }catch(e2){/* ข้ามไป ไม่รบกวนผู้ใช้ */}
+  }
+}
+function clearInvplDraft(){ try{localStorage.removeItem(INVPL_DRAFT_KEY);}catch(e){} }
+function restoreInvplDraft(){
+  let raw=null; try{raw=localStorage.getItem(INVPL_DRAFT_KEY);}catch(e){return false;}
+  if(!raw)return false;
+  let o=null; try{o=JSON.parse(raw);}catch(e){return false;}
+  if(!o||!o.d)return false;
+  const d=o.d;
+  const hasContent=(d.invno||'').trim()||(d.sname||'').trim()||(d.cname||'').trim()||(d.items&&d.items.length);
+  if(!hasContent)return false;
+  invplLoading=true;
+  if(o.sid&&db.shipments.find(x=>x.id===o.sid))comboSet('loadShipment',o.sid); else comboSet('loadShipment','');
+  $('f_invno').value=d.invno||'';$('f_date').value=d.date||'';$('f_sname').value=d.sname||'';$('f_stel').value=d.stel||'';
+  $('f_scomp').value=d.scomp||'';$('f_saddr').value=d.saddr||'';$('f_slic').value=d.slic||'';$('f_stax').value=d.stax||'';
+  $('f_cname').value=d.cname||'';$('f_caddr').value=d.caddr||'';
+  $('f_term').value=d.term||'EXW';$('f_port').value=d.port||'';$('f_logi').value=d.logi||0;$('f_cur').value=d.cur||'CNY';
+  curItems=JSON.parse(JSON.stringify(d.items||[]));
+  renderLines();renderDoc();
+  invplLoading=false;
+  asStat('↩︎ กู้ร่างล่าสุดกลับมาแล้ว ('+new Date(o.ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})+')','#1E7145');
+  return true;
+}
+
+/* มีการแก้ไข → ตั้งเวลาเซฟร่าง + เซฟจริง */
+function markInvplDirty(){
+  if(invplLoading)return;
+  clearTimeout(asDraftTimer); asDraftTimer=setTimeout(saveInvplDraft,800);
+  if(!autoSaveEnabled())return;
+  const id=comboVal('loadShipment');
+  if(!id){asStat('เอกสารใหม่ — กด 💾 บันทึกครั้งแรกก่อน (ร่างถูกเก็บไว้แล้ว)','#B45309');return;}
+  asStat('มีการแก้ไข…');
+  clearTimeout(asTimer); asTimer=setTimeout(doAutoSave,5000);
+}
+async function doAutoSave(){
+  if(!autoSaveEnabled())return;
+  const id=comboVal('loadShipment'); if(!id)return;
+  if(asBusy){asPending=true;return;}
+  const d=formData(); if(!d.invno)return;
+  asBusy=true; asStat('กำลังบันทึกอัตโนมัติ…');
+  const rec={invno:d.invno,date:d.date||null,sname:d.sname,stel:d.stel,scomp:d.scomp,saddr:d.saddr,slic:d.slic||null,stax:d.stax||null,cname:d.cname,caddr:d.caddr,term:d.term,port:d.port||null,logi:d.logi,cur:d.cur,items:d.items};
+  try{
+    const {error}=await sb.from('shipments').update(rec).eq('id',id);
+    if(error)throw error;
+    const s=db.shipments.find(x=>x.id===id); if(s)Object.assign(s,rec);
+    asStat('✅ บันทึกอัตโนมัติแล้ว '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),'#1E7145');
+    clearInvplDraft();
+  }catch(e){
+    asStat('⚠️ บันทึกอัตโนมัติไม่สำเร็จ: '+(e.message||e)+' — ร่างถูกเก็บในเครื่องแล้ว','#D0212B');
+    saveInvplDraft();
+  }
+  asBusy=false;
+  if(asPending){asPending=false;clearTimeout(asTimer);asTimer=setTimeout(doAutoSave,1500);}
+}
+function bindInvplAutoSave(){
+  const c=$('tab-invpl'); if(!c||c.dataset.asBound)return; c.dataset.asBound='1';
+  c.addEventListener('input',e=>{ if(e.target&&e.target.id==='autoSaveOn')return; markInvplDirty(); });
+  c.addEventListener('change',e=>{ if(e.target&&e.target.id==='autoSaveOn')return; markInvplDirty(); });
+  window.addEventListener('beforeunload',()=>{ if(!invplLoading)saveInvplDraft(); });
+}
+
 function initInvPl(){
   fillSkuSelects();
   fillPartySelects();
+  const keepId=invplReady?comboVal('loadShipment'):'';
   comboInit('loadShipment', db.shipments.map(s=>({id:s.id,label:s.invno+' · '+(s.date||'')})), ()=>loadShipmentToForm(), '— ค้นหา/เลือกเอกสาร —');
-  newShipmentForm();   // เริ่มเป็นบิลใหม่เปล่าทุกครั้งที่เข้าหน้านี้ (เลือกจาก dropdown ถ้าจะเปิดใบเก่า)
+  bindInvplAutoSave();
+  if(invplReady){                       // กลับเข้าหน้านี้อีกครั้ง → คงเอกสารเดิมไว้ ไม่ล้างฟอร์ม
+    if(keepId)comboSet('loadShipment',keepId);
+    renderLines();renderDoc();
+    return;
+  }
+  invplReady=true;
+  if(!restoreInvplDraft())newShipmentForm();   // ไม่มีร่างค้าง → เริ่มบิลใหม่เปล่า
+  toggleAutoSave();
 }
 let autoInvNo='';   // เลขที่ระบบออกให้ล่าสุด (ใช้เช็คว่าผู้ใช้แก้เองหรือยัง)
 function nextInvNo(dateStr){
@@ -1007,19 +1118,23 @@ function onDateChange(){
   renderDoc();
 }
 function newShipmentForm(){
+  invplLoading=true; clearTimeout(asTimer); clearTimeout(asDraftTimer); clearInvplDraft();
   comboSet('loadShipment','');['f_invno','f_sname','f_stel','f_scomp','f_saddr','f_slic','f_stax','f_cname','f_caddr','f_port'].forEach(i=>$(i).value='');
   comboSet('f_vender_sel','');comboSet('f_cons_sel','');
   $('f_date').value=new Date().toISOString().slice(0,10);$('f_term').value='EXW';$('f_logi').value=0;$('f_cur').value='CNY';
   autoInvNo=nextInvNo($('f_date').value); $('f_invno').value=autoInvNo;   // ออกเลขอัตโนมัติ
   curItems=[];renderLines();renderDoc();
+  invplLoading=false; asStat('');
 }
 function loadShipmentToForm(){
   const id=comboVal('loadShipment');if(!id){newShipmentForm();return;}
   const s=db.shipments.find(x=>x.id===id);
+  invplLoading=true; clearTimeout(asTimer); clearTimeout(asDraftTimer); clearInvplDraft();
   $('f_invno').value=s.invno;$('f_date').value=s.date||'';$('f_sname').value=s.sname||'';$('f_stel').value=s.stel||'';
   $('f_scomp').value=s.scomp||'';$('f_saddr').value=s.saddr||'';$('f_slic').value=s.slic||'';$('f_stax').value=s.stax||'';$('f_cname').value=s.cname||'';$('f_caddr').value=s.caddr||'';
   $('f_term').value=s.term||'';$('f_port').value=s.port||'';$('f_logi').value=s.logi||0;$('f_cur').value=(s.cur==='RMB'?'CNY':(s.cur||'CNY'));
   curItems=JSON.parse(JSON.stringify(s.items||[]));renderLines();renderDoc();
+  invplLoading=false; asStat('เปิดเอกสาร '+(s.invno||'')+' แล้ว');
 }
 function addLineBySku(){
   const sku=$('addSkuInput').value.trim();
@@ -1104,11 +1219,19 @@ async function saveShipment(){
     catch(e){ alert('บันทึกไม่สำเร็จ: '+(e.message||e)); ok=false; }
   }
   if(!ok)return;
+  clearTimeout(asTimer);
   await reload('shipments');
   const linked=await upsertTrackingFromInvoice(d,shipmentId);   // ผูกเข้าตาราง Shipment + แนบใบจริง
   await reload('tracking');
-  initInvPl();
-  alert('บันทึกเอกสารแล้ว'+(linked?' + บันทึกในตาราง Shipment (แนบใบ INV จริง)':''));
+  // ✅ คงเอกสารที่เพิ่งบันทึกไว้บนหน้าจอ (ไม่ล้างฟอร์ม) — รีเฟรชเฉพาะรายการ dropdown
+  invplLoading=true;
+  fillSkuSelects(); fillPartySelects();
+  comboInit('loadShipment', db.shipments.map(s=>({id:s.id,label:s.invno+' · '+(s.date||'')})), ()=>loadShipmentToForm(), '— ค้นหา/เลือกเอกสาร —');
+  comboSet('loadShipment', shipmentId);
+  renderLines(); renderDoc();
+  invplLoading=false;
+  clearInvplDraft();
+  asStat('✅ บันทึกแล้ว '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+(linked?' · อัปเดตตาราง Shipment แล้ว':''),'#1E7145');
 }
 function invProductList(items){return (items||[]).map(it=>{const p=prod(it.sku)||{};return `${it.sku}${it.qty?(' = '+money(it.qty)+' '+(p.unit||'ชุด')):''}`;}).join('\n');}
 async function upsertTrackingFromInvoice(d,shipmentId){
@@ -1138,7 +1261,9 @@ async function deleteShipment(){
   const s=db.shipments.find(x=>x.id===id);
   if(!confirm(`ลบเอกสาร "${s?s.invno:''}" ถาวร?\n(ลบออกจากฐานข้อมูล กู้คืนไม่ได้)`))return;
   const ok=await dbWrite(()=>sb.from('shipments').delete().eq('id',id));
-  if(ok){await reload('shipments');initInvPl();alert('ลบเอกสารแล้ว');}
+  if(ok){await reload('shipments');
+    comboInit('loadShipment', db.shipments.map(x=>({id:x.id,label:x.invno+' · '+(x.date||'')})), ()=>loadShipmentToForm(), '— ค้นหา/เลือกเอกสาร —');
+    newShipmentForm();alert('ลบเอกสารแล้ว');}
 }
 function fmtDate(d){if(!d)return'';return new Date(d).toLocaleDateString('en-GB');}
 function renderDoc(){
@@ -1211,6 +1336,7 @@ function renderDoc(){
     <section class="pl-page"><h2 class="title">PACKING LIST</h2><div class="goldline"></div>${hdr('Reference Invoice No')}
     <table class="items"><colgroup><col style="width:7%"><col style="width:33%"><col style="width:30%"><col style="width:10%"><col style="width:20%"></colgroup><thead><tr><th>ITEM</th><th>DESCRIPTION OF GOODS</th><th>Dimension</th><th>GW (Kg)</th><th>Shipping Mark</th></tr></thead><tbody>${rowPl}<tr><td colspan="2" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(totalCtn)} Cartons · ${money2(totalCBM)} CBM</b></td><td style="text-align:right"><b>${money2(totalGW)}</b></td><td></td></tr></tbody></table>
     <div class="sig">Signature and Company Stamp<br><br>________________________</div></section></div>`;
+  markInvplDirty();   // ทุกการแก้ไขรายการสินค้า/ฟอร์ม → ตั้งเวลา Auto Save + เก็บร่าง
 }
 function exportInvPlExcel(){
   const d=formData();const rows=[];
