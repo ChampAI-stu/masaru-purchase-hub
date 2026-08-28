@@ -61,9 +61,27 @@ td.num,th.num{text-align:right;white-space:nowrap}
 .sign-box{flex:1;text-align:center}
 .sign-line{border-top:1px dotted #333;margin:38px 12px 6px}
 .chk{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;margin:10px 0}
-@media print{body *{visibility:hidden}#dcPaper,#dcPaper *{visibility:visible}
+@media print{body *{visibility:hidden}
+  #dcPaper,#dcPaper *{visibility:visible}
   #dcPaper{position:absolute;left:0;top:0;width:100%;box-shadow:none;border:0}
+  body.printing-memo #dcPaper,body.printing-memo #dcPaper *{visibility:hidden}
+  body.printing-memo #mdPaper,body.printing-memo #mdPaper *{visibility:visible}
+  body.printing-memo #mdPaper{position:absolute;left:0;top:0;width:100%;box-shadow:none;border:0;margin:0}
   .no-print{display:none!important}@page{margin:12mm}}
+/* ===== ฟอร์มบันทึกข้อความภายใน ===== */
+#mdPaper{background:#fff;color:#000;padding:8mm 6mm;font-size:13px;line-height:1.75}
+#mdPaper .md-title{text-align:center;font-weight:700;font-size:18px;margin-bottom:16px}
+#mdPaper table.md-head{width:100%;border-collapse:collapse;margin-bottom:16px}
+#mdPaper table.md-head td{border:1px solid #000;padding:9px 10px;vertical-align:top}
+#mdPaper table.md-items{width:100%;border-collapse:collapse;margin:10px 0 6px}
+#mdPaper table.md-items th,#mdPaper table.md-items td{border:1px solid #000;padding:7px 8px;font-size:12.5px}
+#mdPaper table.md-items th{text-align:center;font-weight:700}
+#mdPaper table.md-items td.n{text-align:center}
+#mdPaper .md-sign{display:flex;gap:30px;margin-top:26px;font-size:12.5px}
+#mdPaper .md-sign>div{flex:1}
+#mdPaper .md-blk{margin-bottom:22px}
+#mdPaper .md-chk{margin-top:8px;font-size:12.5px;display:flex;gap:22px;flex-wrap:wrap}
+#mdItems input{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 7px;font:inherit;font-size:12.5px}
 .bar{background:#E9EEF5;border-radius:20px;height:8px;overflow:hidden;min-width:90px}
 .bar>i{display:block;height:100%;background:var(--green)}
 .empty{text-align:center;color:var(--muted);padding:26px}
@@ -398,7 +416,36 @@ td.num,th.num{text-align:right;white-space:nowrap}
     <div style="font-weight:700;margin:16px 0 6px">🕘 ประวัติการแก้ไข</div>
     <div id="logList" class="scroll" style="max-height:260px"></div>
     <div class="row" style="margin-top:14px;justify-content:flex-end">
+      <button class="btn" onclick="openMemoDoc()">🖨️ ออกบันทึกข้อความภายใน</button>
       <button class="btn ghost" onclick="$('memoBg').style.display='none'">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: บันทึกข้อความภายใน (Internal Memo) ============ -->
+<div class="modal-bg" id="memoDocBg">
+  <div class="modal" style="max-width:1080px">
+    <h3 class="no-print">📄 บันทึกข้อความภายใน</h3>
+    <div class="row no-print" style="gap:10px;flex-wrap:wrap;margin:10px 0">
+      <div class="fld" style="width:190px"><label>เลขที่</label><input id="md_no" oninput="renderMemoDoc()"></div>
+      <div class="fld" style="width:165px"><label>วันที่</label><input id="md_date" type="date" onchange="renderMemoDoc()"></div>
+      <div class="fld" style="width:190px"><label>เรียน</label><input id="md_to" oninput="renderMemoDoc()"></div>
+      <div class="fld" style="width:190px"><label>จาก</label><input id="md_from" oninput="renderMemoDoc()"></div>
+      <div class="fld" style="flex:1;min-width:220px"><label>เรื่อง</label><input id="md_subject" oninput="renderMemoDoc()"></div>
+    </div>
+    <div class="fld no-print"><label>เนื้อความ</label>
+      <textarea id="md_body" rows="2" oninput="renderMemoDoc()"></textarea></div>
+    <div class="no-print" style="margin:12px 0 6px;font-weight:700;display:flex;align-items:center;gap:10px">
+      รายการที่เปลี่ยนแปลง
+      <button class="btn mini ghost" onclick="mdAddRow()">+ เพิ่มแถว</button>
+      <span class="muted" style="font-size:11.5px">ดึงจาก Purchase Board อัตโนมัติ · แก้ไข/ลบได้</span>
+    </div>
+    <div id="mdItems" class="no-print scroll" style="margin-bottom:14px"></div>
+    <div id="mdPaper" style="border:1px solid var(--line);border-radius:8px"></div>
+    <div class="row no-print" style="margin-top:14px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('memoDocBg').style.display='none'">ปิด</button>
+      <button class="btn ghost" onclick="saveMemoDocNote()">💾 บันทึกลงเมโม</button>
+      <button class="btn" onclick="printMemoDoc()">🖨️ พิมพ์ / บันทึก PDF</button>
     </div>
   </div>
 </div>
@@ -833,6 +880,120 @@ function renderMemo(){
       +'<span class="muted" style="font-size:11.5px">รายละเอียด: '+esc(err)+'</span></div>'+$('logList').innerHTML;
   }
 }
+/* ===== บันทึกข้อความภายใน (Internal Memo) ===== */
+let MD_ROWS=[];
+function thBE(dstr){
+  if(!dstr)return '-';
+  const D=new Date(dstr+'T00:00:00'); if(isNaN(D))return dstr;
+  return D.toLocaleDateString('th-TH',{day:'numeric',month:'long'})+' '+(D.getFullYear()+543);
+}
+function mdNextNo(dstr){
+  const y=((dstr?new Date(dstr+'T00:00:00'):new Date()).getFullYear())+543;
+  const n=MEMOS.filter(m=>/บันทึกข้อความภายใน/.test(m.memo||'')).length+1;
+  return 'PU-'+String(n).padStart(3,'0')+'/Rev.00/'+y;
+}
+function openMemoDoc(){
+  const b=BILLS.find(x=>String(x.id)===String(MEMO_BID));
+  if(!b){alert('ยังไม่ได้เลือกบิล');return;}
+  const today=todayStr();
+  $('md_date').value=today;
+  $('md_no').value=mdNextNo(today);
+  $('md_to').value='แผนกบัญชี';
+  $('md_from').value='แผนกจัดซื้อ';
+  $('md_subject').value='ชี้แจงการเปลี่ยนแปลงราคาต่อหน่วย';
+  $('md_body').value='เนื่องจากแผนกจัดซื้อ มีรายละเอียดการเปลี่ยนแปลงราคาต่อหน่วย ดังนี้';
+  // ดึงรายการของ PO นี้จาก Purchase Board
+  const po=String(b.po_number||'');
+  const its=POROWS.filter(r=>String(r.po_number||'')===po);
+  MD_ROWS = its.length
+    ? its.map(r=>({po,sku:r.sku||'',qty:num(r.quantity)||'',old:num(r.price)||'',neu:''}))
+    : [{po,sku:b.sku||'',qty:'',old:'',neu:''}];
+  renderMdItems(); renderMemoDoc();
+  $('memoDocBg').style.display='flex';
+}
+function mdAddRow(){
+  const b=BILLS.find(x=>String(x.id)===String(MEMO_BID))||{};
+  MD_ROWS.push({po:String(b.po_number||''),sku:'',qty:'',old:'',neu:''});
+  renderMdItems(); renderMemoDoc();
+}
+function mdDel(i){MD_ROWS.splice(i,1);renderMdItems();renderMemoDoc();}
+function mdSet(i,k,v){MD_ROWS[i][k]=v;renderMemoDoc();}
+function renderMdItems(){
+  if(!MD_ROWS.length){$('mdItems').innerHTML='<div class="empty" style="padding:14px">ยังไม่มีรายการ — กด "+ เพิ่มแถว"</div>';return;}
+  let h='<table style="width:100%;min-width:720px"><thead><tr><th style="width:130px">PO</th><th>SKU เดิม</th>'
+    +'<th style="width:100px">จำนวน</th><th style="width:130px">ราคา/หน่วย (เดิม)</th>'
+    +'<th style="width:130px">ราคา/หน่วย (ใหม่)</th><th style="width:44px"></th></tr></thead><tbody>';
+  MD_ROWS.forEach((r,i)=>{
+    h+=`<tr>
+      <td><input value="${esc(String(r.po||''))}" oninput="mdSet(${i},'po',this.value)"></td>
+      <td><input value="${esc(String(r.sku||''))}" oninput="mdSet(${i},'sku',this.value)"></td>
+      <td><input type="number" step="1" value="${esc(String(r.qty??''))}" oninput="mdSet(${i},'qty',this.value)"></td>
+      <td><input type="number" step="0.01" value="${esc(String(r.old??''))}" oninput="mdSet(${i},'old',this.value)"></td>
+      <td><input type="number" step="0.01" value="${esc(String(r.neu??''))}" oninput="mdSet(${i},'neu',this.value)"></td>
+      <td><button class="btn mini red" onclick="mdDel(${i})">✕</button></td></tr>`;});
+  $('mdItems').innerHTML=h+'</tbody></table>';
+}
+function renderMemoDoc(){
+  const nz=v=>(v===''||v==null)?'':money(v);
+  const rows=MD_ROWS.map(r=>`<tr>
+      <td class="n">${esc(String(r.po||''))}</td>
+      <td class="n">${esc(String(r.sku||''))}</td>
+      <td class="n">${nz(r.qty)}</td>
+      <td class="n">${nz(r.old)}</td>
+      <td class="n">${nz(r.neu)}</td></tr>`).join('')
+    || '<tr><td class="n">&nbsp;</td><td></td><td></td><td></td><td></td></tr>';
+  const sg=(role,name,pos)=>`<div class="md-blk">
+      ลงชื่อ .................................................. ${role}<br>
+      &nbsp;&nbsp;( ${name||'..................................................'} )<br>
+      ${pos||'ตำแหน่ง ..............................................'}</div>`;
+  $('mdPaper').innerHTML=`
+    <div class="md-title">บันทึกข้อความภายใน</div>
+    <table class="md-head">
+      <tr><td style="width:58%"><b>เลขที่ :</b> ${esc($('md_no').value||'')}</td>
+          <td><b>วันที่ :</b> ${esc(thBE($('md_date').value))}</td></tr>
+      <tr><td colspan="2"><b>เรียน :</b> ${esc($('md_to').value||'')}</td></tr>
+      <tr><td colspan="2"><b>จาก :</b> ${esc($('md_from').value||'')}</td></tr>
+      <tr><td colspan="2"><b>เรื่อง :</b> ${esc($('md_subject').value||'')}</td></tr>
+    </table>
+    <div style="white-space:pre-wrap;margin-bottom:8px">${esc($('md_body').value||'')}</div>
+    <div style="margin-bottom:4px">รายละเอียดการเปลี่ยนแปลงมีดังนี้</div>
+    <table class="md-items">
+      <thead><tr><th style="width:19%">PO</th><th style="width:21%">SKU เดิม</th>
+        <th style="width:16%">จำนวน</th><th style="width:22%">ราคา /หน่วย (เดิม)</th>
+        <th style="width:22%">ราคา/หน่วย (ใหม่)</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+    <div style="margin-top:26px">จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ</div>
+    <div class="md-sign">
+      <div>${sg('ผู้ขออนุมัติ','','ตำแหน่ง ..............................................')}</div>
+      <div>
+        ${sg('ผู้ตรวจสอบ','','ตำแหน่ง ..............................................')}
+        ${sg('ผู้ตรวจสอบ','','ฝ่ายบัญชี ตำแหน่งหัวหน้าบัญชี')}
+        ${sg('ผู้อนุมัติ','คุณพลวุฒิ  บุญวิธวาเจริญ','ตำแหน่ง CEO')}
+      </div>
+    </div>
+    <div style="font-weight:700;margin-top:14px">ผลการพิจารณา</div>
+    <div class="md-chk">
+      <span>☐ อนุมัติ</span><span>☐ ไม่อนุมัติ</span>
+      <span>☐ พิจารณาใหม่</span><span>☐ อื่นๆ (โปรดระบุ) ..............................................</span>
+    </div>`;
+}
+function printMemoDoc(){
+  document.body.classList.add('printing-memo');
+  const done=()=>{document.body.classList.remove('printing-memo');window.removeEventListener('afterprint',done);};
+  window.addEventListener('afterprint',done);
+  setTimeout(()=>{window.print();setTimeout(done,1200);},60);
+}
+async function saveMemoDocNote(){
+  const lines=MD_ROWS.filter(r=>r.sku||r.neu!=='')
+    .map(r=>`${r.sku||'-'} จำนวน ${r.qty||'-'} · ราคา ${r.old||'-'} → ${r.neu||'-'}`);
+  const t='📄 บันทึกข้อความภายใน '+($('md_no').value||'')+' — '+($('md_subject').value||'')
+    +(lines.length?('\n'+lines.join('\n')):'');
+  const {error}=await sb.from('pay_memos').insert({bill_id:MEMO_BID,memo:t,actor:ME});
+  if(error){alert('บันทึกไม่สำเร็จ: '+error.message);return;}
+  await loadAll(); renderMemo(); $('md_no').value=mdNextNo($('md_date').value); renderMemoDoc();
+  toast('บันทึกลงเมโมแล้ว ✅');
+}
+
 async function saveMemo(){
   const t=($('memoText').value||'').trim();
   if(!t)return toast('พิมพ์เมโมก่อน');
