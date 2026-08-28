@@ -1420,6 +1420,7 @@ function exportLot(){
 
 /* ==================== เอกสารค่าใช้จ่ายประจำวัน (ใบปะหน้า) ==================== */
 let DOCS=[], DOCSEL=new Set();
+let DOC_VIEW_IDS=null;   // เปิดดูเอกสารที่บันทึกไว้ → ใช้รายการจากเอกสารนั้นตรงๆ ไม่ผ่านตัวกรอง
 function docToday(){$('dcDate').value=todayStr();renderDoc();}
 function docShift(k){const v=$('dcDate').value||todayStr();
   const dt=new Date(v+'T00:00:00');dt.setDate(dt.getDate()+k);$('dcDate').value=ymdLocal(dt);renderDoc();}
@@ -1455,8 +1456,9 @@ function renderDoc(){
   if(!$('dcDate'))return;
   if(!$('dcDate').value)$('dcDate').value=todayStr();
   fillDocCompany();
+  DOC_VIEW_IDS=null;                   // เปลี่ยนวัน/บริษัท/ช่องทาง = เริ่มใหม่
   const rows=docRows();
-  DOCSEL=new Set(rows.map(p=>p.id));   // ติ๊กทั้งหมดไว้ก่อน
+  DOCSEL=new Set(rows.map(p=>String(p.id)));   // ติ๊กทั้งหมดไว้ก่อน (เทียบเป็น String เสมอ)
   if(!rows.length){$('dcPick').innerHTML='<div class="empty">วันนี้ยังไม่มีงวดจ่าย — เพิ่มจากแท็บ Tracking บิล</div>';
     $('dcPaper').style.display='none';renderDocHist();return;}
   let h='<table><thead><tr><th style="width:38px"></th><th>PO</th><th>Vendor / SKU</th><th>งวด</th><th class="num">ยอด</th><th class="num">เรท</th><th class="num">บาท</th><th class="num">ค่าธรรมเนียม</th><th>สถานะ</th></tr></thead><tbody>';
@@ -1482,7 +1484,7 @@ async function setPayRate(pid,v){
 async function applyRateAll(){
   const r=parseFloat($('dcRate').value)||0;
   if(!(r>0))return toast('ใส่เรทก่อน');
-  const rows=docRows().filter(p=>DOCSEL.has(p.id)&&billOf(p.bill_id).currency!=='THB');
+  const rows=docSelected().filter(p=>billOf(p.bill_id).currency!=='THB');
   if(!rows.length)return toast('ไม่มีรายการที่ต้องใส่เรท');
   const curs=[...new Set(rows.map(p=>billOf(p.bill_id).currency||'CNY'))];
   if(curs.length>1&&!confirm('รายการที่เลือกมีหลายสกุล ('+curs.join(', ')+')\n\nเรทเดียวกันอาจไม่ถูกต้อง — ยืนยันใส่ทั้งหมด?'))return;
@@ -1496,7 +1498,17 @@ async function applyRateAll(){
   await loadAll(); renderDoc(); buildDoc();
   toast(fail?('มีปัญหา '+fail+' รายการ'):('ใส่เรทให้ '+rows.length+' รายการแล้ว ✅'));
 }
-function pickDoc(el){el.checked?DOCSEL.add(el.dataset.id):DOCSEL.delete(el.dataset.id);}
+function pickDoc(el){
+  DOC_VIEW_IDS=null;                                   // ผู้ใช้แก้การติ๊กเอง → เลิกโหมดเปิดดูเอกสารเก่า
+  el.checked?DOCSEL.add(String(el.dataset.id)):DOCSEL.delete(String(el.dataset.id));
+}
+/* รายการที่จะเข้าใบปะหน้า — โหมดเปิดดูเอกสารเก่าใช้ payment_ids ตรงๆ (ข้ามตัวกรองวัน/บริษัท/ช่องทาง) */
+function docSelected(){
+  if(DOC_VIEW_IDS&&DOC_VIEW_IDS.length)
+    return PAYS.filter(p=>DOC_VIEW_IDS.includes(String(p.id)))
+      .slice().sort((a,b)=>String(a.pay_date||'').localeCompare(String(b.pay_date||'')));
+  return docRows().filter(p=>DOCSEL.has(String(p.id)));
+}
 // รายละเอียดการแบ่งงวดชำระ + ยอดค้างจ่าย ของแต่ละ PO ในใบนี้
 function histBlock(rows){
   const bids=[...new Set(rows.map(p=>p.bill_id))];
@@ -1528,7 +1540,7 @@ function histBlock(rows){
 function buildDoc(show){
   if(show===true)$('dcPaper').style.display='';
   if($('dcPaper').style.display==='none')return;
-  const rows=docRows().filter(p=>DOCSEL.has(p.id));
+  const rows=docSelected();
   if(!rows.length){$('dcSheet').innerHTML='<div class="empty">ยังไม่ได้เลือกรายการ</div>';return;}
   const d=$('dcDate').value;
   const payee=[...new Set(rows.map(p=>billOf(p.bill_id).vendor).filter(Boolean))].join(', ');
@@ -1614,12 +1626,12 @@ function buildDoc(show){
 }
 
 async function saveDoc(){
-  const rows=docRows().filter(p=>DOCSEL.has(p.id));
+  const rows=docSelected();
   if(!rows.length)return toast('ยังไม่ได้เลือกรายการ');
   const b0=billOf(rows[0].bill_id);
   const payee=[...new Set(rows.map(p=>billOf(p.bill_id).vendor).filter(Boolean))].join(', ')||null;
   const row={doc_date:$('dcDate').value,payee,
-    company:b0.company||null,payment_ids:rows.map(p=>p.id),
+    company:b0.company||null,payment_ids:rows.map(p=>String(p.id)),
     note:'ยอดรวม '+money(rows.reduce((s,p)=>s+thbOf(p),0)+rows.reduce((s,p)=>s+num(p.fee),0))+' บาท',created_by:ME};
   const key=JSON.stringify(row.payment_ids.slice().sort());
   const dup=DOCS.find(x=>x.doc_date===row.doc_date&&(x.payee||'')===(row.payee||'')
@@ -1652,24 +1664,30 @@ function renderDocHist(){
 }
 // เปิดดูเอกสารที่บันทึกไว้ — ตั้งค่าตัวกรองให้ตรง แล้วสร้างใบปะหน้าใหม่
 function openSavedDoc(id){
-  const x=DOCS.find(v=>String(v.id)===String(id)); if(!x)return;
-  $('dcDate').value=x.doc_date||'';
-  renderDoc();                                   // เติมตัวเลือก + รายการของวันนั้น
-  if(x.company&&[...$('dcCompany').options].some(o=>o.value===x.company))$('dcCompany').value=x.company;
-  renderDoc();
+  const x=DOCS.find(v=>String(v.id)===String(id));
+  if(!x){alert('ไม่พบเอกสารนี้ — ลองรีเฟรชหน้าแล้วกดใหม่');loadDocs();return;}
   const ids=(x.payment_ids||[]).map(String);
-  if(ids.length){                                // ติ๊กเฉพาะรายการที่อยู่ในเอกสารนั้น
-    DOCSEL=new Set(ids.filter(i=>PAYS.some(p=>String(p.id)===i)));
-    document.querySelectorAll('.dc-ck').forEach(c=>c.checked=DOCSEL.has(c.dataset.id));
-    const miss=ids.length-DOCSEL.size;
-    if(miss)toast('มี '+miss+' รายการถูกลบไปแล้ว — แสดงเท่าที่เหลือ');
+  const live=ids.filter(i=>PAYS.some(p=>String(p.id)===i));
+  if(!live.length){alert('งวดจ่ายในเอกสารนี้ถูกลบไปหมดแล้ว จึงแสดงใบปะหน้าไม่ได้');return;}
+  $('dcDate').value=x.doc_date||'';
+  if($('dcChannel'))$('dcChannel').value='';
+  renderDoc();                                   // เติมตัวเลือก + รายการของวันนั้น (จะล้าง DOC_VIEW_IDS)
+  if(x.company&&[...$('dcCompany').options].some(o=>o.value===x.company)){
+    $('dcCompany').value=x.company; renderDoc();
   }
+  DOC_VIEW_IDS=live;                             // ✅ ใช้รายการของเอกสารนั้นตรงๆ ไม่ขึ้นกับตัวกรอง
+  DOCSEL=new Set(live);
+  document.querySelectorAll('.dc-ck').forEach(c=>c.checked=DOCSEL.has(String(c.dataset.id)));
+  const miss=ids.length-live.length;
+  if(miss)toast('มี '+miss+' รายการถูกลบไปแล้ว — แสดงเท่าที่เหลือ');
   buildDoc(true);
   $('dcPaper').scrollIntoView({behavior:'smooth',block:'start'});
 }
 async function delDoc(id){
+  const x=DOCS.find(v=>String(v.id)===String(id));
+  if(!x){alert('ไม่พบเอกสารนี้');loadDocs();return;}
   if(!confirm('ลบเอกสารนี้?'))return;
-  const {error}=await sb.from('pay_docs').delete().eq('id',id);
+  const {error}=await sb.from('pay_docs').delete().eq('id',x.id);
   if(error)return toast('ลบไม่สำเร็จ: '+error.message);
   toast('ลบแล้ว'); loadDocs();
 }
