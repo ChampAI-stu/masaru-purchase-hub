@@ -36,7 +36,9 @@
   .tabs button{background:transparent;border:0;color:#cbd6e8;padding:12px 16px;cursor:pointer;font-size:14px;border-bottom:3px solid transparent;font-weight:600}
   .tabs button.active{color:#fff;border-bottom-color:var(--gold)}
   .tabs button:hover{color:#fff}
-  main{padding:18px;max-width:1200px;margin:0 auto}
+  main{padding:18px 22px;max-width:1660px;margin:0 auto}
+  /* หน้าเอกสาร INV+PL ยังคุมความกว้างเดิมไว้ ให้ฟอร์ม+ตัวอย่างอ่านง่าย */
+  #tab-invpl{max-width:1280px;margin:0 auto}
   .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
   .card h2{margin:0 0 12px;font-size:16px;color:var(--navy);border-left:4px solid var(--gold);padding-left:10px}
   .card h3{margin:16px 0 8px;font-size:14px;color:var(--blue)}
@@ -111,8 +113,9 @@
   .combo-opt{padding:8px 11px;cursor:pointer;font-size:14px}
   .combo-opt:hover{background:#EAF1FB}
   .combo-empty{padding:8px 11px;color:var(--muted);font-size:13px}
-  #trkTable table.trkc{width:100%;table-layout:fixed;font-size:11px}
-  #trkTable table.trkc th,#trkTable table.trkc td{padding:5px 6px;word-break:break-word;white-space:normal!important;vertical-align:top}
+  #trkTable table.trkc{width:100%;min-width:1240px;table-layout:fixed;font-size:11.5px}
+  #trkTable table.trkc th,#trkTable table.trkc td{padding:6px 7px;word-break:break-word;white-space:normal!important;vertical-align:top}
+  #trkTable table.trkc th{white-space:nowrap!important}
   #trkTable table.trkc .pill{font-size:10px;padding:2px 5px;white-space:normal!important;display:inline-block}
   #trkTable table.trkc .mini{padding:2px 6px;font-size:11px}
   #trkTable table.trkc span[style*="border-radius"]{white-space:normal!important;display:inline-block;line-height:1.25}
