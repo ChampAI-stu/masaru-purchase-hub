@@ -388,8 +388,21 @@ td.num,th.num{text-align:right;white-space:nowrap}
       <div class="fld" id="p_rateWrap" style="display:none"><label>เรทโอน (฿/¥)</label><input id="p_rate" type="number" step="0.0001" oninput="calcThb()"></div>
       <div class="fld" id="p_thbWrap" style="display:none"><label>ยอดบาท</label><input id="p_thb" type="number" step="0.01"></div>
       <div class="fld"><label>ค่าธรรมเนียม (฿)</label><input id="p_fee" type="number" step="0.01" value="0"></div>
-      <div class="fld"><label>ช่องทาง</label>
-        <input id="p_channel" list="chList" placeholder="KSHER / SWIFT"><datalist id="chList"><option value="KSHER"><option value="SWIFT"><option value="โอนธนาคาร"></datalist></div>
+      <div class="fld"><label>ช่องทางการโอน ★</label>
+        <select id="p_channel">
+          <option value="">— เลือกช่องทาง —</option>
+          <option value="JMF CARGO">JMF CARGO</option>
+          <option value="Ksher Payment Co.Ltd.">Ksher Payment Co.Ltd.</option>
+          <option value="ธนาคาร (SWIFT Code)">ธนาคาร (SWIFT Code)</option>
+        </select></div>
+      <div class="fld"><label>ประเภทการจ่ายเงิน ★</label>
+        <select id="p_paytype">
+          <option value="">— เลือกประเภท —</option>
+          <option value="LIKESHOP">LIKESHOP</option>
+          <option value="MASARU">MASARU</option>
+          <option value="DAIKI">DAIKI</option>
+          <option value="นามบุคคล">นามบุคคล</option>
+        </select></div>
       <div class="fld"><label>งวด</label>
         <input id="p_inst" list="instList" placeholder="มัดจำครั้งที่ 1"><datalist id="instList"><option value="มัดจำครั้งที่ 1"><option value="มัดจำครั้งที่ 2"><option value="จ่ายยอดค้างชำระ"><option value="จ่ายเต็มจำนวน"></datalist></div>
       <div class="fld"><label>ผู้รับผิดชอบ</label><input id="p_resp"></div>
@@ -754,6 +767,26 @@ async function delBill(id){
 /* ===== PAYMENT ===== */
 let payBillId=null;
 let payEditId=null;   // งวดที่กำลังแก้ไข (null = เพิ่มใหม่)
+const CH_OPTS=['JMF CARGO','Ksher Payment Co.Ltd.','ธนาคาร (SWIFT Code)'];
+const PT_OPTS=['LIKESHOP','MASARU','DAIKI','นามบุคคล'];
+/* เดาประเภทการจ่ายเงินจากบริษัทของบิล ให้เลือกไว้ล่วงหน้า */
+function defaultPayType(bid){
+  const b=BILLS.find(x=>String(x.id)===String(bid))||{};
+  const co=String(b.company||'').toUpperCase();
+  return PT_OPTS.find(o=>o!=='นามบุคคล'&&co.includes(o))||'';
+}
+/* ค่าที่บันทึกไว้ก่อนหน้า (เช่น KSHER / SWIFT) ไม่อยู่ในลิสต์ใหม่ → เติมเป็นตัวเลือกชั่วคราว ไม่ให้ข้อมูลเดิมหาย */
+function setSelKeep(id,val,opts){
+  const el=$(id); if(!el)return;
+  [...el.querySelectorAll('option[data-legacy]')].forEach(o=>o.remove());
+  const v=String(val||'');
+  if(v&&!opts.includes(v)){
+    const o=document.createElement('option');
+    o.value=v; o.textContent=v+'  (ค่าเดิม)'; o.dataset.legacy='1';
+    el.appendChild(o);
+  }
+  el.value=v;
+}
 function openPay(bid){
   payEditId=null;
   const b=BILLS.find(x=>String(x.id)===String(bid));
@@ -765,7 +798,8 @@ function openPay(bid){
   $('payBillInfo').innerHTML=`ยอดเต็ม <b>${money(b.total_amount)} ${curSym(b.currency)}</b> · จ่ายแล้ว <b style="color:var(--green)">${money(paid)}</b> · <b style="color:var(--red)">ค้าง ${money(remain)}</b>`;
   $('p_date').value=todayStr();
   $('p_amount').value=''; $('p_rate').value=b.currency==='THB'?'1':''; $('p_thb').value='';
-  $('p_fee').value='0'; $('p_channel').value=''; $('p_inst').value=''; $('p_resp').value=''; $('p_note').value='';
+  $('p_fee').value='0'; setSelKeep('p_channel','',CH_OPTS); setSelKeep('p_paytype',defaultPayType(bid),PT_OPTS);
+  $('p_inst').value=''; $('p_resp').value=''; $('p_note').value='';
   $('p_status').value='planned';
   if($('p_optPaid'))$('p_optPaid').style.display=(!APPROVAL_MODE||IS_EXEC)?'':'none';
   $('payWarn').style.display='none';
@@ -785,7 +819,8 @@ function editPay(pid,bid){
   $('p_rate').value=p.rate||'';
   $('p_thb').value=p.amount_thb||'';
   $('p_fee').value=p.fee||0;
-  $('p_channel').value=p.channel||'';
+  setSelKeep('p_channel',p.channel||'',CH_OPTS);
+  setSelKeep('p_paytype',p.pay_type||'',PT_OPTS);
   $('p_inst').value=p.installment||'';
   $('p_resp').value=p.responsible||'';
   $('p_note').value=p.note||'';
@@ -802,6 +837,8 @@ async function savePayment(){
   const amt=parseFloat($('p_amount').value)||0;
   if(!(amt>0))return toast('ใส่ยอดงวดก่อน');
   if(!$('p_date').value)return toast('เลือกวันที่ก่อน');
+  if(!$('p_channel').value)return toast('เลือกช่องทางการโอนก่อน');
+  if(!$('p_paytype').value)return toast('เลือกประเภทการจ่ายเงินก่อน');
   const warns=[];
   // ── เช็คโอนเกิน: จ่ายแล้ว + วางแผน + งวดนี้ > ยอดเต็ม ──
   const selfAmt = payEditId ? (+(PAYS.find(x=>String(x.id)===String(payEditId))||{}).amount||0) : 0;
@@ -825,6 +862,7 @@ async function savePayment(){
   const row={bill_id:payBillId,pay_date:$('p_date').value,amount:amt,
     rate:parseFloat($('p_rate').value)||null,amount_thb:parseFloat($('p_thb').value)||null,
     fee:parseFloat($('p_fee').value)||0,channel:$('p_channel').value.trim()||null,
+    pay_type:$('p_paytype').value.trim()||null,
     installment:$('p_inst').value.trim()||null,responsible:$('p_resp').value.trim()||null,
     status:((APPROVAL_MODE&&!IS_EXEC&&$('p_status').value==='paid')?'submitted':$('p_status').value),note:$('p_note').value.trim()||null,created_by:ME};
   const {error}= payEditId
@@ -1019,13 +1057,15 @@ function openHist(bid){
   let h=`<div class="muted" style="margin-bottom:10px">ยอดเต็ม <b>${money(b.total_amount)} ${s}</b> · จ่ายแล้ว <b style="color:var(--green)">${money(paid)}</b> · ค้าง <b style="color:var(--red)">${money(remain)}</b></div>`;
   if(!rows.length){h+='<div class="empty">ยังไม่มีงวดจ่าย</div>';}
   else{
-    h+=`<table><thead><tr><th>วันที่</th><th>งวด</th><th class="right">ยอด (${s})</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทาง</th><th>ผู้รับผิดชอบ</th><th>หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
+    h+=`<table><thead><tr><th>วันที่</th><th>งวด</th><th class="right">ยอด (${s})</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทางการโอน</th><th>ประเภทการจ่าย</th><th>ผู้รับผิดชอบ</th><th>หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
     rows.forEach(p=>{
       h+=`<tr><td>${esc(p.pay_date||'-')}</td><td>${esc(p.installment||'-')}</td>
         <td class="right"><b>${money(p.amount)}</b></td>
         <td class="right">${p.rate?esc(p.rate):'-'}</td>
         <td class="right">${p.amount_thb?money(p.amount_thb):'-'}</td>
-        <td>${esc(p.channel||'-')}</td><td>${esc(p.responsible||'-')}</td>
+        <td>${esc(p.channel||'-')}</td>
+        <td>${p.pay_type?`<span class="pill" style="background:#EEF2F7;color:#1F3864">${esc(p.pay_type)}</span>`:'<span class="muted">-</span>'}</td>
+        <td>${esc(p.responsible||'-')}</td>
         <td style="font-size:12px;max-width:220px">${p.note?esc(p.note):'<span class="muted">-</span>'}</td>
         <td>${stPill(p.status)}</td>
         <td style="white-space:nowrap">${stBtns(p,'setPayStatus')}${(canEdit&&p.status!=='paid')?`<button class="btn mini ghost" onclick="editPay('${p.id}','${bid}')">✏️ แก้</button> <button class="btn mini red" onclick="delPay('${p.id}','${bid}')">ลบ</button>`:''}${p.status==='paid'?'<span class="muted" style="font-size:11.5px">🔒 จ่ายแล้ว — ล็อก</span>':''}</td></tr>`;
@@ -1143,12 +1183,14 @@ function renderPlan(){
       <span style="font-size:13px;color:${cc}">${esc(chips.join(' + '))}</span>
       <span style="font-size:15px;font-weight:800;color:${cc}">≈ ${money(sumThb(grp))} ฿</span>
     </div>
-    <table><thead><tr><th>PO</th><th>SKU</th><th>งวด</th><th class="right">ยอด</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทาง</th><th>ผู้รับผิดชอบ</th><th>หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
+    <table><thead><tr><th>PO</th><th>SKU</th><th>งวด</th><th class="right">ยอด</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทางการโอน</th><th>ประเภทการจ่าย</th><th>ผู้รับผิดชอบ</th><th>หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
     grp.forEach(p=>{const b=billOf(p.bill_id);const s=curSym(b.currency);
       h+=`<tr><td><b>${esc(b.po_number||'-')}</b></td><td>${esc(b.sku||'-')}</td><td>${esc(p.installment||'-')}</td>
         <td class="right"><b>${money(p.amount)} ${s}</b></td>
         <td class="right">${p.rate?esc(p.rate):(b.currency==='THB'?'<span class="muted">-</span>':'<span class="muted">~'+fxEst(b.currency)+'</span>')}</td><td class="right">${isEst(p)?'<span class="muted">~</span> ':''}${money(thbOf(p))}</td>
-        <td>${esc(p.channel||'-')}</td><td>${esc(p.responsible||'-')}</td>
+        <td>${esc(p.channel||'-')}</td>
+        <td>${p.pay_type?`<span class="pill" style="background:#EEF2F7;color:#1F3864">${esc(p.pay_type)}</span>`:'<span class="muted">-</span>'}</td>
+        <td>${esc(p.responsible||'-')}</td>
         <td style="font-size:12px;max-width:220px">${p.note?esc(p.note):'<span class="muted">-</span>'}</td>
         <td>${stPill(p.status)}</td>
         <td style="white-space:nowrap">${stBtns(p,'setPayStatus')}${(canEdit&&p.status!=='paid')?`<button class="btn mini ghost" onclick="editPay('${p.id}','${p.bill_id}')">✏️ แก้</button> <button class="btn mini red" onclick="planDel('${p.id}')">ลบ</button>`:''}${p.status==='paid'?'<span class="muted" style="font-size:11.5px">🔒 ล็อก</span>':''}</td></tr>`;});
