@@ -503,13 +503,15 @@ function flashLive(){
 async function doLogout(){await sb.auth.signOut();location.replace('index.html');}
 
 /* ===== DATA ===== */
+let LOAD_ERR={};
 async function pageAll(table,sel,order){
   let out=[],from=0;const step=1000;
+  delete LOAD_ERR[table];
   while(true){
     let q=sb.from(table).select(sel).range(from,from+step-1);
     if(order)q=q.order(order,{ascending:false});
     const {data,error}=await q;
-    if(error){console.error(table,error.message);break;}
+    if(error){console.error(table,error.message);LOAD_ERR[table]=error.message;break;}
     out=out.concat(data||[]);
     if(!data||data.length<step)break;
     from+=step;
@@ -678,12 +680,15 @@ async function saveBill(){
   {const before=BILLS.find(x=>String(x.id)===String(editBillId));
    if(editBillId&&before){
      const LB={po_number:'เลข PO',company:'บริษัท',vendor:'Vendor',sku:'SKU',
-       total_amount:'ยอดเต็ม',currency:'สกุลเงิน',status:'สถานะ',note:'หมายเหตุ'};
+       total_amount:'ยอดเต็ม',currency:'สกุลเงิน',note:'หมายเหตุ'};
      const ch=[];
      Object.keys(LB).forEach(k=>{
-       const a=String(before[k]??''), b=String(row[k]??'');
+       let a=before[k]??'', b=row[k]??'';
+       if(k==='total_amount'){a=+a||0;b=+b||0;}          // 1000 กับ 1000.00 = ไม่ถือว่าเปลี่ยน
+       a=String(a); b=String(b);
        if(a!==b)ch.push(LB[k]+': '+(a||'-')+' → '+(b||'-'));});
-     if(ch.length)await addLog({id:editBillId,po_number:row.po_number},'updated',ch.join(' · '));
+     await addLog({id:editBillId,po_number:row.po_number},'updated',
+       ch.length?ch.join(' · '):'เปิดแก้ไขและกดบันทึก (ข้อมูลไม่เปลี่ยนแปลง)');
    }else if(!editBillId){
      await addLog({id:newId,po_number:row.po_number},'created',
        'สร้างบิล ยอด '+money(row.total_amount)+' '+curSym(row.currency));
@@ -819,6 +824,14 @@ function renderMemo(){
         <td class="muted" style="font-size:11.5px">${esc(l.actor||'')}</td></tr>`).join('')
       +'</tbody></table>'
     : '<div class="empty" style="padding:14px">ยังไม่มีประวัติ (เริ่มบันทึกตั้งแต่ตอนนี้เป็นต้นไป)</div>';
+  const err=LOAD_ERR['pay_logs']||LOAD_ERR['pay_logs_write'];
+  if(err){
+    $('logList').innerHTML='<div style="background:#FCE4E4;border:1px solid #D0212B;border-radius:8px;padding:11px 13px;font-size:12.5px;line-height:1.7">'
+      +'<b style="color:#D0212B">⚠️ ระบบประวัติการแก้ไขใช้งานไม่ได้</b><br>'
+      +'ตาราง <code>pay_logs</code> '+(LOAD_ERR['pay_logs']?'อ่านไม่ได้':'เขียนไม่ได้')+' — ข้อมูลบิลยังบันทึกปกติ แต่ประวัติไม่ถูกเก็บ<br>'
+      +'<span class="muted">แก้โดยรันไฟล์ <b>pay_logs_fix.sql</b> บน Supabase (polikeshop)</span><br>'
+      +'<span class="muted" style="font-size:11.5px">รายละเอียด: '+esc(err)+'</span></div>'+$('logList').innerHTML;
+  }
 }
 async function saveMemo(){
   const t=($('memoText').value||'').trim();
@@ -901,12 +914,21 @@ async function addLog(bill,action,detail,field,oldV,newV){
       old_value:oldV!=null?String(oldV):null,new_value:newV!=null?String(newV):null,actor:ME});
     if(error){
       console.warn('[pay] log:',error.message);
-      if(!LOG_WARNED&&/does not exist|schema cache/i.test(error.message||'')){
+      LOAD_ERR['pay_logs_write']=error.message;
+      if(!LOG_WARNED){
         LOG_WARNED=true;
-        alert('ยังไม่ได้สร้างตาราง pay_logs — ประวัติการแก้ไขจะยังไม่ถูกบันทึก\n\nกรุณารันไฟล์ pay_memo_log.sql บน Supabase (polikeshop) ก่อน');
+        const m=error.message||'';
+        const miss=/does not exist|schema cache/i.test(m);
+        const rls=/row-level security|permission denied|violates/i.test(m);
+        alert('⚠️ บันทึก "ประวัติการแก้ไข" ไม่สำเร็จ — ตัวบิลบันทึกเรียบร้อยแล้ว แต่ประวัติไม่ถูกเก็บ\n\n'
+          +(miss?'สาเหตุ: ยังไม่มีตาราง pay_logs ในฐานข้อมูล'
+             :(rls?'สาเหตุ: ตาราง pay_logs มีอยู่ แต่ไม่มีสิทธิ์เขียน (RLS / GRANT)'
+                  :'สาเหตุ: '+m))
+          +'\n\nวิธีแก้: รันไฟล์ pay_logs_fix.sql บน Supabase (polikeshop) แล้วลองใหม่'
+          +'\n\nรายละเอียด: '+m);
       }
-    }
-  }catch(e){console.warn('[pay] log:',e.message);}
+    }else{LOG_WARNED=false;delete LOAD_ERR['pay_logs_write'];}
+  }catch(e){console.warn('[pay] log:',e.message);LOAD_ERR['pay_logs_write']=e.message;}
 }
 function billOf(id){return BILLS.find(b=>String(b.id)===String(id))||{};}
 let FX_EST={CNY:5.2, USD:34, THB:1};   // เรทประมาณต่อสกุล (ใช้เมื่องวดยังไม่ได้ใส่เรทโอน)
