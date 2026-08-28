@@ -82,6 +82,9 @@ td.num,th.num{text-align:right;white-space:nowrap}
 #mdPaper .md-blk{margin-bottom:22px}
 #mdPaper .md-chk{margin-top:8px;font-size:12.5px;display:flex;gap:22px;flex-wrap:wrap}
 #mdItems input{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 7px;font:inherit;font-size:12.5px}
+.cur-tag{display:inline-block;background:#FDECEC;color:#B01722;border:1px solid #F3C6C9;border-radius:5px;
+  font-size:10.5px;font-weight:800;padding:0 5px;line-height:16px;vertical-align:1px}
+.cur-tag.thb{background:#E8F5EC;color:#146C38;border-color:#BFE2CB}
 .bar{background:#E9EEF5;border-radius:20px;height:8px;overflow:hidden;min-width:90px}
 .bar>i{display:block;height:100%;background:var(--green)}
 .empty{text-align:center;color:var(--muted);padding:26px}
@@ -129,6 +132,12 @@ td.num,th.num{text-align:right;white-space:nowrap}
         <input id="bSearch" placeholder="ค้นหา PO / SKU / Vendor / ผู้รับผิดชอบ" style="max-width:230px" oninput="BILL_PAGE=1;renderBills()">
         <select id="bCo" onchange="BILL_PAGE=1;renderBills()"><option value="">— ทุกบริษัท —</option></select>
         <select id="bResp" onchange="BILL_PAGE=1;renderBills()" style="max-width:170px"><option value="">— ทุกผู้รับผิดชอบ —</option></select>
+        <select id="bCur" onchange="BILL_PAGE=1;renderBills()" style="max-width:150px">
+          <option value="">— ทุกสกุลเงิน —</option>
+          <option value="CNY">¥ หยวน (CNY)</option>
+          <option value="THB">฿ บาท (THB)</option>
+          <option value="USD">$ ดอลลาร์ (USD)</option>
+        </select>
         <select id="bStatus" onchange="BILL_PAGE=1;renderBills()">
           <option value="">— ทุกสถานะ —</option>
           <option value="open">ยังไม่ปิดบิล</option>
@@ -651,22 +660,37 @@ function renderBills(){
   $('bResp').innerHTML='<option value="">— ทุกผู้รับผิดชอบ —</option>'
     +resps.map(r=>`<option ${r===curR?'selected':''}>${esc(r)}</option>`).join('');
   const q=($('bSearch').value||'').toLowerCase(), co=$('bCo').value, st=$('bStatus').value, rp=$('bResp').value;
+  const cf=($('bCur')&&$('bCur').value)||'';          // ตัวกรองสกุลเงิน
   const list=BILLS.filter(b=>
     (!co||b.company===co)&&(!st||b.status===st)&&
+    (!cf||((b.currency||'CNY')===cf))&&
     (!rp||billPays(b.id).some(p=>(p.responsible||'')===rp))&&
     (!q||((b.po_number||'')+' '+(b.sku||'')+' '+(b.vendor||'')+' '
         +billPays(b.id).map(p=>(p.responsible||'')+' '+(p.channel||'')+' '+(p.installment||'')).join(' ')
       ).toLowerCase().includes(q)));
   // KPI
-  const open=BILLS.filter(b=>b.status!=='closed');
-  const remainTotal=open.reduce((s,b)=>s+Math.max(0,(+b.total_amount||0)-paidSum(b.id)),0);
+  const open=BILLS.filter(b=>b.status!=='closed'&&(!cf||((b.currency||'CNY')===cf)));
+  // ⚠️ ห้ามบวกข้ามสกุลเงิน — แยกยอดค้างตามสกุลของแต่ละบิล
+  const remainBy={};
+  open.forEach(b=>{
+    const c=b.currency||'CNY';
+    remainBy[c]=(remainBy[c]||0)+Math.max(0,(+b.total_amount||0)-paidSum(b.id));
+  });
+  const curOrder=['CNY','USD','THB'];
+  const curList=Object.keys(remainBy).filter(c=>remainBy[c]>0.005)
+    .sort((a,b)=>(curOrder.indexOf(a)+9)%10-(curOrder.indexOf(b)+9)%10);
+  const remainThb=curList.reduce((t,c)=>t+remainBy[c]*fxEst(c),0);
+  const remainHtml = curList.length
+    ? curList.map(c=>`<div style="line-height:1.25">${money(remainBy[c])} <span style="font-size:0.62em;opacity:.85">${curSym(c)}</span></div>`).join('')
+      +(curList.length>1?`<div style="font-size:0.44em;font-weight:600;opacity:.8;margin-top:3px">≈ ${money(remainThb)} ฿ รวม</div>`:'')
+    : '0';
   const paidMonth=PAYS.filter(p=>p.status==='paid'&&p.pay_date&&p.pay_date.slice(0,7)===monthStr())
     .reduce((s,p)=>s+(+p.amount_thb||0),0);
   const planCnt=PAYS.filter(p=>p.status==='planned'||p.status==='submitted').length;
   $('billKpi').innerHTML=`
     <div class="kpi"><div class="lbl">บิลทั้งหมด</div><div class="val">${BILLS.length}</div></div>
     <div class="kpi gold"><div class="lbl">บิลยังไม่ปิด</div><div class="val">${open.length}</div></div>
-    <div class="kpi red"><div class="lbl">ค้างจ่ายรวม (สกุลบิล)</div><div class="val">${money(remainTotal)}</div></div>
+    <div class="kpi red"><div class="lbl">ค้างจ่ายรวม (แยกสกุลเงิน)</div><div class="val" style="font-size:${curList.length>1?'21px':'26px'}">${remainHtml}</div></div>
     <div class="kpi"><div class="lbl">งวดที่วางแผนไว้</div><div class="val">${planCnt}</div></div>
     <div class="kpi green"><div class="lbl">จ่ายแล้วเดือนนี้ (฿)</div><div class="val">${money(paidMonth)}</div></div>`;
   if(!list.length){$('billTable').innerHTML='<div class="empty">ยังไม่มีบิล'+(canEdit?' — กด "+ เพิ่มบิล"':'')+'</div>';return;}
@@ -685,7 +709,7 @@ function renderBills(){
       <td><b>${esc(b.po_number)}</b></td>
       <td>${b.company?`<span class="tag-co">${esc(b.company)}</span>`:'<span class="muted" style="font-size:11.5px">— ยังไม่ระบุ —</span>'}</td>
       <td>${esc(b.vendor||'')}${b.vendor&&b.sku?' · ':''}<span class="muted">${esc(b.sku||'')}</span></td>
-      <td class="right"><b>${money(total)} ${s}</b>${b2(total,b)}</td>
+      <td class="right"><b>${money(total)}</b> <span class="cur-tag ${(b.currency||'CNY')==='THB'?'thb':''}">${s}</span>${b2(total,b)}</td>
       <td class="right" style="color:var(--green);font-weight:700">${money(paid)}${b2(paid,b)}</td>
       <td class="right" style="color:var(--amber)">${plan?money(plan)+b2(plan,b):'—'}</td>
       <td class="right" style="color:${remain>0?'var(--red)':'var(--green)'};font-weight:700">${money(remain)}${b2(remain,b)}</td>
