@@ -488,6 +488,14 @@ td.num,th.num{text-align:right;white-space:nowrap}
     <div class="muted" style="margin:6px 0 12px">ดึง PO ที่มี <b>ราคาสินค้า</b> ในบอร์ดมาสร้างเป็นบิล (รวมทุก SKU ในเลข PO เดียวกันเป็น 1 บิล) — PO ที่สร้างบิลไว้แล้วจะไม่แสดง</div>
     <div class="row" style="margin-bottom:10px">
       <input id="sySearch" placeholder="ค้นหา PO / SKU" oninput="renderSync()" style="max-width:200px">
+      <span style="display:inline-flex;align-items:center;gap:6px">
+        <label style="margin:0;white-space:nowrap">สกุลเงินของบิลที่จะสร้าง</label>
+        <select id="syCur" style="width:150px" onchange="renderSync()">
+          <option value="CNY">¥ CNY (หยวน)</option>
+          <option value="THB">฿ THB (บาท)</option>
+          <option value="USD">$ USD (ดอลลาร์)</option>
+        </select>
+      </span>
       <div style="flex:1"></div>
       <button class="btn mini" onclick="syncAll(true)">เลือกทั้งหมด</button>
       <button class="btn mini ghost" onclick="syncAll(false)">ไม่เลือก</button>
@@ -610,11 +618,11 @@ async function loadAll(){
   if(MEMO_BID && $('memoBg').style.display==='flex') renderMemo();
 }
 function billPays(bid){return PAYS.filter(p=>String(p.bill_id)===String(bid));}
-// แสดงยอดบาทใต้ยอดสกุลเดิม (บิลบาทอยู่แล้วไม่ต้องซ้ำ)
+// แสดงยอดบาทโดยประมาณใต้ยอดสกุลต่างประเทศ — บิลที่เป็นบาทอยู่แล้วไม่ต้องแปลงซ้ำ
 function b2(v,bill){
   if(!v)return '';
   const cur=(bill&&bill.currency)||'CNY';
-  if(cur==='THB')return '';
+  if(cur==='THB')return '';   // บิลสกุลบาท = ยอดจริง ไม่มีการแปลง
   const r=billRate(bill)||fxEst(cur);
   return `<div class="muted" style="font-size:11px;font-weight:400">≈ ${money(v*r)} ฿</div>`;
 }
@@ -679,10 +687,8 @@ function renderBills(){
   const curOrder=['CNY','USD','THB'];
   const curList=Object.keys(remainBy).filter(c=>remainBy[c]>0.005)
     .sort((a,b)=>(curOrder.indexOf(a)+9)%10-(curOrder.indexOf(b)+9)%10);
-  const remainThb=curList.reduce((t,c)=>t+remainBy[c]*fxEst(c),0);
   const remainHtml = curList.length
     ? curList.map(c=>`<div style="line-height:1.25">${money(remainBy[c])} <span style="font-size:0.62em;opacity:.85">${curSym(c)}</span></div>`).join('')
-      +(curList.length>1?`<div style="font-size:0.44em;font-weight:600;opacity:.8;margin-top:3px">≈ ${money(remainThb)} ฿ รวม</div>`:'')
     : '0';
   const paidMonth=PAYS.filter(p=>p.status==='paid'&&p.pay_date&&p.pay_date.slice(0,7)===monthStr())
     .reduce((s,p)=>s+(+p.amount_thb||0),0);
@@ -1285,7 +1291,8 @@ function renderSync(){
   let list=poGroups().filter(g=>!have.has(String(g.po).trim()));
   if(q)list=list.filter(g=>(g.po+' '+g.skus.join(' ')).toLowerCase().includes(q));
   if(!list.length){$('syncBody').innerHTML='<div class="empty">ไม่มี PO ใหม่ให้ซิงก์ — PO ที่มีราคาในบอร์ดถูกสร้างบิลครบแล้ว</div>';return;}
-  let h='<table><thead><tr><th style="width:38px"></th><th>เลขที่ PO</th><th>SKU</th><th class="right">จำนวน</th><th class="right">ยอดรวม (¥)</th></tr></thead><tbody>';
+  const syc=curSym(($('syCur')&&$('syCur').value)||'CNY');
+  let h='<table><thead><tr><th style="width:38px"></th><th>เลขที่ PO</th><th>SKU</th><th class="right">จำนวน</th><th class="right">ยอดรวม ('+syc+')</th></tr></thead><tbody>';
   list.forEach(g=>{
     h+=`<tr><td style="text-align:center"><input type="checkbox" class="sy-ck" data-po="${esc(g.po)}" checked style="width:16px;height:16px;cursor:pointer"></td>
       <td><b>${esc(g.po)}</b></td><td style="font-size:12.5px">${esc([...new Set(g.skus)].join(', '))}</td>
@@ -1298,7 +1305,7 @@ async function doSync(){
   if(!pick.length)return toast('ยังไม่ได้เลือก PO');
   const gs=poGroups().filter(g=>pick.includes(String(g.po)));
   const rows=gs.map(g=>({po_number:g.po,sku:[...new Set(g.skus)].join(', '),
-    currency:'CNY',total_amount:+g.total.toFixed(2),status:'open',
+    currency:(($('syCur')&&$('syCur').value)||'CNY'),total_amount:+g.total.toFixed(2),status:'open',
     note:'ซิงก์จาก Purchase Board',created_by:ME}));
   const {error}=await sb.from('pay_bills').insert(rows);
   if(error)return toast('ซิงก์ไม่สำเร็จ: '+error.message);
