@@ -651,8 +651,10 @@ function renderBills(){
 /* ===== BILL CRUD ===== */
 let editBillId=null;
 function openBill(id){
-  editBillId=id||null;
-  const b=id?BILLS.find(x=>x.id===id):{};
+  const found=id?BILLS.find(x=>String(x.id)===String(id)):null;
+  if(id&&!found){console.warn('[pay] openBill: ไม่พบบิล',id);alert('ไม่พบบิลนี้ — อาจถูกลบหรือข้อมูลยังไม่อัปเดต\nกำลังรีเฟรชให้ใหม่ แล้วลองกด "แก้" อีกครั้ง');loadAll();return;}
+  editBillId=found?found.id:null;
+  const b=found||{};
   $('billTitle').textContent=id?'แก้ไขบิล '+(b.po_number||''):'เพิ่มบิล';
   $('f_po').value=b?.po_number||''; $('f_co').value=b?.company||'LIKESHOP';
   $('f_vendor').value=b?.vendor||''; $('f_sku').value=b?.sku||'';
@@ -689,9 +691,10 @@ async function saveBill(){
   $('billBg').style.display='none';toast('บันทึกบิลเรียบร้อย ✅');loadAll();
 }
 async function delBill(id){
-  const b=BILLS.find(x=>x.id===id);
+  const b=BILLS.find(x=>String(x.id)===String(id));
+  if(!b){alert('ไม่พบบิลนี้ — ลองรีเฟรชหน้าแล้วกดใหม่');loadAll();return;}
   if(!confirm(`ลบบิล ${b?.po_number||''} ? (งวดจ่ายทั้งหมดของบิลนี้จะถูกลบด้วย)`))return;
-  const {error}=await sb.from('pay_bills').delete().eq('id',id);
+  const {error}=await sb.from('pay_bills').delete().eq('id',b.id);
   if(error)return toast('ลบไม่สำเร็จ: '+error.message);
   toast('ลบแล้ว');loadAll();
 }
@@ -724,7 +727,7 @@ function editPay(pid,bid){
   if(!BILLS.find(x=>String(x.id)===String(bid))){console.warn('[pay] editPay: ไม่พบบิล',bid);alert('ไม่พบบิลของงวดนี้');return;}
   openPay(bid);                       // เตรียมฟอร์ม + ข้อมูลบิล
   payEditId=p.id;
-  $('payTitle').textContent='✏️ แก้ไขงวดจ่าย — '+((BILLS.find(x=>x.id===bid)||{}).po_number||'');
+  $('payTitle').textContent='✏️ แก้ไขงวดจ่าย — '+((BILLS.find(x=>String(x.id)===String(bid))||{}).po_number||'');
   $('p_date').value=p.pay_date||'';
   $('p_amount').value=p.amount??'';
   $('p_rate').value=p.rate||'';
@@ -743,13 +746,13 @@ function calcThb(){
   if(a&&r)$('p_thb').value=(a*r).toFixed(2);
 }
 async function savePayment(){
-  const b=BILLS.find(x=>x.id===payBillId); if(!b)return;
+  const b=BILLS.find(x=>String(x.id)===String(payBillId)); if(!b)return toast('ไม่พบบิลนี้ — ลองรีเฟรชหน้า');
   const amt=parseFloat($('p_amount').value)||0;
   if(!(amt>0))return toast('ใส่ยอดงวดก่อน');
   if(!$('p_date').value)return toast('เลือกวันที่ก่อน');
   const warns=[];
   // ── เช็คโอนเกิน: จ่ายแล้ว + วางแผน + งวดนี้ > ยอดเต็ม ──
-  const selfAmt = payEditId ? (+(PAYS.find(x=>x.id===payEditId)||{}).amount||0) : 0;
+  const selfAmt = payEditId ? (+(PAYS.find(x=>String(x.id)===String(payEditId))||{}).amount||0) : 0;
   const after=paidSum(payBillId)+planSum(payBillId)-selfAmt+amt;
   if(after>(+b.total_amount||0)+0.001)
     warns.push(`🔴 โอนเกิน! จ่ายแล้ว+วางแผน+งวดนี้ = ${money(after)} เกินยอดบิล ${money(b.total_amount)} ${curSym(b.currency)}`);
@@ -760,7 +763,7 @@ async function savePayment(){
   // ── เช็คยอด+วันเดียวกันในบิลอื่น ──
   const dupDay=PAYS.filter(p=>p.id!==payEditId&&p.bill_id!==payBillId&&p.pay_date===$('p_date').value&&Math.abs((+p.amount||0)-amt)<0.001);
   if(dupDay.length){
-    const pos=dupDay.map(p=>{const bb=BILLS.find(x=>x.id===p.bill_id);return bb?bb.po_number:p.bill_id;}).join(', ');
+    const pos=dupDay.map(p=>{const bb=BILLS.find(x=>String(x.id)===String(p.bill_id));return bb?bb.po_number:p.bill_id;}).join(', ');
     warns.push(`🟠 วันเดียวกันมียอดเท่ากัน (${money(amt)}) ในบิล: ${pos} — เช็คว่าไม่ใช่รายการเดียวกัน`);
   }
   if(warns.length){
@@ -1181,7 +1184,8 @@ function renderFreight(){
 
 /* ===== บิล CRUD ===== */
 function openFBill(id){
-  const b=FBILLS.find(x=>x.id===id)||{};
+  if(id&&!FBILLS.some(x=>String(x.id)===String(id))){alert('ไม่พบบิลขนส่งนี้ — ลองรีเฟรชหน้าแล้วกดใหม่');loadAll();return;}
+  const b=FBILLS.find(x=>String(x.id)===String(id))||{};
   $('fbillTitle').textContent=id?'แก้ไขบิลขนส่ง':'เพิ่มบิลขนส่ง';
   $('b_id').value=id||'';$('b_no').value=b.bill_no||'';$('b_date').value=b.arrive_date||'';
   $('b_carrier').value=b.carrier||'';$('b_ref').value=b.ref_no||'';$('b_type').value=b.import_type||'NO';
@@ -1208,7 +1212,7 @@ async function saveFBill(){
   $('fbillBg').style.display='none';toast('บันทึกแล้ว ✅');loadAll();
 }
 async function delFBill(id){
-  const b=FBILLS.find(x=>x.id===id);
+  const b=FBILLS.find(x=>String(x.id)===String(id));
   if(!confirm(`ลบบิล ${b?.bill_no} และรายการสินค้าทั้งหมดในบิล?`))return;
   const {error}=await sb.from('freight_bills').delete().eq('id',id);
   if(error)return toast('ลบไม่สำเร็จ: '+error.message);
@@ -1359,7 +1363,7 @@ function billTaxes(b){
   return sum;
 }
 function renderLot(){
-  const b=FBILLS.find(x=>x.id===$('lotBill').value);
+  const b=FBILLS.find(x=>String(x.id)===String($('lotBill').value));
   $('lotYesNote').innerHTML = b&&(b.import_type||'NO')==='YES'
     ? '<br><b style="color:var(--green)">บิลนี้เป็น YES</b> → รวม <b>ภาษีอากร+VAT</b> จากระบบ Shipment (ปันตามมูลค่าสินค้า)'
     : '<br><b style="color:var(--amber)">บิลนี้เป็น NO</b> → คิดเฉพาะค่าสินค้า + ค่าขนส่งตามเรท (ไม่มีภาษีแยก)';
@@ -1405,7 +1409,7 @@ function renderLot(){
   $('lotBody').innerHTML=h;
 }
 function exportLot(){
-  const b=FBILLS.find(x=>x.id===$('lotBill').value); if(!b)return;
+  const b=FBILLS.find(x=>String(x.id)===String($('lotBill').value)); if(!b)return;
   const tb=$('lotBody').querySelector('table'); if(!tb)return toast('ไม่มีข้อมูล');
   const ws=XLSX.utils.table_to_sheet(tb), wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'ต้นทุนล็อต');
