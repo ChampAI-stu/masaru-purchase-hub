@@ -856,7 +856,7 @@ function renderBills(){
       <div class="val" ${odCnt?'style="cursor:pointer" onclick="goTab(\'doc\')" title="ไปที่เอกสารประจำวัน"':''}>${odCnt||planCnt}</div></div>
     <div class="kpi green"><div class="lbl">จ่ายแล้วเดือนนี้ (฿)</div><div class="val">${money(paidMonth)}</div></div>`;
   if(!list.length){$('billTable').innerHTML='<div class="empty">ยังไม่มีบิล'+(canEdit?' — กด "+ เพิ่มบิล"':'')+'</div>';return;}
-  let h=`<table><thead><tr><th>PO</th><th>บริษัท</th><th>Vendor / SKU</th>
+  let h=`<table><thead><tr><th>PO</th><th>SKU</th>
     <th class="right">ยอดเต็ม</th><th class="right">จ่ายแล้ว</th><th class="right">วางแผน</th><th class="right">ค้างจ่าย</th>
     <th style="min-width:110px">ความคืบหน้า</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
   const _tot=list.length, _pages=Math.max(1,Math.ceil(_tot/BILL_PER));
@@ -869,8 +869,7 @@ function renderBills(){
     const s=curSym(b.currency);
     h+=`<tr>
       <td><b>${esc(b.po_number)}</b></td>
-      <td>${b.company?`<span class="tag-co">${esc(b.company)}</span>`:'<span class="muted" style="font-size:11.5px">— ยังไม่ระบุ —</span>'}</td>
-      <td>${esc(b.vendor||'')}${b.vendor&&b.sku?' · ':''}<span class="muted">${esc(b.sku||'')}</span></td>
+      <td>${esc(b.sku||'')||'<span class="muted">-</span>'}</td>
       <td class="right"><b>${money(total)}</b> <span class="cur-tag ${(b.currency||'CNY')==='THB'?'thb':''}">${s}</span>${b2(total,b)}</td>
       <td class="right" style="color:var(--green);font-weight:700">${money(paid)}${b2(paid,b)}</td>
       <td class="right" style="color:var(--amber)">${plan?money(plan)+b2(plan,b):'—'}</td>
