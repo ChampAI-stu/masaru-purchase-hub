@@ -480,14 +480,25 @@ async function boot(){
   sb = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON);
   // ฟังการเปลี่ยนสถานะ auth — ถ้า logout ที่แท็บ/หน้าไหนก็ตาม หน้านี้เด้งออกทันที
   sb.auth.onAuthStateChange((event, session) => {
-    if(event === 'SIGNED_OUT' || !session){ location.replace(PORTAL_URL); }
+    if(LOGGING_OUT) return;
+    if(event === 'SIGNED_OUT' || !session){ markLogout(); location.replace(portalWithLogout()); }
   });
   const { data:{ session } } = await sb.auth.getSession();
   if(!session){ location.replace(PORTAL_URL); return; }     // ยังไม่ล็อกอิน → กลับหน้ารวม
   await enterApp(session.user);
 }
 
-async function logout(){ await sb.auth.signOut(); location.replace(PORTAL_URL); }
+/* กันลูป: ตอนกด logout ตั้งธงบอก index.html ไม่ให้เด้งกลับมาที่นี่อัตโนมัติ
+   (บทบาทที่มีสิทธิ์ระบบเดียวจะถูก index พาเข้าเว็บนี้ทันที → เกิดวนไป-กลับ จอกระพริบ) */
+let LOGGING_OUT=false;
+function markLogout(){ LOGGING_OUT=true; try{sessionStorage.setItem('masaru_no_auto_jump','1');}catch(e){} }
+function portalWithLogout(){ return PORTAL_URL + (PORTAL_URL.includes('?')?'&':'?') + 'logout=1'; }
+async function logout(){
+  markLogout();
+  try{ await sb.auth.signOut(); }catch(e){}
+  try{ await sb.auth.signOut({scope:'local'}); }catch(e){}
+  location.replace(portalWithLogout());
+}
 
 /* ---------- โปรไฟล์ (ชื่อจริง-นามสกุล) ---------- */
 function openProfile(){ $('pf-first').value=ME.first||''; $('pf-last').value=ME.last||''; $('profile-modal').classList.remove('hide'); }
