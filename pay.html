@@ -129,6 +129,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
   <div class="tab" data-t="month" onclick="goTab('month')">📊 สรุปเดือน</div>
   <div class="tab" data-t="freight" onclick="goTab('freight')">🚛 ตรวจค่าขนส่ง</div>
   <div class="tab" data-t="lot" onclick="goTab('lot')">📦 ต้นทุนต่อล็อต</div>
+  <div class="tab" data-t="ledger" onclick="goTab('ledger')">📒 ตารางสรุปบันทึก</div>
   <div class="tab" data-t="remit" onclick="goTab('remit')">🧾 แจ้งโอน</div>
 </div>
 
@@ -259,7 +260,9 @@ td.num,th.num{text-align:right;white-space:nowrap}
     <div class="kpis" id="moKpi"></div>
     <div class="card">
       <h2>📊 สรุปค่าใช้จ่ายทั้งเดือน</h2>
-      <div class="row"><input type="month" id="moMonth" onchange="renderMonth()" style="max-width:180px"><div style="flex:1"></div></div>
+      <div class="row"><input type="month" id="moMonth" onchange="renderMonth()" style="max-width:180px">
+        <div style="flex:1"></div>
+        <button class="btn mini" onclick="exportMonth()">📥 Export Excel</button></div>
       <div class="scroll"><div id="moBody"></div></div>
     </div>
   </div>
@@ -308,6 +311,40 @@ td.num,th.num{text-align:right;white-space:nowrap}
         <button class="btn mini" onclick="exportLot()">📥 Export Excel</button>
       </div>
       <div id="lotBody"></div>
+    </div>
+  </div>
+
+  <!-- ============ TAB: ตารางสรุปบันทึก ============ -->
+  <div id="tab-ledger" style="display:none">
+    <div class="kpis" id="lgKpi"></div>
+    <div class="card">
+      <h2>📒 ตารางสรุปบันทึก</h2>
+      <div class="sub-note">รายการงวดจ่ายทั้งหมด — วันที่ · PO · จ่ายในนาม · ยอด</div>
+      <div class="row" style="flex-wrap:wrap">
+        <input id="lgSearch" placeholder="ค้นหา PO / Vendor / ผู้รับเงิน" style="max-width:230px" oninput="renderLedger()">
+        <span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap">
+          <label style="margin:0">ตั้งแต่</label><input type="date" id="lgFrom" onchange="renderLedger()" style="width:158px">
+          <label style="margin:0">ถึง</label><input type="date" id="lgTo" onchange="renderLedger()" style="width:158px">
+          <button class="btn mini ghost" onclick="lgThisMonth()">เดือนนี้</button>
+        </span>
+        <select id="lgPt" onchange="renderLedger()" style="max-width:175px">
+          <option value="">— จ่ายในนาม: ทั้งหมด —</option>
+          <option>LIKESHOP</option><option>MASARU</option><option>DAIKI</option><option>นามบุคคล</option>
+        </select>
+        <select id="lgSt" onchange="renderLedger()" style="max-width:180px">
+          <option value="sp">ส่งยอด + จ่ายแล้ว</option>
+          <option value="paid">เฉพาะจ่ายแล้ว</option>
+          <option value="submitted">เฉพาะส่งยอด</option>
+          <option value="all">ทุกสถานะ</option>
+        </select>
+        <select id="lgCur" onchange="renderLedger()" style="max-width:150px">
+          <option value="">— ทุกสกุลเงิน —</option>
+          <option value="CNY">¥ CNY</option><option value="USD">$ USD</option><option value="THB">฿ THB</option>
+        </select>
+        <div style="flex:1"></div>
+        <button class="btn mini" onclick="exportLedger()">📥 Export Excel</button>
+      </div>
+      <div class="scroll"><div id="lgBody"></div></div>
     </div>
   </div>
 
@@ -1400,7 +1437,63 @@ function renderMonth(){
     const a=sumThb(paid.filter(g)),b2=sumThb(planned.filter(g));
     h+=`<tr><td><b>${esc(co)}</b></td><td class="right">${money(a)}</td><td class="right">${money(b2)}</td><td class="right"><b>${money(a+b2)}</b></td></tr>`;});
   h+='</tbody></table>';
+  const pts=[...new Set(rows.map(p=>p.pay_type||'(ยังไม่ระบุ)'))];
+  h+='<h2 style="margin-top:16px">จ่ายในนาม</h2><table><thead><tr><th>จ่ายในนาม</th><th class="right">จ่ายแล้ว (บาท)</th><th class="right">ค้างแผน (บาท)</th><th class="right">รวม (บาท)</th><th class="right">งวด</th></tr></thead><tbody>';
+  pts.forEach(pt=>{const g=p=>((p.pay_type||'(ยังไม่ระบุ)')===pt);
+    const a=sumThb(paid.filter(g)),b2=sumThb(planned.filter(g));
+    h+=`<tr><td><b>${esc(pt)}</b></td><td class="right">${money(a)}</td><td class="right">${money(b2)}</td><td class="right"><b>${money(a+b2)}</b></td><td class="right">${rows.filter(g).length}</td></tr>`;});
+  h+='</tbody></table>';
   $('moBody').innerHTML=h;
+}
+
+/* Export สรุปเดือน — 4 ชีท: รายวัน / รายบริษัท / จ่ายในนาม / รายละเอียดทุกงวด */
+function exportMonth(){
+  const m=$('moMonth').value||monthStr();
+  const rows=PAYS.filter(p=>(p.pay_date||'').startsWith(m)&&p.status!=='rejected');
+  if(!rows.length)return toast('เดือนนี้ยังไม่มีข้อมูล');
+  const paid=rows.filter(p=>p.status==='paid'), plan=rows.filter(p=>p.status==='planned'||p.status==='submitted');
+  const sT=a=>+a.reduce((s,p)=>s+thbOf(p),0).toFixed(2);
+  const wb=XLSX.utils.book_new();
+  const add=(name,aoa,cols)=>{const ws=XLSX.utils.aoa_to_sheet(aoa);if(cols)ws['!cols']=cols;
+    XLSX.utils.book_append_sheet(wb,ws,name);};
+
+  // ① รายวัน
+  const d1=[['วันที่','งวดจ่ายแล้ว','บาท (จ่ายแล้ว)','งวดค้างแผน','บาท (แผน)','รวม (บาท)']];
+  [...new Set(rows.map(p=>p.pay_date))].sort().forEach(d=>{
+    const dp=paid.filter(p=>p.pay_date===d), dl=plan.filter(p=>p.pay_date===d);
+    d1.push([d,dp.length,sT(dp),dl.length,sT(dl),sT(dp)+sT(dl)]);});
+  d1.push(['รวมทั้งเดือน',paid.length,sT(paid),plan.length,sT(plan),sT(rows)]);
+  add('รายวัน',d1,[{wch:12},{wch:13},{wch:15},{wch:13},{wch:14},{wch:14}]);
+
+  // ② รายบริษัท
+  const d2=[['บริษัท','จ่ายแล้ว (บาท)','ค้างแผน (บาท)','รวม (บาท)','จำนวนงวด']];
+  [...new Set(rows.map(p=>billOf(p.bill_id).company||'-'))].forEach(co=>{
+    const g=p=>((billOf(p.bill_id).company||'-')===co);
+    d2.push([co,sT(paid.filter(g)),sT(plan.filter(g)),sT(rows.filter(g)),rows.filter(g).length]);});
+  add('รายบริษัท',d2,[{wch:16},{wch:16},{wch:16},{wch:14},{wch:11}]);
+
+  // ③ จ่ายในนาม
+  const d3=[['จ่ายในนาม','จ่ายแล้ว (บาท)','ค้างแผน (บาท)','รวม (บาท)','จำนวนงวด']];
+  [...new Set(rows.map(p=>p.pay_type||'(ยังไม่ระบุ)'))].forEach(pt=>{
+    const g=p=>((p.pay_type||'(ยังไม่ระบุ)')===pt);
+    d3.push([pt,sT(paid.filter(g)),sT(plan.filter(g)),sT(rows.filter(g)),rows.filter(g).length]);});
+  add('จ่ายในนาม',d3,[{wch:16},{wch:16},{wch:16},{wch:14},{wch:11}]);
+
+  // ④ รายละเอียดทุกงวด
+  const ST={planned:'วางแผน',submitted:'ส่งยอด',paid:'จ่ายแล้ว'};
+  const d4=[['วันที่','PO','บริษัท','Vendor','SKU','งวด','จ่ายในนาม','ข้อมูลผู้รับเงิน',
+             'ยอด','สกุลเงิน','เรท','ยอดบาท','ค่าธรรมเนียม','ช่องทางการโอน','จำนวนสลิป','สถานะ','ผู้รับผิดชอบ','หมายเหตุ']];
+  rows.slice().sort((a,b)=>String(a.pay_date||'').localeCompare(String(b.pay_date||''))).forEach(p=>{
+    const b=billOf(p.bill_id);
+    d4.push([p.pay_date||'',b.po_number||'',b.company||'',b.vendor||'',b.sku||'',p.installment||'',
+      p.pay_type||'',p.payee||'',+p.amount||0,b.currency||'CNY',+p.rate||'',
+      +thbOf(p).toFixed(2),+p.fee||0,p.channel||'',slipCount(p),ST[p.status]||p.status,
+      p.responsible||'',p.note||'']);});
+  add('รายละเอียด',d4,[{wch:11},{wch:11},{wch:12},{wch:22},{wch:20},{wch:14},{wch:12},{wch:28},
+    {wch:12},{wch:8},{wch:8},{wch:13},{wch:10},{wch:20},{wch:8},{wch:10},{wch:14},{wch:22}]);
+
+  XLSX.writeFile(wb,'สรุปเดือน_'+m+'.xlsx');
+  toast('ดาวน์โหลดแล้ว ✅');
 }
 
 /* ===== ซิงก์บิลจาก Purchase Board ===== */
@@ -2148,13 +2241,94 @@ async function delDoc(id){
 /* ===== TABS ===== */
 function goTab(t){
   document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on',el.dataset.t===t));
-  ['bills','plan','doc','month','freight','lot','remit'].forEach(k=>$('tab-'+k).style.display=k===t?'':'none');
+  ['bills','plan','doc','month','freight','lot','ledger','remit'].forEach(k=>$('tab-'+k).style.display=k===t?'':'none');
   if(t==='remit')renderRemit();
+  if(t==='ledger')renderLedger();
   if(t==='plan')planView(PLANVIEW);
   if(t==='month')renderMonth();
   if(t==='doc'){renderDoc();loadDocs();}
   if(t==='freight')renderFreight();
   if(t==='lot'){fillLotSelect();renderLot();}
+}
+
+/* ==================================================================
+   แท็บ ตารางสรุปบันทึก
+   ================================================================== */
+function lgThisMonth(){
+  const m=monthStr(), d=new Date(+m.slice(0,4), +m.slice(5,7), 0);
+  $('lgFrom').value=m+'-01'; $('lgTo').value=ymdLocal(d); renderLedger();
+}
+function ledgerRows(){
+  if(!$('lgFrom').value&&!$('lgTo').value){const m=monthStr();
+    $('lgFrom').value=m+'-01'; $('lgTo').value=ymdLocal(new Date(+m.slice(0,4),+m.slice(5,7),0));}
+  const q=($('lgSearch').value||'').toLowerCase();
+  const f=$('lgFrom').value, t=$('lgTo').value;
+  const pt=$('lgPt').value, st=$('lgSt').value||'sp', cu=$('lgCur').value;
+  const okSt=x=>st==='all'?x!=='rejected':(st==='sp'?(x==='submitted'||x==='paid'):x===st);
+  return PAYS.filter(p=>okSt(p.status))
+    .filter(p=>!f||String(p.pay_date||'')>=f)
+    .filter(p=>!t||String(p.pay_date||'')<=t)
+    .filter(p=>!pt||(p.pay_type||'')===pt)
+    .filter(p=>!cu||((billOf(p.bill_id).currency||'CNY')===cu))
+    .filter(p=>{ if(!q)return true; const b=billOf(p.bill_id);
+      return ((b.po_number||'')+' '+(b.vendor||'')+' '+(b.sku||'')+' '+(p.payee||'')+' '+(p.pay_type||''))
+        .toLowerCase().includes(q);})
+    .sort((a,b)=>String(b.pay_date||'').localeCompare(String(a.pay_date||'')));
+}
+function renderLedger(){
+  if(!$('lgBody'))return;
+  const rows=ledgerRows();
+  // แยกยอดตามสกุลเงิน — ห้ามบวกข้ามสกุล
+  const by={}; rows.forEach(p=>{const c=billOf(p.bill_id).currency||'CNY';by[c]=(by[c]||0)+(+p.amount||0);});
+  const chips=Object.keys(by).map(c=>`<div style="line-height:1.25">${money(by[c])} <span style="font-size:.62em;opacity:.85">${curSym(c)}</span></div>`).join('')||'0';
+  const paid=rows.filter(p=>p.status==='paid');
+  $('lgKpi').innerHTML=`
+    <div class="kpi"><div class="lbl">จำนวนรายการ</div><div class="val">${rows.length}</div></div>
+    <div class="kpi green"><div class="lbl">จ่ายแล้ว</div><div class="val">${paid.length}</div></div>
+    <div class="kpi gold"><div class="lbl">ยอดรวม (แยกสกุล)</div><div class="val" style="font-size:${Object.keys(by).length>1?'20px':'26px'}">${chips}</div></div>
+    <div class="kpi"><div class="lbl">ยอดรวมเทียบบาท</div><div class="val">${money(rows.reduce((t,p)=>t+thbOf(p),0))}</div></div>`;
+  if(!rows.length){$('lgBody').innerHTML='<div class="empty">ไม่มีรายการตามเงื่อนไขที่เลือก</div>';return;}
+  let h=`<table><thead><tr><th style="width:98px">วันที่</th><th>PO</th><th>Vendor / SKU</th>
+    <th>งวด</th><th style="width:120px">จ่ายในนาม</th><th>ข้อมูลผู้รับเงิน</th>
+    <th class="right">ยอด</th><th class="right">บาท</th><th>ช่องทางการโอน</th><th>สลิป</th><th>สถานะ</th></tr></thead><tbody>`;
+  let day='';
+  rows.forEach(p=>{const b=billOf(p.bill_id);
+    if(p.pay_date!==day){day=p.pay_date;
+      const dr=rows.filter(x=>x.pay_date===day);
+      h+=`<tr style="background:#F4F6FA"><td colspan="6"><b>📅 ${esc(day||'-')}</b>
+        <span class="muted"> · ${dr.length} รายการ</span></td>
+        <td class="right"></td><td class="right"><b>${money(dr.reduce((t,x)=>t+thbOf(x),0))} ฿</b></td>
+        <td colspan="3"></td></tr>`;}
+    h+=`<tr>
+      <td>${esc(p.pay_date||'-')}</td>
+      <td><b>${esc(b.po_number||'-')}</b></td>
+      <td style="font-size:11.5px">${esc(b.vendor||'')}<div class="muted">${esc(b.sku||'')}</div></td>
+      <td>${esc(p.installment||'-')}</td>
+      <td>${p.pay_type?`<span class="pill" style="background:#EEF2F7;color:#1F3864">${esc(p.pay_type)}</span>`:'<span class="muted">-</span>'}</td>
+      <td style="font-size:11.5px;white-space:pre-wrap;max-width:200px">${esc(p.payee||'')||'<span class="muted">-</span>'}</td>
+      <td class="right"><b>${money(p.amount)} ${curSym(b.currency)}</b></td>
+      <td class="right">${isEst(p)?'<span class="muted">~</span> ':''}${money(thbOf(p))}</td>
+      <td style="font-size:11.5px">${esc(p.channel||'-')}</td>
+      <td>${slipCount(p)?`<button class="btn mini ghost" onclick="viewSlip('${p.id}',0)">🧾 ${slipCount(p)}</button>`:'<span class="muted">-</span>'}</td>
+      <td>${stPill(p.status)}</td></tr>`;});
+  const tot={}; rows.forEach(p=>{const c=billOf(p.bill_id).currency||'CNY';tot[c]=(tot[c]||0)+(+p.amount||0);});
+  h+=`<tr style="background:#FFF7DF;font-weight:800"><td colspan="6">รวมทั้งหมด ${rows.length} รายการ</td>
+    <td class="right">${Object.keys(tot).map(c=>money(tot[c])+' '+curSym(c)).join('<br>')}</td>
+    <td class="right">${money(rows.reduce((t,p)=>t+thbOf(p),0))}</td><td colspan="3"></td></tr>`;
+  $('lgBody').innerHTML=h+'</tbody></table>';
+}
+function exportLedger(){
+  const rows=[['วันที่','PO','Vendor','SKU','งวด','จ่ายในนาม','ข้อมูลผู้รับเงิน','ยอด','สกุลเงิน','เรท','ยอดบาท','ค่าธรรมเนียม','ช่องทางการโอน','จำนวนสลิป','ลิงก์สลิป','สถานะ','ผู้รับผิดชอบ','หมายเหตุ']];
+  const ST={planned:'วางแผน',submitted:'ส่งยอด',paid:'จ่ายแล้ว',rejected:'ไม่อนุมัติ'};
+  ledgerRows().forEach(p=>{const b=billOf(p.bill_id);
+    rows.push([p.pay_date||'',b.po_number||'',b.vendor||'',b.sku||'',p.installment||'',
+      p.pay_type||'',p.payee||'',+p.amount||0,b.currency||'CNY',+p.rate||'',
+      +thbOf(p).toFixed(2),+p.fee||0,p.channel||'',slipCount(p),
+      slipList(p).map(i=>i.url).join('\n'),ST[p.status]||p.status,p.responsible||'',p.note||'']);});
+  const ws=XLSX.utils.aoa_to_sheet(rows), wb=XLSX.utils.book_new();
+  ws['!cols']=[{wch:11},{wch:11},{wch:22},{wch:20},{wch:14},{wch:12},{wch:28},{wch:12},{wch:8},{wch:8},{wch:13},{wch:10},{wch:20},{wch:8},{wch:34},{wch:10},{wch:14},{wch:22}];
+  XLSX.utils.book_append_sheet(wb,ws,'สรุปบันทึก');
+  XLSX.writeFile(wb,`สรุปบันทึก_${$('lgFrom').value||''}_ถึง_${$('lgTo').value||''}.xlsx`);
 }
 
 /* ==================================================================
