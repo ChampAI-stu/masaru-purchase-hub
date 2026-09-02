@@ -120,6 +120,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
   <div class="tab" data-t="month" onclick="goTab('month')">📊 สรุปเดือน</div>
   <div class="tab" data-t="freight" onclick="goTab('freight')">🚛 ตรวจค่าขนส่ง</div>
   <div class="tab" data-t="lot" onclick="goTab('lot')">📦 ต้นทุนต่อล็อต</div>
+  <div class="tab" data-t="remit" onclick="goTab('remit')">🧾 แจ้งโอน</div>
 </div>
 
 <div class="wrap">
@@ -288,6 +289,31 @@ td.num,th.num{text-align:right;white-space:nowrap}
     </div>
   </div>
 
+  <!-- ============ TAB: แจ้งโอน (หลักฐานการโอนเงิน) ============ -->
+  <div id="tab-remit" style="display:none">
+    <div class="card">
+      <h2>🧾 แจ้งโอน — หลักฐานการโอนเงิน</h2>
+      <div class="sub-note">แนบสลิป (รูป / PDF) ให้แต่ละงวดจ่าย · อัปโหลดเข้าระบบ หรือวางลิงก์ Google Drive ก็ได้</div>
+      <div id="rmKpi" class="kpis"></div>
+      <div class="row" style="flex-wrap:wrap">
+        <input id="rmSearch" placeholder="ค้นหา PO / ผู้รับเงิน / ช่องทาง" style="max-width:230px" oninput="renderRemit()">
+        <input type="month" id="rmMonth" onchange="renderRemit()" style="max-width:160px">
+        <select id="rmSlip" onchange="renderRemit()" style="max-width:180px">
+          <option value="">— ทุกสถานะสลิป —</option>
+          <option value="no">❌ ยังไม่แนบสลิป</option>
+          <option value="yes">✅ แนบแล้ว</option>
+        </select>
+        <select id="rmPt" onchange="renderRemit()" style="max-width:170px">
+          <option value="">— ทุกประเภทการจ่าย —</option>
+          <option>LIKESHOP</option><option>MASARU</option><option>DAIKI</option><option>นามบุคคล</option>
+        </select>
+        <div style="flex:1"></div>
+        <button class="btn mini" onclick="exportRemit()">📥 Export Excel</button>
+      </div>
+      <div class="scroll"><div id="rmBody"></div></div>
+    </div>
+  </div>
+
   <!-- Modal บิล -->
 <div class="modal-bg" id="fbillBg">
   <div class="modal" style="max-width:640px">
@@ -414,6 +440,8 @@ td.num,th.num{text-align:right;white-space:nowrap}
         </select></div>
       <div class="fld"><label>งวด</label>
         <input id="p_inst" list="instList" placeholder="มัดจำครั้งที่ 1"><datalist id="instList"><option value="มัดจำครั้งที่ 1"><option value="มัดจำครั้งที่ 2"><option value="จ่ายยอดค้างชำระ"><option value="จ่ายเต็มจำนวน"></datalist></div>
+      <div class="fld" style="grid-column:1/-1"><label>ข้อมูลผู้รับเงิน (ชื่อบัญชี / ธนาคาร / เลขบัญชี)</label>
+        <textarea id="p_payee" rows="2" placeholder="เช่น&#10;Zhejiang XX Trading Co.,Ltd&#10;Bank of China · A/C 6217 0000 1234 5678 · SWIFT BKCHCNBJ"></textarea></div>
       <div class="fld"><label>ผู้รับผิดชอบ</label><input id="p_resp"></div>
     </div>
     <div class="fld"><label>หมายเหตุ</label><input id="p_note"></div>
@@ -440,6 +468,37 @@ td.num,th.num{text-align:right;white-space:nowrap}
     <div class="row" style="margin-top:14px;justify-content:flex-end">
       <button class="btn" onclick="openMemoDoc()">🖨️ ออกบันทึกข้อความภายใน</button>
       <button class="btn ghost" onclick="$('memoBg').style.display='none'">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: แนบสลิป ============ -->
+<div class="modal-bg" id="slipBg">
+  <div class="modal" style="max-width:620px">
+    <h3>📎 หลักฐานการโอนเงิน</h3>
+    <div class="fld"><label>อัปโหลดไฟล์ (รูป / PDF · ไม่เกิน 10 MB)</label>
+      <input type="file" id="sl_file" accept="image/*,application/pdf" onchange="uploadSlip()"></div>
+    <div class="fld"><label>หรือวางลิงก์ Google Drive / ลิงก์ไฟล์</label>
+      <input id="sl_url" placeholder="https://drive.google.com/file/d/..."></div>
+    <div class="muted" style="font-size:11.5px;margin:-4px 0 10px">
+      💡 ลิงก์ Drive ต้องตั้งสิทธิ์เป็น "ผู้ที่มีลิงก์ดูได้" ไม่งั้นคนอื่นจะเปิดไม่ขึ้น</div>
+    <div class="fld"><label>หมายเหตุ</label><input id="sl_note" placeholder="เช่น โอนจากบัญชี KBank ลงวันที่..."></div>
+    <div class="muted" id="sl_stat" style="font-size:12px;min-height:16px"></div>
+    <div class="row" style="margin-top:12px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('slipBg').style.display='none'">ยกเลิก</button>
+      <button class="btn" onclick="saveSlip()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: ดูสลิป ============ -->
+<div class="modal-bg" id="slipViewBg">
+  <div class="modal" style="max-width:860px">
+    <h3>🧾 สลิปโอนเงิน</h3>
+    <div id="svBody" style="background:#F4F6FA;border-radius:8px;padding:8px"></div>
+    <div class="muted" id="svNote" style="margin-top:8px;font-size:12.5px"></div>
+    <div class="row" style="margin-top:12px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('slipViewBg').style.display='none'">ปิด</button>
     </div>
   </div>
 </div>
@@ -797,6 +856,18 @@ async function delBill(id){
 /* ===== PAYMENT ===== */
 let payBillId=null;
 let payEditId=null;   // งวดที่กำลังแก้ไข (null = เพิ่มใหม่)
+/* งวดใหม่: เติมข้อมูลผู้รับเงินจากงวดก่อนของบิลนี้ ถ้าไม่มีลองหาจาก vendor เดียวกัน */
+function lastPayee(bid){
+  const mine=billPays(bid).filter(p=>p.payee).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+  if(mine.length)return mine[0].payee;
+  const b=BILLS.find(x=>String(x.id)===String(bid));
+  if(b&&b.vendor){
+    const sameV=PAYS.filter(p=>{const bb=billOf(p.bill_id);return p.payee&&bb&&bb.vendor===b.vendor;})
+      .sort((a,b2)=>String(b2.created_at||'').localeCompare(String(a.created_at||'')));
+    if(sameV.length)return sameV[0].payee;
+  }
+  return '';
+}
 const CH_OPTS=['JMF CARGO','Ksher Payment Co.Ltd.','ธนาคาร (SWIFT Code)'];
 const PT_OPTS=['LIKESHOP','MASARU','DAIKI','นามบุคคล'];
 /* เดาประเภทการจ่ายเงินจากบริษัทของบิล ให้เลือกไว้ล่วงหน้า */
@@ -829,7 +900,7 @@ function openPay(bid){
   $('p_date').value=todayStr();
   $('p_amount').value=''; $('p_rate').value=b.currency==='THB'?'1':''; $('p_thb').value='';
   $('p_fee').value='0'; setSelKeep('p_channel','',CH_OPTS); setSelKeep('p_paytype',defaultPayType(bid),PT_OPTS);
-  $('p_inst').value=''; $('p_resp').value=''; $('p_note').value='';
+  $('p_inst').value=''; $('p_resp').value=''; $('p_note').value=''; $('p_payee').value=lastPayee(bid);
   $('p_status').value='planned';
   if($('p_optPaid'))$('p_optPaid').style.display=(!APPROVAL_MODE||IS_EXEC)?'':'none';
   $('payWarn').style.display='none';
@@ -851,6 +922,7 @@ function editPay(pid,bid){
   $('p_fee').value=p.fee||0;
   setSelKeep('p_channel',p.channel||'',CH_OPTS);
   setSelKeep('p_paytype',p.pay_type||'',PT_OPTS);
+  $('p_payee').value=p.payee||'';
   $('p_inst').value=p.installment||'';
   $('p_resp').value=p.responsible||'';
   $('p_note').value=p.note||'';
@@ -893,6 +965,7 @@ async function savePayment(){
     rate:parseFloat($('p_rate').value)||null,amount_thb:parseFloat($('p_thb').value)||null,
     fee:parseFloat($('p_fee').value)||0,channel:$('p_channel').value.trim()||null,
     pay_type:$('p_paytype').value.trim()||null,
+    payee:$('p_payee').value.trim()||null,
     installment:$('p_inst').value.trim()||null,responsible:$('p_resp').value.trim()||null,
     status:((APPROVAL_MODE&&!IS_EXEC&&$('p_status').value==='paid')?'submitted':$('p_status').value),note:$('p_note').value.trim()||null,created_by:ME};
   const {error}= payEditId
@@ -1087,7 +1160,7 @@ function openHist(bid){
   let h=`<div class="muted" style="margin-bottom:10px">ยอดเต็ม <b>${money(b.total_amount)} ${s}</b> · จ่ายแล้ว <b style="color:var(--green)">${money(paid)}</b> · ค้าง <b style="color:var(--red)">${money(remain)}</b></div>`;
   if(!rows.length){h+='<div class="empty">ยังไม่มีงวดจ่าย</div>';}
   else{
-    h+=`<table><thead><tr><th>วันที่</th><th>งวด</th><th class="right">ยอด (${s})</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทางการโอน</th><th>ประเภทการจ่าย</th><th>ผู้รับผิดชอบ</th><th>หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
+    h+=`<table><thead><tr><th>วันที่</th><th>งวด</th><th class="right">ยอด (${s})</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทางการโอน</th><th>ประเภทการจ่าย</th><th>ข้อมูลผู้รับเงิน</th><th>ผู้รับผิดชอบ</th><th>หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
     rows.forEach(p=>{
       h+=`<tr><td>${esc(p.pay_date||'-')}</td><td>${esc(p.installment||'-')}</td>
         <td class="right"><b>${money(p.amount)}</b></td>
@@ -1095,6 +1168,7 @@ function openHist(bid){
         <td class="right">${p.amount_thb?money(p.amount_thb):'-'}</td>
         <td>${esc(p.channel||'-')}</td>
         <td>${p.pay_type?`<span class="pill" style="background:#EEF2F7;color:#1F3864">${esc(p.pay_type)}</span>`:'<span class="muted">-</span>'}</td>
+        <td>${p.payee?`<div style="font-size:11.5px;white-space:pre-wrap;max-width:230px">${esc(p.payee)}</div>`:'<span class="muted">-</span>'}</td>
         <td>${esc(p.responsible||'-')}</td>
         <td style="font-size:12px;max-width:220px">${p.note?esc(p.note):'<span class="muted">-</span>'}</td>
         <td>${stPill(p.status)}</td>
@@ -1213,13 +1287,14 @@ function renderPlan(){
       <span style="font-size:13px;color:${cc}">${esc(chips.join(' + '))}</span>
       <span style="font-size:15px;font-weight:800;color:${cc}">≈ ${money(sumThb(grp))} ฿</span>
     </div>
-    <table><thead><tr><th>PO</th><th>SKU</th><th>งวด</th><th class="right">ยอด</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทางการโอน</th><th>ประเภทการจ่าย</th><th>ผู้รับผิดชอบ</th><th>หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
+    <table><thead><tr><th>PO</th><th>SKU</th><th>งวด</th><th class="right">ยอด</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทางการโอน</th><th>ประเภทการจ่าย</th><th>ข้อมูลผู้รับเงิน</th><th>ผู้รับผิดชอบ</th><th>หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
     grp.forEach(p=>{const b=billOf(p.bill_id);const s=curSym(b.currency);
       h+=`<tr><td><b>${esc(b.po_number||'-')}</b></td><td>${esc(b.sku||'-')}</td><td>${esc(p.installment||'-')}</td>
         <td class="right"><b>${money(p.amount)} ${s}</b></td>
         <td class="right">${p.rate?esc(p.rate):(b.currency==='THB'?'<span class="muted">-</span>':'<span class="muted">~'+fxEst(b.currency)+'</span>')}</td><td class="right">${isEst(p)?'<span class="muted">~</span> ':''}${money(thbOf(p))}</td>
         <td>${esc(p.channel||'-')}</td>
         <td>${p.pay_type?`<span class="pill" style="background:#EEF2F7;color:#1F3864">${esc(p.pay_type)}</span>`:'<span class="muted">-</span>'}</td>
+        <td>${p.payee?`<div style="font-size:11.5px;white-space:pre-wrap;max-width:230px">${esc(p.payee)}</div>`:'<span class="muted">-</span>'}</td>
         <td>${esc(p.responsible||'-')}</td>
         <td style="font-size:12px;max-width:220px">${p.note?esc(p.note):'<span class="muted">-</span>'}</td>
         <td>${stPill(p.status)}</td>
@@ -1951,12 +2026,145 @@ async function delDoc(id){
 /* ===== TABS ===== */
 function goTab(t){
   document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on',el.dataset.t===t));
-  ['bills','plan','doc','month','freight','lot'].forEach(k=>$('tab-'+k).style.display=k===t?'':'none');
+  ['bills','plan','doc','month','freight','lot','remit'].forEach(k=>$('tab-'+k).style.display=k===t?'':'none');
+  if(t==='remit')renderRemit();
   if(t==='plan')planView(PLANVIEW);
   if(t==='month')renderMonth();
   if(t==='doc'){renderDoc();loadDocs();}
   if(t==='freight')renderFreight();
   if(t==='lot'){fillLotSelect();renderLot();}
+}
+
+/* ==================================================================
+   แท็บ แจ้งโอน — หลักฐานการโอนเงิน
+   สลิปเก็บได้ 2 ทาง: อัปโหลดเข้า Supabase Storage (bucket "slips")
+   หรือวางลิงก์ Google Drive — เผื่อ Edge Function ดันเข้า Drive ทีหลัง
+   ================================================================== */
+const SLIP_BUCKET='slips';
+const MAX_SLIP_MB=10;
+
+function slipOf(p){return p.slip_url||'';}
+function isPdf(u){return /\.pdf(\?|$)/i.test(String(u||''))||/pdf/i.test(String(u||''));}
+function driveEmbed(u){
+  const m=String(u||'').match(/\/d\/([A-Za-z0-9_-]{20,})|[?&]id=([A-Za-z0-9_-]{20,})/);
+  return m?('https://drive.google.com/file/d/'+(m[1]||m[2])+'/preview'):'';
+}
+
+function remitRows(){
+  const q=($('rmSearch').value||'').toLowerCase();
+  const mo=$('rmMonth').value||'';
+  const sl=$('rmSlip').value||'';
+  const pt=$('rmPt').value||'';
+  return PAYS.filter(p=>p.status==='paid'||p.status==='submitted')
+    .filter(p=>!mo||String(p.pay_date||'').slice(0,7)===mo)
+    .filter(p=>!pt||(p.pay_type||'')===pt)
+    .filter(p=>!sl||(sl==='yes'?!!slipOf(p):!slipOf(p)))
+    .filter(p=>{
+      if(!q)return true;
+      const b=billOf(p.bill_id);
+      return ((b.po_number||'')+' '+(b.vendor||'')+' '+(p.payee||'')+' '+(p.channel||'')+' '+(p.pay_type||''))
+        .toLowerCase().includes(q);})
+    .sort((a,b)=>String(b.pay_date||'').localeCompare(String(a.pay_date||'')));
+}
+
+function renderRemit(){
+  if(!$('rmMonth').value)$('rmMonth').value=monthStr();
+  const rows=remitRows();
+  const done=rows.filter(p=>slipOf(p)).length;
+  $('rmKpi').innerHTML=`
+    <div class="kpi"><div class="lbl">งวดที่ต้องมีสลิป</div><div class="val">${rows.length}</div></div>
+    <div class="kpi green"><div class="lbl">แนบสลิปแล้ว</div><div class="val">${done}</div></div>
+    <div class="kpi red"><div class="lbl">ยังไม่แนบ</div><div class="val">${rows.length-done}</div></div>
+    <div class="kpi gold"><div class="lbl">ยอดรวม (บาท)</div><div class="val">${money(rows.reduce((t,p)=>t+thbOf(p),0))}</div></div>`;
+  if(!rows.length){$('rmBody').innerHTML='<div class="empty">ไม่มีงวดจ่ายตามเงื่อนไขที่เลือก</div>';return;}
+  let h=`<table><thead><tr><th style="width:96px">วันที่</th><th>PO / Vendor</th><th>งวด</th>
+    <th class="right">ยอด</th><th>ช่องทาง / ประเภท</th><th>ข้อมูลผู้รับเงิน</th>
+    <th style="width:190px">สลิป</th>${canEdit?'<th style="width:180px"></th>':''}</tr></thead><tbody>`;
+  rows.forEach(p=>{
+    const b=billOf(p.bill_id), u=slipOf(p);
+    h+=`<tr>
+      <td><b>${esc(p.pay_date||'-')}</b><div class="muted" style="font-size:11px">${p.status==='paid'?'✅ จ่ายแล้ว':'📤 ส่งยอด'}</div></td>
+      <td><b>${esc(b.po_number||'-')}</b><div class="muted" style="font-size:11.5px">${esc(b.vendor||'')}</div></td>
+      <td>${esc(p.installment||'-')}</td>
+      <td class="right"><b>${money(p.amount)} ${curSym(b.currency)}</b><div class="muted" style="font-size:11px">≈ ${money(thbOf(p))} ฿</div></td>
+      <td style="font-size:11.5px">${esc(p.channel||'-')}${p.pay_type?`<div><span class="pill" style="background:#EEF2F7;color:#1F3864">${esc(p.pay_type)}</span></div>`:''}</td>
+      <td style="font-size:11.5px;white-space:pre-wrap;max-width:220px">${esc(p.payee||'')||'<span class="muted">— ยังไม่ระบุ —</span>'}</td>
+      <td>${u?`<a href="${esc(u)}" target="_blank" rel="noopener" class="btn mini ghost">${isPdf(u)?'📄':'🖼️'} เปิดสลิป</a>
+             <button class="btn mini ghost" onclick="viewSlip('${p.id}')">👁️</button>`
+            :'<span class="pill" style="background:#FCE4E4;color:#B01722">❌ ยังไม่แนบ</span>'}</td>
+      ${canEdit?`<td style="white-space:nowrap">
+        <button class="btn mini green" onclick="openSlip('${p.id}')">${u?'เปลี่ยนสลิป':'📎 แนบสลิป'}</button>
+        ${u?`<button class="btn mini red" onclick="removeSlip('${p.id}')">ลบ</button>`:''}</td>`:''}
+    </tr>`;});
+  $('rmBody').innerHTML=h+'</tbody></table>';
+}
+
+/* ---------- แนบสลิป ---------- */
+let SLIP_PID=null;
+function openSlip(pid){
+  SLIP_PID=pid;
+  const p=PAYS.find(x=>String(x.id)===String(pid))||{};
+  $('sl_url').value=p.slip_url||'';
+  $('sl_note').value=p.slip_note||'';
+  $('sl_file').value='';
+  $('sl_stat').textContent='';
+  $('slipBg').style.display='flex';
+}
+async function uploadSlip(){
+  const f=$('sl_file').files[0]; if(!f)return;
+  if(f.size>MAX_SLIP_MB*1024*1024)return toast(`ไฟล์ใหญ่เกิน ${MAX_SLIP_MB} MB`);
+  $('sl_stat').textContent='กำลังอัปโหลด…';
+  const ext=(f.name.split('.').pop()||'bin').toLowerCase();
+  const path=`${(new Date()).toISOString().slice(0,7)}/${SLIP_PID}_${Date.now()}.${ext}`;
+  const {error}=await sb.storage.from(SLIP_BUCKET).upload(path,f,{upsert:true,contentType:f.type||undefined});
+  if(error){
+    $('sl_stat').textContent='';
+    alert('อัปโหลดไม่สำเร็จ: '+error.message+
+      (/not found|bucket/i.test(error.message)?'\n\nยังไม่ได้สร้าง bucket "slips" — รันไฟล์ pay_remit.sql บน Supabase ก่อน':''));
+    return;
+  }
+  const {data}=sb.storage.from(SLIP_BUCKET).getPublicUrl(path);
+  $('sl_url').value=data.publicUrl;
+  $('sl_stat').textContent='✅ อัปโหลดแล้ว — กดบันทึกเพื่อผูกกับงวดนี้';
+}
+async function saveSlip(){
+  const url=$('sl_url').value.trim();
+  const src=url?(/drive\.google\.com|docs\.google\.com/i.test(url)?'drive':(url.includes('/storage/v1/')?'supabase':'link')):null;
+  const {error}=await sb.from('pay_payments')
+    .update({slip_url:url||null,slip_note:$('sl_note').value.trim()||null,slip_source:src,
+             slip_at:url?new Date().toISOString():null,slip_by:url?ME:null})
+    .eq('id',SLIP_PID);
+  if(error)return alert('บันทึกไม่สำเร็จ: '+error.message);
+  $('slipBg').style.display='none';
+  await loadAll(); renderRemit(); toast('บันทึกสลิปแล้ว ✅');
+}
+async function removeSlip(pid){
+  if(!confirm('ลบสลิปของงวดนี้?'))return;
+  const {error}=await sb.from('pay_payments')
+    .update({slip_url:null,slip_note:null,slip_source:null,slip_at:null,slip_by:null}).eq('id',pid);
+  if(error)return alert('ลบไม่สำเร็จ: '+error.message);
+  await loadAll(); renderRemit(); toast('ลบสลิปแล้ว');
+}
+function viewSlip(pid){
+  const p=PAYS.find(x=>String(x.id)===String(pid))||{}, u=slipOf(p);
+  if(!u)return;
+  const emb=driveEmbed(u);
+  $('svBody').innerHTML = emb
+    ? `<iframe src="${esc(emb)}" style="width:100%;height:70vh;border:0"></iframe>`
+    : (isPdf(u) ? `<iframe src="${esc(u)}" style="width:100%;height:70vh;border:0"></iframe>`
+                : `<img src="${esc(u)}" style="max-width:100%;max-height:70vh;display:block;margin:0 auto">`);
+  $('svNote').textContent=p.slip_note||'';
+  $('slipViewBg').style.display='flex';
+}
+function exportRemit(){
+  const rows=[['วันที่','PO','Vendor','งวด','ยอด','สกุลเงิน','ยอดบาท','ช่องทางการโอน','ประเภทการจ่าย','ข้อมูลผู้รับเงิน','สถานะ','ลิงก์สลิป','หมายเหตุสลิป']];
+  remitRows().forEach(p=>{const b=billOf(p.bill_id);
+    rows.push([p.pay_date||'',b.po_number||'',b.vendor||'',p.installment||'',+p.amount||0,b.currency||'CNY',
+      +thbOf(p).toFixed(2),p.channel||'',p.pay_type||'',p.payee||'',
+      p.status==='paid'?'จ่ายแล้ว':'ส่งยอด',p.slip_url||'',p.slip_note||'']);});
+  const ws=XLSX.utils.aoa_to_sheet(rows), wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'แจ้งโอน');
+  XLSX.writeFile(wb,'แจ้งโอน_'+($('rmMonth').value||monthStr())+'.xlsx');
 }
 
 boot();
