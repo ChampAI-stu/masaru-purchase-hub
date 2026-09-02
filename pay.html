@@ -82,6 +82,11 @@ td.num,th.num{text-align:right;white-space:nowrap}
 #mdPaper .md-blk{margin-bottom:22px}
 #mdPaper .md-chk{margin-top:8px;font-size:12.5px;display:flex;gap:22px;flex-wrap:wrap}
 #mdItems input{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 7px;font:inherit;font-size:12.5px}
+.sl-item{display:flex;gap:10px;align-items:center;padding:7px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px}
+.sl-item img,.sl-item .ph{width:52px;height:52px;border-radius:6px;object-fit:cover;background:#F4F6FA;flex:0 0 auto}
+.sl-item .ph{display:flex;align-items:center;justify-content:center;font-size:20px}
+.slip-more{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;
+  border-radius:6px;background:#EEF2F7;color:#1F3864;font-size:11px;font-weight:800;cursor:pointer;margin-left:3px}
 .slip-th{width:120px;height:80px;object-fit:cover;border-radius:7px;border:1px solid var(--line);
   cursor:pointer;display:block;background:#F4F6FA;transition:.15s}
 .slip-th:hover{transform:scale(1.04);box-shadow:0 4px 14px rgba(0,0,0,.18)}
@@ -481,14 +486,20 @@ td.num,th.num{text-align:right;white-space:nowrap}
 <div class="modal-bg" id="slipBg">
   <div class="modal" style="max-width:620px">
     <h3>📎 หลักฐานการโอนเงิน</h3>
-    <div class="fld"><label>อัปโหลดไฟล์ (รูป / PDF · ไม่เกิน 10 MB)</label>
-      <input type="file" id="sl_file" accept="image/*,application/pdf" onchange="uploadSlip()"></div>
-    <div class="fld"><label>หรือวางลิงก์ Google Drive / ลิงก์ไฟล์</label>
-      <input id="sl_url" placeholder="https://drive.google.com/file/d/..."></div>
+    <div class="fld"><label>อัปโหลดไฟล์ — เลือกได้หลายไฟล์พร้อมกัน (รูป / PDF · ไฟล์ละไม่เกิน 10 MB)</label>
+      <input type="file" id="sl_file" accept="image/*,application/pdf" multiple onchange="uploadSlip()"></div>
+    <div class="fld"><label>หรือวางลิงก์ Google Drive / ลิงก์ไฟล์ (กด Enter เพื่อเพิ่ม)</label>
+      <input id="sl_url" placeholder="https://drive.google.com/file/d/..." onkeydown="if(event.key==='Enter'){event.preventDefault();addSlipLink();}"></div>
     <div class="muted" style="font-size:11.5px;margin:-4px 0 10px">
       💡 ลิงก์ Drive ต้องตั้งสิทธิ์เป็น "ผู้ที่มีลิงก์ดูได้" ไม่งั้นคนอื่นจะเปิดไม่ขึ้น</div>
-    <div class="fld"><label>หมายเหตุ</label><input id="sl_note" placeholder="เช่น โอนจากบัญชี KBank ลงวันที่..."></div>
+    <div class="fld"><label>หมายเหตุ (ใช้กับทุกไฟล์ในงวดนี้)</label>
+      <input id="sl_note" placeholder="เช่น โอนจากบัญชี KBank ลงวันที่..."></div>
+    <div id="sl_prog" style="display:none;margin:6px 0">
+      <div class="bar" style="height:6px"><div id="sl_bar" style="height:100%;width:0;background:var(--brand);transition:width .2s"></div></div>
+    </div>
     <div class="muted" id="sl_stat" style="font-size:12px;min-height:16px"></div>
+    <div style="font-weight:700;margin:10px 0 6px;font-size:13px">ไฟล์ที่แนบไว้ <span id="sl_count" class="muted"></span></div>
+    <div id="sl_list" class="scroll" style="max-height:230px"></div>
     <div class="row" style="margin-top:12px;justify-content:flex-end">
       <button class="btn ghost" onclick="$('slipBg').style.display='none'">ยกเลิก</button>
       <button class="btn" onclick="saveSlip()">💾 บันทึก</button>
@@ -2075,7 +2086,8 @@ function goTab(t){
 const SLIP_BUCKET='slips';
 const MAX_SLIP_MB=10;
 
-function slipOf(p){return p.slip_url||'';}
+function slipOf(p){const l=slipList(p);return l.length?(l[0].url||''):'';}
+function slipCount(p){return slipList(p).length;}
 function driveId(u,p){
   if(p&&p.drive_file_id)return p.drive_file_id;
   const m=String(u||'').match(/\/d\/([A-Za-z0-9_-]{20,})|[?&]id=([A-Za-z0-9_-]{20,})/);
@@ -2094,6 +2106,17 @@ function driveEmbed(u){
   return m?('https://drive.google.com/file/d/'+(m[1]||m[2])+'/preview'):'';
 }
 
+function remitThumbs(p){
+  const its=slipList(p), show=its.slice(0,3);
+  const cell=show.map((it,i)=>{
+    const t=itemThumb(it);
+    return t?`<img class="slip-th" src="${esc(t)}" loading="lazy" onclick="viewSlip('${p.id}',${i})" title="${esc(it.name||'')}"
+        onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'slip-th slip-na',textContent:'🖼️',onclick:()=>viewSlip('${p.id}',${i})}))">`
+      :`<div class="slip-th slip-na" onclick="viewSlip('${p.id}',${i})" title="${esc(it.name||'')}">📄 PDF</div>`;}).join('');
+  return `<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">${cell}`
+    +(its.length>3?`<span class="slip-more" onclick="viewSlip('${p.id}',3)">+${its.length-3}</span>`:'')
+    +`</div><div style="margin-top:3px;font-size:11px" class="muted">${its.length} ไฟล์</div>`;
+}
 function remitRows(){
   const q=($('rmSearch').value||'').toLowerCase();
   const mo=$('rmMonth').value||'';
@@ -2102,7 +2125,7 @@ function remitRows(){
   return PAYS.filter(p=>p.status==='paid'||p.status==='submitted')
     .filter(p=>!mo||String(p.pay_date||'').slice(0,7)===mo)
     .filter(p=>!pt||(p.pay_type||'')===pt)
-    .filter(p=>!sl||(sl==='yes'?!!slipOf(p):!slipOf(p)))
+    .filter(p=>!sl||(sl==='yes'?slipCount(p)>0:slipCount(p)===0))
     .filter(p=>{
       if(!q)return true;
       const b=billOf(p.bill_id);
@@ -2114,10 +2137,11 @@ function remitRows(){
 function renderRemit(){
   if(!$('rmMonth').value)$('rmMonth').value=monthStr();
   const rows=remitRows();
-  const done=rows.filter(p=>slipOf(p)).length;
+  const done=rows.filter(p=>slipCount(p)>0).length;
+  const files=rows.reduce((t,p)=>t+slipCount(p),0);
   $('rmKpi').innerHTML=`
     <div class="kpi"><div class="lbl">งวดที่ต้องมีสลิป</div><div class="val">${rows.length}</div></div>
-    <div class="kpi green"><div class="lbl">แนบสลิปแล้ว</div><div class="val">${done}</div></div>
+    <div class="kpi green"><div class="lbl">แนบสลิปแล้ว</div><div class="val">${done}<span style="font-size:.45em;font-weight:600;opacity:.8"> · ${files} ไฟล์</span></div></div>
     <div class="kpi red"><div class="lbl">ยังไม่แนบ</div><div class="val">${rows.length-done}</div></div>
     <div class="kpi gold"><div class="lbl">ยอดรวม (บาท)</div><div class="val">${money(rows.reduce((t,p)=>t+thbOf(p),0))}</div></div>`;
   if($('gasBtn'))$('gasBtn').innerHTML=gasUrl()?'⚙️ Drive ✅':'⚙️ ที่เก็บสลิป';
@@ -2134,31 +2158,59 @@ function renderRemit(){
       <td class="right"><b>${money(p.amount)} ${curSym(b.currency)}</b><div class="muted" style="font-size:11px">≈ ${money(thbOf(p))} ฿</div></td>
       <td style="font-size:11.5px">${esc(p.channel||'-')}${p.pay_type?`<div><span class="pill" style="background:#EEF2F7;color:#1F3864">${esc(p.pay_type)}</span></div>`:''}</td>
       <td style="font-size:11.5px;white-space:pre-wrap;max-width:220px">${esc(p.payee||'')||'<span class="muted">— ยังไม่ระบุ —</span>'}</td>
-      <td>${u?(()=>{const th=slipThumb(p);
-             return (th?`<img src="${esc(th)}" class="slip-th" loading="lazy" onclick="viewSlip('${p.id}')"
-                        title="คลิกเพื่อดูเต็ม" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'slip-th slip-na',textContent:'🖼️'}))">`
-                       :`<div class="slip-th slip-na" onclick="viewSlip('${p.id}')" title="คลิกเพื่อดูเต็ม">📄 PDF</div>`)
-                +`<div style="margin-top:3px"><a href="${esc(u)}" target="_blank" rel="noopener" class="btn mini ghost">เปิดต้นฉบับ</a></div>`;})()
-            :'<span class="pill" style="background:#FCE4E4;color:#B01722">❌ ยังไม่แนบ</span>'}</td>
+      <td>${u?remitThumbs(p):'<span class="pill" style="background:#FCE4E4;color:#B01722">❌ ยังไม่แนบ</span>'}</td>
       ${canEdit?`<td style="white-space:nowrap">
-        <button class="btn mini green" onclick="openSlip('${p.id}')">${u?'เปลี่ยนสลิป':'📎 แนบสลิป'}</button>
+        <button class="btn mini green" onclick="openSlip('${p.id}')">${u?'📎 จัดการไฟล์':'📎 แนบสลิป'}</button>
         ${u?`<button class="btn mini red" onclick="removeSlip('${p.id}')">ลบ</button>`:''}</td>`:''}
     </tr>`;});
   $('rmBody').innerHTML=h+'</tbody></table>';
 }
 
 /* ---------- แนบสลิป ---------- */
-let SLIP_PID=null;
+let SLIP_PID=null, SLIP_ITEMS=[];
+/* สลิปเก็บเป็น array ใน pay_payments.slips — slip_url เก็บไฟล์แรกไว้เพื่อความเข้ากันได้กับข้อมูลเดิม */
+function slipList(p){
+  if(Array.isArray(p.slips)&&p.slips.length)return p.slips;
+  if(p.slip_url)return [{url:p.slip_url,open:p.slip_url,id:p.drive_file_id||'',name:'สลิป',mime:''}];
+  return [];
+}
+function itemThumb(it){
+  const id=it.id||driveId(it.url);
+  if(/pdf/i.test(it.mime||'')||/\.pdf(\?|$)/i.test(it.url||''))return '';
+  return id?('https://drive.google.com/thumbnail?id='+id+'&sz=w400'):(it.url||'');
+}
 function openSlip(pid){
   SLIP_PID=pid;
   const p=PAYS.find(x=>String(x.id)===String(pid))||{};
-  $('sl_url').value=p.slip_url||'';
-  $('sl_note').value=p.slip_note||'';
-  $('sl_file').value=''; SLIP_DRIVE_ID=p.drive_file_id||'';
-  $('sl_stat').textContent=p.drive_file_id?'📁 ไฟล์นี้อยู่ใน Google Drive แล้ว':'';
-  $('slipBg').style.display='flex';
+  SLIP_ITEMS=JSON.parse(JSON.stringify(slipList(p)));
+  $('sl_note').value=p.slip_note||''; $('sl_url').value=''; $('sl_file').value='';
+  $('sl_stat').textContent=''; $('sl_prog').style.display='none';
+  renderSlipList(); $('slipBg').style.display='flex';
 }
-let SLIP_DRIVE_ID='';
+function renderSlipList(){
+  $('sl_count').textContent=SLIP_ITEMS.length?`(${SLIP_ITEMS.length} ไฟล์)`:'';
+  if(!SLIP_ITEMS.length){$('sl_list').innerHTML='<div class="empty" style="padding:12px">ยังไม่มีไฟล์ — เลือกไฟล์ด้านบนได้เลย</div>';return;}
+  $('sl_list').innerHTML=SLIP_ITEMS.map((it,i)=>{
+    const t=itemThumb(it);
+    return `<div class="sl-item">
+      ${t?`<img src="${esc(t)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:'🖼️'}))">`
+         :'<div class="ph">📄</div>'}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.name||'ไฟล์ '+(i+1))}</div>
+        <a href="${esc(it.open||it.url)}" target="_blank" rel="noopener" class="muted" style="font-size:11px">เปิดต้นฉบับ ↗</a>
+      </div>
+      <button class="btn mini ghost" onclick="moveSlipItem(${i},-1)" ${i===0?'disabled':''}>↑</button>
+      <button class="btn mini red" onclick="delSlipItem(${i})">✕</button>
+    </div>`;}).join('');
+}
+function delSlipItem(i){SLIP_ITEMS.splice(i,1);renderSlipList();}
+function moveSlipItem(i,d){const j=i+d;if(j<0||j>=SLIP_ITEMS.length)return;
+  const t=SLIP_ITEMS[i];SLIP_ITEMS[i]=SLIP_ITEMS[j];SLIP_ITEMS[j]=t;renderSlipList();}
+function addSlipLink(){
+  const u=$('sl_url').value.trim(); if(!u)return;
+  SLIP_ITEMS.push({url:u,open:u,id:driveId(u),name:'ลิงก์ '+(SLIP_ITEMS.length+1),mime:''});
+  $('sl_url').value=''; renderSlipList();
+}
 /* ===== สะพานเชื่อม Google Drive ผ่าน Apps Script Web App =====
    ตั้งค่า URL ได้จากปุ่ม ⚙️ ที่เก็บสลิป (เก็บใน localStorage ของเครื่อง)
    ⚠️ ต้องส่ง Content-Type เป็น text/plain ไม่งั้น Apps Script โดน CORS preflight บล็อก */
@@ -2225,15 +2277,36 @@ async function testGas(){
   }catch(e){$('gs_stat').innerHTML='<b style="color:#D0212B">❌ '+esc(e.message)+'</b>';}
 }
 
-/* ---------- อัปโหลดสลิป ---------- */
+/* ---------- อัปโหลดหลายไฟล์ ---------- */
 async function uploadSlip(){
-  const f=$('sl_file').files[0]; if(!f)return;
-  if(f.size>MAX_SLIP_MB*1024*1024)return toast(`ไฟล์ใหญ่เกิน ${MAX_SLIP_MB} MB`);
-  SLIP_DRIVE_ID='';
+  const files=[...$('sl_file').files]; if(!files.length)return;
   const p=PAYS.find(x=>String(x.id)===String(SLIP_PID))||{}, b=billOf(p.bill_id)||{};
+  const big=files.filter(f=>f.size>MAX_SLIP_MB*1024*1024);
+  if(big.length)alert(`ข้ามไฟล์ที่ใหญ่เกิน ${MAX_SLIP_MB} MB:\n`+big.map(f=>'· '+f.name).join('\n'));
+  const list=files.filter(f=>f.size<=MAX_SLIP_MB*1024*1024);
+  if(!list.length){$('sl_file').value='';return;}
 
+  $('sl_prog').style.display=''; $('sl_bar').style.width='0%';
+  let ok=0, fail=[];
+  for(let i=0;i<list.length;i++){
+    const f=list[i];
+    $('sl_stat').textContent=`กำลังอัปโหลด ${i+1}/${list.length} — ${f.name}`;
+    try{
+      const it=await uploadOne(f,p,b);
+      SLIP_ITEMS.push(it); ok++; renderSlipList();
+    }catch(e){ console.warn('[slip]',f.name,e.message); fail.push(f.name+' — '+e.message); }
+    $('sl_bar').style.width=Math.round((i+1)/list.length*100)+'%';
+  }
+  $('sl_file').value='';
+  setTimeout(()=>{$('sl_prog').style.display='none';},900);
+  $('sl_stat').innerHTML = fail.length
+    ? `<b style="color:#B45309">อัปสำเร็จ ${ok}/${list.length} — กดบันทึกเพื่อผูกกับงวดนี้</b>`
+      +`<div style="color:#D0212B;font-size:11.5px;margin-top:3px">${fail.map(esc).join('<br>')}</div>`
+    : `<b style="color:#1E7145">✅ อัปโหลดครบ ${ok} ไฟล์ — กดบันทึกเพื่อผูกกับงวดนี้</b>`;
+}
+/* อัป 1 ไฟล์: Google Drive ก่อน ถ้าไม่ได้ค่อยลง Supabase Storage */
+async function uploadOne(f,p,b){
   if(gasUrl()){
-    $('sl_stat').textContent='กำลังอัปโหลดเข้า Google Drive…';
     try{
       const j=await gasCall({action:'upload',
         filename:(b.po_number||'PO')+'_'+(p.pay_date||'')+'_'+f.name,
@@ -2241,76 +2314,79 @@ async function uploadSlip(){
         payDate:p.pay_date||'', po:b.po_number||'', vendor:b.vendor||'',
         installment:p.installment||'', amount:p.amount||'', currency:b.currency||'',
         channel:p.channel||'', payType:p.pay_type||'', payee:p.payee||'', actor:ME||''});
-      SLIP_DRIVE_ID=j.fileId||'';
-      $('sl_url').value=j.openUrl||j.viewUrl||'';
-      $('sl_stat').innerHTML='✅ เก็บใน Google Drive แล้ว'+(j.folder?' (โฟลเดอร์ '+esc(j.folder)+')':'')+' — กดบันทึกเพื่อผูกกับงวดนี้';
-      return;
-    }catch(e){
-      console.warn('[slip] gas:',e.message);
-      $('sl_stat').textContent='Drive ใช้ไม่ได้ ('+e.message+') — กำลังเก็บสำรองในระบบ…';
-    }
+      return {url:j.openUrl||j.viewUrl||'',open:j.openUrl||'',id:j.fileId||'',name:f.name,mime:f.type||'',src:'drive'};
+    }catch(e){ console.warn('[slip] drive:',e.message); }
   }
-
-  // สำรอง: Supabase Storage
   const ext=(f.name.split('.').pop()||'bin').toLowerCase();
-  const path=`${(new Date()).toISOString().slice(0,7)}/${SLIP_PID}_${Date.now()}.${ext}`;
+  const path=`${(new Date()).toISOString().slice(0,7)}/${SLIP_PID}_${Date.now()}_${Math.random().toString(36).slice(2,7)}.${ext}`;
   const {error}=await sb.storage.from(SLIP_BUCKET).upload(path,f,{upsert:true,contentType:f.type||undefined});
-  if(error){
-    $('sl_stat').textContent='';
-    alert('อัปโหลดไม่สำเร็จ\n\n'+error.message+
-      (/not found|bucket/i.test(error.message)?'\n\nยังไม่ได้สร้าง bucket "slips" — รันไฟล์ pay_remit.sql':''));
-    return;
-  }
+  if(error)throw new Error(/not found|bucket/i.test(error.message)?'ยังไม่ได้สร้าง bucket "slips" (รัน pay_remit.sql)':error.message);
   const {data}=sb.storage.from(SLIP_BUCKET).getPublicUrl(path);
-  $('sl_url').value=data.publicUrl;
-  $('sl_stat').textContent=gasUrl()?'⚠️ เก็บในระบบสำรองแล้ว — กดบันทึกได้':'เก็บในระบบแล้ว — กดบันทึกได้';
+  return {url:data.publicUrl,open:data.publicUrl,id:'',name:f.name,mime:f.type||'',src:'supabase'};
 }
 async function saveSlip(){
-  const url=$('sl_url').value.trim();
-  const src=url?(/drive\.google\.com|docs\.google\.com/i.test(url)?'drive':(url.includes('/storage/v1/')?'supabase':'link')):null;
+  if($('sl_url').value.trim())addSlipLink();
+  const first=SLIP_ITEMS[0]||null;
   const {error}=await sb.from('pay_payments')
-    .update({slip_url:url||null,slip_note:$('sl_note').value.trim()||null,slip_source:src,
-             drive_file_id:(SLIP_DRIVE_ID||driveId(url))||null,
-             drive_synced_at:SLIP_DRIVE_ID?new Date().toISOString():null,
-             slip_at:url?new Date().toISOString():null,slip_by:url?ME:null})
+    .update({slips:SLIP_ITEMS,
+             slip_url:first?(first.url||null):null,
+             slip_note:$('sl_note').value.trim()||null,
+             slip_source:first?(first.src||(driveId(first.url)?'drive':'link')):null,
+             drive_file_id:first?(first.id||driveId(first.url)||null):null,
+             drive_synced_at:first&&first.id?new Date().toISOString():null,
+             slip_at:first?new Date().toISOString():null, slip_by:first?ME:null})
     .eq('id',SLIP_PID);
-  if(error)return alert('บันทึกไม่สำเร็จ: '+error.message);
+  if(error)return alert('บันทึกไม่สำเร็จ: '+error.message+
+    (/slips/i.test(error.message)?'\n\nยังไม่มีคอลัมน์ slips — รันไฟล์ pay_slips_multi.sql ก่อน':''));
   $('slipBg').style.display='none';
-  await loadAll(); renderRemit(); toast('บันทึกสลิปแล้ว ✅');
+  await loadAll(); renderRemit(); toast(`บันทึก ${SLIP_ITEMS.length} ไฟล์แล้ว ✅`);
 }
 async function removeSlip(pid){
-  if(!confirm('ลบสลิปของงวดนี้?'))return;
   const p0=PAYS.find(x=>String(x.id)===String(pid))||{};
-  if(p0.drive_file_id&&gasUrl()){                      // ลบไฟล์ใน Drive ด้วย (ย้ายลงถังขยะ)
-    try{await gasCall({action:'delete',fileId:p0.drive_file_id});}
-    catch(e){console.warn('[slip] ลบใน Drive ไม่ได้:',e.message);}
+  const its=slipList(p0);
+  if(!confirm(`ลบสลิปทั้งหมด ${its.length} ไฟล์ของงวดนี้?`))return;
+  if(gasUrl()){
+    for(const it of its){ if(it.id){ try{await gasCall({action:'delete',fileId:it.id});}catch(e){console.warn('[slip] ลบใน Drive ไม่ได้:',e.message);} } }
   }
   const {error}=await sb.from('pay_payments')
-    .update({slip_url:null,slip_note:null,slip_source:null,drive_file_id:null,drive_synced_at:null,
-             slip_at:null,slip_by:null}).eq('id',pid);
+    .update({slips:[],slip_url:null,slip_note:null,slip_source:null,
+             drive_file_id:null,drive_synced_at:null,slip_at:null,slip_by:null}).eq('id',pid);
   if(error)return alert('ลบไม่สำเร็จ: '+error.message);
   await loadAll(); renderRemit(); toast('ลบสลิปแล้ว');
 }
-function viewSlip(pid){
-  const p=PAYS.find(x=>String(x.id)===String(pid))||{}, u=slipOf(p);
-  if(!u)return;
-  const emb=driveEmbed(u);
-  const id=driveId(u,p);
-  $('svBody').innerHTML = id
-    ? `<img src="https://drive.google.com/thumbnail?id=${esc(id)}&sz=w1600"
-           style="max-width:100%;max-height:70vh;display:block;margin:0 auto;border-radius:6px"
-           onerror="this.outerHTML='<iframe src=\'${esc(emb)}\' style=\'width:100%;height:70vh;border:0\'></iframe>'">`
-    : (isPdf(u) ? `<iframe src="${esc(u)}" style="width:100%;height:70vh;border:0"></iframe>`
-                : `<img src="${esc(u)}" style="max-width:100%;max-height:70vh;display:block;margin:0 auto">`);
+/* ---------- ดูสลิปแบบแกลเลอรี ---------- */
+let SV_ITEMS=[], SV_IDX=0;
+function viewSlip(pid,idx){
+  const p=PAYS.find(x=>String(x.id)===String(pid))||{};
+  SV_ITEMS=slipList(p); if(!SV_ITEMS.length)return;
+  SV_IDX=Math.min(Math.max(+idx||0,0),SV_ITEMS.length-1);
   $('svNote').textContent=p.slip_note||'';
-  $('slipViewBg').style.display='flex';
+  renderSv(); $('slipViewBg').style.display='flex';
+}
+function svGo(d){SV_IDX=(SV_IDX+d+SV_ITEMS.length)%SV_ITEMS.length;renderSv();}
+function renderSv(){
+  const it=SV_ITEMS[SV_IDX]||{}, id=it.id||driveId(it.url), pdf=/pdf/i.test(it.mime||'')||/\.pdf(\?|$)/i.test(it.url||'');
+  const body = (id&&!pdf)
+    ? `<img src="https://drive.google.com/thumbnail?id=${esc(id)}&sz=w1600" style="max-width:100%;max-height:66vh;display:block;margin:0 auto;border-radius:6px"
+        onerror="this.outerHTML='<iframe src=&quot;https://drive.google.com/file/d/${esc(id)}/preview&quot; style=&quot;width:100%;height:66vh;border:0&quot;></iframe>'">`
+    : (id ? `<iframe src="https://drive.google.com/file/d/${esc(id)}/preview" style="width:100%;height:66vh;border:0"></iframe>`
+      : (pdf ? `<iframe src="${esc(it.url)}" style="width:100%;height:66vh;border:0"></iframe>`
+             : `<img src="${esc(it.url)}" style="max-width:100%;max-height:66vh;display:block;margin:0 auto;border-radius:6px">`));
+  $('svBody').innerHTML=body+(SV_ITEMS.length>1?`
+    <div class="row" style="justify-content:center;align-items:center;gap:14px;margin-top:10px">
+      <button class="btn mini ghost" onclick="svGo(-1)">← ก่อนหน้า</button>
+      <b style="font-size:12.5px">${SV_IDX+1} / ${SV_ITEMS.length}</b>
+      <button class="btn mini ghost" onclick="svGo(1)">ถัดไป →</button>
+    </div>`:'')
+    +`<div style="text-align:center;margin-top:6px;font-size:12px">
+       <a href="${esc(it.open||it.url)}" target="_blank" rel="noopener">${esc(it.name||'เปิดต้นฉบับ')} ↗</a></div>`;
 }
 function exportRemit(){
-  const rows=[['วันที่','PO','Vendor','งวด','ยอด','สกุลเงิน','ยอดบาท','ช่องทางการโอน','ประเภทการจ่าย','ข้อมูลผู้รับเงิน','สถานะ','ลิงก์สลิป','Drive File ID','หมายเหตุสลิป']];
+  const rows=[['วันที่','PO','Vendor','งวด','ยอด','สกุลเงิน','ยอดบาท','ช่องทางการโอน','ประเภทการจ่าย','ข้อมูลผู้รับเงิน','สถานะ','ลิงก์สลิป (ทุกไฟล์)','จำนวนไฟล์','หมายเหตุสลิป']];
   remitRows().forEach(p=>{const b=billOf(p.bill_id);
     rows.push([p.pay_date||'',b.po_number||'',b.vendor||'',p.installment||'',+p.amount||0,b.currency||'CNY',
       +thbOf(p).toFixed(2),p.channel||'',p.pay_type||'',p.payee||'',
-      p.status==='paid'?'จ่ายแล้ว':'ส่งยอด',p.slip_url||'',p.drive_file_id||'',p.slip_note||'']);});
+      p.status==='paid'?'จ่ายแล้ว':'ส่งยอด',slipList(p).map(i=>i.url).join('\n'),slipCount(p),p.slip_note||'']);});
   const ws=XLSX.utils.aoa_to_sheet(rows), wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'แจ้งโอน');
   XLSX.writeFile(wb,'แจ้งโอน_'+($('rmMonth').value||monthStr())+'.xlsx');
