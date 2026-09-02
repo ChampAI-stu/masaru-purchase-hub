@@ -707,7 +707,10 @@ async function boot(){
                             : (isMgr ? '🧑‍💼 หัวหน้า (แก้ไขได้)' : '👑 ผู้บริหาร (แก้ไขได้)');
   if(!canEdit){$('addBillBtn').style.display='none';$('syncBtn').style.display='none';}
   if(!APPROVAL_MODE&&$('testBadge'))$('testBadge').style.display='';
-  sb.auth.onAuthStateChange((_e,s)=>{if(!s)location.replace('index.html');});
+  sb.auth.onAuthStateChange((_e,s)=>{
+    if(LOGGING_OUT)return;
+    if(!s){ markLogout(); location.replace('index.html?logout=1'); }
+  });
   await loadAll();
   subscribeRealtime();
 }
@@ -730,7 +733,16 @@ function flashLive(){
   d.style.background='#22C55E'; d.style.transform='scale(1.9)';
   setTimeout(()=>{d.style.transform='scale(1)';},450);
 }
-async function doLogout(){await sb.auth.signOut();location.replace('index.html');}
+/* กันลูป: ตอนกด logout ตั้งธงบอก index.html ไม่ให้เด้งกลับมาที่นี่อัตโนมัติ
+   (บทบาทที่มีสิทธิ์ระบบเดียวจะถูก index พาเข้าเว็บนี้ทันที → เกิดวนไป-กลับ จอกระพริบ) */
+let LOGGING_OUT=false;
+function markLogout(){ LOGGING_OUT=true; try{sessionStorage.setItem('masaru_no_auto_jump','1');}catch(e){} }
+async function doLogout(){
+  markLogout();
+  try{await sb.auth.signOut();}catch(e){}
+  try{await sb.auth.signOut({scope:'local'});}catch(e){}
+  location.replace('index.html?logout=1');
+}
 
 /* ===== DATA ===== */
 let LOAD_ERR={};
