@@ -509,11 +509,16 @@ td.num,th.num{text-align:right;white-space:nowrap}
       <input id="gs_url" placeholder="https://script.google.com/macros/s/AKfy..../exec"></div>
     <div class="fld"><label>รหัสผ่าน (ถ้าตั้ง SECRET ไว้ใน Apps Script)</label>
       <input id="gs_secret" placeholder="เว้นว่างถ้าไม่ได้ตั้ง"></div>
+    <div id="gs_lock" style="display:none;background:#E8F5EC;border:1px solid #BFE2CB;border-radius:8px;
+      padding:10px 12px;font-size:12.5px;color:#146C38;margin-top:4px">
+      🔒 <b>ตั้งค่ากลางจากในโค้ดแล้ว</b> — ทุกเครื่องใช้ค่านี้เหมือนกัน ไม่ต้องกรอกเอง<br>
+      <span class="muted">ถ้าจะเปลี่ยน ให้แก้ตัวแปร <code>GAS_URL</code> ในไฟล์ pay.html</span>
+    </div>
     <div id="gs_stat" style="font-size:12.5px;min-height:18px;margin-top:4px"></div>
     <div class="row" style="margin-top:12px;justify-content:flex-end">
       <button class="btn ghost" onclick="$('gasBg').style.display='none'">ยกเลิก</button>
       <button class="btn ghost" onclick="testGas()">🔌 ทดสอบเชื่อมต่อ</button>
-      <button class="btn" onclick="saveGasCfg()">💾 บันทึก</button>
+      <button class="btn" id="gs_save" onclick="saveGasCfg()">💾 บันทึก</button>
     </div>
   </div>
 </div>
@@ -2158,7 +2163,20 @@ let SLIP_DRIVE_ID='';
    ตั้งค่า URL ได้จากปุ่ม ⚙️ ที่เก็บสลิป (เก็บใน localStorage ของเครื่อง)
    ⚠️ ต้องส่ง Content-Type เป็น text/plain ไม่งั้น Apps Script โดน CORS preflight บล็อก */
 const GAS_KEY='masaru_slip_gas';
-function gasCfg(){try{return JSON.parse(localStorage.getItem(GAS_KEY)||'{}');}catch(e){return {};}}
+/* ⬇⬇⬇ ตั้งค่ากลาง — ใส่ตรงนี้ครั้งเดียว ทุกเครื่องใช้ได้เลย ไม่ต้องกรอกเอง ⬇⬇⬇
+   หลัง Deploy Apps Script แล้ว เอา Web app URL (ลงท้าย /exec) มาวางใน GAS_URL
+   Drive folder : 1rVUMNK4daiwu4r967O5pa2WWfJ_tw9-2
+   Sheet        : 1pK2aEfwx56zlIA0M2NlF2BxcZpOARQtW5Y-Z1-_yd-c              */
+const GAS_URL    = '';                       // ← วาง Web app URL ตรงนี้
+const GAS_SECRET = 'masaru-slip-2026';       // ← ต้องตรงกับ SECRET ใน slip_uploader.gs
+/* ⬆⬆⬆ ถ้าเว้น GAS_URL ว่างไว้ ระบบจะให้กรอกเองผ่านปุ่ม ⚙️ ที่เก็บสลิป ⬆⬆⬆ */
+
+function gasCfg(){
+  let c={}; try{c=JSON.parse(localStorage.getItem(GAS_KEY)||'{}');}catch(e){}
+  // ค่ากลางในโค้ดมาก่อน — ที่ตั้งเองในเครื่องใช้เฉพาะตอนที่ยังไม่ได้ใส่ค่ากลาง
+  return {url:(GAS_URL||c.url||'').trim(), secret:(GAS_URL?GAS_SECRET:(c.secret||GAS_SECRET))};
+}
+function gasLocked(){return !!GAS_URL;}
 function gasUrl(){return (gasCfg().url||'').trim();}
 async function gasCall(payload){
   const c=gasCfg();
@@ -2182,6 +2200,10 @@ function fileToB64(f){
 function openGasCfg(){
   const c=gasCfg();
   $('gs_url').value=c.url||''; $('gs_secret').value=c.secret||'';
+  const lock=gasLocked();
+  $('gs_url').disabled=lock; $('gs_secret').disabled=lock;
+  $('gs_save').style.display=lock?'none':'';
+  $('gs_lock').style.display=lock?'':'none';
   $('gs_stat').textContent=''; $('gasBg').style.display='flex';
 }
 function saveGasCfg(){
@@ -2194,7 +2216,7 @@ function saveGasCfg(){
 }
 async function testGas(){
   if(!$('gs_url').value.trim())return alert('ใส่ URL ก่อน');
-  localStorage.setItem(GAS_KEY,JSON.stringify({url:$('gs_url').value.trim(),secret:$('gs_secret').value.trim()}));
+  if(!gasLocked())localStorage.setItem(GAS_KEY,JSON.stringify({url:$('gs_url').value.trim(),secret:$('gs_secret').value.trim()}));
   $('gs_stat').textContent='กำลังทดสอบ…';
   try{
     const j=await gasCall({action:'ping'});
