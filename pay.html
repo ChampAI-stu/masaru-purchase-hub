@@ -186,6 +186,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
         <div style="flex:1"></div>
         <span class="muted">เพิ่มงวดใหม่จากแท็บ Tracking บิล → + งวดจ่าย</span>
       </div>
+      <div id="plAlert"></div>
       <div class="scroll"><div id="planBody"></div></div>
       <div class="scroll"><div id="planMonthBody" style="display:none"></div></div>
     </div>
@@ -210,6 +211,13 @@ td.num,th.num{text-align:right;white-space:nowrap}
         <select id="dcCompany" onchange="renderDoc()" style="width:165px;min-width:165px;flex:0 0 auto"><option value="">— ทุกบริษัท —</option></select>
         <label style="white-space:nowrap">ช่องทาง</label>
         <select id="dcChannel" onchange="renderDoc()" style="width:140px;min-width:140px;flex:0 0 auto"><option value="">— ทุกช่องทาง —</option></select>
+        <label style="white-space:nowrap">สกุลเงิน</label>
+        <select id="dcCur" onchange="renderDoc()" style="width:135px;min-width:135px;flex:0 0 auto">
+          <option value="">— ทุกสกุลเงิน —</option>
+          <option value="CNY">¥ CNY</option>
+          <option value="USD">$ USD</option>
+          <option value="THB">฿ THB</option>
+        </select>
         <input type="hidden" id="dcPayee">
         <label style="white-space:nowrap">เรทโอน</label>
         <input type="number" id="dcRate" step="0.0001" placeholder="4.96" style="width:105px;min-width:105px;flex:0 0 auto">
@@ -218,8 +226,13 @@ td.num,th.num{text-align:right;white-space:nowrap}
         <label style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;margin:0;cursor:pointer" title="แตกรายการ SKU + ราคา/หน่วย จาก Purchase Board">
           <input type="checkbox" id="dcDetail" checked onchange="buildDoc()" style="width:16px;height:16px">แยกรายการ SKU
         </label>
+        <label style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;margin:0;cursor:pointer"
+               title="ปกติใบปะหน้าจะขึ้นเฉพาะงวดที่ส่งยอดแล้ว">
+          <input type="checkbox" id="dcPaid" onchange="renderDoc()" style="width:16px;height:16px">รวมที่จ่ายแล้ว
+        </label>
         <button class="btn" onclick="buildDoc(true)">📄 สร้างใบปะหน้า</button>
       </div>
+      <div id="dcAlert"></div>
       <div class="scroll"><div id="dcPick"></div></div>
     </div>
     <div class="card" id="dcPaper" style="display:none">
@@ -795,11 +808,13 @@ function renderBills(){
   const paidMonth=PAYS.filter(p=>p.status==='paid'&&p.pay_date&&p.pay_date.slice(0,7)===monthStr())
     .reduce((s,p)=>s+(+p.amount_thb||0),0);
   const planCnt=PAYS.filter(p=>p.status==='planned'||p.status==='submitted').length;
+  const odCnt=overduePlans().length;
   $('billKpi').innerHTML=`
     <div class="kpi"><div class="lbl">บิลทั้งหมด</div><div class="val">${BILLS.length}</div></div>
     <div class="kpi gold"><div class="lbl">บิลยังไม่ปิด</div><div class="val">${open.length}</div></div>
     <div class="kpi red"><div class="lbl">ค้างจ่ายรวม (แยกสกุลเงิน)</div><div class="val" style="font-size:${curList.length>1?'21px':'26px'}">${remainHtml}</div></div>
-    <div class="kpi"><div class="lbl">งวดที่วางแผนไว้</div><div class="val">${planCnt}</div></div>
+    <div class="kpi ${odCnt?'red':''}"><div class="lbl">${odCnt?'⛔ เลยกำหนด ยังไม่ส่งยอด':'งวดที่วางแผนไว้'}</div>
+      <div class="val" ${odCnt?'style="cursor:pointer" onclick="goTab(\'doc\')" title="ไปที่เอกสารประจำวัน"':''}>${odCnt||planCnt}</div></div>
     <div class="kpi green"><div class="lbl">จ่ายแล้วเดือนนี้ (฿)</div><div class="val">${money(paidMonth)}</div></div>`;
   if(!list.length){$('billTable').innerHTML='<div class="empty">ยังไม่มีบิล'+(canEdit?' — กด "+ เพิ่มบิล"':'')+'</div>';return;}
   let h=`<table><thead><tr><th>PO</th><th>บริษัท</th><th>Vendor / SKU</th>
@@ -1234,7 +1249,7 @@ async function setPayStatus(pid,st){
   const {error}=await sb.from('pay_payments').update(up).eq('id',pid);
   if(error)return toast('อัปเดตไม่สำเร็จ: '+error.message);
   addLog(_b,'status','เปลี่ยนสถานะงวด '+((_p&&_p.installment)||'')+' → '+({planned:'วางแผน',submitted:'ส่งยอด',paid:'จ่ายแล้ว',rejected:'ไม่อนุมัติ'}[st]||st),'status',_p&&_p.status,st);
-  await loadAll(); toast('อัปเดตสถานะแล้ว ✅');
+  await loadAll(); refreshAlerts(); toast('อัปเดตสถานะแล้ว ✅');
   if(HIST_BID && $('histBg').style.display==='flex') openHist(HIST_BID);
 }
 async function delPay(pid,bid){
@@ -1309,6 +1324,7 @@ function renderPlan(){
     <div class="kpi gold"><div class="lbl">ยอดรอจ่าย (บาท)</div><div class="val">${money(sumThb(planned.concat(sent)))}</div></div>
     <div class="kpi green"><div class="lbl">จ่ายแล้ววันนี้</div><div class="val">${paid.length}</div></div>
     <div class="kpi"><div class="lbl">ยอดจ่ายแล้ว (บาท)</div><div class="val">${money(sumThb(paid))}</div></div>`;
+  renderPlanAlert();
   if(!rows.length){$('planBody').innerHTML='<div class="empty">วันนี้ยังไม่มีงวดจ่าย — เพิ่มจากแท็บ Tracking บิล (+ งวดจ่าย โดยเลือกวันที่นี้)</div>';return;}
   const cos=[...new Set(rows.map(p=>billOf(p.bill_id).company||'-'))];
   let h='';
@@ -1802,9 +1818,25 @@ function docRows(){
   const d=$('dcDate').value;
   const co=($('dcCompany')&&$('dcCompany').value)||'';
   const ch=($('dcChannel')&&$('dcChannel').value)||'';
-  return PAYS.filter(p=>p.pay_date===d&&p.status!=='rejected'
+  const cu=($('dcCur')&&$('dcCur').value)||'';
+  const withPaid=$('dcPaid')&&$('dcPaid').checked;
+  // ✅ ใบปะหน้าใช้เฉพาะงวดที่ "ส่งยอด" แล้ว (ติ๊กเพิ่มได้ถ้าอยากรวมที่จ่ายแล้ว)
+  const okSt=st=>st==='submitted'||(withPaid&&st==='paid');
+  return PAYS.filter(p=>p.pay_date===d&&okSt(p.status)
     &&(!co||(billOf(p.bill_id).company||'')===co)
-    &&(!ch||(p.channel||'')===ch));
+    &&(!ch||(p.channel||'')===ch)
+    &&(!cu||((billOf(p.bill_id).currency||'CNY')===cu)));
+}
+/* งวดของวันนี้ที่ยังไม่ได้ส่งยอด (ไม่นับตัวกรองอื่น) */
+function docPending(){
+  const d=$('dcDate').value;
+  return PAYS.filter(p=>p.pay_date===d&&p.status==='planned');
+}
+/* ⚠️ งวดที่ถึงกำหนด/เลยกำหนดแล้วยังไม่ส่งยอด — ทั้งระบบ */
+function overduePlans(){
+  const t=todayStr();
+  return PAYS.filter(p=>p.status==='planned'&&p.pay_date&&p.pay_date<=t)
+    .sort((a,b)=>String(a.pay_date).localeCompare(String(b.pay_date)));
 }
 function fillDocCompany(){
   if(!$('dcCompany'))return;
@@ -1831,9 +1863,14 @@ function renderDoc(){
   if(!$('dcDate').value)$('dcDate').value=todayStr();
   fillDocCompany();
   DOC_VIEW_IDS=null;                   // เปลี่ยนวัน/บริษัท/ช่องทาง = เริ่มใหม่
+  renderDocAlert();
   const rows=docRows();
   DOCSEL=new Set(rows.map(p=>String(p.id)));   // ติ๊กทั้งหมดไว้ก่อน (เทียบเป็น String เสมอ)
-  if(!rows.length){$('dcPick').innerHTML='<div class="empty">วันนี้ยังไม่มีงวดจ่าย — เพิ่มจากแท็บ Tracking บิล</div>';
+  if(!rows.length){
+    const pend=docPending().length;
+    $('dcPick').innerHTML='<div class="empty">'+(pend
+      ? `วันนี้มี ${pend} งวดที่ยัง<b>ไม่ได้ส่งยอด</b> — ใบปะหน้าจะขึ้นเฉพาะงวดที่ส่งยอดแล้ว<br><span class="muted">กดปุ่ม 📤 ส่งยอด ในแถบเตือนด้านบน หรือที่แท็บแผนจ่ายรายวัน</span>`
+      : 'วันนี้ยังไม่มีงวดที่ส่งยอด — เพิ่มจากแท็บ Tracking บิล')+'</div>';
     $('dcPaper').style.display='none';renderDocHist();return;}
   let h='<table><thead><tr><th style="width:38px"></th><th>PO</th><th>Vendor / SKU</th><th>งวด</th><th class="num">ยอด</th><th class="num">เรท</th><th class="num">บาท</th><th class="num">ค่าธรรมเนียม</th><th>สถานะ</th></tr></thead><tbody>';
   rows.forEach(p=>{const b=billOf(p.bill_id);
@@ -1847,6 +1884,48 @@ function renderDoc(){
   $('dcPick').innerHTML=h;
   renderDocHist();
 }
+/* แถบเตือน: งวดวันนี้ที่ยังไม่ส่งยอด + งวดที่เลยกำหนดแล้ว */
+function renderPlanAlert(){
+  if(!$('plAlert'))return;
+  const over=overduePlans();
+  if(!over.length){$('plAlert').innerHTML='';return;}
+  $('plAlert').innerHTML=`<div style="background:#FCE4E4;border:1px solid #F3C6C9;border-left:6px solid #D0212B;
+      border-radius:10px;padding:11px 14px;margin:10px 0;font-size:12.5px">
+    <b style="color:#D0212B">⛔ มี ${over.length} งวดที่ถึง/เลยกำหนดจ่ายแล้ว แต่ยังไม่ได้ส่งยอด</b>
+    <span class="muted"> · เร็วสุด ${esc(over[0].pay_date||'')}</span>
+    <div style="margin-top:6px"><button class="btn mini ghost" onclick="goTab('doc')">ดูรายละเอียด →</button></div>
+  </div>`;
+}
+function renderDocAlert(){
+  if(!$('dcAlert'))return;
+  const pend=docPending(), over=overduePlans().filter(p=>p.pay_date<$('dcDate').value||p.pay_date<todayStr());
+  const box=(color,bg,bd,title,items,note)=>`
+    <div style="background:${bg};border:1px solid ${bd};border-left:6px solid ${color};border-radius:10px;
+         padding:11px 14px;margin:10px 0;font-size:12.5px">
+      <b style="color:${color}">${title}</b>${note?`<span class="muted"> · ${note}</span>`:''}
+      <div style="margin-top:7px;display:flex;flex-direction:column;gap:5px">${items}</div>
+    </div>`;
+  const line=p=>{const b=billOf(p.bill_id);
+    return `<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+      <b style="min-width:66px">${esc(p.pay_date||'-')}</b>
+      <span style="min-width:64px"><b>${esc(b.po_number||'-')}</b></span>
+      <span class="muted" style="flex:1;min-width:110px">${esc(b.vendor||'')} · ${esc(p.installment||'')}</span>
+      <b>${money(p.amount)} ${curSym(b.currency)}</b>
+      ${canEdit?`<button class="btn mini" style="background:#2E75B6" onclick="setPayStatus('${p.id}','submitted')">📤 ส่งยอด</button>`:''}
+    </div>`;};
+  let h='';
+  if(over.length)h+=box('#D0212B','#FCE4E4','#F3C6C9',
+    `⛔ เลยกำหนดจ่ายแล้ว ${over.length} งวด — ยังไม่ได้ส่งยอด`,
+    over.slice(0,8).map(line).join('')+(over.length>8?`<div class="muted">… และอีก ${over.length-8} งวด</div>`:''),
+    'นับถึงวันนี้ ('+todayStr()+')');
+  const todayPend=pend.filter(p=>!over.some(o=>String(o.id)===String(p.id)));
+  if(todayPend.length)h+=box('#B45309','#FFF6E5','#F3DFB6',
+    `⚠️ วันที่เลือกมี ${todayPend.length} งวดที่ยังไม่ได้ส่งยอด`,
+    todayPend.slice(0,8).map(line).join('')+(todayPend.length>8?`<div class="muted">… และอีก ${todayPend.length-8} งวด</div>`:''),
+    'ยังไม่ขึ้นในใบปะหน้า');
+  $('dcAlert').innerHTML=h;
+}
+function refreshAlerts(){ if($('plAlert'))renderPlanAlert(); if($('dcAlert')&&$('tab-doc').style.display!=='none')renderDocAlert(); }
 async function setPayRate(pid,v){
   const p=PAYS.find(x=>String(x.id)===String(pid)); if(!p)return;
   const r=parseFloat(v)||0;
