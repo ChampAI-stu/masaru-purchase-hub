@@ -455,7 +455,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
     <div class="grid2">
       <div class="fld"><label>รหัสใบจัดซื้อ (PO) ★</label><input id="f_po"></div>
       <div class="fld"><label>บริษัท ★</label>
-        <select id="f_co"><option>LIKESHOP</option><option>MASARU</option><option>DAIKI</option><option>JMF</option></select></div>
+        <select id="f_co"><option>LIKESHOP</option><option>MASARU</option><option>DAIKI</option><option>นามบุคคล</option></select></div>
       <div class="fld"><label>Vendor / ร้านค้า</label><input id="f_vendor"></div>
       <div class="fld"><label>SKU / สินค้า</label><input id="f_sku"></div>
       <div class="fld"><label>สกุลเงิน</label>
@@ -902,7 +902,9 @@ function openBill(id){
   editBillId=found?found.id:null;
   const b=found||{};
   $('billTitle').textContent=id?'แก้ไขบิล '+(b.po_number||''):'เพิ่มบิล';
-  $('f_po').value=b?.po_number||''; $('f_co').value=b?.company||'LIKESHOP';
+  $('f_po').value=b?.po_number||'';
+  // บิลเก่าที่ยังเป็น JMF ต้องคงค่าไว้ ไม่งั้น select จะเด้งเป็น LIKESHOP แล้วบันทึกทับโดยไม่รู้ตัว
+  setSelKeep('f_co', b?.company||'LIKESHOP', CO_OPTS);
   $('f_vendor').value=b?.vendor||''; $('f_sku').value=b?.sku||'';
   $('f_cur').value=b?.currency||'CNY'; $('f_total').value=b?.total_amount||'';
   $('f_note').value=b?.note||'';
@@ -963,13 +965,16 @@ function lastPayee(bid){
   }
   return '';
 }
+const CO_OPTS=['LIKESHOP','MASARU','DAIKI','นามบุคคล'];
 const CH_OPTS=['JMF CARGO','Ksher Payment Co.Ltd.','ธนาคาร (SWIFT Code)'];
 const PT_OPTS=['LIKESHOP','MASARU','DAIKI','นามบุคคล'];
 /* เดาประเภทการจ่ายเงินจากบริษัทของบิล ให้เลือกไว้ล่วงหน้า */
 function defaultPayType(bid){
   const b=BILLS.find(x=>String(x.id)===String(bid))||{};
-  const co=String(b.company||'').toUpperCase();
-  return PT_OPTS.find(o=>o!=='นามบุคคล'&&co.includes(o))||'';
+  const co=String(b.company||'');
+  if(co==='นามบุคคล'||/^JMF$/i.test(co))return 'นามบุคคล';   // บิลเก่าที่เป็น JMF = จ่ายในนามบุคคล
+  const up=co.toUpperCase();
+  return PT_OPTS.find(o=>o!=='นามบุคคล'&&up.includes(o))||'';
 }
 /* ค่าที่บันทึกไว้ก่อนหน้า (เช่น KSHER / SWIFT) ไม่อยู่ในลิสต์ใหม่ → เติมเป็นตัวเลือกชั่วคราว ไม่ให้ข้อมูลเดิมหาย */
 function setSelKeep(id,val,opts){
@@ -1371,7 +1376,7 @@ function renderPlan(){
     const sumCur=c=>grp.filter(p=>(billOf(p.bill_id).currency||'CNY')===c).reduce((s,p)=>s+(+p.amount||0),0);
     const cny=sumCur('CNY'), usd=sumCur('USD'), thbD=sumCur('THB');
     const done=grp.filter(p=>p.status==='paid').length;
-    const CO_COLOR={LIKESHOP:'#1F3864',MASARU:'#D0212B',DAIKI:'#B45309',JMF:'#1E7145'};
+    const CO_COLOR={LIKESHOP:'#1F3864',MASARU:'#D0212B',DAIKI:'#B45309','นามบุคคล':'#1E7145'};
     const cc=CO_COLOR[co]||'#334155';
     const chips=[]; if(cny)chips.push(money(cny)+' ¥'); if(usd)chips.push(money(usd)+' $'); if(thbD)chips.push(money(thbD)+' ฿');
     h+=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:22px 0 0;padding:11px 15px;
@@ -2083,7 +2088,7 @@ function buildDoc(show){
   const pickCo=($('dcCompany')&&$('dcCompany').value)||'';
   const cos=pickCo?[pickCo]:[...new Set(rows.map(p=>billOf(p.bill_id).company||'-'))];
   const coName={LIKESHOP:'บริษัท ไลค์ช็อป มอลล์ จำกัด',MASARU:'บริษัท มาซารุ มาร์เก็ตติ้ง จำกัด',
-    DAIKI:'บริษัท ไดกิ เทรดดิ้ง จำกัด',JMF:'JMF'}[cos[0]]||cos.join(', ');
+    DAIKI:'บริษัท ไดกิ เทรดดิ้ง จำกัด','นามบุคคล':'นามบุคคล'}[cos[0]]||cos.join(', ');
   const showDetail=$('dcDetail')&&$('dcDetail').checked;
 
   // 1 งวด = 1 กลุ่ม (SKU หลายแถว) — ช่องยอด/บาท/หมายเหตุ ผสานเซลล์ตามงวด
