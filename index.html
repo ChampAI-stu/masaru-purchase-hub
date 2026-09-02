@@ -173,32 +173,17 @@ function getRoles(session){
 }
 
 // ===== BOOT =====
-/* กันลูปเด้งไป-กลับ: บทบาทที่มีระบบเดียว (เช่น Shipping) หน้านี้จะพาเข้าเว็บนั้นอัตโนมัติ
-   ถ้า session ยังค้างอยู่ตอน logout จะเกิด index → cost → index วนไม่จบ จอกระพริบค้าง
-   จึงใส่ธง noAutoJump ตอน logout และตัวนับกันวนซ้ำถี่ ๆ */
-const NO_JUMP_KEY='masaru_no_auto_jump', HOP_KEY='masaru_hub_hops';
-function wantsNoJump(){
-  const q=new URLSearchParams(location.search);
-  if(q.has('logout')||q.has('hub')) return true;
-  return sessionStorage.getItem(NO_JUMP_KEY)==='1';
-}
-function loopGuard(){
-  // เข้าหน้านี้เกิน 3 ครั้งใน 8 วินาที = กำลังวนลูป → หยุดเด้งอัตโนมัติ
-  let h=[]; try{h=JSON.parse(sessionStorage.getItem(HOP_KEY)||'[]');}catch(e){}
-  const now=Date.now(); h=h.filter(t=>now-t<8000); h.push(now);
-  sessionStorage.setItem(HOP_KEY,JSON.stringify(h));
-  if(h.length>3){ sessionStorage.setItem(NO_JUMP_KEY,'1'); return true; }
-  return false;
-}
-const LOOPING = loopGuard();
+/* บทบาทที่มีสิทธิ์ระบบเดียวจะถูกพาเข้าเว็บนั้นอัตโนมัติ
+   ถ้าเพิ่งกด logout มา (?logout=1) ให้หยุดที่หน้านี้ ไม่งั้นจะเด้งวนไป-กลับ
+   ใช้แค่ค่าใน URL — ไม่เก็บสถานะค้างไว้ที่ไหน จึงไม่มีทางล็อกคนออกจากระบบ */
+const NO_JUMP = new URLSearchParams(location.search).has('logout');
 
 // ฟังการเปลี่ยนสถานะ auth — ถ้า logout ที่แท็บ/หน้าไหนก็ตาม หน้านี้กลับไปหน้า login ทันที
 sb.auth.onAuthStateChange(async (event, session) => {
-  if(event === 'SIGNED_IN'){ sessionStorage.removeItem(NO_JUMP_KEY); return; }   // ล็อกอินใหม่ = เข้าระบบอัตโนมัติได้ตามปกติ
-  if(event !== 'SIGNED_OUT' && event !== 'USER_DELETED') return;                // ไม่ใช่การ logout จริง
+  if(event !== 'SIGNED_OUT' && event !== 'USER_DELETED') return;  // INITIAL_SESSION ไม่ใช่การ logout
   const { data:{ session:live } } = await sb.auth.getSession();
-  if(live) return;
-  sessionStorage.setItem(NO_JUMP_KEY,'1'); showAuth();
+  if(live) return;                                                // ยืนยันซ้ำก่อนเด้ง
+  showAuth();
 });
 
 (async function boot(){
@@ -208,7 +193,6 @@ sb.auth.onAuthStateChange(async (event, session) => {
 })();
 
 function showAuth(){
-  sessionStorage.removeItem(HOP_KEY);      // อยู่หน้า login แล้ว = หลุดจากลูปแน่นอน
   $('bootScreen').classList.add('hide');
   $('hubScreen').classList.add('hide');
   $('authScreen').classList.remove('hide');
@@ -237,13 +221,9 @@ async function showHub(session){
   const apps = isExec ? all : all.filter(a => (a.roles||[]).some(r => roles.includes(r)));
 
   // มีเว็บเดียว → พาเข้าเว็บนั้นเลย ไม่ต้องเห็นหน้าเลือก
-  // ยกเว้นเพิ่งกด logout หรือกำลังวนลูป → ให้หยุดที่หน้านี้
-  if(apps.length === 1 && !wantsNoJump() && !LOOPING){
+  if(apps.length === 1 && !NO_JUMP){
     window.location.replace(apps[0].url);
     return;
-  }
-  if(apps.length === 1 && (wantsNoJump()||LOOPING)){
-    sessionStorage.removeItem(NO_JUMP_KEY);   // ใช้ครั้งเดียว ครั้งหน้าเข้าปกติ
   }
 
   $('hubSub').textContent = apps.length
@@ -327,9 +307,7 @@ async function doSignup(){
 }
 
 $('logoutBtn').addEventListener('click', async () => {
-  sessionStorage.setItem(NO_JUMP_KEY,'1');
   try{ await sb.auth.signOut(); }catch(e){}
-  try{ await sb.auth.signOut({scope:'local'}); }catch(e){}   // เคลียร์ token ในเครื่องให้ชัวร์
   location.replace(location.pathname + '?logout=1');
 });
 </script>
