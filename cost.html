@@ -487,7 +487,7 @@ let currentRole='view', canEdit=false;
 /* กันลูป: ตอนกด logout ตั้งธงบอก index.html ไม่ให้เด้งกลับมาที่นี่อัตโนมัติ
    (บทบาทที่มีสิทธิ์ระบบเดียวจะถูก index พาเข้าเว็บนี้ทันที → เกิดวนไป-กลับ จอกระพริบ) */
 let LOGGING_OUT=false;
-function markLogout(){ LOGGING_OUT=true; try{sessionStorage.setItem('masaru_no_auto_jump','1');}catch(e){} }
+function markLogout(){ LOGGING_OUT=true; }
 $('logoutBtn').addEventListener('click',async()=>{
   markLogout();
   try{await sb.auth.signOut();}catch(e){}
