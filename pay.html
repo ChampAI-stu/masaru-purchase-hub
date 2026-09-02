@@ -1976,6 +1976,36 @@ function renderDoc(){
   $('dcPick').innerHTML=h;
   renderDocHist();
 }
+/* อนุมัติ/ไม่อนุมัติทั้งใบปะหน้า — ปุ่มนี้เรียกใช้มาตลอดแต่ยังไม่เคยมีฟังก์ชัน */
+async function approveDoc(st){
+  if(APPROVAL_MODE && !IS_EXEC) return toast('เฉพาะผู้บริหารเท่านั้นที่อนุมัติได้');
+  const rows=docSelected().filter(p=>p.status==='submitted');
+  if(!rows.length)return toast('ไม่มีรายการสถานะ "ส่งยอด" ในใบนี้');
+  const L=st==='paid'?'อนุมัติเป็น "จ่ายแล้ว"':'ทำเป็น "ไม่อนุมัติ"';
+  if(!confirm(`ยืนยัน${L} ทั้งหมด ${rows.length} รายการ?`))return;
+  const up={status:st}; if(st==='paid')up.paid_at=todayStr();
+  const {error}=await sb.from('pay_payments').update(up).in('id',rows.map(p=>p.id));
+  if(error)return toast('อัปเดตไม่สำเร็จ: '+error.message);
+  const M={paid:'จ่ายแล้ว',rejected:'ไม่อนุมัติ'};
+  for(const p of rows){
+    const b=billOf(p.bill_id);
+    await addLog(b,'status','อนุมัติทั้งใบ — งวด '+(p.installment||'')+' → '+M[st],'status','submitted',st);
+  }
+  await loadAll(); renderDoc(); buildDoc(); refreshAlerts();
+  toast(`${L} แล้ว ${rows.length} รายการ ✅`);
+}
+
+/* แถบเตือน: งวดที่ถึง/เลยกำหนดจ่ายแล้วแต่ยังไม่ส่งยอด (แท็บแผนจ่ายรายวัน) */
+function renderPlanAlert(){
+  if(!$('plAlert'))return;
+  const over=overduePlans();
+  if(!over.length){$('plAlert').innerHTML='';return;}
+  $('plAlert').innerHTML=`<div style="background:#FCE4E4;border:1px solid #F3C6C9;border-left:6px solid #D0212B;
+      border-radius:10px;padding:11px 14px;margin:10px 0;font-size:12.5px">
+    <b style="color:#D0212B">⛔ มี ${over.length} งวดที่ถึง/เลยกำหนดจ่ายแล้ว แต่ยังไม่ได้ส่งยอด</b>
+    <span class="muted"> · เร็วสุด ${esc(over[0].pay_date||'')}</span>
+  </div>`;
+}
 function refreshAlerts(){ if($('plAlert'))renderPlanAlert(); }
 async function setPayRate(pid,v){
   const p=PAYS.find(x=>String(x.id)===String(pid)); if(!p)return;
