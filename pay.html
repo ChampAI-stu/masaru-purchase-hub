@@ -21,7 +21,9 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:#1E293B;font-si
 .tabs{background:var(--navy2);display:flex;gap:4px;padding:0 18px}
 .tab{color:#C8D2E0;padding:12px 16px;cursor:pointer;font-weight:600;border-bottom:3px solid transparent;font-size:13.5px;white-space:nowrap}
 .tab.on{color:#fff;border-bottom-color:var(--red)}
-.wrap{max-width:1250px;margin:20px auto;padding:0 16px}
+.wrap{max-width:1720px;margin:20px auto;padding:0 22px}
+/* ใบปะหน้า/เอกสารพิมพ์ยังคงความกว้าง A4 เดิม ไม่ให้ยืดตามจอ */
+#dcPaper,#mdPaper{max-width:1000px;margin-left:auto;margin-right:auto}
 .card{background:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 1px 4px rgba(16,42,80,.08);margin-bottom:16px}
 h2{font-size:16px;color:var(--navy);margin-bottom:12px;border-left:4px solid var(--red);padding-left:10px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
