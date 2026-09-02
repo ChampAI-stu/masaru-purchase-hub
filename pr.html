@@ -496,11 +496,22 @@ async function saveProfile(){
   const first=$('pf-first').value.trim(), last=$('pf-last').value.trim();
   if(!first && !last){toast('กรอกชื่อหรือนามสกุล',true);return;}
   const full=(first+' '+last).trim();
-  const {error}=await sb.from('profiles').update({ first_name:first, last_name:last, full_name:full }).eq('id',ME.id);
-  if(error){toast('บันทึกไม่ได้: '+error.message,true);return;}
+  // ① เก็บลง auth user_metadata ก่อน — ที่นี่ผู้ใช้เขียนของตัวเองได้เสมอ ไม่ติด RLS
+  const { error:eAuth } = await sb.auth.updateUser({ data:{ full_name:full, first_name:first, last_name:last } });
+  // ② upsert ลง profiles (เดิมใช้ update → ถ้ายังไม่มีแถวของ user นี้ จะไม่บันทึกอะไรเลย และไม่ error ด้วย)
+  const { data:row, error } = await sb.from('profiles')
+    .upsert({ id:ME.id, first_name:first, last_name:last, full_name:full }, { onConflict:'id' })
+    .select('id').maybeSingle();
+  if(error && eAuth){ toast('บันทึกไม่ได้: '+error.message,true); return; }
+  if(error || !row){
+    console.warn('[pr] profiles:', error?error.message:'ไม่มีแถวที่เขียนได้ (RLS)');
+    if(eAuth){ toast('บันทึกไม่ได้: '+eAuth.message,true); return; }
+    toast('บันทึกชื่อแล้ว ✅ (เก็บในบัญชีผู้ใช้ — ตาราง profiles เขียนไม่ได้)');
+  }
   ME.first=first; ME.last=last; ME.name=full;
   $('who').textContent = full+' ('+ME.role+')';
-  closeProfile(); toast('บันทึกโปรไฟล์แล้ว ✅');
+  if($('h-requester') && !$('h-requester').value.trim()) $('h-requester').value = full;
+  closeProfile(); if(!error && row) toast('บันทึกโปรไฟล์แล้ว ✅');
 }
 function fillRequester(){
   if(!ME.name || ME.name===ME.email){ toast('ตั้งชื่อ-นามสกุลในโปรไฟล์ก่อน',true); openProfile(); return; }
@@ -513,7 +524,17 @@ async function enterApp(user){
   if(!role){ location.replace(PORTAL_URL); return; }   // ไม่มีสิทธิ์ PR → กลับหน้ารวม
   let name=user.email, first='', last='';
   const { data:prof } = await sb.from('profiles').select('full_name,first_name,last_name').eq('id',user.id).maybeSingle();
-  if(prof){ name=prof.full_name||user.email; first=prof.first_name||''; last=prof.last_name||''; }
+  if(prof && (prof.first_name||prof.last_name||prof.full_name)){
+    name=prof.full_name||user.email; first=prof.first_name||''; last=prof.last_name||'';
+  }else{
+    // สำรอง: ชื่อที่เก็บไว้ในบัญชีผู้ใช้ (กรณี profiles ยังไม่มีแถว หรือเขียนไม่ได้)
+    const md=user.user_metadata||{};
+    first=md.first_name||''; last=md.last_name||'';
+    name=md.full_name||((first+' '+last).trim())||user.email;
+    if(first||last) sb.from('profiles')
+      .upsert({ id:user.id, first_name:first, last_name:last, full_name:name },{ onConflict:'id' })
+      .then(()=>{},()=>{});   // ซิงก์กลับเงียบๆ ไม่ขวางการเข้าใช้งาน
+  }
   ME={ id:user.id, email:user.email, role, name, first, last };
 
   $('boot').classList.add('hide'); $('app').classList.remove('hide');
