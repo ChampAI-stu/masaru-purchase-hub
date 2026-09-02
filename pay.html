@@ -235,7 +235,6 @@ td.num,th.num{text-align:right;white-space:nowrap}
         </label>
         <button class="btn" onclick="buildDoc(true)">📄 สร้างใบปะหน้า</button>
       </div>
-      <div id="dcAlert"></div>
       <div class="scroll"><div id="dcPick"></div></div>
     </div>
     <div class="card" id="dcPaper" style="display:none">
@@ -1957,13 +1956,12 @@ function renderDoc(){
   if(!$('dcDate').value)$('dcDate').value=todayStr();
   fillDocCompany();
   DOC_VIEW_IDS=null;                   // เปลี่ยนวัน/บริษัท/ช่องทาง = เริ่มใหม่
-  renderDocAlert();
   const rows=docRows();
   DOCSEL=new Set(rows.map(p=>String(p.id)));   // ติ๊กทั้งหมดไว้ก่อน (เทียบเป็น String เสมอ)
   if(!rows.length){
     const pend=docPending().length;
     $('dcPick').innerHTML='<div class="empty">'+(pend
-      ? `วันนี้มี ${pend} งวดที่ยัง<b>ไม่ได้ส่งยอด</b> — ใบปะหน้าจะขึ้นเฉพาะงวดที่ส่งยอดแล้ว<br><span class="muted">กดปุ่ม 📤 ส่งยอด ในแถบเตือนด้านบน หรือที่แท็บแผนจ่ายรายวัน</span>`
+      ? `วันนี้มี ${pend} งวดที่ยัง<b>ไม่ได้ส่งยอด</b> — ใบปะหน้าจะขึ้นเฉพาะงวดที่ส่งยอดแล้ว<br><span class="muted">ส่งยอดได้ที่แท็บ 🗓️ แผนจ่ายรายวัน</span>`
       : 'วันนี้ยังไม่มีงวดที่ส่งยอด — เพิ่มจากแท็บ Tracking บิล')+'</div>';
     $('dcPaper').style.display='none';renderDocHist();return;}
   let h='<table><thead><tr><th style="width:38px"></th><th>PO</th><th>Vendor / SKU</th><th>งวด</th><th class="num">ยอด</th><th class="num">เรท</th><th class="num">บาท</th><th class="num">ค่าธรรมเนียม</th><th>สถานะ</th></tr></thead><tbody>';
@@ -1978,48 +1976,7 @@ function renderDoc(){
   $('dcPick').innerHTML=h;
   renderDocHist();
 }
-/* แถบเตือน: งวดวันนี้ที่ยังไม่ส่งยอด + งวดที่เลยกำหนดแล้ว */
-function renderPlanAlert(){
-  if(!$('plAlert'))return;
-  const over=overduePlans();
-  if(!over.length){$('plAlert').innerHTML='';return;}
-  $('plAlert').innerHTML=`<div style="background:#FCE4E4;border:1px solid #F3C6C9;border-left:6px solid #D0212B;
-      border-radius:10px;padding:11px 14px;margin:10px 0;font-size:12.5px">
-    <b style="color:#D0212B">⛔ มี ${over.length} งวดที่ถึง/เลยกำหนดจ่ายแล้ว แต่ยังไม่ได้ส่งยอด</b>
-    <span class="muted"> · เร็วสุด ${esc(over[0].pay_date||'')}</span>
-    <div style="margin-top:6px"><button class="btn mini ghost" onclick="goTab('doc')">ดูรายละเอียด →</button></div>
-  </div>`;
-}
-function renderDocAlert(){
-  if(!$('dcAlert'))return;
-  const pend=docPending(), over=overduePlans().filter(p=>p.pay_date<$('dcDate').value||p.pay_date<todayStr());
-  const box=(color,bg,bd,title,items,note)=>`
-    <div style="background:${bg};border:1px solid ${bd};border-left:6px solid ${color};border-radius:10px;
-         padding:11px 14px;margin:10px 0;font-size:12.5px">
-      <b style="color:${color}">${title}</b>${note?`<span class="muted"> · ${note}</span>`:''}
-      <div style="margin-top:7px;display:flex;flex-direction:column;gap:5px">${items}</div>
-    </div>`;
-  const line=p=>{const b=billOf(p.bill_id);
-    return `<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
-      <b style="min-width:66px">${esc(p.pay_date||'-')}</b>
-      <span style="min-width:64px"><b>${esc(b.po_number||'-')}</b></span>
-      <span class="muted" style="flex:1;min-width:110px">${esc(b.vendor||'')} · ${esc(p.installment||'')}</span>
-      <b>${money(p.amount)} ${curSym(b.currency)}</b>
-      ${canEdit?`<button class="btn mini" style="background:#2E75B6" onclick="setPayStatus('${p.id}','submitted')">📤 ส่งยอด</button>`:''}
-    </div>`;};
-  let h='';
-  if(over.length)h+=box('#D0212B','#FCE4E4','#F3C6C9',
-    `⛔ เลยกำหนดจ่ายแล้ว ${over.length} งวด — ยังไม่ได้ส่งยอด`,
-    over.slice(0,8).map(line).join('')+(over.length>8?`<div class="muted">… และอีก ${over.length-8} งวด</div>`:''),
-    'นับถึงวันนี้ ('+todayStr()+')');
-  const todayPend=pend.filter(p=>!over.some(o=>String(o.id)===String(p.id)));
-  if(todayPend.length)h+=box('#B45309','#FFF6E5','#F3DFB6',
-    `⚠️ วันที่เลือกมี ${todayPend.length} งวดที่ยังไม่ได้ส่งยอด`,
-    todayPend.slice(0,8).map(line).join('')+(todayPend.length>8?`<div class="muted">… และอีก ${todayPend.length-8} งวด</div>`:''),
-    'ยังไม่ขึ้นในใบปะหน้า');
-  $('dcAlert').innerHTML=h;
-}
-function refreshAlerts(){ if($('plAlert'))renderPlanAlert(); if($('dcAlert')&&$('tab-doc').style.display!=='none')renderDocAlert(); }
+function refreshAlerts(){ if($('plAlert'))renderPlanAlert(); }
 async function setPayRate(pid,v){
   const p=PAYS.find(x=>String(x.id)===String(pid)); if(!p)return;
   const r=parseFloat(v)||0;
