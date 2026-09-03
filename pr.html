@@ -371,6 +371,35 @@
   </main>
 </div>
 
+<div id="reject-modal" class="modal-bg hide">
+  <div class="modal" style="width:620px;max-width:calc(100vw - 32px)">
+    <h3 style="margin:0 0 6px;color:#B91C1C">↩️ ตีกลับใบขอซื้อ</h3>
+    <div class="muted" id="rj-pr" style="font-size:13px;margin-bottom:12px"></div>
+
+    <label style="font-weight:600;font-size:13px">เหตุผลที่ตีกลับ (ให้จัดซื้อแก้ไข)</label>
+    <textarea id="rj-note" rows="10"
+      style="width:100%;margin-top:6px;padding:11px 12px;border:1px solid #CBD5E1;border-radius:9px;
+             font:inherit;font-size:14px;line-height:1.7;resize:vertical;min-height:180px"
+      placeholder="เช่น&#10;• SCM-500N — ยังไม่ได้เช็คสต็อกคงเหลือ&#10;• SRDS-110 — จำนวนสั่ง 25,000 สูงผิดปกติ ขอดูยอดขายย้อนหลัง&#10;• SCG-605N — ราคาต่อหน่วยไม่ตรงกับที่ตกลงไว้&#10;&#10;พิมพ์ได้ยาวเท่าที่ต้องการ ขึ้นบรรทัดใหม่ได้"></textarea>
+
+    <div style="margin-top:10px">
+      <div class="muted" style="font-size:12px;margin-bottom:6px">เหตุผลที่ใช้บ่อย — กดเพื่อเติมข้อความ</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <button type="button" class="btn sm ghost" onclick="rjAdd('ตรวจ SKU ยังไม่ครบ')">ตรวจ SKU ยังไม่ครบ</button>
+        <button type="button" class="btn sm ghost" onclick="rjAdd('จำนวนสั่งสูงผิดปกติ')">จำนวนสั่งสูงผิดปกติ</button>
+        <button type="button" class="btn sm ghost" onclick="rjAdd('ราคาต่อหน่วยไม่ตรงกับที่ตกลง')">ราคาไม่ตรง</button>
+        <button type="button" class="btn sm ghost" onclick="rjAdd('ขอดูสต็อกคงเหลือก่อน')">ขอดูสต็อกก่อน</button>
+        <button type="button" class="btn sm ghost" onclick="rjAdd('รอยืนยันจากซัพพลายเออร์')">รอยืนยันซัพ</button>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      <button class="btn ghost" onclick="$('reject-modal').classList.add('hide')">ยกเลิก</button>
+      <button class="btn" style="background:var(--red)" onclick="doReject()">↩️ ยืนยันตีกลับ</button>
+    </div>
+  </div>
+</div>
+
 <div id="profile-modal" class="modal-bg hide">
   <div class="modal">
     <h3 style="color:var(--navy);margin-bottom:4px">👤 โปรไฟล์ของฉัน</h3>
@@ -1557,12 +1586,29 @@ async function approveStep(id){
   toast(next==='approved'?'อนุมัติสมบูรณ์ ✅':'หัวหน้าอนุมัติแล้ว — ส่งต่อผู้บริหาร ✅');
   viewPR(id); loadPRs();
 }
+let REJECT_ID=null;
 async function rejectPR(id){
-  const reason=prompt('เหตุผลที่ตีกลับ (ให้จัดซื้อแก้ไข):','');
-  if(reason===null) return;
-  const {error}=await sb.from('pr').update({ status:'rejected', reject_note:reason.trim(), reject_by:ME.role }).eq('id',id);
+  REJECT_ID=id;
+  const {data:p}=await sb.from('pr').select('pr_number,reject_note').eq('id',id).single();
+  $('rj-pr').textContent = p? ('ใบ '+(p.pr_number||'')+' — จัดซื้อจะเห็นข้อความนี้ตอนเปิดใบแก้ไข') : '';
+  $('rj-note').value = (p && p.reject_note) ? p.reject_note : '';
+  $('reject-modal').classList.remove('hide');
+  setTimeout(()=>$('rj-note').focus(),50);
+}
+/* ปุ่มเหตุผลสำเร็จรูป — เติมต่อท้าย ไม่ทับของเดิม */
+function rjAdd(t){
+  const el=$('rj-note');
+  el.value = (el.value.trim() ? el.value.replace(/\s+$/,'')+'\n' : '') + '• ' + t + ' ';
+  el.focus();
+  el.selectionStart = el.selectionEnd = el.value.length;
+}
+async function doReject(){
+  const reason=$('rj-note').value.trim();
+  if(!reason){ toast('กรุณาใส่เหตุผลก่อน',true); $('rj-note').focus(); return; }
+  const {error}=await sb.from('pr').update({ status:'rejected', reject_note:reason, reject_by:ME.role }).eq('id',REJECT_ID);
   if(error){toast(error.message,true);return;}
-  toast('ตีกลับแล้ว ↩️'); viewPR(id); loadPRs();
+  $('reject-modal').classList.add('hide');
+  toast('ตีกลับแล้ว ↩️'); viewPR(REJECT_ID); loadPRs();
 }
 
 /* ========================================================================
