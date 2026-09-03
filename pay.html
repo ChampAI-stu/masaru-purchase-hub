@@ -130,7 +130,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-03c</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-03d</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -249,6 +249,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
         </label>
         <button class="btn" onclick="buildDoc(true)">📄 สร้างใบปะหน้า</button>
       </div>
+      <div id="dcKsher"></div>
       <div class="scroll"><div id="dcPick"></div></div>
     </div>
     <div class="card" id="dcPaper" style="display:none">
@@ -848,6 +849,7 @@ async function loadAll(){
     pageAll('tax_summaries','*',null),
     pageAll('shipment_tracking','*',null)
   ]);
+  await loadWallet();     // ต้องมีก่อน renderDoc เพื่อคำนวณยอด Ksher ที่ต้องเติม
   if($('tab-doc').style.display!=='none')renderDoc();
   if($('tab-freight').style.display!=='none')renderFreight();
   if($('tab-lot').style.display!=='none'){fillLotSelect();renderLot();}
@@ -2076,6 +2078,7 @@ function renderDoc(){
   fillDocCompany();
   DOC_VIEW_IDS=null;                   // เปลี่ยนวัน/บริษัท/ช่องทาง = เริ่มใหม่
   const rows=docRows();
+  renderKsherBox();
   DOCSEL=new Set(rows.map(p=>String(p.id)));   // ติ๊กทั้งหมดไว้ก่อน (เทียบเป็น String เสมอ)
   if(!rows.length){
     const pend=docPending().length;
@@ -2381,6 +2384,66 @@ function goTab(t){
   if(t==='lot'){fillLotSelect();renderLot();}
 }
 
+/* กล่องสรุป Ksher ในหน้าเอกสารประจำวัน — บอกว่าวันนี้ต้องเติมเท่าไหร่ */
+const KSHER_BUFFER_KEY='masaru_ksher_buffer';
+function ksherBuffer(){ const v=parseFloat(localStorage.getItem(KSHER_BUFFER_KEY)); return isNaN(v)?2:v; }
+function setKsherBuffer(v){ localStorage.setItem(KSHER_BUFFER_KEY,String(parseFloat(v)||0)); renderDoc(); }
+
+function renderKsherBox(){
+  const box=$('dcKsher'); if(!box||!$('dcDate'))return;
+  const d=$('dcDate').value;
+  // งวดที่ต้องโอนผ่าน Ksher ในวันนั้น (ยังไม่จ่าย)
+  const due=PAYS.filter(p=>p.pay_date===d && p.channel===KSHER_CH && p.status!=='rejected' && p.status!=='paid');
+  const paidToday=PAYS.filter(p=>p.pay_date===d && p.channel===KSHER_CH && p.status==='paid');
+  if(!due.length && !paidToday.length){ box.innerHTML=''; return; }
+
+  const needCny=due.reduce((s,p)=>s+(Math.abs(+p.amount||0)),0);
+  const cur=walletBal();
+  const bal=cur._bal||0;
+  const buf=ksherBuffer();
+  const shortfall=Math.max(0, needCny-bal);
+  const suggest=shortfall>0 ? shortfall*(1+buf/100) : 0;
+  const rate=fxEst('CNY')||0;
+  const ok=shortfall<=0;
+
+  box.innerHTML=`
+  <div style="background:${ok?'#E8F5EC':'#FFF6E5'};border:1px solid ${ok?'#BFE2CB':'#F3DFB6'};
+       border-left:6px solid ${ok?'#1E7145':'#B45309'};border-radius:11px;padding:13px 16px;margin:10px 0">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <b style="font-size:14.5px;color:${ok?'#146C38':'#8a5a06'}">💰 Ksher Wallet — วันที่ ${esc(d)}</b>
+      ${paidToday.length?`<span class="pill" style="background:#EAF3DE;color:#1E7145">จ่ายไปแล้ว ${paidToday.length} งวด</span>`:''}
+      <div style="flex:1"></div>
+      <button class="btn mini ghost" onclick="goTab('wallet')">ดู Wallet →</button>
+      ${canEdit&&!ok?`<button class="btn mini" onclick="openWlFor(${suggest.toFixed(2)})">💵 เติม ${money(Math.ceil(suggest))} ¥</button>`:''}
+    </div>
+    <div style="display:flex;gap:26px;flex-wrap:wrap;margin-top:10px;font-size:13px">
+      <div><div class="muted" style="font-size:11.5px">ต้องจ่ายวันนี้</div>
+        <b style="font-size:17px">${money(needCny)} ¥</b>
+        <div class="muted" style="font-size:11px">${due.length} งวด</div></div>
+      <div><div class="muted" style="font-size:11.5px">คงเหลือใน Wallet</div>
+        <b style="font-size:17px;color:${bal>0?'#146C38':'#B01722'}">${money(bal)} ¥</b>
+        <div class="muted" style="font-size:11px">เรทเฉลี่ย ${cur._avg?cur._avg.toFixed(4):'-'}</div></div>
+      <div><div class="muted" style="font-size:11.5px">ต้องเติมเพิ่ม</div>
+        <b style="font-size:17px;color:${shortfall>0?'#B45309':'#146C38'}">${shortfall>0?money(shortfall)+' ¥':'ไม่ต้องเติม ✅'}</b></div>
+      ${shortfall>0?`
+      <div><div class="muted" style="font-size:11.5px">แนะนำเติม (เผื่อ
+        <input type="number" step="0.5" value="${buf}" onchange="setKsherBuffer(this.value)"
+          style="width:52px;padding:1px 4px;border:1px solid var(--line);border-radius:5px;font-size:11px">%)</div>
+        <b style="font-size:17px;color:#B45309">${money(Math.ceil(suggest))} ¥</b>
+        ${rate?`<div class="muted" style="font-size:11px">≈ ${money(Math.ceil(suggest)*rate)} ฿ (เรท ~${rate})</div>`:''}</div>`:''}
+    </div>
+    ${shortfall<=0&&needCny>0?`<div class="muted" style="font-size:12px;margin-top:8px">
+       เงินใน Wallet พอจ่ายวันนี้ — เหลือหลังจ่าย <b>${money(bal-needCny)} ¥</b> ยกไปวันถัดไป</div>`:''}
+  </div>`;
+}
+/* เปิดฟอร์มเติมเงินพร้อมเติมจำนวนที่แนะนำให้เลย */
+function openWlFor(cny){
+  openWl('topup');
+  $('w_cny').value=Math.ceil(cny);
+  $('w_note').value='เติมสำหรับจ่ายวันที่ '+$('dcDate').value;
+  wlCalc();
+}
+
 /* ==================================================================
    แท็บ Ksher Wallet — บัญชีเดินสะพัด
    ยอดคงเหลือ = ผลรวม amount_cny ทั้งหมด (เติม + / ตัดจ่าย −)
@@ -2500,13 +2563,13 @@ async function saveWl(){
   if(error)return alert('บันทึกไม่สำเร็จ: '+error.message
     +(/does not exist/i.test(error.message)?'\n\nยังไม่ได้สร้างตาราง — รันไฟล์ ksher_wallet.sql ก่อน':''));
   $('wlBg').style.display='none';
-  await loadWallet(); renderWallet(); toast('บันทึกแล้ว ✅');
+  await loadWallet(); renderWallet(); if($('dcKsher'))renderKsherBox(); toast('บันทึกแล้ว ✅');
 }
 async function delWl(id){
   if(!confirm('ลบรายการนี้? ยอดคงเหลือจะถูกคำนวณใหม่'))return;
   const {error}=await sb.from('ksher_wallet').delete().eq('id',id);
   if(error)return toast('ลบไม่สำเร็จ: '+error.message);
-  await loadWallet(); renderWallet(); toast('ลบแล้ว');
+  await loadWallet(); renderWallet(); if($('dcKsher'))renderKsherBox(); toast('ลบแล้ว');
 }
 /* ดึงงวดจ่ายที่โอนผ่าน Ksher มาตัดยอดอัตโนมัติ (กันซ้ำด้วย payment_id) */
 async function syncKsherSpend(){
@@ -2521,7 +2584,7 @@ async function syncKsherSpend(){
       note:(p.installment||'')+(p.payee?' · '+String(p.payee).split('\n')[0]:''), actor:ME};});
   const {error}=await sb.from('ksher_wallet').insert(rows);
   if(error)return alert('ตัดยอดไม่สำเร็จ: '+error.message);
-  await loadWallet(); renderWallet(); toast(`ตัดยอด ${rows.length} งวดแล้ว ✅`);
+  await loadWallet(); renderWallet(); if($('dcKsher'))renderKsherBox(); toast(`ตัดยอด ${rows.length} งวดแล้ว ✅`);
 }
 function exportWallet(){
   const rows=[['วันที่','ประเภท','PO','รายละเอียด','หยวน','เรท','บาท','ค่าธรรมเนียม','คงเหลือ (¥)','เรทเฉลี่ย','มูลค่าคงเหลือ (฿)']];
