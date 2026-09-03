@@ -130,7 +130,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-03</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -1426,33 +1426,37 @@ function renderPlan(){
     <div class="kpi"><div class="lbl">ยอดจ่ายแล้ว (บาท)</div><div class="val">${money(sumThb(paid))}</div></div>`;
   renderPlanAlert();
   if(!rows.length){$('planBody').innerHTML='<div class="empty">วันนี้ยังไม่มีงวดจ่าย — เพิ่มจากแท็บ Tracking บิล (+ งวดจ่าย โดยเลือกวันที่นี้)</div>';return;}
-  const cos=[...new Set(rows.map(p=>billOf(p.bill_id).company||'-'))];
+  // 🔑 จัดกลุ่มตาม "ช่องทางการโอน + ประเภทการจ่าย" — ตรงกับวิธีโอนเงินจริง
+  const keyOf=p=>(p.channel||'— ยังไม่ระบุช่องทาง —')+' ||| '+(p.pay_type||'— ยังไม่ระบุประเภท —');
+  const keys=[...new Set(rows.map(keyOf))].sort();
   let h='';
-  cos.forEach(co=>{
-    const grp=rows.filter(p=>(billOf(p.bill_id).company||'-')===co);
+  keys.forEach(key=>{
+    const [ch,pt]=key.split(' ||| ');
+    const grp=rows.filter(p=>keyOf(p)===key);
 
     const sumCur=c=>grp.filter(p=>(billOf(p.bill_id).currency||'CNY')===c).reduce((s,p)=>s+(+p.amount||0),0);
     const cny=sumCur('CNY'), usd=sumCur('USD'), thbD=sumCur('THB');
     const done=grp.filter(p=>p.status==='paid').length;
-    const CO_COLOR={LIKESHOP:'#1F3864',MASARU:'#D0212B',DAIKI:'#B45309','นามบุคคล':'#1E7145'};
-    const cc=CO_COLOR[co]||'#334155';
+    const CH_COLOR={'JMF CARGO':'#1E7145','Ksher Payment Co.Ltd.':'#2E75B6','ธนาคาร (SWIFT Code)':'#B45309'};
+    const PT_COLOR={LIKESHOP:'#1F3864',MASARU:'#D0212B',DAIKI:'#B45309','นามบุคคล':'#1E7145'};
+    const cc=CH_COLOR[ch]||'#334155';
+    const pc=PT_COLOR[pt]||'#64748B';
     const chips=[]; if(cny)chips.push(money(cny)+' ¥'); if(usd)chips.push(money(usd)+' $'); if(thbD)chips.push(money(thbD)+' ฿');
-    h+=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:22px 0 0;padding:11px 15px;
+    h+=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 0;padding:11px 15px;
         background:${cc}12;border-left:6px solid ${cc};border-radius:10px">
-      <span style="font-size:16px;font-weight:800;color:${cc}">🏢 ${esc(co)}</span>
+      <span style="font-size:15.5px;font-weight:800;color:${cc}">🏦 ${esc(ch)}</span>
+      <span style="background:${pc};color:#fff;font-size:12px;font-weight:800;padding:3px 11px;border-radius:20px">${esc(pt)}</span>
       <span style="background:${cc};color:#fff;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:20px">${grp.length} งวด</span>
       ${done?`<span style="background:#EAF3DE;color:var(--green);font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:20px">✅ จ่ายแล้ว ${done}</span>`:''}
       <div style="flex:1"></div>
       <span style="font-size:13px;color:${cc}">${esc(chips.join(' + '))}</span>
       <span style="font-size:15px;font-weight:800;color:${cc}">≈ ${money(sumThb(grp))} ฿</span>
     </div>
-    <table><thead><tr><th>PO</th><th>SKU</th><th>งวด</th><th class="right">ยอด</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทางการโอน</th><th>ประเภทการจ่าย</th><th>ข้อมูลผู้รับเงิน</th><th>ผู้รับผิดชอบ</th><th>หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
+    <table><thead><tr><th>PO</th><th>บริษัท</th><th>SKU</th><th>งวด</th><th class="right">ยอด</th><th class="right">เรท</th><th class="right">บาท</th><th>ข้อมูลผู้รับเงิน</th><th>ผู้รับผิดชอบ</th><th>หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
     grp.forEach(p=>{const b=billOf(p.bill_id);const s=curSym(b.currency);
-      h+=`<tr><td><b>${esc(b.po_number||'-')}</b></td><td>${esc(b.sku||'-')}</td><td>${esc(p.installment||'-')}</td>
+      h+=`<tr><td><b>${esc(b.po_number||'-')}</b></td><td>${b.company?`<span class="tag-co">${esc(b.company)}</span>`:'<span class="muted">-</span>'}</td><td>${esc(b.sku||'-')}</td><td>${esc(p.installment||'-')}</td>
         <td class="right"><b>${money(p.amount)} ${s}</b></td>
         <td class="right">${p.rate?esc(p.rate):(b.currency==='THB'?'<span class="muted">-</span>':'<span class="muted">~'+fxEst(b.currency)+'</span>')}</td><td class="right">${isEst(p)?'<span class="muted">~</span> ':''}${money(thbOf(p))}</td>
-        <td>${esc(p.channel||'-')}</td>
-        <td>${p.pay_type?`<span class="pill" style="background:#EEF2F7;color:#1F3864">${esc(p.pay_type)}</span>`:'<span class="muted">-</span>'}</td>
         <td>${p.payee?`<div style="font-size:11.5px;white-space:pre-wrap;max-width:230px">${esc(p.payee)}</div>`:'<span class="muted">-</span>'}</td>
         <td>${esc(p.responsible||'-')}</td>
         <td style="font-size:12px;max-width:220px">${p.note?esc(p.note):'<span class="muted">-</span>'}</td>
@@ -1751,7 +1755,7 @@ async function saveFBill(){
   if(error){
     console.error('freight_bills:',error);
     const miss=/does not exist|schema cache/i.test(error.message||'');
-    alert(miss ? 'ยังไม่ได้สร้างตารางในฐานข้อมูล\n\nกรุณารันไฟล์ freight_setup.sql บน Supabase (polikeshop) ก่อน แล้วลองใหม่\n\nรายละเอียด: '+error.message
+    alert(miss ? 'ยังไม่ได้สร้างตารางในฐานข้อมูล\n\nกรุณารันไฟล์ freight_setup.sql บน Supabase (unlvcdgqqljuoyvionqx) ก่อน แล้วลองใหม่\n\nรายละเอียด: '+error.message
                : 'บันทึกไม่สำเร็จ: '+error.message);
     return;
   }
@@ -2261,7 +2265,7 @@ async function saveDoc(){
   if(error){
     console.error('pay_docs:',error);
     const miss=/does not exist|schema cache/i.test(error.message||'');
-    alert(miss ? 'ยังไม่ได้สร้างตาราง pay_docs ในฐานข้อมูล\n\nกรุณารันไฟล์ pay_docs_patch.sql บน Supabase (polikeshop) ก่อน แล้วลองใหม่\n\nรายละเอียด: '+error.message
+    alert(miss ? 'ยังไม่ได้สร้างตาราง pay_docs ในฐานข้อมูล\n\nกรุณารันไฟล์ pay_docs_patch.sql บน Supabase (unlvcdgqqljuoyvionqx) ก่อน แล้วลองใหม่\n\nรายละเอียด: '+error.message
                : 'บันทึกไม่สำเร็จ: '+error.message);
     return;
   }
