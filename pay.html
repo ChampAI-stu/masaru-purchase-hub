@@ -130,7 +130,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-03e</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-03f</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -629,14 +629,14 @@ td.num,th.num{text-align:right;white-space:nowrap}
           <optgroup label="นามบุคคล"><option>คุณวุฒิ</option><option>คุณแนน</option></optgroup>
         </select></div>
       <div class="fld"><label>วันที่ ★</label><input type="date" id="w_date"></div>
-      <div class="fld"><label id="w_amtLabel">จำนวนหยวนที่เติม (¥) ★</label>
-        <input type="number" step="0.01" id="w_cny" oninput="wlCalc()"></div>
-      <div class="fld"><label>เรทโอน (บาท/หยวน)</label>
+      <div class="fld"><label id="w_amtLabel">เงินบาทที่เติม (฿) ★</label>
+        <input type="number" step="0.01" id="w_thb" oninput="wlCalc()"></div>
+      <div class="fld"><label>เรทวันนั้น (บาท/หยวน)</label>
         <input type="number" step="0.0001" id="w_rate" oninput="wlCalc()"></div>
-      <div class="fld"><label>ค่าธรรมเนียม (฿)</label>
-        <input type="number" step="0.01" id="w_fee" value="0" oninput="wlCalc()"></div>
-      <div class="fld" style="grid-column:2/-1"><label>รวมเงินบาทที่โอนจริง (฿)</label>
-        <input type="number" step="0.01" id="w_thb" oninput="wlBack()"></div>
+      <div class="fld"><label>คิดเป็นหยวน (¥) — อ้างอิง</label>
+        <input type="number" step="0.01" id="w_cny" oninput="wlBack()"></div>
+      <div class="fld"><label>ค่าธรรมเนียม (฿) — รวมในยอดแล้ว</label>
+        <input type="number" step="0.01" id="w_fee" value="0"></div>
     </div>
     <div class="fld"><label>หมายเหตุ</label><input id="w_note" placeholder="เช่น เติมเผื่อเรทขึ้น / โอนจาก KBank"></div>
     <div id="w_preview" style="background:#F4F6FA;border-radius:9px;padding:11px 13px;font-size:12.5px;margin-top:10px"></div>
@@ -2454,9 +2454,14 @@ function renderKsherBox(){
     const grp=dayAll.filter(p=>(p.ksher_user||'(ยังไม่ระบุ User)')===u);
     const due=grp.filter(p=>p.status!=='paid');
     const paid=grp.filter(p=>p.status==='paid');
-    const need=due.reduce((s,p)=>s+Math.abs(+p.amount||0),0);
+    // 💡 Wallet เป็นเงินบาท → แปลงยอดหยวนที่ต้องจ่ายด้วยเรทของวันนั้นก่อน
+    const needCny=due.reduce((s,p)=>s+Math.abs(+p.amount||0),0);
+    const need=due.reduce((s,p)=>{
+      const c=Math.abs(+p.amount||0), r=(+p.rate)||rate||0;
+      return s+((+p.amount_thb)||(c*r));
+    },0);
     const known=KSHER_USERS.includes(u);
-    const cur=known?walletBal(u):{_bal:0,_cost:0,_avg:0};
+    const cur=known?walletBal(u):{_bal:0};
     const bal=cur._bal||0;
     const short=Math.max(0,need-bal);
     const sug=short>0?Math.ceil(short*(1+buf/100)):0;
@@ -2473,17 +2478,19 @@ function renderKsherBox(){
       ${!known?`<div style="color:#B01722;font-size:12px;margin-top:7px">
           ยังไม่ได้ระบุ User Ksher — กด "แก้" ที่งวดนั้นแล้วเลือก User ก่อน จึงจะคำนวณยอดเติมได้</div>`
       :`<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:9px;font-size:12.5px">
-        <div><div class="muted" style="font-size:11px">ต้องจ่าย</div><b style="font-size:15px">${money(need)} ¥</b></div>
-        <div><div class="muted" style="font-size:11px">คงเหลือ</div>
-          <b style="font-size:15px;color:${bal>0?'#146C38':'#B01722'}">${money(bal)} ¥</b>
-          <div class="muted" style="font-size:10.5px">เรท ${cur._avg?cur._avg.toFixed(4):'-'}</div></div>
+        <div><div class="muted" style="font-size:11px">ต้องจ่าย</div>
+          <b style="font-size:15px">${money(need)} ฿</b>
+          <div class="muted" style="font-size:10.5px">${money(needCny)} ¥${rate?' @'+rate:''}</div></div>
+        <div><div class="muted" style="font-size:11px">คงเหลือใน Wallet</div>
+          <b style="font-size:15px;color:${bal>0?'#146C38':'#B01722'}">${money(bal)} ฿</b>
+          ${rate?`<div class="muted" style="font-size:10.5px">≈ ${money(balToCny(bal,rate))} ¥</div>`:''}</div>
         <div><div class="muted" style="font-size:11px">ต้องเติม</div>
-          <b style="font-size:15px;color:${short>0?'#B45309':'#146C38'}">${short>0?money(sug)+' ¥':'พอแล้ว ✅'}</b>
-          ${short>0&&rate?`<div class="muted" style="font-size:10.5px">≈ ${money(sug*rate)} ฿</div>`:''}</div>
+          <b style="font-size:15px;color:${short>0?'#B45309':'#146C38'}">${short>0?money(sug)+' ฿':'พอแล้ว ✅'}</b>
+          ${short>0?`<div class="muted" style="font-size:10.5px">เผื่อ ${buf}% แล้ว</div>`:''}</div>
         <div style="flex:1"></div>
-        ${canEdit&&short>0?`<button class="btn mini" style="align-self:center" onclick="openWlFor(${sug},'${esc(u)}')">💵 เติม</button>`:''}
+        ${canEdit&&short>0?`<button class="btn mini" style="align-self:center" onclick="openWlFor(${sug},'${esc(u)}',${rate||0})">💵 เติม</button>`:''}
       </div>
-      ${ok&&need>0?`<div class="muted" style="font-size:11.5px;margin-top:6px">เหลือหลังจ่าย <b>${money(bal-need)} ¥</b> ยกไปวันถัดไป</div>`:''}`}
+      ${ok&&need>0?`<div class="muted" style="font-size:11.5px;margin-top:6px">เหลือหลังจ่าย <b>${money(bal-need)} ฿</b> ยกไปวันถัดไป</div>`:''}`}
     </div>`;
   });
 
@@ -2491,8 +2498,8 @@ function renderKsherBox(){
   <div style="background:#F7F9FC;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
       <b style="font-size:14.5px">💰 Ksher Wallet — วันที่ ${esc(d)}</b>
-      <span class="pill" style="background:#EEF2F7;color:#1F3864">รวมต้องจ่าย ${money(totalNeed)} ¥</span>
-      ${totalShort?`<span class="pill" style="background:#FFF6E5;color:#8a5a06">รวมต้องเติม ${money(totalShort)} ¥</span>`
+      <span class="pill" style="background:#EEF2F7;color:#1F3864">รวมต้องจ่าย ${money(totalNeed)} ฿</span>
+      ${totalShort?`<span class="pill" style="background:#FFF6E5;color:#8a5a06">รวมต้องเติม ${money(totalShort)} ฿</span>`
                   :`<span class="pill" style="background:#E8F5EC;color:#146C38">เงินพอทุก User ✅</span>`}
       <div style="flex:1"></div>
       <span class="muted" style="font-size:11.5px">เผื่อ
@@ -2504,10 +2511,11 @@ function renderKsherBox(){
   </div>`;
 }
 /* เปิดฟอร์มเติมเงินพร้อมเติมจำนวนที่แนะนำให้เลย */
-function openWlFor(cny,user){
+function openWlFor(thb,user,rate){
   openWl('topup');
   if(user)$('w_user').value=user;
-  $('w_cny').value=Math.ceil(cny);
+  if(rate)$('w_rate').value=rate;
+  $('w_thb').value=Math.ceil(thb);
   $('w_note').value='เติมสำหรับจ่ายวันที่ '+$('dcDate').value;
   wlCalc();
 }
@@ -2524,35 +2532,29 @@ async function loadWallet(){
   if(error){ WALLET=[]; LOAD_ERR['ksher_wallet']=error.message; return; }
   delete LOAD_ERR['ksher_wallet']; WALLET=data||[];
 }
-/* เดินบัญชีทีละรายการ เก็บยอดคงเหลือ + เรทเฉลี่ยสะสม */
+/* เดินบัญชีเป็น "เงินบาท" — หยวนเป็นแค่ค่าอ้างอิงตามเรทของวันนั้น */
 function walletRun(user){
-  let bal=0, cost=0;                     // cost = มูลค่าบาทของหยวนที่ถืออยู่
+  let bal=0;
   return WALLET.filter(w=>!user||(w.ksher_user||'')===user).map(w=>{
-    const cny=+w.amount_cny||0;
-    if(cny>0){                           // เติมเข้า → บวกทั้งจำนวนและต้นทุน
-      const thb=+w.amount_thb||((+w.rate||0)*cny)+(+w.fee_thb||0);
-      bal+=cny; cost+=thb;
-    }else{                               // ตัดออก → หักด้วยเรทเฉลี่ยขณะนั้น
-      const avg=bal>0?cost/bal:0;
-      bal+=cny; cost+=cny*avg;
-      if(bal<0.0001){bal=Math.max(bal,0);cost=Math.max(cost,0);}
-    }
-    return {...w, _bal:bal, _cost:cost, _avg: bal>0?cost/bal:0};
+    bal += (+w.amount_thb||0);
+    return {...w, _bal:bal};
   });
 }
-function walletBal(user){ const r=walletRun(user); return r.length?r[r.length-1]:{_bal:0,_cost:0,_avg:0}; }
-/* ยอดคงเหลือทุก User พร้อมกัน */
+function walletBal(user){ const r=walletRun(user); return r.length?r[r.length-1]:{_bal:0}; }
 function walletAll(){ return KSHER_USERS.map(u=>({user:u, ...walletBal(u)})); }
+/* ยอดบาทคงเหลือ → คิดเป็นหยวนได้เท่าไหร่ที่เรทวันนี้ */
+function balToCny(thb,rate){ return rate>0 ? thb/rate : 0; }
 
 function renderWallet(){
   if(!$('wlBody'))return;
   if(!$('wlMonth').value)$('wlMonth').value=monthStr();
   const mo=$('wlMonth').value, ty=$('wlType').value, u=$('wlUser').value;
   const run=walletRun(u);
-  const cur=run.length?run[run.length-1]:{_bal:0,_cost:0,_avg:0};
+  const cur=run.length?run[run.length-1]:{_bal:0};
   const inMo=run.filter(w=>String(w.txn_date||'').slice(0,7)===mo);
-  const topM=inMo.filter(w=>+w.amount_cny>0).reduce((s,w)=>s+(+w.amount_cny||0),0);
-  const useM=inMo.filter(w=>+w.amount_cny<0).reduce((s,w)=>s-(+w.amount_cny||0),0);
+  const topM=inMo.filter(w=>+w.amount_thb>0).reduce((s,w)=>s+(+w.amount_thb||0),0);
+  const useM=inMo.filter(w=>+w.amount_thb<0).reduce((s,w)=>s-(+w.amount_thb||0),0);
+  const rNow=fxEst('CNY')||0;
 
   // การ์ดยอดคงเหลือของทั้ง 5 User — คลิกเพื่อกรอง
   const all=walletAll();
@@ -2560,10 +2562,10 @@ function renderWallet(){
     <div class="kpi ${a._bal<0?'red':(a._bal>0?'green':'')}" style="cursor:pointer;${u===a.user?'outline:3px solid #FFD966':''}"
          onclick="$('wlUser').value='${esc(a.user)}';renderWallet()">
       <div class="lbl">${KSHER_PERSONS.includes(a.user)?'👤':'🏢'} ${esc(a.user)}</div>
-      <div class="val">${money(a._bal)}<span style="font-size:.45em"> ¥</span></div>
-      <div class="lbl" style="opacity:.75">≈ ${money(a._cost)} ฿ · เรท ${a._avg?a._avg.toFixed(4):'-'}</div>
+      <div class="val">${money(a._bal)}<span style="font-size:.45em"> ฿</span></div>
+      <div class="lbl" style="opacity:.75">${rNow?('≈ '+money(balToCny(a._bal,rNow))+' ¥ @'+rNow):'ใส่เรทในแท็บแผนจ่าย'}</div>
     </div>`).join('')
-    + `<div class="kpi gold"><div class="lbl">${u?('เดือนนี้ · '+esc(u)):'เดือนนี้ · ทุก User'}</div>
+    + `<div class="kpi gold"><div class="lbl">${u?('เดือนนี้ · '+esc(u)):'เดือนนี้ · ทุก User'} (บาท)</div>
         <div class="val" style="font-size:19px">+${money(topM)}<span style="font-size:.55em"> เติม</span></div>
         <div class="lbl" style="opacity:.75">−${money(useM)} ใช้ไป</div></div>`;
 
@@ -2574,21 +2576,20 @@ function renderWallet(){
 
   const T={topup:['💵 เติมเงิน','#1E7145'],spend:['📤 ตัดจ่าย','#2E75B6'],adjust:['⚙️ ปรับยอด','#B45309']};
   let h=`<table><thead><tr><th style="width:98px">วันที่</th><th style="width:110px">User</th><th style="width:110px">ประเภท</th>
-    <th>รายละเอียด</th><th class="right">หยวน (¥)</th><th class="right">เรท</th>
-    <th class="right">บาท</th><th class="right">คงเหลือ (¥)</th><th class="right">เรทเฉลี่ย</th>
+    <th>รายละเอียด</th><th class="right">บาท (฿)</th><th class="right">เรทวันนั้น</th>
+    <th class="right">หยวน (¥)</th><th class="right">คงเหลือ (฿)</th>
     ${canEdit?'<th style="width:52px"></th>':''}</tr></thead><tbody>`;
   list.forEach(w=>{
-    const cny=+w.amount_cny||0, t=T[w.txn_type]||['—','#64748B'];
+    const thb=+w.amount_thb||0, cny=+w.amount_cny||0, t=T[w.txn_type]||['—','#64748B'];
     h+=`<tr>
       <td>${esc(w.txn_date||'-')}</td>
       <td><span class="pill" style="background:#EEF2F7;color:#1F3864;font-weight:700">${KSHER_PERSONS.includes(w.ksher_user)?'👤':'🏢'} ${esc(w.ksher_user||'-')}</span></td>
       <td><span class="pill" style="background:${t[1]}1a;color:${t[1]};font-weight:700">${t[0]}</span></td>
       <td style="font-size:12px">${w.po_number?`<b>${esc(w.po_number)}</b> `:''}${esc(w.note||'')||'<span class="muted">-</span>'}</td>
-      <td class="right" style="color:${cny>0?'#1E7145':'#B01722'};font-weight:800">${cny>0?'+':''}${money(cny)}</td>
+      <td class="right" style="color:${thb>0?'#1E7145':'#B01722'};font-weight:800">${thb>0?'+':''}${money(thb)}</td>
       <td class="right">${w.rate?(+w.rate).toFixed(4):'<span class="muted">-</span>'}</td>
-      <td class="right">${w.amount_thb?money(w.amount_thb):'<span class="muted">-</span>'}</td>
+      <td class="right muted">${cny?money(Math.abs(cny))+' ¥':'-'}</td>
       <td class="right"><b>${money(w._bal)}</b></td>
-      <td class="right muted">${w._avg?w._avg.toFixed(4):'-'}</td>
       ${canEdit?`<td><button class="btn mini red" onclick="delWl('${w.id}')">✕</button></td>`:''}
     </tr>`;});
   $('wlBody').innerHTML=h+'</tbody></table>';
@@ -2601,38 +2602,40 @@ function openWl(type){
   const top=type==='topup';
   $('wlTitle').textContent = top?'💵 เติมเงินเข้า Wallet':'⚙️ ปรับยอด Wallet';
   $('wlHint').textContent  = top
-    ? 'ใส่จำนวนหยวนที่เติม + เรทโอน ระบบจะคำนวณบาทให้ · ยอดที่เหลือจะยกไปวันถัดไปเอง'
-    : 'ใส่จำนวนหยวนเป็นบวก = เพิ่มยอด / ติดลบ = หักยอด (เช่น ค่าธรรมเนียม เงินคืน)';
-  $('w_amtLabel').textContent = top?'จำนวนหยวนที่เติม (¥) ★':'จำนวนหยวน (+/−) ★';
+    ? 'Wallet เก็บเป็นเงินบาท — ใส่ยอดบาทที่โอนเข้า ใส่เรทวันนั้นเพื่อดูว่าได้กี่หยวน · เงินเหลือยกไปวันถัดไปเอง'
+    : 'ใส่ยอดบาทเป็นบวก = เพิ่มยอด / ติดลบ = หักยอด (เช่น ค่าธรรมเนียม เงินคืน)';
+  $('w_amtLabel').textContent = top?'เงินบาทที่เติม (฿) ★':'เงินบาท (+/−) ★';
   $('w_user').value=$('wlUser').value||''; $('w_date').value=todayStr(); $('w_cny').value=''; $('w_fee').value='0';
   $('w_rate').value=fxEst('CNY')||''; $('w_thb').value=''; $('w_note').value='';
   wlCalc(); $('wlBg').style.display='flex';
 }
-function wlCalc(){
-  const cny=parseFloat($('w_cny').value)||0, r=parseFloat($('w_rate').value)||0, fee=parseFloat($('w_fee').value)||0;
-  if(cny&&r)$('w_thb').value=(cny*r+fee).toFixed(2);
+function wlCalc(){   // ใส่บาท + เรท → คิดเป็นหยวนให้ดู
+  const thb=parseFloat($('w_thb').value)||0, r=parseFloat($('w_rate').value)||0;
+  if(thb&&r)$('w_cny').value=(thb/r).toFixed(2);
   wlPreview();
 }
-function wlBack(){   // กรอกบาทมา → ถอดเรทกลับ
-  const cny=parseFloat($('w_cny').value)||0, thb=parseFloat($('w_thb').value)||0, fee=parseFloat($('w_fee').value)||0;
-  if(cny&&thb)$('w_rate').value=((thb-fee)/cny).toFixed(4);
+function wlBack(){   // ใส่หยวน + เรท → คิดกลับเป็นบาท
+  const cny=parseFloat($('w_cny').value)||0, r=parseFloat($('w_rate').value)||0;
+  if(cny&&r)$('w_thb').value=(cny*r).toFixed(2);
   wlPreview();
 }
 function wlPreview(){
-  const cur=walletBal($('w_user').value), cny=parseFloat($('w_cny').value)||0;
-  const after=cur._bal+cny;
-  $('w_preview').innerHTML=`<b>${esc($('w_user').value||'— ยังไม่เลือก User —')}</b> · ยอดก่อนทำรายการ <b>${money(cur._bal)} ¥</b>
-    &nbsp;→&nbsp; หลังทำรายการ <b style="color:${after<0?'#B01722':'#1E7145'}">${money(after)} ¥</b>
+  const cur=walletBal($('w_user').value), thb=parseFloat($('w_thb').value)||0;
+  const after=cur._bal+thb, r=parseFloat($('w_rate').value)||0;
+  $('w_preview').innerHTML=`<b>${esc($('w_user').value||'— ยังไม่เลือก User —')}</b> · ยอดก่อนทำรายการ <b>${money(cur._bal)} ฿</b>
+    &nbsp;→&nbsp; หลังทำรายการ <b style="color:${after<0?'#B01722':'#1E7145'}">${money(after)} ฿</b>
+    ${r?`<div class="muted" style="margin-top:4px">คิดเป็นหยวนที่เรท ${r} → เหลือ <b>${money(balToCny(after,r))} ¥</b></div>`:''}
     ${after<0?'<span style="color:#B01722"> ⚠️ ยอดติดลบ — เติมเงินก่อน</span>':''}`;
 }
 async function saveWl(){
-  const cny=parseFloat($('w_cny').value)||0;
+  const thb=parseFloat($('w_thb').value)||0;
   if(!$('w_user').value)return toast('เลือก User Ksher ก่อน');
   if(!$('w_date').value)return toast('เลือกวันที่ก่อน');
-  if(!cny)return toast('ใส่จำนวนหยวนก่อน');
-  if(WL_TYPE==='topup'&&cny<=0)return toast('เติมเงินต้องเป็นจำนวนบวก');
-  const rec={ksher_user:$('w_user').value, txn_date:$('w_date').value, txn_type:WL_TYPE, amount_cny:cny,
-    rate:parseFloat($('w_rate').value)||null, amount_thb:parseFloat($('w_thb').value)||null,
+  if(!thb)return toast('ใส่ยอดเงินบาทก่อน');
+  if(WL_TYPE==='topup'&&thb<=0)return toast('เติมเงินต้องเป็นจำนวนบวก');
+  const rec={ksher_user:$('w_user').value, txn_date:$('w_date').value, txn_type:WL_TYPE,
+    amount_thb:thb, amount_cny:parseFloat($('w_cny').value)||null,
+    rate:parseFloat($('w_rate').value)||null,
     fee_thb:parseFloat($('w_fee').value)||0, note:$('w_note').value.trim()||null, actor:ME};
   const {error}=await sb.from('ksher_wallet').insert(rec);
   if(error)return alert('บันทึกไม่สำเร็จ: '+error.message
@@ -2659,7 +2662,11 @@ async function syncKsherSpend(){
   if(!ready.length)return toast('ไม่มีงวด Ksher ใหม่ที่ตัดยอดได้');
   if(!confirm(`พบ ${ready.length} งวดที่โอนผ่าน Ksher แต่ยังไม่ได้ตัดยอด Wallet\n\nตัดยอดทั้งหมดเลยไหม?`))return;
   const rows=ready.map(p=>{const b=billOf(p.bill_id);
-    return {ksher_user:p.ksher_user, txn_date:p.pay_date, txn_type:'spend', amount_cny:-(Math.abs(+p.amount||0)),
+    const cny=Math.abs(+p.amount||0);
+    const r=(+p.rate)||fxEst(b.currency||'CNY')||0;      // เรทของวันนั้น
+    const thb=(+p.amount_thb)||(cny*r);                   // ตัดเป็นเงินบาท
+    return {ksher_user:p.ksher_user, txn_date:p.pay_date, txn_type:'spend',
+      amount_thb:-thb, amount_cny:-cny, rate:r||null,
       payment_id:String(p.id), po_number:b.po_number||null,
       note:(p.installment||'')+(p.payee?' · '+String(p.payee).split('\n')[0]:''), actor:ME};});
   const {error}=await sb.from('ksher_wallet').insert(rows);
@@ -2667,13 +2674,13 @@ async function syncKsherSpend(){
   await loadWallet(); renderWallet(); if($('dcKsher'))renderKsherBox(); toast(`ตัดยอด ${rows.length} งวดแล้ว ✅`);
 }
 function exportWallet(){
-  const rows=[['วันที่','User','ประเภท','PO','รายละเอียด','หยวน','เรท','บาท','ค่าธรรมเนียม','คงเหลือ (¥)','เรทเฉลี่ย','มูลค่าคงเหลือ (฿)']];
+  const rows=[['วันที่','User','ประเภท','PO','รายละเอียด','บาท','เรทวันนั้น','หยวนอ้างอิง','ค่าธรรมเนียม','คงเหลือ (฿)']];
   const T={topup:'เติมเงิน',spend:'ตัดจ่าย',adjust:'ปรับยอด'};
   walletRun($('wlUser').value).forEach(w=>rows.push([w.txn_date||'',w.ksher_user||'',T[w.txn_type]||w.txn_type,w.po_number||'',w.note||'',
-    +w.amount_cny||0,+w.rate||'',+w.amount_thb||'',+w.fee_thb||0,
-    +w._bal.toFixed(2),+w._avg.toFixed(4),+w._cost.toFixed(2)]));
+    +w.amount_thb||0,+w.rate||'',Math.abs(+w.amount_cny||0)||'',+w.fee_thb||0,
+    +w._bal.toFixed(2)]));
   const ws=XLSX.utils.aoa_to_sheet(rows), wb=XLSX.utils.book_new();
-  ws['!cols']=[{wch:11},{wch:12},{wch:11},{wch:12},{wch:34},{wch:13},{wch:9},{wch:13},{wch:11},{wch:13},{wch:10},{wch:15}];
+  ws['!cols']=[{wch:11},{wch:12},{wch:11},{wch:12},{wch:34},{wch:14},{wch:11},{wch:13},{wch:11},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws,'Ksher Wallet');
   XLSX.writeFile(wb,'KsherWallet_'+($('wlMonth').value||monthStr())+'.xlsx');
 }
