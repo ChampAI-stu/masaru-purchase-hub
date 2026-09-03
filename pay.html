@@ -111,6 +111,8 @@ td.num,th.num{text-align:right;white-space:nowrap}
   border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--navy);z-index:2}
 .modal .expand-btn:hover{background:#E2E8F0}
 .modal.wide{max-width:calc(100vw - 28px)!important}
+/* โมดัลที่เปิดซ้อน (เช่น แก้งวด เปิดจากหน้าต่างประวัติ) ต้องอยู่บนสุด */
+#payBg,#slipBg,#slipViewBg,#gasBg,#memoDocBg{z-index:70}
 .modal h3{color:var(--navy);margin-bottom:14px;padding-right:96px}
 .modal .scroll table{min-width:1180px}
 .modal .scroll td{vertical-align:top}
@@ -513,13 +515,13 @@ td.num,th.num{text-align:right;white-space:nowrap}
       <div class="fld"><label>งวด</label>
         <input id="p_inst" list="instList" placeholder="มัดจำครั้งที่ 1"><datalist id="instList"><option value="มัดจำครั้งที่ 1"><option value="มัดจำครั้งที่ 2"><option value="จ่ายยอดค้างชำระ"><option value="จ่ายเต็มจำนวน"></datalist></div>
       <div class="fld" style="grid-column:1/-1"><label>ข้อมูลผู้รับเงิน (ชื่อบัญชี / ธนาคาร / เลขบัญชี)</label>
-        <textarea id="p_payee" rows="2" placeholder="เช่น&#10;Zhejiang XX Trading Co.,Ltd&#10;Bank of China · A/C 6217 0000 1234 5678 · SWIFT BKCHCNBJ"></textarea></div>
+        <textarea id="p_payee" rows="6" style="min-height:110px;max-height:260px" placeholder="เช่น&#10;Zhejiang XX Trading Co.,Ltd&#10;Bank of China · A/C 6217 0000 1234 5678 · SWIFT BKCHCNBJ"></textarea></div>
       <div class="fld"><label>ผู้รับผิดชอบ</label><input id="p_resp"></div>
     </div>
     <div class="fld"><label>หมายเหตุ</label><input id="p_note"></div>
     <div class="warnbox" id="payWarn"></div>
     <div class="row" style="margin-top:16px;justify-content:flex-end">
-      <button class="btn ghost" onclick="$('payBg').style.display='none'">ยกเลิก</button>
+      <button class="btn ghost" onclick="closePay()">ยกเลิก</button>
       <button class="btn" id="paySaveBtn" onclick="savePayment()">💾 บันทึกงวด</button>
     </div>
   </div>
@@ -988,6 +990,11 @@ async function delBill(id){
 
 /* ===== PAYMENT ===== */
 let payBillId=null;
+let PAY_RETURN_HIST=null;   // ถ้าเปิดมาจากหน้าต่างประวัติ ให้กลับไปที่นั่นเมื่อปิด
+function closePay(){
+  $('payBg').style.display='none';
+  if(PAY_RETURN_HIST){ const b=PAY_RETURN_HIST; PAY_RETURN_HIST=null; openHist(b); }
+}
 let payEditId=null;   // งวดที่กำลังแก้ไข (null = เพิ่มใหม่)
 /* งวดใหม่: เติมข้อมูลผู้รับเงินจากงวดก่อนของบิลนี้ ถ้าไม่มีลองหาจาก vendor เดียวกัน */
 function lastPayee(bid){
@@ -1040,7 +1047,10 @@ function openPay(bid){
   $('p_status').value='planned';
   if($('p_optPaid'))$('p_optPaid').style.display=(!APPROVAL_MODE||IS_EXEC)?'':'none';
   $('payWarn').style.display='none';
+  // กดแก้จากหน้าต่างประวัติ → ซ่อนประวัติไว้ก่อน กันหน้าต่างซ้อนกันจนอ่านไม่ออก
+  if($('histBg').style.display==='flex'){ PAY_RETURN_HIST=HIST_BID; $('histBg').style.display='none'; }
   $('payBg').style.display='flex';
+  $('payBg').scrollTop=0;
 }
 function editPay(pid,bid){
   const p=PAYS.find(x=>String(x.id)===String(pid));
@@ -1112,7 +1122,7 @@ async function savePayment(){
    await addLog(b, payEditId?'payment_edit':'payment_add',
      (payEditId?'แก้งวด ':'เพิ่มงวด ')+(row.installment||'')+' ยอด '+money(row.amount)+' '+curSym(b&&b.currency)
      +(row.rate?(' เรท '+row.rate):'')+' วันที่ '+(row.pay_date||'-'));}
-  $('payBg').style.display='none';toast('บันทึกงวดเรียบร้อย ✅');loadAll();
+  toast('บันทึกงวดเรียบร้อย ✅'); await loadAll(); closePay();
 }
 
 /* ===== HISTORY ===== */
