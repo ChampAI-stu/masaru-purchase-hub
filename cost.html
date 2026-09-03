@@ -30,6 +30,11 @@
   .topbar-left .page{color:#fff;font-size:15px;font-weight:600}
   .topbar-right{display:flex;align-items:center;gap:12px}
   .role-pill{background:#ffffff1a;color:#fff;font-size:12px;padding:4px 12px;border-radius:20px;border:1px solid #ffffff33;font-weight:500;white-space:nowrap}
+  .live-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#ffffffcc;
+    background:#ffffff14;border-radius:20px;padding:5px 11px;white-space:nowrap}
+  .live-pill i{width:8px;height:8px;border-radius:50%;background:#F0A500;display:inline-block}
+  .live-pill.on i{background:#22C55E;box-shadow:0 0 0 3px #22C55E33}
+  .live-pill.off i{background:#EF4444}
   .logout-btn{background:transparent;border:1px solid #ffffff33;color:#ffffffcc;font-size:13px;padding:6px 14px;border-radius:8px}
   .logout-btn:hover{background:#ffffff14}
   .tabs{display:flex;gap:2px;background:var(--navy-2);padding:0 12px;flex-wrap:wrap}
@@ -128,6 +133,8 @@
   <div class="topbar">
     <div class="topbar-left"><span class="masaru-logo" style="display:inline-block;width:130px;height:27px"></span><span class="divider">|</span><span class="page">Shipment นำเข้า</span></div>
     <div class="topbar-right no-print">
+      <span class="live-pill" id="livePill" title="สถานะการเชื่อมต่อข้อมูลสด"><i></i> กำลังเชื่อมต่อ…</span>
+      <button class="logout-btn" id="refreshBtn" title="โหลดข้อมูลใหม่ทันที">🔄 รีเฟรช</button>
       <span class="role-pill" id="rolePill">—</span>
       <button class="logout-btn" id="portalBtn" title="กลับหน้ารวม">🏠 หน้ารวม</button>
       <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
@@ -256,6 +263,7 @@
             <button class="btn" onclick="savePdf(event)">📄 บันทึก PDF</button>
             <button class="btn gold" onclick="exportInvoiceExcel(event)">⬇️ Excel (INV+PL แก้ได้)</button>
           </div>
+          <div id="draftBar" style="display:none;background:#FFF6E5;border:1px solid #F3DFB6;border-left:5px solid #B45309;border-radius:9px;padding:9px 12px;margin:8px 0;font-size:12.5px"></div>
         </div>
         <div class="card" style="flex:1 1 100%;min-width:340px">
           <h2>ตัวอย่างเอกสาร</h2>
@@ -567,7 +575,63 @@ async function enterApp(session){
   if(!canEdit)document.body.classList.add('view-only');
   $('boot').style.display='none';$('app').style.display='block';
   await loadAll();bindDoc();go('dashboard');
+  LAST_SYNC=new Date(); syncLabel(); startRealtime();
+  $('refreshBtn').addEventListener('click',()=>refreshData(true));
 }
+/* ===== ข้อมูลสด (realtime) — เดิมหน้านี้โหลดข้อมูลครั้งเดียวตอนเปิด
+   ทำให้ข้อมูลที่คนอื่นเพิ่ง เพิ่ม/แก้ ไม่ขึ้นจนกว่าจะกด F5 ===== */
+let CUR_TAB='dashboard', RT_TIMER=null, LAST_SYNC=null, RELOADING=false;
+const RT_TABLES=['shipments','shipment_tracking','sku_master','sku_export_info',
+                 'shipcosts','inv_parties','purchase_orders','tax_summaries','acct_budget'];
+
+function livePill(state,msg){
+  const el=$('livePill'); if(!el)return;
+  el.className='live-pill'+(state?' '+state:'');
+  el.innerHTML='<i></i> '+msg;
+}
+function syncLabel(){
+  if(!LAST_SYNC)return;
+  livePill('on','ข้อมูลสด · '+LAST_SYNC.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+}
+/* โหลดใหม่แล้ววาดแท็บที่เปิดอยู่ซ้ำ — ไม่รบกวนหน้าออกบิลที่กำลังพิมพ์ค้างไว้ */
+async function refreshData(manual){
+  if(RELOADING)return;
+  RELOADING=true; livePill('','กำลังโหลดข้อมูล…');
+  try{
+    await loadAll();
+    LAST_SYNC=new Date();
+    if(CUR_TAB==='invpl'){ fillSkuSelects(); fillPartySelects(); }   // อย่าล้างฟอร์มที่พิมพ์ค้าง
+    else go(CUR_TAB);
+    syncLabel();
+    if(manual)alert('โหลดข้อมูลล่าสุดแล้ว ✅');
+  }catch(e){
+    livePill('off','โหลดข้อมูลไม่สำเร็จ');
+    if(manual)alert('โหลดข้อมูลไม่สำเร็จ: '+(e.message||e));
+  }
+  RELOADING=false;
+}
+function scheduleReload(){ clearTimeout(RT_TIMER); RT_TIMER=setTimeout(()=>refreshData(false),1200); }
+
+function startRealtime(){
+  try{
+    const ch=sb.channel('cost-live');
+    RT_TABLES.forEach(t=>ch.on('postgres_changes',{event:'*',schema:'public',table:t},scheduleReload));
+    ch.subscribe(st=>{
+      if(st==='SUBSCRIBED'){ LAST_SYNC=LAST_SYNC||new Date(); syncLabel(); }
+      else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'){ livePill('off','ข้อมูลสดขัดข้อง — กด 🔄 รีเฟรช'); }
+    });
+  }catch(e){ livePill('off','ข้อมูลสดใช้ไม่ได้ — กด 🔄 รีเฟรช'); }
+
+  // สำรอง: กลับมาที่แท็บนี้ / โฟกัสหน้าต่าง แล้วข้อมูลเก่าเกิน 30 วิ → โหลดใหม่
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden && LAST_SYNC && (Date.now()-LAST_SYNC) > 30000) refreshData(false);
+  });
+  window.addEventListener('focus',()=>{
+    if(LAST_SYNC && (Date.now()-LAST_SYNC) > 60000) refreshData(false);
+  });
+  setInterval(()=>{ if(!document.hidden)refreshData(false); }, 180000);   // กันเหนียวทุก 3 นาที
+}
+
 /* ผูกช่องหัวเอกสาร/ผู้ส่ง/ผู้รับ ให้ตัวอย่างเอกสารอัปเดตสดเมื่อพิมพ์ */
 let docBound=false;
 function bindDoc(){ if(docBound)return; const c=$('tab-invpl'); if(!c)return; docBound=true;
@@ -631,6 +695,7 @@ function prod(sku){return db.products.find(p=>p.sku===sku);}
 
 /* ===== NAV ===== */
 function go(t){
+  CUR_TAB=t;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   ['dashboard','sku','track','parties','invpl','taxsum','summary','posum'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
   if(t==='dashboard')renderDashboard();
@@ -1102,6 +1167,25 @@ function restoreInvplDraft(){
   const d=o.d;
   const hasContent=(d.invno||'').trim()||(d.sname||'').trim()||(d.cname||'').trim()||(d.items&&d.items.length);
   if(!hasContent)return false;
+
+  /* ⚠️ ร่างของเอกสารที่ "บันทึกลงระบบแล้ว" ห้ามกู้อัตโนมัติเด็ดขาด
+     เพราะร่างอาจเก่ากว่าของจริง (คนอื่นแก้ไปแล้ว) แล้ว Auto Save จะเขียนทับกลับ
+     → แสดงแถบให้ผู้ใช้เลือกเอง */
+  if(o.sid&&db.shipments.find(x=>x.id===o.sid)){
+    const sv=db.shipments.find(x=>x.id===o.sid);
+    asStat('');
+    const bar=$('draftBar');
+    if(bar){
+      bar.style.display='';
+      bar.innerHTML='📝 พบร่างที่ยังไม่ได้บันทึกของ <b>'+esc(sv.invno||'')+'</b> '
+        +'(บันทึกร่างไว้ '+new Date(o.ts).toLocaleString('th-TH',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+')'
+        +' <span class="muted">— ข้อมูลในระบบอาจใหม่กว่าร่างนี้</span>'
+        +'<span style="margin-left:10px"><button class="btn mini" onclick="useDraft()">↩︎ ใช้ร่างนี้</button> '
+        +'<button class="btn mini ghost" onclick="dropDraft()">🗑 ทิ้งร่าง</button></span>';
+    }
+    return false;   // ยังไม่กู้ ให้เปิดเอกสารจริงหรือฟอร์มเปล่าไปก่อน
+  }
+
   invplLoading=true;
   if(o.sid&&db.shipments.find(x=>x.id===o.sid))comboSet('loadShipment',o.sid); else comboSet('loadShipment','');
   $('f_invno').value=d.invno||'';$('f_date').value=d.date||'';$('f_sname').value=d.sname||'';$('f_stel').value=d.stel||'';
@@ -1115,11 +1199,34 @@ function restoreInvplDraft(){
   return true;
 }
 
+function hideDraftBar(){ const b=$('draftBar'); if(b){b.style.display='none';b.innerHTML='';} }
+function useDraft(){
+  let o=null; try{o=JSON.parse(localStorage.getItem(INVPL_DRAFT_KEY)||'null');}catch(e){}
+  hideDraftBar();
+  if(!o||!o.d)return;
+  const d=o.d;
+  invplLoading=true;
+  if(o.sid&&db.shipments.find(x=>x.id===o.sid))comboSet('loadShipment',o.sid); else comboSet('loadShipment','');
+  $('f_invno').value=d.invno||'';$('f_date').value=d.date||'';$('f_sname').value=d.sname||'';$('f_stel').value=d.stel||'';
+  $('f_scomp').value=d.scomp||'';$('f_saddr').value=d.saddr||'';$('f_slic').value=d.slic||'';$('f_stax').value=d.stax||'';
+  $('f_cname').value=d.cname||'';$('f_caddr').value=d.caddr||'';
+  $('f_term').value=d.term||'EXW';$('f_port').value=d.port||'';$('f_logi').value=d.logi||0;$('f_cur').value=d.cur||'CNY';
+  curItems=JSON.parse(JSON.stringify(d.items||[]));
+  renderLines();renderDoc();
+  invplLoading=false;
+  asStat('↩︎ ใช้ร่างแล้ว — ตรวจข้อมูลให้ครบก่อนกด 💾 บันทึก','#B45309');
+}
+function dropDraft(){ clearInvplDraft(); hideDraftBar(); asStat('ทิ้งร่างแล้ว'); }
+
 /* มีการแก้ไข → ตั้งเวลาเซฟร่าง + เซฟจริง */
+/* ⚠️ ต้องเป็น true เฉพาะเมื่อผู้ใช้ลงมือแก้เอกสารใบที่เปิดอยู่จริงๆ ในรอบนี้
+   ถ้าไม่มีธงนี้ Auto Save จะยิงตั้งแต่ตอนเปิด/กู้ร่าง แล้วเขียนทับข้อมูลใหม่ด้วยของเก่า */
+let USER_TOUCHED=false;
 function markInvplDirty(){
   if(invplLoading)return;
   clearTimeout(asDraftTimer); asDraftTimer=setTimeout(saveInvplDraft,800);
   if(!autoSaveEnabled())return;
+  if(!USER_TOUCHED)return;                    // ยังไม่ได้แก้อะไรเอง → ห้ามเขียน DB
   const id=comboVal('loadShipment');
   if(!id){asStat('เอกสารใหม่ — กด 💾 บันทึกครั้งแรกก่อน (ร่างถูกเก็บไว้แล้ว)','#B45309');return;}
   asStat('มีการแก้ไข…');
@@ -1147,8 +1254,15 @@ async function doAutoSave(){
 }
 function bindInvplAutoSave(){
   const c=$('tab-invpl'); if(!c||c.dataset.asBound)return; c.dataset.asBound='1';
-  c.addEventListener('input',e=>{ if(e.target&&e.target.id==='autoSaveOn')return; markInvplDirty(); });
-  c.addEventListener('change',e=>{ if(e.target&&e.target.id==='autoSaveOn')return; markInvplDirty(); });
+  const touch=e=>{
+    if(invplLoading)return;
+    const t=e.target; if(!t)return;
+    if(t.id==='autoSaveOn'||t.id==='loadShipment')return;   // สลับสวิตช์/เลือกเอกสาร ไม่นับว่าแก้
+    USER_TOUCHED=true;
+  };
+  c.addEventListener('input',e=>{ touch(e); if(e.target&&e.target.id==='autoSaveOn')return; markInvplDirty(); });
+  c.addEventListener('change',e=>{ touch(e); if(e.target&&e.target.id==='autoSaveOn')return; markInvplDirty(); });
+  c.addEventListener('click',touch,true);      // ปุ่มเพิ่ม/ลบรายการ ก็นับว่าแก้
   window.addEventListener('beforeunload',()=>{ if(!invplLoading)saveInvplDraft(); });
 }
 
@@ -1185,7 +1299,7 @@ function onDateChange(){
   renderDoc();
 }
 function newShipmentForm(){
-  invplLoading=true; clearTimeout(asTimer); clearTimeout(asDraftTimer); clearInvplDraft();
+  invplLoading=true; USER_TOUCHED=false; clearTimeout(asTimer); clearTimeout(asDraftTimer); clearInvplDraft();
   comboSet('loadShipment','');['f_invno','f_sname','f_stel','f_scomp','f_saddr','f_slic','f_stax','f_cname','f_caddr','f_port'].forEach(i=>$(i).value='');
   comboSet('f_vender_sel','');comboSet('f_cons_sel','');
   $('f_date').value=new Date().toISOString().slice(0,10);$('f_term').value='EXW';$('f_logi').value=0;$('f_cur').value='CNY';
@@ -1196,7 +1310,7 @@ function newShipmentForm(){
 function loadShipmentToForm(){
   const id=comboVal('loadShipment');if(!id){newShipmentForm();return;}
   const s=db.shipments.find(x=>x.id===id);
-  invplLoading=true; clearTimeout(asTimer); clearTimeout(asDraftTimer); clearInvplDraft();
+  invplLoading=true; USER_TOUCHED=false; clearTimeout(asTimer); clearTimeout(asDraftTimer); clearInvplDraft();
   $('f_invno').value=s.invno;$('f_date').value=s.date||'';$('f_sname').value=s.sname||'';$('f_stel').value=s.stel||'';
   $('f_scomp').value=s.scomp||'';$('f_saddr').value=s.saddr||'';$('f_slic').value=s.slic||'';$('f_stax').value=s.stax||'';$('f_cname').value=s.cname||'';$('f_caddr').value=s.caddr||'';
   $('f_term').value=s.term||'';$('f_port').value=s.port||'';$('f_logi').value=s.logi||0;$('f_cur').value=(s.cur==='RMB'?'CNY':(s.cur||'CNY'));
