@@ -1306,6 +1306,19 @@ async function viewPR(id){
   const canExecApprove = ME.role==='ผู้บริหาร' && p.status==='mgr_approved';
   const canReject  = (ME.role==='หัวหน้า' && p.status==='checked') ||
                      (ME.role==='ผู้บริหาร' && p.status==='mgr_approved');
+  // ⏪ ย้อนสถานะกลับ 1 ขั้น กรณีกดอนุมัติ/ตีกลับผิด
+  const undoBack  = undoTarget(ME.role, p.status);
+  const hasPO     = p.status==='approved' && p.po_number;
+  const canUndo   = !!undoBack && !hasPO;
+  const undoLabel = canUndo ? ('ย้อนกลับเป็น: '+(ST_LABEL[undoBack]||undoBack)) : '';
+  // เหตุผลที่ย้อนกลับไม่ได้ — แสดงให้เห็น ไม่ซ่อนเงียบๆ
+  let undoWhy='';
+  if(!canUndo){
+    if(hasPO) undoWhy='ใบนี้ออกเลข PO แล้ว ('+p.po_number+') — ต้องลบเลข PO ออกก่อน';
+    else if(p.status==='draft') undoWhy='ใบนี้ยังเป็นร่าง ยังไม่ได้ส่งอนุมัติ';
+    else if(!UNDO_MAP[ME.role]) undoWhy='บทบาท "'+ME.role+'" ไม่มีสิทธิ์ย้อนสถานะ';
+    else undoWhy='สถานะ "'+(ST_LABEL[p.status]||p.status)+'" ไม่อยู่ในขั้นที่บทบาท "'+ME.role+'" ย้อนได้';
+  }
   const reviewerSigned=!!(sg.reviewer && sg.reviewer.name);
   const submitted = p.status!=='draft';
   const canSubmit = ME.role==='จัดซื้อ' && p.status==='draft';
@@ -1383,6 +1396,9 @@ async function viewPR(id){
       ${canMgrApprove?`<button class="btn" onclick="approveStep('${id}')">✅ อนุมัติ (หัวหน้า)</button>`:''}
       ${canExecApprove?`<button class="btn" onclick="approveStep('${id}')">✅ อนุมัติ (ผู้บริหาร)</button>`:''}
       ${canReject?`<button class="btn ghost" onclick="rejectPR('${id}')">↩️ ตีกลับ</button>`:''}
+      ${canUndo
+        ? `<button class="btn ghost" style="border-color:#B45309;color:#B45309" onclick="undoApprove('${id}')" title="${esc(undoLabel)}">⏪ ย้อนกลับ (${esc(ST_LABEL[undoBack]||undoBack)})</button>`
+        : `<button class="btn ghost" style="border-color:#CBD5E1;color:#94A3B8;cursor:not-allowed" onclick="alert('⏪ ย้อนสถานะไม่ได้\n\n${esc(undoWhy)}')" title="${esc(undoWhy)}">⏪ ย้อนกลับไม่ได้</button>`}
       <span class="pill st-${p.status}">สถานะ: ${({draft:'ยังไม่ส่ง',checked:'รอหัวหน้าอนุมัติ',mgr_approved:'รอผู้บริหารอนุมัติ',approved:'อนุมัติสมบูรณ์',rejected:'ตีกลับ'})[p.status]||p.status}</span>
     </div>
     ${(p.status==='rejected' && p.reject_note)?`<div style="margin-top:10px;padding:10px 13px;border-left:4px solid var(--red);background:#FEF2F2;border-radius:8px"><b>↩️ ตีกลับโดย${p.reject_by?' '+esc(p.reject_by):''}:</b> ${esc(p.reject_note)}</div>`:''}
@@ -1501,6 +1517,34 @@ function confirmSubmitWarn(prNum, nFail, nWarn, mode){
     bg.querySelector('#csw-ok').onclick=()=>done(true);
     bg.onclick=(e)=>{ if(e.target===bg) done(false); };
   });
+}
+/* ย้อนสถานะกลับ 1 ขั้น — กรณีกดอนุมัติผิด
+   หัวหน้า  : รอผู้บริหาร → รอหัวหน้า  |  ตีกลับ → รอหัวหน้า
+   ผู้บริหาร: อนุมัติสมบูรณ์ → รอผู้บริหาร  |  รอผู้บริหาร → รอหัวหน้า  |  ตีกลับ → ขั้นก่อนหน้า */
+const UNDO_MAP={
+  'จัดซื้อ':   {checked:'draft'},                                                    // กดส่งอนุมัติผิด → ดึงกลับเป็นร่าง
+  'หัวหน้า':   {mgr_approved:'checked', rejected:'checked'},
+  'ผู้บริหาร': {approved:'mgr_approved', mgr_approved:'checked', rejected:'mgr_approved'}
+};
+const ST_LABEL={draft:'ยังไม่ส่ง',checked:'รอหัวหน้าอนุมัติ',mgr_approved:'รอผู้บริหารอนุมัติ',approved:'อนุมัติสมบูรณ์',rejected:'ตีกลับ'};
+function undoTarget(role,status){ return (UNDO_MAP[role]||{})[status]||null; }
+
+async function undoApprove(id){
+  const {data:p,error:e0}=await sb.from('pr').select('status,pr_number,po_number').eq('id',id).single();
+  if(e0){toast(e0.message,true);return;}
+  const back=undoTarget(ME.role,p.status);
+  if(!back){toast('สถานะนี้ย้อนกลับไม่ได้',true);return;}
+  if(p.status==='approved' && p.po_number){
+    toast('ใบนี้ออกเลข PO ไปแล้ว ('+p.po_number+') — ย้อนกลับไม่ได้',true);return;
+  }
+  if(!confirm('ย้อนสถานะ '+(p.pr_number||'')+'\n\nจาก : '+(ST_LABEL[p.status]||p.status)
+             +'\nกลับเป็น : '+(ST_LABEL[back]||back)+'\n\nยืนยันหรือไม่?'))return;
+  const upd={status:back};
+  if(p.status==='rejected'){ upd.reject_note=null; upd.reject_by=null; }   // ล้างเหตุผลตีกลับด้วย
+  const {error}=await sb.from('pr').update(upd).eq('id',id);
+  if(error){toast(error.message,true);return;}
+  toast('ย้อนกลับเป็น "'+(ST_LABEL[back]||back)+'" แล้ว ⏪');
+  viewPR(id); loadPRs();
 }
 async function approveStep(id){
   const {data:p}=await sb.from('pr').select('status').eq('id',id).single();
