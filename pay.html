@@ -100,9 +100,20 @@ td.num,th.num{text-align:right;white-space:nowrap}
 .bar>i{display:block;height:100%;background:var(--green)}
 .empty{text-align:center;color:var(--muted);padding:26px}
 .scroll{overflow-x:auto}
-.modal-bg{position:fixed;inset:0;background:rgba(15,25,45,.55);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:40px 14px;overflow:auto}
-.modal{background:#fff;border-radius:14px;padding:20px 22px;width:100%;max-width:640px}
-.modal h3{color:var(--navy);margin-bottom:14px}
+.modal-bg{position:fixed;inset:0;background:rgba(15,25,45,.55);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:24px 14px;overflow:auto}
+.modal{background:#fff;border-radius:14px;padding:20px 22px;width:100%;max-width:640px;
+  max-height:calc(100vh - 48px);display:flex;flex-direction:column;position:relative}
+.modal>h3{flex:0 0 auto}
+/* กล่องที่มีตารางยาว → เลื่อนในตัวเอง ไม่ดันหน้าต่างจนล้นจอ */
+.modal .scroll{overflow:auto;flex:1 1 auto;min-height:0}
+/* ปุ่มขยายเต็มจอ */
+.modal .expand-btn{position:absolute;top:14px;right:16px;background:#EEF2F7;border:1px solid var(--line);
+  border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--navy);z-index:2}
+.modal .expand-btn:hover{background:#E2E8F0}
+.modal.wide{max-width:calc(100vw - 28px)!important}
+.modal h3{color:var(--navy);margin-bottom:14px;padding-right:96px}
+.modal .scroll table{min-width:1180px}
+.modal .scroll td{vertical-align:top}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 .fld label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px;font-weight:600}
@@ -516,7 +527,8 @@ td.num,th.num{text-align:right;white-space:nowrap}
 
 <!-- ============ MODAL: ประวัติงวด ============ -->
 <div class="modal-bg" id="memoBg">
-  <div class="modal" style="max-width:760px">
+  <div class="modal" id="memoModal" style="max-width:960px">
+    <button class="expand-btn" onclick="toggleWide('memoModal',this)">⛶ ขยายเต็มจอ</button>
     <h3 id="memoTitle">📝 เมโม & ประวัติการแก้ไข</h3>
     <div class="row" style="margin:10px 0">
       <input id="memoText" placeholder="พิมพ์บันทึกเมโม… (เช่น ตกลงเลื่อนจ่ายสิ้นเดือน / รอใบเสนอราคาใหม่)" style="flex:1">
@@ -626,9 +638,10 @@ td.num,th.num{text-align:right;white-space:nowrap}
 </div>
 
 <div class="modal-bg" id="histBg">
-  <div class="modal" style="max-width:820px">
+  <div class="modal" id="histModal" style="max-width:1180px">
+    <button class="expand-btn" onclick="toggleWide('histModal',this)">⛶ ขยายเต็มจอ</button>
     <h3 id="histTitle">ประวัติงวดจ่าย</h3>
-    <div id="histBody" class="scroll"></div>
+    <div id="histBody" class="scroll" style="max-height:none"></div>
     <div class="row" style="margin-top:14px;justify-content:flex-end">
       <button class="btn ghost" onclick="$('histBg').style.display='none'">ปิด</button>
     </div>
@@ -685,6 +698,12 @@ const num=v=>{const n=parseFloat(String(v==null?'':v).replace(/,/g,''));return i
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const curSym=c=>c==='THB'?'฿':(c==='USD'?'$':'¥');
 const CURRENCIES=['CNY','USD','THB'];
+/* สลับหน้าต่างเป็นเต็มจอ — ใช้กับโมดัลที่มีตารางกว้าง */
+function toggleWide(id,btn){
+  const m=$(id); if(!m)return;
+  const on=m.classList.toggle('wide');
+  if(btn)btn.textContent = on ? '⤡ ย่อลง' : '⛶ ขยายเต็มจอ';
+}
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2600);}
 
 let canEdit=false, IS_EXEC=false, ME='', BILLS=[], PAYS=[];
