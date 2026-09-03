@@ -2066,6 +2066,23 @@ function docSelected(){
   return docRows().filter(p=>DOCSEL.has(String(p.id)));
 }
 // รายละเอียดการแบ่งงวดชำระ + ยอดค้างจ่าย ของแต่ละ PO ในใบนี้
+/* คำเรียกสกุลเงินบนใบปะหน้า — เปลี่ยนตามบิลที่เลือก */
+function curWord(rows){
+  const cs=[...new Set(rows.map(p=>billOf(p.bill_id).currency||'CNY'))];
+  const W={CNY:'หยวน',USD:'ดอลลาร์',THB:'บาท'};
+  return cs.length===1?(W[cs[0]]||cs[0]):'สกุลต่างประเทศ';
+}
+/* บรรทัดที่ 3 ของหัวเอกสาร — ธนาคาร/ช่องทางที่โอน */
+function bankLine(rows){
+  const ch=[...new Set(rows.map(p=>p.channel).filter(Boolean))];
+  const B={'ธนาคาร (SWIFT Code)':'ธนาคารกสิกรไทย',
+           'Ksher Payment Co.Ltd.':'Ksher Payment Co.,Ltd.',
+           'JMF CARGO':'JMF CARGO'};
+  if(ch.length===1)return B[ch[0]]||ch[0];
+  if(ch.length>1)return ch.map(c=>B[c]||c).join(' / ');
+  const pt=[...new Set(rows.map(p=>p.pay_type).filter(Boolean))];
+  return pt.length===1?pt[0]:'ธนาคารกสิกรไทย';
+}
 function histBlock(rows){
   const bids=[...new Set(rows.map(p=>p.bill_id))];
   if(!bids.length)return '';
@@ -2126,18 +2143,18 @@ function buildDoc(show){
   let h=`<div class="doc-sheet">
     <div style="text-align:center;line-height:1.65;margin-bottom:12px">
       <div style="font-weight:700">${esc(coName)}</div>
-      <div>นามบุคคล</div>
       <div>รายงาน สรุปค่าใช้จ่ายจัดซื้อ ประจำวัน</div>
+      <div>${esc(bankLine(rows))}</div>
       <div>วันที่ ${esc(thDate)}</div>
     </div>
     <table><thead>
       <tr><th rowspan="2">รายการ</th><th rowspan="2">รหัสใบจัดซื้อ</th><th rowspan="2">รายการ</th>
         <th rowspan="2" class="num">จำนวนสินค้า</th>
-        <th colspan="4" style="text-align:center">หยวน</th>
+        <th colspan="4" style="text-align:center">${esc(curWord(rows))}</th>
         <th rowspan="2" class="num">จำนวนเงินบาท</th><th rowspan="2" class="num">ค่าธรรมเนียม</th>
         <th rowspan="2" class="num">รวมจำนวนเงินบาท</th><th rowspan="2">หมายเหตุ</th></tr>
-      <tr><th class="num">จำนวนเงินต่อหน่วย</th><th class="num">จำนวนเงิน / หยวน</th>
-        <th class="num">ค่าขนส่ง</th><th class="num">เรทโอน</th></tr>
+      <tr><th class="num">จำนวนเงินต่อหน่วย</th><th class="num">จำนวนเงิน / ${esc(curWord(rows))}</th>
+        <th class="num">ค่าส่ง</th><th class="num">เรทโอน</th></tr>
     </thead><tbody>`;
   let no=0;
   groups.forEach(g=>{
@@ -2164,6 +2181,11 @@ function buildDoc(show){
       <td class="num">${money2(T('thb'))}</td><td class="num">${money2(T('fee'))}</td>
       <td class="num">${money2(T('thb')+T('fee'))}</td><td></td></tr>
     </tbody></table>
+    <div style="margin-top:16px;line-height:2">
+      <div style="font-weight:700">สรุป</div>
+      <div>ยอดเงินรวม${esc(curWord(rows))}ทั้งหมด : ${money2(T('amt'))} ${esc(curWord(rows))}</div>
+      <div>ยอดเงินรวมบาททั้งหมด : ${money2(T('thb')+T('fee'))} บาท</div>
+    </div>
     ${histBlock(rows)}
     <div class="chk"><b>เอกสารแนบ:</b>
       <label><input type="checkbox" checked disabled> ใบเสนอราคาจีน + คำแปล</label>
