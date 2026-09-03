@@ -439,13 +439,9 @@
 
 <script>
 /* ===== Supabase (โปรเจกต์เดียวกับ portal/PR/board) ===== */
-/* ⚠️ ต้องเป็น project เดียวกับ index.html เท่านั้น
-   session ถูกเก็บใน localStorage แยกตาม project — ถ้าคนละ project หน้านี้จะหา session ไม่เจอ
-   แล้วเด้งกลับ index ทันที (คือบั๊ก "กดเข้าระบบแล้วเด้งออก")
-   ── ของเดิม (คนละ project กับหน้ารวม) ────────────────────────
-   const SUPABASE_URL='https://ykeplonjemxcqnrzznhm.supabase.co';
-   const SUPABASE_KEY='sb_publishable_xTe43UOuDChtOsmY_BCsPg_FMJNE7Ma';
-   ─────────────────────────────────────────────────────────── */
+/* ⚠️ ต้องเป็น project เดียวกับ index.html / board.html / pr.html / costsku.html เสมอ
+   ไฟล์นี้เคยค้างอยู่ที่ project เก่า ทำให้อ่านคนละฐานข้อมูล
+   → PO/Shipment ใหม่ไม่ขึ้น และ session ไม่ตรงกันจนเด้งออก */
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
 const SUPABASE_KEY='sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
@@ -639,24 +635,37 @@ function bindDoc(){ if(docBound)return; const c=$('tab-invpl'); if(!c)return; do
 }
 
 /* ===== DATA LAYER ===== */
+/* โหลดทั้งตารางแบบแบ่งหน้า
+   ⚠️ ต้องมีตัวเรียงสำรองที่ไม่ซ้ำ (id) เสมอ — ถ้าเรียงด้วยคอลัมน์ที่มีค่าซ้ำ
+      (เช่น po_number ที่ 1 PO มีหลาย SKU) แล้วแบ่งหน้าละ 1000
+      แถวที่คร่อมรอยต่อหน้าจะถูก "ข้าม" หรือ "ซ้ำ" → ข้อมูลหายไปเงียบๆ
+   ⚠️ ถ้าตารางไหนไม่มีคอลัมน์ id ให้ลองใหม่โดยไม่ใส่ ห้ามคืนค่าว่าง */
+const FETCH_ERR = {};
 async function fetchTable(name,order){
-  const all=[]; const size=1000; let from=0;
-  while(true){
-    let q=sb.from(name).select('*'); if(order)q=q.order(order);
-    // ⚠️ ต้องมีตัวเรียงสำรองที่ไม่ซ้ำ (id) เสมอ
-    //    ถ้าเรียงด้วยคอลัมน์ที่มีค่าซ้ำ (เช่น po_number) แล้วแบ่งหน้าละ 1000
-    //    แถวที่คร่อมรอยต่อหน้าจะถูก "ข้าม" หรือ "ซ้ำ" → ข้อมูลบางส่วนหายไปเงียบๆ
-    q=q.order('id');
-    q=q.range(from,from+size-1);
-    const{data,error}=await q;
-    if(error){console.warn('load '+name,error.message);break;}
-    if(!data||!data.length)break;
-    all.push(...data);
-    if(data.length<size)break;   // หน้าสุดท้าย
-    from+=size;
-    if(from>200000)break;        // กันวนไม่รู้จบ
+  delete FETCH_ERR[name];
+  for(const tie of ['id', null]){          // ลองแบบมีตัวเรียงสำรองก่อน แล้วค่อยถอย
+    const all=[]; const size=1000; let from=0; let failed=false;
+    while(true){
+      let q=sb.from(name).select('*');
+      if(order)q=q.order(order);
+      if(tie)q=q.order(tie);
+      q=q.range(from,from+size-1);
+      const {data,error}=await q;
+      if(error){
+        console.warn('load '+name+(tie?' (เรียงด้วย '+tie+')':''), error.message);
+        if(tie){failed=true;break;}          // ลองรอบถัดไปแบบไม่มี tie
+        FETCH_ERR[name]=error.message;       // ถอยหมดแล้วยังพัง → จำไว้เตือนผู้ใช้
+        return all;                          // คืนเท่าที่โหลดได้ ดีกว่าคืนว่าง
+      }
+      if(!data||!data.length)break;
+      all.push(...data);
+      if(data.length<size)break;             // หน้าสุดท้าย
+      from+=size;
+      if(from>200000)break;                  // กันวนไม่รู้จบ
+    }
+    if(!failed)return all;
   }
-  return all;
+  return [];
 }
 async function loadAll(){
   const jobs=[['master','sku_master','sku'],['hist','sku_price_history','changed_at'],
@@ -1564,10 +1573,21 @@ function renderPoSummary(){
   const q=($('poSearch')?$('poSearch').value:'').toLowerCase();
   const by={};
   (db.po||[]).forEach(o=>{const k=o.po_number||'(ไม่มี PO)';(by[k]=by[k]||[]).push(o);});
-  let keys=Object.keys(by).sort();
+  let keys=Object.keys(by).sort().reverse();   // ใหม่สุดขึ้นก่อน
   if(q)keys=keys.filter(k=>(k+' '+by[k].map(r=>r.sku||'').join(' ')).toLowerCase().includes(q));
-  if(!keys.length){$('poTable').innerHTML='<div class="empty">'+((db.po&&db.po.length)?'ไม่พบ PO ตามคำค้น':'ยังไม่มีข้อมูล PO (ดึงจาก Purchase Board)')+'</div>';return;}
-  let h='<table style="min-width:1050px"><thead><tr><th>เลขที่ PO</th><th>SKU</th><th style="text-align:right">จำนวนรวม</th><th style="text-align:right">เข้าแล้ว</th><th>วันเข้าคลัง (ETA)</th><th>สถานะ</th><th>บริษัทขนส่ง</th><th>หมายเหตุ</th></tr></thead><tbody>';
+  // แถบวินิจฉัย: บอกตรงๆ ว่าโหลดมาได้กี่แถว / ใหม่สุดคือ PO ไหน / โหลดพังไหม
+  const diag=(()=>{
+    const n=(db.po||[]).length;
+    const err=FETCH_ERR&&FETCH_ERR['purchase_orders'];
+    const top=[...new Set((db.po||[]).map(o=>String(o.po_number||'')))].sort().slice(-3).reverse().join(', ');
+    if(err)return `<div style="background:#FCE4E4;border:1px solid #F3C6C9;border-left:5px solid #D0212B;border-radius:9px;padding:10px 13px;margin-bottom:10px;font-size:12.5px">
+      <b style="color:#D0212B">⚠️ โหลดตาราง purchase_orders ไม่สำเร็จ</b><br><span class="muted">${esc(err)}</span></div>`;
+    return `<div style="background:#F4F6FA;border:1px solid var(--line);border-radius:9px;padding:8px 12px;margin-bottom:10px;font-size:12px" class="muted">
+      โหลดมา <b>${n}</b> แถว · <b>${Object.keys(by).length}</b> PO · ใหม่สุด: <b>${esc(top||'—')}</b>
+      <button class="btn mini ghost" style="margin-left:8px" onclick="refreshData(true)">🔄 โหลดใหม่</button></div>`;
+  })();
+  if(!keys.length){$('poTable').innerHTML=diag+'<div class="empty">'+((db.po&&db.po.length)?'ไม่พบ PO ตามคำค้น':'ยังไม่มีข้อมูล PO (ดึงจาก Purchase Board)')+'</div>';return;}
+  let h=diag+'<table style="min-width:1050px"><thead><tr><th>เลขที่ PO</th><th>SKU</th><th style="text-align:right">จำนวนรวม</th><th style="text-align:right">เข้าแล้ว</th><th>วันเข้าคลัง (ETA)</th><th>สถานะ</th><th>บริษัทขนส่ง</th><th>หมายเหตุ</th></tr></thead><tbody>';
   keys.forEach(k=>{const rows=by[k];
     const skus=[...new Set(rows.map(r=>r.sku).filter(Boolean))].join(', ');
     const qty=rows.reduce((s,r)=>s+(+r.quantity||0),0);
