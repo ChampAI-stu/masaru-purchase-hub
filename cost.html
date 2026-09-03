@@ -643,6 +643,10 @@ async function fetchTable(name,order){
   const all=[]; const size=1000; let from=0;
   while(true){
     let q=sb.from(name).select('*'); if(order)q=q.order(order);
+    // ⚠️ ต้องมีตัวเรียงสำรองที่ไม่ซ้ำ (id) เสมอ
+    //    ถ้าเรียงด้วยคอลัมน์ที่มีค่าซ้ำ (เช่น po_number) แล้วแบ่งหน้าละ 1000
+    //    แถวที่คร่อมรอยต่อหน้าจะถูก "ข้าม" หรือ "ซ้ำ" → ข้อมูลบางส่วนหายไปเงียบๆ
+    q=q.order('id');
     q=q.range(from,from+size-1);
     const{data,error}=await q;
     if(error){console.warn('load '+name,error.message);break;}
