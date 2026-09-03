@@ -900,6 +900,7 @@ function fillTrackFilters(){
   if($('trkCo'))$('trkCo').innerHTML='<option value="">— ทุกบริษัท —</option>'+[...new Set([...consigneeNames(),...cos])].map(c=>`<option>${esc(c)}</option>`).join('');
   if($('trkOp'))$('trkOp').innerHTML='<option value="">— ทุกสถานะ —</option>'+OP_ST.map(c=>`<option>${esc(c)}</option>`).join('');
 }
+const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 let trkSort={key:"start_date",dir:"desc"}; let trkPage=1; const TRK_PER=30;
 /* SKU ของแต่ละแถว Shipment — ดึงจากใบ INV ที่ผูกไว้ก่อน ถ้าไม่มีค่อยแกะจาก product_list */
 function trkSkus(t){
@@ -919,12 +920,16 @@ function trkSkuCell(t){
 }
 function sortTrack(k){ if(trkSort.key===k) trkSort.dir=(trkSort.dir==="asc"?"desc":"asc"); else {trkSort.key=k;trkSort.dir="asc";} trkPage=1; renderTrack(); }
 function trkGo(p){ trkPage=p; renderTrack(); }
+/* กรองเฉพาะรายการที่ยังไม่ระบุวันที่ (กดจากการ์ดเตือน) */
+let TRK_ONLY_NODATE=false;
+function trkOnlyNoDate(){ TRK_ONLY_NODATE=!TRK_ONLY_NODATE; trkPage=1; renderTrack(); }
 function renderTrack(){
   const co0=$('trkCo')?$('trkCo').value:'', op0=$('trkOp')?$('trkOp').value:'';
   fillTrackFilters();
   if($('trkCo'))$('trkCo').value=co0; if($('trkOp'))$('trkOp').value=op0;
   const q=($('trkSearch').value||'').toLowerCase();
   let list=db.tracking.filter(t=>
+    (!TRK_ONLY_NODATE||!t.start_date)&&
     (!co0||t.import_company===co0)&&(!op0||t.op_status===op0)&&
     (!q||((t.invoice_no||'')+' '+(t.jst_po||'')+' '+(t.product_list||'')+' '+(t.bl_no||'')+' '+(t.vessel_no||'')+' '+(t.container_no||'')+' '+(t.draft_bill_no||'')+' '+(t.draft_no||'')+' '+(t.responsible||'')).toLowerCase().includes(q)));
   {const NUMK={tax_amount:1,ship_cost:1,_docs:1};const k=trkSort.key,dir=trkSort.dir==="asc"?1:-1;
@@ -933,6 +938,10 @@ function renderTrack(){
      else if(k==="_sku"){va=trkSkus(a).join(',').toLowerCase();vb=trkSkus(b).join(',').toLowerCase();}
      else if(NUMK[k]){va=+a[k]||0;vb=+b[k]||0;}
      else {va=String(a[k]||"").toLowerCase();vb=String(b[k]||"").toLowerCase();}
+     // ⚠️ แถวที่ยังไม่กรอกค่า (เช่น start_date ว่าง) ต้องลอยขึ้นบนสุดเสมอ
+     //    ไม่งั้นจะตกไปหน้าสุดท้ายจนคนคิดว่า "ข้อมูลหาย"
+     const ea=(va===''||va==null), eb=(vb===''||vb==null);
+     if(ea!==eb)return ea?-1:1;
      if(va<vb)return -1*dir; if(va>vb)return 1*dir; return 0;});}
   // KPI
   const tax=db.tracking.reduce((s,t)=>s+(+t.tax_amount||0),0);
@@ -941,7 +950,9 @@ function renderTrack(){
   const arrived=db.tracking.filter(t=>t.op_status==='ถึงไทยแล้ว/สำเร็จ').length;
   const taxUnpaid=db.tracking.filter(t=>(+t.tax_amount||0)>0&&!t.tax_paid).length;
   const demWarn=db.tracking.filter(t=>{const d=demDaysLeft(t);return d!=null&&d<=7;}).length;
+  const noDate=db.tracking.filter(t=>!t.start_date).length;
   $('trkKpi').innerHTML=`<div class="kpi"><div class="lbl">ทั้งหมด (รายการ)</div><div class="val">${db.tracking.length}</div></div>
+    ${noDate?`<div class="kpi red" style="cursor:pointer" onclick="trkOnlyNoDate()" title="คลิกเพื่อดูเฉพาะรายการเหล่านี้"><div class="lbl">⚠️ ยังไม่ระบุวันที่</div><div class="val">${noDate}</div></div>`:''}
     <div class="kpi"><div class="lbl">กำลังผลิต</div><div class="val">${prod}</div></div>
     <div class="kpi green"><div class="lbl">ถึงไทย/สำเร็จ</div><div class="val">${arrived}</div></div>
     <div class="kpi gold"><div class="lbl">ค่าภาษีค้างจ่าย</div><div class="val">${taxUnpaid}</div></div>
@@ -964,7 +975,7 @@ function renderTrack(){
     const dc=docCount(t);
     const dem=demDaysLeft(t);
     const demBadge=(dem!=null&&dem<=7)?`<br><span class="pill" style="background:#C2410C;color:#fff;white-space:nowrap">${dem<0?'⚠️ DEM เกิน '+(-dem)+' วัน':'⏳ DEM เหลือ '+dem+' วัน'}</span>`:'';
-    h+=`<tr><td><b>${esc(t.invoice_no||'')}</b>${t.shipment_id?` <button class="mini btn" onclick="openInvoiceFromTrack('${t.shipment_id}')" title="เปิดใบ INV จริง">📄 ใบ</button>`:''}<br><span class="muted">${esc(t.start_date||'')}</span></td>
+    h+=`<tr><td><b>${esc(t.invoice_no||'')}</b>${t.shipment_id?` <button class="mini btn" onclick="openInvoiceFromTrack('${t.shipment_id}')" title="เปิดใบ INV จริง">📄 ใบ</button>`:''}<br>${t.start_date?`<span class="muted">${esc(t.start_date)}</span>`:'<span class="pill" style="background:#FCE4E4;color:#B01722;font-size:10px">⚠️ ยังไม่ระบุวันที่</span>'}</td>
       <td>${trkSkuCell(t)}</td>
       <td>${esc(t.bl_no||'')}</td>
       <td>${tag(t.import_company,coColor(t.import_company))}</td>
@@ -1427,7 +1438,7 @@ async function upsertTrackingFromInvoice(d,shipmentId){
     return await dbWrite(()=>sb.from('shipment_tracking').update(patch).eq('id',existing.id));
   }
   return await dbWrite(()=>sb.from('shipment_tracking').insert({
-    invoice_no:d.invno, start_date:d.date||null, product_list:plist||null,
+    invoice_no:d.invno, start_date:d.date||todayStr(), product_list:plist||null,   // ห้ามปล่อยว่าง ไม่งั้นแถวจะหลุดจากการเรียงวันที่
     import_company:co||null, op_status:'กำลังผลิต', shipment_id:shipmentId}));
 }
 function openInvoiceFromTrack(sid){
