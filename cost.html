@@ -850,6 +850,7 @@ async function putLineImage(i,file){
   const it=curItems[i];
   it.pic=await shrink(file,200,0.7);          // ภาพย่อสำหรับ PDF/พรีวิว (~10 KB)
   renderLines();renderDoc();
+  await rememberSkuPic(it.sku,{pic:it.pic});  // จำไว้ให้ SKU นี้ทันที
   try{                                        // อัปตัวเต็มขึ้น Drive
     const j=await gasCall({action:'upload',
       filename:(($('f_invno').value||'INV')+'_'+(it.sku||'item')+'_'+Date.now()+'.jpg'),
@@ -858,7 +859,27 @@ async function putLineImage(i,file){
       po:$('f_invno').value||'',vendor:$('f_sname').value||'',payDate:$('f_date').value||'',actor:(typeof ME==='string'?ME:(ME&&ME.email)||'')});
     it.pic_url=j.openUrl||j.viewUrl||''; it.pic_id=j.fileId||'';
     renderLines();
+    await rememberSkuPic(it.sku,{pic:it.pic,pic_url:it.pic_url,pic_id:it.pic_id});
   }catch(e){ console.warn('[img] drive:',e.message); }   // อัป Drive ไม่ได้ก็ยังมีภาพย่อ
+}
+
+/* จำรูปไว้กับ SKU — ครั้งหน้าที่ใช้ SKU เดิม รูปจะขึ้นเอง */
+async function rememberSkuPic(sku,obj){
+  sku=String(sku||'').trim(); if(!sku)return;
+  const rec=Object.assign({sku},obj,{pic_at:new Date().toISOString()});
+  const {error}=await sb.from('sku_export_info').upsert(rec,{onConflict:'sku'});
+  if(error){
+    console.warn('[img] จำรูปราย SKU ไม่ได้:',error.message);
+    if(/pic|column/i.test(error.message))
+      asStat&&asStat('⚠️ ยังไม่ได้เพิ่มคอลัมน์รูป — รันไฟล์ sku_pic.sql ก่อน','#B45309');
+    return;
+  }
+  db.expMap[sku]=Object.assign(db.expMap[sku]||{},rec);   // อัปเดตในหน่วยความจำทันที
+}
+/* ดึงรูปที่เคยแนบไว้ของ SKU นี้ */
+function skuPic(sku){
+  const e=db.expMap[String(sku||'').trim()]||{};
+  return e.pic?{pic:e.pic,pic_url:e.pic_url||'',pic_id:e.pic_id||''}:null;
 }
 /* วางรูปจากคลิปบอร์ด (Ctrl+V) */
 let PASTE_BOUND=false;
@@ -887,7 +908,15 @@ function downscaleImg(file,cb){const r=new FileReader();r.onload=ev=>{const img=
 function attachLineImage(i){attachIdx=i;$('lineImgFile').click();}
 async function onLineImg(inp){const f=inp.files[0];if(!f||attachIdx<0)return;
   const i=attachIdx; inp.value=''; attachIdx=-1; await putLineImage(i,f);}
-function clearLineImage(i){curItems[i].pic='';curItems[i].pic_url='';curItems[i].pic_id='';renderLines();renderDoc();}
+async function clearLineImage(i){
+  const sku=curItems[i].sku, remembered=!!skuPic(sku);
+  curItems[i].pic='';curItems[i].pic_url='';curItems[i].pic_id='';
+  renderLines();renderDoc();
+  if(remembered && confirm('ลบรูปที่จำไว้กับ SKU "'+sku+'" ด้วยไหม?\n\nตกลง = ครั้งหน้าจะไม่ขึ้นรูปนี้อีก\nยกเลิก = ลบเฉพาะในเอกสารนี้')){
+    await rememberSkuPic(sku,{pic:null,pic_url:null,pic_id:null});
+    renderLines();
+  }
+}
 function setLineImageUrl(i,url){url=(url||'').trim();if(!url)return;curItems[i].pic=url;renderLines();renderDoc();}
 function clearAllImages(){if(!curItems.some(it=>it.pic))return;if(!confirm('ล้างรูปทั้งหมดในเอกสารนี้? (บันทึกทับเพื่อคืนพื้นที่ DB)'))return;curItems.forEach(it=>{it.pic='';it.pic_url='';it.pic_id='';});renderLines();renderDoc();}
 
@@ -1416,11 +1445,17 @@ function addLineBySku(){
   const sku=$('addSkuInput').value.trim();
   const p=sku?prod(sku):null;
   const bx=p?parseBox(p.box_size):{w:0,l:0,h:0};
-  curItems.push({sku,price:p&&p.price!=null?p.price:0,qty:0,ctn:0,nw:0,gw:0,mark:(p&&p.mark?p.mark:''),pic:'',w:bx.w||0,l:bx.l||0,h:bx.h||0,gid:null});
+  const pp=skuPic(sku)||{};        // เคยแนบรูปให้ SKU นี้แล้วก็ดึงมาเลย
+  curItems.push({sku,price:p&&p.price!=null?p.price:0,qty:0,ctn:0,nw:0,gw:0,mark:(p&&p.mark?p.mark:''),
+    pic:pp.pic||'',pic_url:pp.pic_url||'',pic_id:pp.pic_id||'',w:bx.w||0,l:bx.l||0,h:bx.h||0,gid:null});
   $('addSkuInput').value='';renderLines();renderDoc();
 }
 function setLineSku(i,val){
   const sku=(val||'').trim(); curItems[i].sku=sku;
+  if(!curItems[i].pic){                          // แถวยังไม่มีรูป → ดึงรูปเดิมของ SKU นี้
+    const pp=skuPic(sku);
+    if(pp){curItems[i].pic=pp.pic;curItems[i].pic_url=pp.pic_url;curItems[i].pic_id=pp.pic_id;}
+  }
   const p=prod(sku);
   if(p){ if(!curItems[i].price)curItems[i].price=p.price!=null?p.price:0; if(!curItems[i].mark)curItems[i].mark=p.mark||'';
     const bx=parseBox(p.box_size); if(!curItems[i].w&&bx.w)curItems[i].w=bx.w; if(!curItems[i].l&&bx.l)curItems[i].l=bx.l; if(!curItems[i].h&&bx.h)curItems[i].h=bx.h;
@@ -1459,6 +1494,7 @@ function renderLines(){
     const picCell=it.pic
       ?`<img class="thumb" src="${esc(it.pic)}" title="${it.pic_url?'อัปขึ้น Drive แล้ว':'เก็บในระบบ'}">`
        +(it.pic_url?`<div><a href="${esc(it.pic_url)}" target="_blank" rel="noopener" style="font-size:10px">☁️ Drive</a></div>`:'')
+       +(skuPic(it.sku)?'<div style="font-size:9.5px;color:#1E7145">🔗 จำไว้กับ SKU</div>':'')
        +`<br><button class="mini btn red" onclick="clearLineImage(${i})">ลบรูป</button>`
       :`<input style="width:130px;font-size:11px" placeholder="วางลิงก์รูป (URL)" onchange="setLineImageUrl(${i},this.value)"><br><button class="mini btn ghost" style="margin-top:3px" onclick="attachLineImage(${i})">📷 อัปโหลดแทน</button>`;
     h+=`<tr><td${bt}>${grpTag}<input list="skuList" value="${esc(it.sku||'')}" onchange="setLineSku(${i},this.value)" style="width:110px;font-weight:700" placeholder="รหัส SKU">${p?'':(it.sku?' <span class="pill up">ไม่พบ</span>':'')}<br><span class="muted">${p?esc(p.name_en||p.product_name||''):''}</span></td>
