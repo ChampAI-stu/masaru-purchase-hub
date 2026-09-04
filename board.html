@@ -371,6 +371,7 @@ body.price-on .sl-price{display:block}
   <div class="tabbar">
     <button class="tab-btn active" id="tabBoard">📋 Purchase Board</button>
     <button class="tab-btn" id="tabPlan">🚚 แผนรับสินค้า</button>
+    <button class="tab-btn" id="tabUp">📜 ประวัติการอัพโหลด</button>
   </div>
 
   <div id="viewBoard">
@@ -426,7 +427,8 @@ body.price-on .sl-price{display:block}
               <th class="sortable" data-sort="po_number">เลขที่ PO<span class="sort-ind"></span></th>
               <th class="sortable" data-sort="quantity">จำนวน<span class="sort-ind"></span></th>
               <th class="sortable" data-sort="received_qty">จำนวนที่เข้า<span class="sort-ind"></span></th>
-              <th class="sortable" data-sort="eta">วันที่เข้าคลัง<span class="sort-ind"></span></th>
+              <th class="sortable" data-sort="eta">วันที่คาดเข้า<span class="sort-ind"></span></th>
+              <th class="sortable" data-sort="delivered_at">วันที่นำส่งคลัง<span class="sort-ind"></span></th>
               <th class="sortable" data-sort="status">สถานะ PO<span class="sort-ind"></span></th>
               <th class="sortable" data-sort="carrier" id="carrierHead">บริษัทขนส่ง<span class="sort-ind"></span></th>
               <th>หมายเหตุ</th>
@@ -465,6 +467,18 @@ body.price-on .sl-price{display:block}
       </div>
       <div id="planContent"></div>
     </div>
+  </div>
+</div>
+
+<div id="viewUp" style="display:none">
+  <div class="container">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0">
+      <h2 style="margin:0">📜 ประวัติการอัพโหลดข้อมูล</h2>
+      <input id="upSearch" placeholder="ค้นหาชื่อไฟล์ / ผู้อัพโหลด" style="padding:8px 11px;border:1px solid #d9e0ec;border-radius:8px;max-width:260px" oninput="renderUploads()">
+      <div style="flex:1"></div>
+      <button class="wk-btn" onclick="loadUploads()">🔄 รีเฟรช</button>
+    </div>
+    <div id="upBody" style="overflow-x:auto"></div>
   </div>
 </div>
 
@@ -641,8 +655,12 @@ body.price-on .sl-price{display:block}
         </select>
       </div>
       <div class="m-field">
-        <label>วันที่เข้าคลัง</label>
+        <label>วันที่คาดเข้า (ETA)</label>
         <input type="date" id="mEta">
+      </div>
+      <div class="m-field">
+        <label>วันที่นำส่งคลัง</label>
+        <input type="date" id="mDelivered">
       </div>
     </div>
     <div class="m-field">
@@ -1211,6 +1229,7 @@ function render(){
       <td>${o.quantity?o.quantity.toLocaleString()+' pcs':'—'}</td>
       <td>${recvCell}</td>
       <td>${etaCell}</td>
+      <td>${o.delivered_at?fmtDate(o.delivered_at):'<span style="color:var(--muted)">—</span>'}</td>
       <td><span class="badge ${STATUS_CLASS[o.status]||''}">${STATUS_ICON[o.status]||''} ${esc(o.status)}</span></td>
       ${hideCarrier?'':`<td>${o.carrier?`<span class="carrier-tag" style="background:${carrierColor(o.carrier)}">${esc(o.carrier)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>`}
       <td><span class="note">${o.note?esc(o.note):'—'}</span></td>
@@ -1407,7 +1426,7 @@ window.openEdit = function(id){
   const o = allOrders.find(x=>x.id===id); if(!o) return;
   $('modalTitle').textContent = 'แก้ไขรายการ';
   $('editId').value=o.id; $('mPO').value=o.po_number||'';
-  $('mEta').value=o.eta||''; $('mStatus').value=o.status||'อยู่ระหว่างสั่งซื้อ'; $('mNote').value=o.note||'';
+  $('mEta').value=o.eta||''; $('mDelivered').value=o.delivered_at||''; $('mStatus').value=o.status||'อยู่ระหว่างสั่งซื้อ'; $('mNote').value=o.note||'';
   $('carrierList').innerHTML=CARRIERS.map(c=>`<option value="${c.name}">`).join(''); $('mCarrier').value=o.carrier||'';
   $('skuLines').innerHTML='';
   addSkuLine({ sku:o.sku, qty:o.quantity, recv:(o.received_qty!=null)?o.received_qty:null, price:(o.price!=null)?o.price:null });
@@ -1436,6 +1455,7 @@ async function saveOrder(){
     carrier: $('mCarrier').value.trim() || null,
     po_number: $('mPO').value.trim() || null,
     eta: $('mEta').value || null,
+    delivered_at: $('mDelivered').value || null,
     status: $('mStatus').value,
     note: $('mNote').value.trim() || null,
     updated_at: new Date().toISOString()
@@ -1534,10 +1554,12 @@ function handleImportFile(e){
   const file = e.target.files[0];
   if(!file) return;
   $('importFileName').textContent = '📄 ' + file.name;
+  IMPORT_META = { name:file.name, size:file.size, sheet:'' };
   const reader = new FileReader();
   reader.onload = ev => {
     try {
       const wb = XLSX.read(ev.target.result, { type:'array', cellDates:true });
+      try{ IMPORT_META.sheet = wb.SheetNames[0]||''; }catch(e){}
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
       if(rows.length < 2){ toast('ไฟล์ไม่มีข้อมูล'); return; }
@@ -1694,8 +1716,79 @@ async function confirmImport(){
   $('importConfirm').disabled = false; $('importConfirm').textContent = 'ยืนยันนำเข้า';
   if(error){ toast('นำเข้าไม่สำเร็จ: '+error.message); return; }
   $('importBg').style.display = 'none';
+  await logUpload(payload.length);
   toast(`นำเข้า/อัพเดท ${payload.length} รายการเรียบร้อย`);
   loadOrders();
+}
+
+// ===== ประวัติการอัพโหลดข้อมูล =====
+let IMPORT_META = { name:'', size:0, sheet:'' };
+let UPLOADS = [];
+
+async function logUpload(saved){
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const who = session && session.user ? (session.user.email||'') : '';
+    const priceOnly = $('priceOnlyMode') && $('priceOnlyMode').checked;
+    const { error } = await sb.from('po_uploads').insert({
+      file_name : IMPORT_META.name || '(ไม่ทราบชื่อไฟล์)',
+      file_size : IMPORT_META.size || null,
+      sheet_name: IMPORT_META.sheet || null,
+      rows_total: (typeof importRecords!=='undefined' && importRecords) ? importRecords.length : null,
+      rows_saved: saved,
+      mode      : priceOnly ? 'อัพเดทเฉพาะราคา' : 'ซิงก์ครบทุกช่อง',
+      uploaded_by: who
+    });
+    if(error)console.warn('[board] บันทึกประวัติไม่ได้:', error.message);
+  }catch(e){ console.warn('[board] logUpload:', e.message); }
+}
+
+async function loadUploads(){
+  const { data, error } = await sb.from('po_uploads')
+    .select('*').order('created_at',{ascending:false}).limit(500);
+  if(error){
+    $('upBody').innerHTML = '<div style="padding:20px;color:var(--red)">โหลดประวัติไม่ได้: '+esc(error.message)
+      + (/does not exist/i.test(error.message)?'<br><span style="color:var(--muted)">ยังไม่ได้สร้างตาราง — รันไฟล์ board_upload_log.sql ก่อน</span>':'')
+      + '</div>';
+    return;
+  }
+  UPLOADS = data||[];
+  renderUploads();
+}
+
+function renderUploads(){
+  const q = (($('upSearch')&&$('upSearch').value)||'').toLowerCase();
+  const list = UPLOADS.filter(u => !q ||
+    ((u.file_name||'')+' '+(u.uploaded_by||'')+' '+(u.mode||'')).toLowerCase().includes(q));
+  if(!list.length){
+    $('upBody').innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted)">ยังไม่มีประวัติการอัพโหลด</div>';
+    return;
+  }
+  const kb = n => !n ? '—' : (n>1048576 ? (n/1048576).toFixed(1)+' MB' : Math.round(n/1024)+' KB');
+  const dth = t => { if(!t)return '—'; const d=new Date(t);
+    return d.toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'numeric'})
+      +' <span style="color:var(--muted)">'+d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+'</span>'; };
+  let h = '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+    + '<thead><tr style="background:#1F3864;color:#fff">'
+    + '<th style="padding:9px 11px;text-align:left">วันที่ / เวลา</th>'
+    + '<th style="padding:9px 11px;text-align:left">ชื่อไฟล์</th>'
+    + '<th style="padding:9px 11px;text-align:right">ขนาด</th>'
+    + '<th style="padding:9px 11px;text-align:right">แถวในไฟล์</th>'
+    + '<th style="padding:9px 11px;text-align:right">นำเข้าจริง</th>'
+    + '<th style="padding:9px 11px;text-align:left">โหมด</th>'
+    + '<th style="padding:9px 11px;text-align:left">ผู้อัพโหลด</th></tr></thead><tbody>';
+  list.forEach((u,i)=>{
+    h += `<tr style="border-bottom:1px solid #e6ebf3;${i%2?'background:#fafbfd':''}">
+      <td style="padding:8px 11px;white-space:nowrap">${dth(u.created_at)}</td>
+      <td style="padding:8px 11px"><b>📄 ${esc(u.file_name||'—')}</b>${u.sheet_name?`<div style="color:var(--muted);font-size:11.5px">ชีท: ${esc(u.sheet_name)}</div>`:''}</td>
+      <td style="padding:8px 11px;text-align:right;color:var(--muted)">${kb(u.file_size)}</td>
+      <td style="padding:8px 11px;text-align:right">${u.rows_total??'—'}</td>
+      <td style="padding:8px 11px;text-align:right"><b style="color:#1E7145">${u.rows_saved??'—'}</b></td>
+      <td style="padding:8px 11px;font-size:12px">${esc(u.mode||'—')}</td>
+      <td style="padding:8px 11px;color:var(--muted)">${esc(u.uploaded_by||'—')}</td>
+    </tr>`;});
+  $('upBody').innerHTML = h + '</tbody></table>'
+    + `<div style="margin-top:10px;color:var(--muted);font-size:12.5px">ทั้งหมด ${list.length} ครั้ง</div>`;
 }
 
 // ===== อัพเดท PO ทั้งใบ (ทุก SKU ในเลข PO เดียวกัน) =====
@@ -1834,12 +1927,15 @@ let allTrips = [];   // [{...trip, items:[...]}]
 // ---- แท็บ ----
 $('tabBoard').addEventListener('click', () => switchTab('board'));
 $('tabPlan').addEventListener('click', () => switchTab('plan'));
+$('tabUp').addEventListener('click',   () => switchTab('up'));
 function switchTab(t){
-  const isBoard = t==='board';
-  $('viewBoard').style.display = isBoard ? 'block' : 'none';
-  $('viewPlan').style.display  = isBoard ? 'none' : 'block';
-  $('tabBoard').classList.toggle('active', isBoard);
-  $('tabPlan').classList.toggle('active', !isBoard);
+  $('viewBoard').style.display = t==='board' ? 'block' : 'none';
+  $('viewPlan').style.display  = t==='plan'  ? 'block' : 'none';
+  $('viewUp').style.display    = t==='up'    ? 'block' : 'none';
+  $('tabBoard').classList.toggle('active', t==='board');
+  $('tabPlan').classList.toggle('active',  t==='plan');
+  $('tabUp').classList.toggle('active',    t==='up');
+  if(t==='up')loadUploads();
 }
 
 // ---- โหลดข้อมูลแผน ----
