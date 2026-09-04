@@ -513,8 +513,7 @@ body.price-on .sl-price{display:block}
         <option value="7">ผ่อนผัน 7 วัน</option>
       </select>
       <div style="flex:1"></div>
-      <button class="wk-btn" onclick="exportReport()">⬇️ Excel</button>
-      <button class="wk-btn" onclick="printReport()" style="background:#1F3864;color:#fff;border-color:#1F3864">🖨️ บันทึก PDF</button>
+      <button class="wk-btn" onclick="printReport()" style="background:#1F3864;color:#fff;border-color:#1F3864">📄 บันทึก PDF</button>
     </div>
     <div id="repHead" style="display:none">
       <div style="text-align:center;line-height:1.6;margin-bottom:14px">
@@ -2024,17 +2023,6 @@ function printReport(){
   setTimeout(()=>{window.print();setTimeout(done,1500);},80);
 }
 
-function exportReport(){
-  const rows=repRows();
-  const L={ontime:'ตรงเวลา',late:'ช้ากว่ากำหนด',late_open:'เลยกำหนด ยังไม่ส่ง',waiting:'รอถึงกำหนด'};
-  const out=[['PO','SKU','บริษัทขนส่ง','วันที่คาดเข้า','วันที่นำส่งคลัง','ต่าง (วัน)','ผล','สถานะ PO','จำนวน','เข้าแล้ว']];
-  rows.forEach(o=>out.push([o.po_number||'',o.sku||'',o.carrier||'',o.eta||'',o.delivered_at||'',
-    repDiff(o)??'',L[repClass(o)]||'',o.status||'',o.quantity??'',o.received_qty??'']));
-  const ws=XLSX.utils.aoa_to_sheet(out), wb=XLSX.utils.book_new();
-  ws['!cols']=[{wch:14},{wch:18},{wch:16},{wch:13},{wch:14},{wch:10},{wch:20},{wch:18},{wch:9},{wch:9}];
-  XLSX.utils.book_append_sheet(wb,ws,'OnTime');
-  XLSX.writeFile(wb,'รายงาน_OnTime_'+new Date().toISOString().slice(0,10)+'.xlsx');
-}
 
 // ===== ประวัติการอัพโหลดข้อมูล =====
 let IMPORT_META = { name:'', size:0, sheet:'' };
