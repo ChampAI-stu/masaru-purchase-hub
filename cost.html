@@ -866,19 +866,12 @@ async function putLineImage(i,file){
   if(!file||!/^image\//.test(file.type))return;
   if(i<0||i>=curItems.length)return;
   const it=curItems[i];
-  it.pic=await shrink(file,200,0.7);          // ภาพย่อสำหรับ PDF/พรีวิว (~10 KB)
-  renderLines();renderDoc();
-  await rememberSkuPic(it.sku,{pic:it.pic});  // จำไว้ให้ SKU นี้ทันที
-  try{                                        // อัปตัวเต็มขึ้น Drive
-    const j=await gasCall({action:'upload',
-      filename:(($('f_invno').value||'INV')+'_'+(it.sku||'item')+'_'+Date.now()+'.jpg'),
-      mime:file.type,data:await fileToB64(file),
-      folder:'รูปสินค้า/'+(($('f_invno').value||'ไม่ระบุเลข INV').replace(/[\\/:*?"<>|]/g,'-')),
-      po:$('f_invno').value||'',vendor:$('f_sname').value||'',payDate:$('f_date').value||'',actor:(typeof ME==='string'?ME:(ME&&ME.email)||'')});
-    it.pic_url=j.openUrl||j.viewUrl||''; it.pic_id=j.fileId||'';
-    renderLines();
-    await rememberSkuPic(it.sku,{pic:it.pic,pic_url:it.pic_url,pic_id:it.pic_id});
-  }catch(e){ console.warn('[img] drive:',e.message); }   // อัป Drive ไม่ได้ก็ยังมีภาพย่อ
+  if(!String(it.sku||'').trim()){ alert('ใส่ SKU ในแถวนี้ก่อน แล้วค่อยแนบรูป\n(รูปเก็บเป็นคลังราย SKU ใช้ซ้ำได้ทุกใบ)'); return; }
+  // 🔑 เก็บเข้า "คลังรูป SKU" ที่เดียว ไม่ฝัง base64 ลงในใบ INV อีก
+  //    ใบไหนใช้ SKU นี้ก็ดึงรูปเดียวกันไปใช้ → DB เล็กลงมาก
+  await saveSkuPic(it.sku,file);
+  it.pic=''; it.pic_url=''; it.pic_id='';
+  renderLines(); renderDoc();
 }
 
 /* จำรูปไว้กับ SKU — ครั้งหน้าที่ใช้ SKU เดิม รูปจะขึ้นเอง */
@@ -893,6 +886,11 @@ async function rememberSkuPic(sku,obj){
     return;
   }
   db.expMap[sku]=Object.assign(db.expMap[sku]||{},rec);   // อัปเดตในหน่วยความจำทันที
+}
+/* รูปที่จะใช้แสดง — ใบเก่าที่ฝัง base64 ไว้ยังใช้ได้ / ใบใหม่ดึงจากคลังรูป SKU */
+function picOf(it){
+  if(it && it.pic) return it.pic;
+  const pp=skuPic(it&&it.sku); return pp?pp.pic:'';
 }
 /* ดึงรูปที่เคยแนบไว้ของ SKU นี้ */
 function skuPic(sku){
@@ -910,7 +908,7 @@ function bindPaste(){
     if(!f)return;
     ev.preventDefault();
     let i=attachIdx;
-    if(i<0)i=curItems.findIndex(it=>!it.pic);        // ยังไม่ได้เลือกแถว → ใส่แถวแรกที่ยังว่าง
+    if(i<0)i=curItems.findIndex(it=>!picOf(it));     // ยังไม่ได้เลือกแถว → ใส่แถวแรกที่ยังไม่มีรูป
     if(i<0)i=curItems.length-1;
     if(i<0)return alert('เพิ่มรายการสินค้าก่อน แล้วค่อยวางรูป');
     await putLineImage(i,f); attachIdx=-1;
@@ -936,7 +934,18 @@ async function clearLineImage(i){
   }
 }
 function setLineImageUrl(i,url){url=(url||'').trim();if(!url)return;curItems[i].pic=url;renderLines();renderDoc();}
-function clearAllImages(){if(!curItems.some(it=>it.pic))return;if(!confirm('ล้างรูปทั้งหมดในเอกสารนี้? (บันทึกทับเพื่อคืนพื้นที่ DB)'))return;curItems.forEach(it=>{it.pic='';it.pic_url='';it.pic_id='';});renderLines();renderDoc();}
+function clearAllImages(){
+  const embedded=curItems.filter(it=>it.pic).length;
+  if(!embedded)return alert('ใบนี้ไม่มีรูปฝังอยู่แล้ว — รูปที่เห็นดึงจากคลังรูป SKU');
+  const keep=curItems.filter(it=>it.pic&&!skuPic(it.sku));
+  let msg='ใบนี้มีรูปฝังอยู่ '+embedded+' รูป\n';
+  if(keep.length)msg+='\n⚠️ '+keep.length+' รูปยังไม่มีในคลัง SKU — ล้างแล้วรูปจะหาย\n   ('+keep.map(x=>x.sku||'ไม่มี SKU').join(', ')+')\n';
+  msg+='\nล้างเพื่อคืนพื้นที่ DB? (ต้องกดบันทึกทับด้วย)';
+  if(!confirm(msg))return;
+  curItems.forEach(it=>{it.pic='';it.pic_url='';it.pic_id='';});
+  renderLines();renderDoc();
+  asStat&&asStat('ล้างรูปฝังแล้ว — กด 💾 บันทึกเอกสาร เพื่อคืนพื้นที่','#B45309');
+}
 
 function fillSkuSelects(){
   if($('skuList'))$('skuList').innerHTML=db.products.map(p=>`<option value="${esc(p.sku)}">`).join('');
@@ -1379,7 +1388,7 @@ async function doAutoSave(){
   if(asBusy){asPending=true;return;}
   const d=formData(); if(!d.invno)return;
   asBusy=true; asStat('กำลังบันทึกอัตโนมัติ…');
-  const rec={invno:d.invno,date:d.date||null,sname:d.sname,stel:d.stel,scomp:d.scomp,saddr:d.saddr,slic:d.slic||null,stax:d.stax||null,cname:d.cname,caddr:d.caddr,term:d.term,port:d.port||null,logi:d.logi,cur:d.cur,items:d.items};
+  const rec={invno:d.invno,date:d.date||null,sname:d.sname,stel:d.stel,scomp:d.scomp,saddr:d.saddr,slic:d.slic||null,stax:d.stax||null,cname:d.cname,caddr:d.caddr,term:d.term,port:d.port||null,logi:d.logi,cur:d.cur,items:slimItems(d.items)};
   try{
     const {error}=await sb.from('shipments').update(rec).eq('id',id);
     if(error)throw error;
@@ -1509,9 +1518,10 @@ function renderLines(){
       ? `<span class="muted" title="ใช้ค่าร่วมกับกลุ่ม">⤷ ${esc(String(val||0))}</span>`
       : `<input style="width:${k==='mark'?'130':(k==='gw'||k==='nw'?'80':'60')}px" ${k==='mark'?'':'type="number" step="'+step+'"'} value="${k==='mark'?esc(val||''):(val||0)}" onchange="updItem(${i},'${k}',this.value)">`;
     const grpTag=isGrp?`<span class="pill" style="background:${gc};color:#fff;font-size:9px" title="สินค้าในกลุ่มนี้ใช้ GW/ขนาด/Mark ร่วมกัน">🔗${isHead?' กลุ่มหลัก':' ย่อย'}</span> `:'';
-    const picCell=it.pic
-      ?`<img class="thumb" src="${esc(it.pic)}" title="${it.pic_url?'อัปขึ้น Drive แล้ว':'เก็บในระบบ'}">`
-       +(it.pic_url?`<div><a href="${esc(it.pic_url)}" target="_blank" rel="noopener" style="font-size:10px">☁️ Drive</a></div>`:'')
+    const _pic=picOf(it);
+    const picCell=_pic
+      ?`<img class="thumb" src="${esc(_pic)}" title="รูปจากคลัง SKU">`
+       +((skuPic(it.sku)||{}).pic_url?`<div><a href="${esc(skuPic(it.sku).pic_url)}" target="_blank" rel="noopener" style="font-size:10px">☁️ Drive</a></div>`:'')
        +(skuPic(it.sku)?'<div style="font-size:9.5px;color:#1E7145">🔗 จำไว้กับ SKU</div>':'')
        +`<br><button class="mini btn red" onclick="clearLineImage(${i})">ลบรูป</button>`
       :`<input style="width:130px;font-size:11px" placeholder="วางลิงก์รูป (URL)" onchange="setLineImageUrl(${i},this.value)"><br><button class="mini btn ghost" style="margin-top:3px" onclick="attachLineImage(${i})">📷 อัปโหลดแทน</button>`;
@@ -1539,9 +1549,18 @@ function updItem(i,k,v){curItems[i][k]=(k==='mark'||k==='sku')?v:(k==='foc'?!!v:
 function formData(){return{invno:$('f_invno').value,date:$('f_date').value,sname:$('f_sname').value,stel:$('f_stel').value,
   scomp:$('f_scomp').value,saddr:$('f_saddr').value,slic:$('f_slic').value,stax:$('f_stax').value,cname:$('f_cname').value,caddr:$('f_caddr').value,
   term:$('f_term').value,port:$('f_port').value,logi:+$('f_logi').value||0,cur:$('f_cur').value,items:curItems};}
+/* ตัด base64 ออกจาก items ก่อนบันทึก ถ้าคลังรูป SKU มีรูปให้แล้ว
+   → ตาราง shipments เล็กลงมาก และรูปยังแสดงครบเพราะดึงจากคลัง */
+function slimItems(items){
+  return (items||[]).map(it=>{
+    const o={...it};
+    if(o.pic && skuPic(o.sku)) { o.pic=''; o.pic_url=''; o.pic_id=''; }
+    return o;
+  });
+}
 async function saveShipment(){
   const d=formData();if(!d.invno)return alert('กรอก Invoice/PO No.');
-  const rec={invno:d.invno,date:d.date||null,sname:d.sname,stel:d.stel,scomp:d.scomp,saddr:d.saddr,slic:d.slic||null,stax:d.stax||null,cname:d.cname,caddr:d.caddr,term:d.term,port:d.port||null,logi:d.logi,cur:d.cur,items:d.items};
+  const rec={invno:d.invno,date:d.date||null,sname:d.sname,stel:d.stel,scomp:d.scomp,saddr:d.saddr,slic:d.slic||null,stax:d.stax||null,cname:d.cname,caddr:d.caddr,term:d.term,port:d.port||null,logi:d.logi,cur:d.cur,items:slimItems(d.items)};
   const id=comboVal('loadShipment');
   let shipmentId=id, ok=false;
   if(id){ ok=await dbWrite(()=>sb.from('shipments').update(rec).eq('id',id)); }
@@ -1605,11 +1624,11 @@ function renderDoc(){
   const invGroups=[]; const gi={};
   d.items.forEach((it,idx)=>{
     const key=(it.sku?('sku:'+it.sku):('__blank'+idx))+(it.gid?('|g'+it.gid):'')+(it.foc?'|foc':'');
-    if(gi[key]==null){gi[key]=invGroups.length;invGroups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:0,total:0,pic:it.pic||'',mixed:false,gid:it.gid||null,foc:!!it.foc});}
+    if(gi[key]==null){gi[key]=invGroups.length;invGroups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:0,total:0,pic:picOf(it),mixed:false,gid:it.gid||null,foc:!!it.foc});}
     const g=invGroups[gi[key]];
     if((+it.price||0)!==g.price)g.mixed=true;
     g.qty+=+it.qty||0; g.gw+=+it.gw||0; g.total+=(+it.price||0)*(+it.qty||0);
-    if(!g.pic&&it.pic)g.pic=it.pic;
+    if(!g.pic)g.pic=picOf(it);
   });
   const rowInv=(()=>{let out='';let k=0;
     while(k<invGroups.length){const gid=invGroups[k].gid; let run=[invGroups[k]];
@@ -1871,9 +1890,9 @@ function exportInvoiceExcel(ev){
   const d=formData();
   const groups=[]; const gi={};
   d.items.forEach((it,idx)=>{const key=(it.sku?('sku:'+it.sku):('__b'+idx))+(it.gid?('|g'+it.gid):'')+(it.foc?'|foc':'');
-    if(gi[key]==null){gi[key]=groups.length;groups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:+it.gw||0,total:0,pic:it.pic||'',mixed:false,gid:it.gid||null,foc:!!it.foc});}
+    if(gi[key]==null){gi[key]=groups.length;groups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:+it.gw||0,total:0,pic:picOf(it),mixed:false,gid:it.gid||null,foc:!!it.foc});}
     const g=groups[gi[key]];if((+it.price||0)!==g.price)g.mixed=true;
-    g.qty+=+it.qty||0;g.total+=(+it.price||0)*(+it.qty||0); if(!g.pic&&it.pic)g.pic=it.pic;});
+    g.qty+=+it.qty||0;g.total+=(+it.price||0)*(+it.qty||0); if(!g.pic)g.pic=picOf(it);});
   const totalPrice=d.items.reduce((s,i)=>s+(i.foc?0:(+i.price*+i.qty)),0);
   const totalGW=(()=>{const seen={};let s=0;d.items.forEach(it=>{if(it.gid){if(!seen[it.gid]){seen[it.gid]=1;s+=+it.gw||0;}}else s+=+it.gw||0;});return s;})();
   const totalCtn=d.items.reduce((s,i)=>s+(+i.ctn||0),0);
