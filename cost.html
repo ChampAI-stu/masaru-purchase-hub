@@ -263,6 +263,11 @@
             <button class="btn" onclick="savePdf(event)">📄 บันทึก PDF</button>
             <button class="btn gold" onclick="exportInvoiceExcel(event)">⬇️ Excel (INV+PL แก้ได้)</button>
           </div>
+          <div style="background:#EEF6FF;border:1px solid #BBD6F5;border-radius:9px;padding:8px 12px;margin:8px 0;font-size:12.5px">
+            📋 <b>วางรูปได้เลย</b> — ก๊อปรูปแล้วกด <b>Ctrl+V</b> ระบบจะใส่ให้รายการแรกที่ยังไม่มีรูป
+            &nbsp;·&nbsp; ถ้าจะเจาะจงแถว กดปุ่ม <b>📷 รูป</b> ที่แถวนั้นก่อนแล้วค่อย Ctrl+V
+            &nbsp;·&nbsp; <span class="muted">อัปขึ้น Google Drive อัตโนมัติ</span>
+          </div>
           <div id="draftBar" style="display:none;background:#FFF6E5;border:1px solid #F3DFB6;border-left:5px solid #B45309;border-radius:9px;padding:9px 12px;margin:8px 0;font-size:12.5px"></div>
         </div>
         <div class="card" style="flex:1 1 100%;min-width:340px">
@@ -809,6 +814,70 @@ async function saveExport(){
   const ok=await dbWrite(()=>sb.from('sku_export_info').upsert(rec,{onConflict:'sku'}));
   if(ok){await reloadExport();$('expDlg').close();renderSkuTable();}
 }
+/* ==================================================================
+   รูปสินค้าในใบ INV
+   • วางรูปได้เลย (Ctrl+V) หรือลากไฟล์มาวาง — ไม่ต้องหาลิงก์
+   • อัปขึ้น Google Drive ผ่าน Apps Script (ตัวเดียวกับระบบ pay)
+   • เก็บภาพย่อเล็ก ๆ ไว้ด้วย เพราะ html2canvas ดึงรูปจาก Drive ไม่ได้ (CORS)
+     → PDF ใช้ภาพย่อ / ดูเต็มใช้ลิงก์ Drive
+   ================================================================== */
+const GAS_URL    = 'https://script.google.com/macros/s/AKfycbwjp--1ScpX43QdarB4JLnlQJSZoAuqsQ8edrIP2vSYUjq7QwbWU0jlWk6lGo5zQ26Hdg/exec';
+const GAS_SECRET = 'masaru-slip-2026';
+async function gasCall(payload){
+  const r=await fetch(GAS_URL,{method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},          // เลี่ยง CORS preflight
+    body:JSON.stringify(Object.assign({secret:GAS_SECRET},payload))});
+  const t=await r.text(); let j;
+  try{j=JSON.parse(t);}catch(e){throw new Error('Apps Script ตอบกลับผิดรูปแบบ');}
+  if(!j.ok)throw new Error(j.error||'อัปโหลดไม่สำเร็จ');
+  return j;
+}
+const fileToB64=f=>new Promise((res,rej)=>{const r=new FileReader();
+  r.onload=()=>res(String(r.result).split(',')[1]||'');r.onerror=()=>rej(new Error('อ่านไฟล์ไม่ได้'));r.readAsDataURL(f);});
+
+/* ย่อรูปเป็น base64 ขนาดกำหนดเอง */
+function shrink(file,max,q){return new Promise(res=>{
+  const r=new FileReader();r.onload=ev=>{const img=new Image();img.onload=()=>{
+    let w=img.width,h=img.height; if(w>max){h=Math.round(h*max/w);w=max;}
+    const c=document.createElement('canvas');c.width=w;c.height=h;
+    c.getContext('2d').drawImage(img,0,0,w,h);res(c.toDataURL('image/jpeg',q));};
+  img.src=ev.target.result;};r.readAsDataURL(file);});}
+
+/* รับไฟล์รูป 1 ไฟล์ → ใส่ให้แถวที่ i */
+async function putLineImage(i,file){
+  if(!file||!/^image\//.test(file.type))return;
+  if(i<0||i>=curItems.length)return;
+  const it=curItems[i];
+  it.pic=await shrink(file,200,0.7);          // ภาพย่อสำหรับ PDF/พรีวิว (~10 KB)
+  renderLines();renderDoc();
+  try{                                        // อัปตัวเต็มขึ้น Drive
+    const j=await gasCall({action:'upload',
+      filename:(($('f_invno').value||'INV')+'_'+(it.sku||'item')+'_'+Date.now()+'.jpg'),
+      mime:file.type,data:await fileToB64(file),
+      folder:'รูปสินค้า/'+(($('f_invno').value||'ไม่ระบุเลข INV').replace(/[\\/:*?"<>|]/g,'-')),
+      po:$('f_invno').value||'',vendor:$('f_sname').value||'',payDate:$('f_date').value||'',actor:(typeof ME==='string'?ME:(ME&&ME.email)||'')});
+    it.pic_url=j.openUrl||j.viewUrl||''; it.pic_id=j.fileId||'';
+    renderLines();
+  }catch(e){ console.warn('[img] drive:',e.message); }   // อัป Drive ไม่ได้ก็ยังมีภาพย่อ
+}
+/* วางรูปจากคลิปบอร์ด (Ctrl+V) */
+let PASTE_BOUND=false;
+function bindPaste(){
+  if(PASTE_BOUND)return; PASTE_BOUND=true;
+  document.addEventListener('paste',async ev=>{
+    if($('tab-invpl')&&$('tab-invpl').style.display==='none')return;
+    const items=[...(ev.clipboardData&&ev.clipboardData.items||[])];
+    const f=items.map(x=>x.kind==='file'?x.getAsFile():null).find(x=>x&&/^image\//.test(x.type));
+    if(!f)return;
+    ev.preventDefault();
+    let i=attachIdx;
+    if(i<0)i=curItems.findIndex(it=>!it.pic);        // ยังไม่ได้เลือกแถว → ใส่แถวแรกที่ยังว่าง
+    if(i<0)i=curItems.length-1;
+    if(i<0)return alert('เพิ่มรายการสินค้าก่อน แล้วค่อยวางรูป');
+    await putLineImage(i,f); attachIdx=-1;
+    asStat&&asStat('วางรูปลงรายการที่ '+(i+1)+' แล้ว','#1E7145');
+  });
+}
 /* image — แนบชั่วคราวรายบรรทัดในใบ INV (ไม่เก็บถาวรราย SKU) */
 let attachIdx=-1;
 function downscaleImg(file,cb){const r=new FileReader();r.onload=ev=>{const img=new Image();img.onload=()=>{
@@ -816,10 +885,11 @@ function downscaleImg(file,cb){const r=new FileReader();r.onload=ev=>{const img=
   const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
   cb(c.toDataURL('image/jpeg',0.82));};img.src=ev.target.result;};r.readAsDataURL(file);}
 function attachLineImage(i){attachIdx=i;$('lineImgFile').click();}
-function onLineImg(inp){const f=inp.files[0];if(!f||attachIdx<0)return;downscaleImg(f,d=>{curItems[attachIdx].pic=d;inp.value='';attachIdx=-1;renderLines();renderDoc();});}
-function clearLineImage(i){curItems[i].pic='';renderLines();renderDoc();}
+async function onLineImg(inp){const f=inp.files[0];if(!f||attachIdx<0)return;
+  const i=attachIdx; inp.value=''; attachIdx=-1; await putLineImage(i,f);}
+function clearLineImage(i){curItems[i].pic='';curItems[i].pic_url='';curItems[i].pic_id='';renderLines();renderDoc();}
 function setLineImageUrl(i,url){url=(url||'').trim();if(!url)return;curItems[i].pic=url;renderLines();renderDoc();}
-function clearAllImages(){if(!curItems.some(it=>it.pic))return;if(!confirm('ล้างรูปทั้งหมดในเอกสารนี้? (บันทึกทับเพื่อคืนพื้นที่ DB)'))return;curItems.forEach(it=>it.pic='');renderLines();renderDoc();}
+function clearAllImages(){if(!curItems.some(it=>it.pic))return;if(!confirm('ล้างรูปทั้งหมดในเอกสารนี้? (บันทึกทับเพื่อคืนพื้นที่ DB)'))return;curItems.forEach(it=>{it.pic='';it.pic_url='';it.pic_id='';});renderLines();renderDoc();}
 
 function fillSkuSelects(){
   if($('skuList'))$('skuList').innerHTML=db.products.map(p=>`<option value="${esc(p.sku)}">`).join('');
@@ -1291,6 +1361,7 @@ function bindInvplAutoSave(){
 }
 
 function initInvPl(){
+  bindPaste();
   fillSkuSelects();
   fillPartySelects();
   const keepId=invplReady?comboVal('loadShipment'):'';
@@ -1386,7 +1457,9 @@ function renderLines(){
       : `<input style="width:${k==='mark'?'130':(k==='gw'||k==='nw'?'80':'60')}px" ${k==='mark'?'':'type="number" step="'+step+'"'} value="${k==='mark'?esc(val||''):(val||0)}" onchange="updItem(${i},'${k}',this.value)">`;
     const grpTag=isGrp?`<span class="pill" style="background:${gc};color:#fff;font-size:9px" title="สินค้าในกลุ่มนี้ใช้ GW/ขนาด/Mark ร่วมกัน">🔗${isHead?' กลุ่มหลัก':' ย่อย'}</span> `:'';
     const picCell=it.pic
-      ?`<img class="thumb" src="${esc(it.pic)}"><br><button class="mini btn red" onclick="clearLineImage(${i})">ลบรูป</button>`
+      ?`<img class="thumb" src="${esc(it.pic)}" title="${it.pic_url?'อัปขึ้น Drive แล้ว':'เก็บในระบบ'}">`
+       +(it.pic_url?`<div><a href="${esc(it.pic_url)}" target="_blank" rel="noopener" style="font-size:10px">☁️ Drive</a></div>`:'')
+       +`<br><button class="mini btn red" onclick="clearLineImage(${i})">ลบรูป</button>`
       :`<input style="width:130px;font-size:11px" placeholder="วางลิงก์รูป (URL)" onchange="setLineImageUrl(${i},this.value)"><br><button class="mini btn ghost" style="margin-top:3px" onclick="attachLineImage(${i})">📷 อัปโหลดแทน</button>`;
     h+=`<tr><td${bt}>${grpTag}<input list="skuList" value="${esc(it.sku||'')}" onchange="setLineSku(${i},this.value)" style="width:110px;font-weight:700" placeholder="รหัส SKU">${p?'':(it.sku?' <span class="pill up">ไม่พบ</span>':'')}<br><span class="muted">${p?esc(p.name_en||p.product_name||''):''}</span></td>
       <td style="text-align:center"${bt}>${picCell}</td>
