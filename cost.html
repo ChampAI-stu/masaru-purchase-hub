@@ -109,6 +109,12 @@
   .doc table.items img,.doc .pic{page-break-inside:avoid;break-inside:avoid}
   .doc .rmark{white-space:pre-line;font-size:10px}
   .doc .pic{max-width:80px;max-height:80px;object-fit:contain}
+  .sku-pic-box{width:66px;height:66px;border-radius:8px;border:1px dashed #94A3B8;background:#F4F6FA;
+    display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:17px;
+    color:#64748B;cursor:pointer;object-fit:cover;margin:0 auto}
+  img.sku-pic-box{border-style:solid;border-color:#CBD5E1;background:#fff}
+  .sku-pic-box:hover{border-color:#2E75B6;background:#EEF6FF}
+  .sku-pic-box.on{outline:3px solid #FFD966;border-color:#B45309}
   .doc .sig{margin-top:30px;text-align:right}
   .doc .goldline{height:3px;background:var(--gold);margin:6px 0}
   @media print{@page{margin:12mm}html,body{height:auto!important}body *{visibility:hidden}#docPreview,#docPreview *{visibility:visible}#docPreview{position:absolute;left:0;top:0;width:100%}.doc{width:100%;padding:0}.no-print{display:none!important}.doc table.items tr,.doc table.items td{page-break-inside:avoid!important;break-inside:avoid!important}.doc table.items thead{display:table-header-group}}
@@ -173,6 +179,13 @@
             <option value="done">✔ เคยออกแล้ว</option>
             <option value="never">— ยังไม่เคย</option>
           </select>
+          <select id="skuPicFilter" onchange="renderSkuTable()" style="max-width:165px">
+            <option value="">รูปสินค้า: ทั้งหมด</option>
+            <option value="no">📷 ยังไม่มีรูป</option>
+            <option value="yes">✅ มีรูปแล้ว</option>
+          </select>
+          <input type="file" id="skuPicFile" accept="image/*" style="display:none" onchange="onSkuPicFile(this)">
+          <span id="skuPicStat" class="muted" style="font-size:12px"></span>
           <button class="btn ghost" onclick="exportSkuTemplate()">โหลดเทมเพลตส่งออก</button>
           <button class="btn ghost edit-only" onclick="document.getElementById('expImport').click()">นำเข้าข้อมูลส่งออก</button>
           <button class="btn gold" onclick="exportSkuExcel()">⬇️ Export Excel</button>
@@ -728,6 +741,7 @@ function go(t){
 
 /* ===== SKU + EXPORT INFO ===== */
 function renderSkuTable(){
+  bindSkuPaste();
   fillSkuSelects();
   const q=($('skuSearch').value||'').toLowerCase();
   const cf=($('skuCustomsFilter')&&$('skuCustomsFilter').value)||'';
@@ -738,10 +752,13 @@ function renderSkuTable(){
     if(q && !(((p.sku||'')+(p.name_en||'')+(p.name_th||'')+(p.product_name||'')+(p.brand||'')+(p.model||'')).toLowerCase().includes(q))) return false;
     if(cf==='done' && !custDone(p)) return false;
     if(cf==='never' && custDone(p)) return false;
+    const pf=($('skuPicFilter')&&$('skuPicFilter').value)||'';
+    if(pf==='no'  &&  skuPic(p.sku)) return false;
+    if(pf==='yes' && !skuPic(p.sku)) return false;
     return true;
   });
   if(!list.length){$('skuTable').innerHTML='<div class="empty">ไม่พบสินค้า (ดึงจาก sku_master + sku_export_info)</div>';return;}
-  let h='<table><thead><tr><th>SKU</th><th>Supplier</th><th>ต้นทุน (CNY)</th><th>ชื่อ (กลาง / EN / ไทย)</th><th>Brand·Model</th><th>ขนาดกล่อง·CBM·Kg</th><th>ดำเนินการตามกรมศุลกากร</th><th class="no-print">จัดการ</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th style="width:86px">รูป</th><th>SKU</th><th>Supplier</th><th>ต้นทุน (CNY)</th><th>ชื่อ (กลาง / EN / ไทย)</th><th>Brand·Model</th><th>ขนาดกล่อง·CBM·Kg</th><th>ดำเนินการตามกรมศุลกากร</th><th class="no-print">จัดการ</th></tr></thead><tbody>';
   list.forEach(p=>{
     const packed=(p.box_size||p.cbm_ctn||p.w_ctn)?`${esc(p.box_size||'')} · ${p.cbm_ctn||'-'} · ${p.w_ctn||'-'}`:'<span class="muted">ยังไม่กรอก</span>';
     const sups=(p.suppliers&&p.suppliers.length)?p.suppliers:[{supplier:'',price:null,product_name:'',stock:null}];
@@ -751,6 +768,7 @@ function renderSkuTable(){
       const priceTxt=sup.price!=null?money(sup.price):'<span class="muted">—</span>';
       const nameMid=sup.product_name||p.product_name||'';
       h+=`<tr>
+        ${first?`<td rowspan="${sups.length}" style="text-align:center;border-top:2px solid var(--line)">${skuPicCell(p.sku)}</td>`:''}
         <td${bt}><b>${esc(p.sku)}</b></td>
         <td${bt}>${esc(sup.supplier||'')||'<span class="muted">—</span>'}</td>
         <td${bt}>${priceTxt}</td>
