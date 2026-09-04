@@ -140,7 +140,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-05</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-05b</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -672,6 +672,24 @@ td.num,th.num{text-align:right;white-space:nowrap}
     <div class="row" style="margin-top:14px;justify-content:flex-end">
       <button class="btn ghost" onclick="$('wlBg').style.display='none'">ยกเลิก</button>
       <button class="btn" onclick="saveWl()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: ข้อความแจ้งจ่าย (LINE) ============ -->
+<div class="modal-bg" id="lineBg">
+  <div class="modal" style="max-width:640px">
+    <h3>💬 ข้อความแจ้งจ่าย</h3>
+    <div class="sub-note" id="lineHint" style="margin-bottom:10px"></div>
+    <textarea id="lineTxt" rows="16"
+      style="width:100%;padding:12px;border:1px solid var(--line);border-radius:9px;
+             font:inherit;font-size:13.5px;line-height:1.8;resize:vertical"></textarea>
+    <div class="row" style="margin-top:12px;justify-content:space-between;align-items:center">
+      <span class="muted" id="lineStat" style="font-size:12.5px"></span>
+      <span style="display:flex;gap:8px">
+        <button class="btn ghost" onclick="$('lineBg').style.display='none'">ปิด</button>
+        <button class="btn" onclick="copyLineMsg()">📋 คัดลอกข้อความ</button>
+      </span>
     </div>
   </div>
 </div>
@@ -1471,7 +1489,7 @@ function openHist(bid){
         <td>${esc(p.responsible||'-')}</td>
         <td style="font-size:12px;max-width:220px">${p.note?esc(p.note):'<span class="muted">-</span>'}</td>
         <td>${stPill(p.status)}</td>
-        <td style="white-space:nowrap">${stBtns(p,'setPayStatus')}${(canEdit&&p.status!=='paid')?`<button class="btn mini ghost" onclick="editPay('${p.id}','${bid}')">✏️ แก้</button> <button class="btn mini red" onclick="delPay('${p.id}','${bid}')">ลบ</button>`:''}${p.status==='paid'?'<span class="muted" style="font-size:11.5px">🔒 จ่ายแล้ว — ล็อก</span>':''}</td></tr>`;
+        <td style="white-space:nowrap"><button class="btn mini ghost" onclick="openLineMsg('${p.id}')" title="ข้อความแจ้งจ่ายสำหรับส่งไลน์">💬</button> ${stBtns(p,'setPayStatus')}${(canEdit&&p.status!=='paid')?`<button class="btn mini ghost" onclick="editPay('${p.id}','${bid}')">✏️ แก้</button> <button class="btn mini red" onclick="delPay('${p.id}','${bid}')">ลบ</button>`:''}${p.status==='paid'?'<span class="muted" style="font-size:11.5px">🔒 จ่ายแล้ว — ล็อก</span>':''}</td></tr>`;
     });
     h+='</tbody></table>';
   }
@@ -1601,6 +1619,8 @@ function renderPlan(){
       <span style="background:${cc};color:#fff;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:20px">${grp.length} งวด</span>
       ${done?`<span style="background:#EAF3DE;color:var(--green);font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:20px">✅ จ่ายแล้ว ${done}</span>`:''}
       <div style="flex:1"></div>
+      <button class="btn mini ghost" onclick="openLineMsg([${grp.map(p=>`'${p.id}'`).join(',')}],'${esc(ch)} · ${esc(pt)} — ${grp.length} งวด')"
+        title="สร้างข้อความสำหรับส่งแจ้งจ่ายในไลน์">💬 ข้อความแจ้งจ่าย</button>
       <span style="font-size:13px;color:${cc}">${esc(chips.join(' + '))}</span>
       <span style="font-size:15px;font-weight:800;color:${cc}">≈ ${money(sumThb(grp))} ฿</span>
     </div>
@@ -1613,7 +1633,7 @@ function renderPlan(){
         <td>${esc(p.responsible||'-')}</td>
         <td style="font-size:12px;max-width:220px">${p.note?esc(p.note):'<span class="muted">-</span>'}</td>
         <td>${stPill(p.status)}</td>
-        <td style="white-space:nowrap">${stBtns(p,'setPayStatus')}${(canEdit&&p.status!=='paid')?`<button class="btn mini ghost" onclick="editPay('${p.id}','${p.bill_id}')">✏️ แก้</button> <button class="btn mini red" onclick="planDel('${p.id}')">ลบ</button>`:''}${p.status==='paid'?'<span class="muted" style="font-size:11.5px">🔒 ล็อก</span>':''}</td></tr>`;});
+        <td style="white-space:nowrap"><button class="btn mini ghost" onclick="openLineMsg('${p.id}')" title="ข้อความแจ้งจ่ายสำหรับส่งไลน์">💬</button> ${stBtns(p,'setPayStatus')}${(canEdit&&p.status!=='paid')?`<button class="btn mini ghost" onclick="editPay('${p.id}','${p.bill_id}')">✏️ แก้</button> <button class="btn mini red" onclick="planDel('${p.id}')">ลบ</button>`:''}${p.status==='paid'?'<span class="muted" style="font-size:11.5px">🔒 ล็อก</span>':''}</td></tr>`;});
     h+='</tbody></table>';
   });
   h+=`<div style="text-align:right;font-weight:800;font-size:15px;border-top:2px solid var(--navy);padding-top:8px;margin-top:6px">รวมทั้งวัน (บาทประมาณ): ${money(sumThb(rows))} ฿</div>`;
@@ -2684,6 +2704,50 @@ function openWlFor(thb,user,rate){
   $('w_thb').value=Math.ceil(thb);
   $('w_note').value='เติมสำหรับจ่ายวันที่ '+$('dcDate').value;
   wlCalc();
+}
+
+/* ==================================================================
+   ข้อความแจ้งจ่ายสำหรับส่งไลน์
+   รูปแบบตามที่ทีมใช้จริง:
+     PO 19403
+     (ข้อมูลบัญชีผู้รับเงิน)
+     จ่ายยอดค้างชำระ 20,500 หยวน จ่ายยอดครบ
+     ยอดเต็ม 30,500 หยวน ขนส่งทางเรือ
+   ================================================================== */
+const CUR_WORD={CNY:'หยวน',USD:'ดอลลาร์',THB:'บาท'};
+
+function lineMsgOne(p){
+  const b=billOf(p.bill_id);
+  const w=CUR_WORD[b.currency||'CNY']||(b.currency||'');
+  const paid=paidSum(b.id);                       // จ่ายไปแล้วทั้งหมดของบิลนี้
+  const total=+b.total_amount||0;
+  const amt=Math.abs(+p.amount||0);
+  const remain=Math.max(0,total-paid-amt);        // เหลือค้างหลังจ่ายงวดนี้
+
+  let t='PO '+(b.po_number||'-')+'\n';
+  if(p.payee)t+='\n'+String(p.payee).trim()+'\n';
+  t+='\n'+(p.installment?String(p.installment).trim()+' ':'')
+    +'ยอด '+money(amt)+' '+w
+    +(remain>0.004 ? (' ค้างชำระ '+money(remain)+' '+w) : ' จ่ายยอดครบ')+'\n';
+  t+='ยอดเต็ม '+money(total)+' '+w+'\n';
+  if(p.note)t+=String(p.note).trim()+'\n';
+  return t;
+}
+/* หลายงวดต่อกัน คั่นด้วยเส้น */
+function openLineMsg(ids,title){
+  const list=(Array.isArray(ids)?ids:[ids]).map(i=>PAYS.find(x=>String(x.id)===String(i))).filter(Boolean);
+  if(!list.length)return toast('ไม่พบงวดจ่าย');
+  $('lineTxt').value=list.map(lineMsgOne).join('\n------------------------------\n\n').trim();
+  $('lineHint').textContent=title||(list.length+' งวด — ตรวจข้อความก่อนคัดลอกไปส่งไลน์');
+  $('lineStat').textContent='';
+  $('lineBg').style.display='flex';
+  setTimeout(()=>{$('lineTxt').focus();$('lineTxt').setSelectionRange(0,0);},60);
+}
+async function copyLineMsg(){
+  const t=$('lineTxt').value;
+  try{ await navigator.clipboard.writeText(t); }
+  catch(e){ $('lineTxt').select(); document.execCommand('copy'); }
+  $('lineStat').innerHTML='<b style="color:#1E7145">✅ คัดลอกแล้ว — ไปวางในไลน์ได้เลย</b>';
 }
 
 /* ==================================================================
