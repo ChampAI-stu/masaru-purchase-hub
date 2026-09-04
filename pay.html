@@ -140,7 +140,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-04f</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-04g</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -510,7 +510,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
       <div class="fld"><label>รหัสใบจัดซื้อ (PO) ★</label><input id="f_po"></div>
       <div class="fld"><label>บริษัท ★</label>
         <select id="f_co"><option>LIKESHOP</option><option>MASARU</option><option>DAIKI</option><option>นามบุคคล</option></select></div>
-      <div class="fld"><label>Vendor / ร้านค้า</label><input id="f_vendor"></div>
+      <input type="hidden" id="f_vendor">   <!-- ไม่ให้กรอกแล้ว แต่เก็บค่าเดิมไว้ ไม่ให้ข้อมูลหาย -->
       <div class="fld"><label>SKU / สินค้า</label><input id="f_sku"></div>
       <div class="fld"><label>สกุลเงิน</label>
         <select id="f_cur"><option value="CNY">¥ CNY (หยวน)</option><option value="USD">$ USD (ดอลลาร์)</option><option value="THB">฿ THB (บาท)</option></select></div>
@@ -991,7 +991,7 @@ function renderBills(){
       <div class="val" ${odCnt?'style="cursor:pointer" onclick="goTab(\'doc\')" title="ไปที่เอกสารประจำวัน"':''}>${odCnt||planCnt}</div></div>
     <div class="kpi green"><div class="lbl">จ่ายแล้วเดือนนี้ (฿)</div><div class="val">${money(paidMonth)}</div></div>`;
   if(!list.length){$('billTable').innerHTML='<div class="empty">ยังไม่มีบิล'+(canEdit?' — กด "+ เพิ่มบิล"':'')+'</div>';return;}
-  let h=`<table><thead><tr><th>PO</th><th>บริษัท</th><th>Vendor / SKU</th>
+  let h=`<table><thead><tr><th>PO</th><th>บริษัท</th><th>SKU</th>
     <th class="right">ยอดเต็ม</th><th class="right">จ่ายแล้ว</th><th class="right">วางแผน</th><th class="right">ค้างจ่าย</th>
     <th style="min-width:110px">ความคืบหน้า</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
   const _tot=list.length, _pages=Math.max(1,Math.ceil(_tot/BILL_PER));
@@ -1005,7 +1005,7 @@ function renderBills(){
     h+=`<tr>
       <td><b>${esc(b.po_number)}</b></td>
       <td>${b.company?`<span class="tag-co">${esc(b.company)}</span>`:'<span class="muted" style="font-size:11.5px">— ยังไม่ระบุ —</span>'}</td>
-      <td>${esc(b.vendor||'')}${b.vendor&&b.sku?' · ':''}<span class="muted">${esc(b.sku||'')}</span></td>
+      <td>${esc(b.sku||'')||'<span class="muted">-</span>'}</td>
       <td class="right"><b>${money(total)}</b> <span class="cur-tag ${(b.currency||'CNY')==='THB'?'thb':''}">${s}</span>${b2(total,b)}</td>
       <td class="right" style="color:var(--green);font-weight:700">${money(paid)}${b2(paid,b)}</td>
       <td class="right" style="color:var(--amber)">${plan?money(plan)+b2(plan,b):'—'}</td>
