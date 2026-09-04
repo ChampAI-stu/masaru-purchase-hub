@@ -140,7 +140,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-04g</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-05</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -253,6 +253,12 @@ td.num,th.num{text-align:right;white-space:nowrap}
         <label style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;margin:0;cursor:pointer" title="แตกรายการ SKU + ราคา/หน่วย จาก Purchase Board">
           <input type="checkbox" id="dcDetail" checked onchange="buildDoc()" style="width:16px;height:16px">แยกรายการ SKU
         </label>
+        <select id="dcForm" onchange="buildDoc()" style="max-width:200px" title="เลือกรูปแบบใบปะหน้า">
+          <option value="auto">รูปแบบ: อัตโนมัติ</option>
+          <option value="intl">ต่างประเทศ (หยวน/USD)</option>
+          <option value="dom">ภายในประเทศ (บาท)</option>
+        </select>
+        <input id="dcMaker" placeholder="ชื่อผู้จัดทำ" style="max-width:170px" oninput="buildDoc()">
         <label style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;margin:0;cursor:pointer"
                title="ปกติใบปะหน้าจะขึ้นเฉพาะงวดที่ส่งยอดแล้ว">
           <input type="checkbox" id="dcPaid" onchange="renderDoc()" style="width:16px;height:16px">รวมที่จ่ายแล้ว
@@ -2306,6 +2312,85 @@ function histBlock(rows){
   });
   return h+'</div>';
 }
+/* ===== ใบปะหน้า "ภายในประเทศ" (เงินบาท) =====
+   คอลัมน์: รายการ · รหัสใบจัดซื้อ · รายการ · จำนวนที่สั่ง · จำนวนสินค้าเข้า
+            · ราคาต่อหน่วย · ค่าขนส่ง · จำนวนเงินบาท · หมายเหตุ            */
+function buildDocDomestic(rows,coName,thDate){
+  const detail=$('dcDetail')&&$('dcDetail').checked;
+  const lines=[];
+  rows.forEach(p=>{
+    const b=billOf(p.bill_id);
+    const po=String(b.po_number||'');
+    const skus=String(b.sku||'').split(',').map(x=>x.trim()).filter(Boolean);
+    const ship=+p.ship_fee||0;
+    const amt=+p.amount||0;
+    if(detail&&skus.length){
+      skus.forEach((sk,i)=>{
+        const r=POROWS.find(x=>String(x.po_number||'')===po&&String(x.sku||'').trim()===sk)||{};
+        lines.push({po, name:sk, ordered:num(r.quantity)||'', got:num(r.received_qty)||'',
+          unit:num(r.price)||'', ship:i===0?ship:'', amt:i===0?amt+ship:'', note:i===0?(p.note||''):'',
+          span:i===0?skus.length:0});
+      });
+    }else{
+      lines.push({po, name:String(b.sku||b.vendor||''), ordered:'', got:'', unit:'',
+        ship, amt:amt+ship, note:p.note||'', span:1});
+    }
+  });
+  const T=k=>lines.reduce((s,l)=>s+(+l[k]||0),0);
+  const maker=($('dcMaker')&&$('dcMaker').value.trim())||'';
+
+  let body='';
+  let no=0;
+  lines.forEach(l=>{
+    const first=l.span>0; if(first)no++;
+    body+=`<tr>
+      ${first?`<td rowspan="${l.span}" class="num" style="text-align:center">${no}</td>`:''}
+      ${first?`<td rowspan="${l.span}" style="text-align:center">${esc(l.po)}</td>`:''}
+      <td>${esc(l.name)}</td>
+      <td class="num">${l.ordered!==''?money(l.ordered):''}</td>
+      <td class="num">${l.got!==''?money(l.got):''}</td>
+      <td class="num">${l.unit!==''?money2(l.unit):''}</td>
+      ${first?`<td rowspan="${l.span}" class="num">${l.ship!==''&&l.ship?money2(l.ship):''}</td>`:''}
+      ${first?`<td rowspan="${l.span}" class="num">${l.amt!==''?money2(l.amt):''}</td>`:''}
+      ${first?`<td rowspan="${l.span}" style="font-size:11.5px">${esc(l.note||'')}</td>`:''}
+    </tr>`;
+  });
+
+  $('dcSheet').innerHTML=`<div class="doc-sheet">
+    <table><tr><td colspan="9" style="text-align:center;line-height:1.75;padding:9px">
+      <div style="font-weight:800;font-size:15px">${esc(coName)}</div>
+      <div style="font-weight:700">รายงานสรุปค่าใช้จ่ายจัดซื้อภายในประเทศประจำวัน</div>
+      <div style="font-weight:700">วันที่ ${esc(thDate)}</div>
+    </td></tr></table>
+    <table>
+      <thead><tr>
+        <th style="width:56px">รายการ</th><th style="width:130px">รหัสใบจัดซื้อ</th><th>รายการ</th>
+        <th class="num" style="width:78px">จำนวน<br>ที่สั่ง</th>
+        <th class="num" style="width:82px">จำนวน<br>สินค้าเข้า</th>
+        <th class="num" style="width:88px">ราคาต่อ<br>หน่วย</th>
+        <th class="num" style="width:80px">ค่าขนส่ง</th>
+        <th class="num" style="width:100px">จำนวนเงิน<br>บาท</th>
+        <th style="width:34%">หมายเหตุ</th></tr></thead>
+      <tbody>${body}
+        <tr style="background:#EFEFEF;font-weight:800">
+          <td style="text-align:center">รวม</td><td></td><td></td>
+          <td class="num"></td><td class="num"></td><td class="num"></td>
+          <td class="num">${T('ship')?money2(T('ship')):''}</td>
+          <td class="num">${money2(T('amt'))}</td><td></td></tr>
+      </tbody></table>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:18px">
+      <div style="line-height:2">
+        <div style="font-weight:700">สรุป</div>
+        <div>ยอดเงินบาททั้งหมด : ${money2(T('amt'))} บาท</div>
+      </div>
+      <div style="text-align:center;min-width:220px">
+        <div style="font-size:13.5px">${esc(maker)||'&nbsp;'}</div>
+        ${maker?'':'<div style="border-top:1px dotted #333;margin-top:26px"></div><div style="font-size:12px">ผู้จัดทำ</div>'}
+      </div>
+    </div>
+  </div>`;
+}
+
 function buildDoc(show){
   if(show===true)$('dcPaper').style.display='';
   if($('dcPaper').style.display==='none')return;
@@ -2319,6 +2404,11 @@ function buildDoc(show){
   const cos=pickCo?[pickCo]:[...new Set(rows.map(p=>p.pay_type||billOf(p.bill_id).company||'-'))];
   const coName={LIKESHOP:'บริษัท ไลค์ช็อป มอลล์ จำกัด',MASARU:'บริษัท มาซารุ มาร์เก็ตติ้ง จำกัด',
     DAIKI:'บริษัท ไดกิ เทรดดิ้ง จำกัด','นามบุคคล':'นามบุคคล'}[cos[0]]||cos.join(', ');
+
+  // เลือกฟอร์ม: อัตโนมัติ = ถ้าทุกงวดเป็นเงินบาท ใช้ฟอร์มในประเทศ
+  const fm=($('dcForm')&&$('dcForm').value)||'auto';
+  const allTHB=rows.every(p=>(billOf(p.bill_id).currency||'CNY')==='THB');
+  if(fm==='dom'||(fm==='auto'&&allTHB)){ buildDocDomestic(rows,coName,thDate); return; }
   const showDetail=$('dcDetail')&&$('dcDetail').checked;
 
   // 1 งวด = 1 กลุ่ม (SKU หลายแถว) — ช่องยอด/บาท/หมายเหตุ ผสานเซลล์ตามงวด
