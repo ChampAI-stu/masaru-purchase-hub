@@ -100,12 +100,6 @@
   .sku{font-size:14px;color:var(--text);white-space:nowrap}
   .po-tag{font-size:14px;font-weight:600;color:var(--blue);white-space:nowrap}
   .eta-soon{color:var(--amber);font-weight:600}
-  /* ซ่อนปุ่ม/ตัวกรองตอนสร้างไฟล์ PDF */
-  body.pdf-capture #viewRep .wk-btn,
-  body.pdf-capture #viewRep select,
-  body.pdf-capture #viewRep input,
-  body.pdf-capture #viewRep label{display:none!important}
-  body.pdf-capture #viewRep h2{display:none}
   /* ===== พิมพ์รายงาน On-Time =====
      ซ่อนทุกอย่างยกเว้นเนื้อรายงาน · บังคับสีพื้นหลังไม่ให้เบราว์เซอร์ตัดทิ้ง */
   @media print{
@@ -519,8 +513,8 @@ body.price-on .sl-price{display:block}
         <option value="7">ผ่อนผัน 7 วัน</option>
       </select>
       <div style="flex:1"></div>
-      <button class="wk-btn" id="repPdfBtn" onclick="makeReportPdf()" style="background:#1F3864;color:#fff;border-color:#1F3864">📄 สร้างไฟล์ PDF</button>
-      <button class="wk-btn" onclick="printReport()" title="พิมพ์ผ่านเบราว์เซอร์ (ตัวหนังสือคมกว่า)">🖨️ พิมพ์</button>
+      <button class="wk-btn" onclick="printReport()" style="background:#1F3864;color:#fff;border-color:#1F3864"
+        title="เปิดหน้าต่างพิมพ์ → เลือกปลายทาง &quot;บันทึกเป็น PDF&quot;">🖨️ พิมพ์ / บันทึก PDF</button>
     </div>
     <div id="repHead" style="display:none">
       <div style="text-align:center;line-height:1.6;margin-bottom:14px">
@@ -905,8 +899,6 @@ body.price-on .sl-price{display:block}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 // ===== CONFIG =====
 const SUPABASE_URL = 'https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -2010,64 +2002,6 @@ function renderRepTable(rows){
       <td style="padding:8px 11px;text-align:right"><b style="color:${RP_C.late}">+${x.d}</b></td>
       <td style="padding:8px 11px;font-size:12px">${esc(o.status||'—')}</td></tr>`;});
   $('repTable').innerHTML=h+'</tbody></table></div>';
-}
-
-/* สร้างไฟล์ PDF จริงแล้วเปิดในแท็บใหม่ (กดบันทึกจากหน้า PDF ได้เลย) */
-async function makeReportPdf(){
-  const btn=$('repPdfBtn'), old=btn.textContent;
-  btn.disabled=true; btn.textContent='⏳ กำลังสร้าง...';
-  const win=window.open('','_blank');            // เปิดแท็บไว้ก่อน กัน popup blocker
-  if(win)try{win.document.write('<title>กำลังสร้าง PDF…</title><body style="font-family:sans-serif;padding:24px;color:#334">⏳ กำลังสร้างไฟล์ PDF กรุณารอสักครู่…</body>');}catch(e){}
-
-  repHeadFill();
-  $('repHead').style.display='';
-  document.body.classList.add('pdf-capture');    // ซ่อนปุ่ม/ตัวกรองระหว่างถ่ายภาพ
-  await new Promise(r=>setTimeout(r,120));
-
-  try{
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({unit:'mm', format:'a4', orientation:'portrait'});
-    const pageW=210, pageH=297, margin=10, usableW=pageW-2*margin, usableH=pageH-2*margin;
-
-    // ถ่ายทีละบล็อก แล้วไล่วางลงหน้า — จะได้ไม่ตัดกลางกราฟ/ตาราง
-    const blocks=['repHead','repKpi','repMonth','repSplit','repTable']
-      .map(id=>$(id)).filter(el=>el && el.offsetHeight>0);
-    let y=margin, first=true;
-
-    for(const el of blocks){
-      const canvas=await html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
-      const w=usableW, h=canvas.height*usableW/canvas.width;
-      const img=canvas.toDataURL('image/jpeg',0.92);
-
-      if(h<=usableH){                             // บล็อกพอดีหน้าเดียว
-        if(!first && y+h>pageH-margin){ pdf.addPage(); y=margin; }
-        pdf.addImage(img,'JPEG',margin,y,w,h);
-        y+=h+4; first=false;
-      }else{                                      // บล็อกยาว → ตัดเป็นหลายหน้า
-        const pxPerMM=canvas.width/usableW;
-        let sy=0;
-        while(sy<canvas.height){
-          const sliceH=Math.min(canvas.height-sy, usableH*pxPerMM);
-          const c=document.createElement('canvas');
-          c.width=canvas.width; c.height=sliceH;
-          c.getContext('2d').drawImage(canvas,0,sy,canvas.width,sliceH,0,0,canvas.width,sliceH);
-          if(!first){ pdf.addPage(); }
-          pdf.addImage(c.toDataURL('image/jpeg',0.92),'JPEG',margin,margin,usableW,sliceH/pxPerMM);
-          y=margin+sliceH/pxPerMM+4; first=false; sy+=sliceH;
-        }
-      }
-    }
-
-    const url=pdf.output('bloburl');
-    if(win){ win.location.href=url; } else { window.open(url,'_blank'); }
-  }catch(e){
-    if(win)try{win.close();}catch(x){}
-    alert('สร้าง PDF ไม่สำเร็จ: '+e.message);
-  }finally{
-    document.body.classList.remove('pdf-capture');
-    $('repHead').style.display='none';
-    btn.disabled=false; btn.textContent=old;
-  }
 }
 
 /* เติมหัวกระดาษ (ใช้ร่วมกันทั้งพิมพ์และสร้าง PDF) */
