@@ -99,6 +99,25 @@ td.num,th.num{text-align:right;white-space:nowrap}
 .sl-item .ph{display:flex;align-items:center;justify-content:center;font-size:20px}
 .slip-more{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;
   border-radius:6px;background:#EEF2F7;color:#1F3864;font-size:11px;font-weight:800;cursor:pointer;margin-left:3px}
+.qt-sheet{background:#fff;color:#000;padding:14px 16px;border:1px solid var(--line);border-radius:8px;max-width:820px;margin:0 auto}
+.qt-h1{text-align:center;font-weight:800;font-size:18px}
+.qt-h2{text-align:center;font-weight:700;font-size:14px;margin-bottom:12px}
+table.qt-meta{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:8px}
+table.qt-meta td{padding:4px 6px;vertical-align:top}
+table.qt-meta td.num{text-align:right}
+table.qt-tb{width:100%;border-collapse:collapse;font-size:12.5px}
+table.qt-tb th,table.qt-tb td{border:1px solid #333!important;padding:4px 7px;color:#000!important;height:21px}
+table.qt-tb thead th{background:#EDEDED!important;color:#000!important;font-weight:800!important}
+table.qt-tb td.num,table.qt-tb th.num{text-align:right}
+table.qt-tb td.c{text-align:center}
+table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
+@media print{
+  body.printing-qt *{visibility:hidden}
+  body.printing-qt #qtSheet,body.printing-qt #qtSheet *{visibility:visible}
+  body.printing-qt #qtSheet{position:absolute;left:0;top:0;width:100%;max-width:none;border:0}
+  body.printing-qt,body.printing-qt *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  @page{size:A4 portrait;margin:12mm}
+}
 .slip-th{width:120px;height:80px;object-fit:cover;border-radius:7px;border:1px solid var(--line);
   cursor:pointer;display:block;background:#F4F6FA;transition:.15s}
 .slip-th:hover{transform:scale(1.04);box-shadow:0 4px 14px rgba(0,0,0,.18)}
@@ -140,7 +159,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-05b</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-06</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -151,6 +170,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
   <div class="tab on" data-t="bills" onclick="goTab('bills')">📋 Tracking บิล</div>
   <div class="tab" data-t="plan" onclick="goTab('plan')">🗓️ แผนจ่ายรายวัน</div>
   <div class="tab" data-t="doc" onclick="goTab('doc')">🧾 เอกสารประจำวัน</div>
+  <div class="tab" data-t="quot" onclick="goTab('quot')">💱 ใบเสนอราคา</div>
   <div class="tab" data-t="month" onclick="goTab('month')">📊 สรุปเดือน</div>
   <div class="tab" data-t="freight" onclick="goTab('freight')">🚛 ตรวจค่าขนส่ง</div>
   <div class="tab" data-t="lot" onclick="goTab('lot')">📦 ต้นทุนต่อล็อต</div>
@@ -343,6 +363,67 @@ td.num,th.num{text-align:right;white-space:nowrap}
         <button class="btn mini" onclick="exportLot()">📥 Export Excel</button>
       </div>
       <div id="lotBody"></div>
+    </div>
+  </div>
+
+  <!-- ============ TAB: ใบเสนอราคา ============ -->
+  <div id="tab-quot" style="display:none">
+    <div class="card">
+      <div class="row" style="flex-wrap:wrap">
+        <h2 style="margin:0;border:0;padding:0">💱 ใบเสนอราคา (Quotation)</h2>
+        <div style="flex:1"></div>
+        <input id="qtSearch" placeholder="ค้นหา PO / Vendor" style="max-width:220px" oninput="renderQuotList()">
+        <button class="btn edit-only" onclick="openQuot()">+ สร้างใบเสนอราคา</button>
+      </div>
+      <div class="scroll"><div id="qtList"></div></div>
+    </div>
+
+    <div class="card" id="qtEditor" style="display:none">
+      <div class="row" style="flex-wrap:wrap">
+        <h2 style="margin:0;border:0;padding:0" id="qtTitle">สร้างใบเสนอราคา</h2>
+        <div style="flex:1"></div>
+        <button class="btn ghost" onclick="$('qtEditor').style.display='none'">ปิด</button>
+        <button class="btn ghost" onclick="printQuot()">🖨️ พิมพ์ / บันทึก PDF</button>
+        <button class="btn green edit-only" onclick="saveQuot()">💾 บันทึก</button>
+      </div>
+      <div class="grid3" style="margin-top:10px">
+        <div class="fld"><label>PO number ★</label>
+          <input id="q_po" list="qtPoList" placeholder="18735" onchange="pullQuotPo()" oninput="drawQuot()"></div>
+        <div class="fld"><label>PO date</label><input type="date" id="q_date" onchange="drawQuot()"></div>
+        <div class="fld"><label>Reference PR No</label><input id="q_pr" placeholder="-" oninput="drawQuot()"></div>
+        <div class="fld"><label>Vendor</label><input id="q_vendor" placeholder="VATON-CT" oninput="drawQuot()"></div>
+        <div class="fld"><label>Deliver By</label>
+          <select id="q_deliver" onchange="drawQuot()"><option>SEA</option><option>AIR</option><option>LAND</option></select></div>
+        <div class="fld"><label>สกุลเงิน</label>
+          <select id="q_cur" onchange="drawQuot()"><option value="CNY">¥ CNY</option><option value="USD">$ USD</option><option value="THB">฿ THB</option></select></div>
+      </div>
+      <datalist id="qtPoList"></datalist>
+      <div class="row" style="margin:8px 0;flex-wrap:wrap;align-items:center">
+        <button class="btn mini ghost" onclick="pullQuotPo(true)">🔄 ดึงรายการจาก PO</button>
+        <button class="btn mini ghost" onclick="addQuotRow()">+ เพิ่มแถว</button>
+        <label style="display:inline-flex;align-items:center;gap:6px;margin:0">SHIP
+          <input type="number" step="0.01" id="q_ship" value="0" style="width:110px" oninput="drawQuot()"></label>
+        <div style="flex:1"></div>
+        <span class="muted" style="font-size:12px">ใส่ PO แล้วระบบดึง SKU / จำนวน / ราคา จาก Purchase Board ให้เอง</span>
+      </div>
+      <div class="scroll"><div id="qtRows"></div></div>
+
+      <div class="grid2" style="margin-top:10px">
+        <div class="fld"><label>หัวข้อใต้ตาราง</label><input id="q_title" placeholder="(PO18735+PO19075) VATON" oninput="drawQuot()"></div>
+        <div class="fld"><label>หมายเหตุท้ายใบ</label><textarea id="q_note" rows="4" oninput="drawQuot()"
+          placeholder="หมายเหตุ : PO18735+PO19075 มีการสั่งผลิตแบบผสมกับล็อกซี่พหลาายเออร์..."></textarea></div>
+      </div>
+
+      <div style="margin:10px 0">
+        <div style="font-weight:700;margin-bottom:6px">📎 รูปแนบ (ใบเสนอราคาจากโรงงาน / สลิป)
+          <span class="muted" style="font-weight:400;font-size:12px">— กด Ctrl+V วางรูปได้เลย</span></div>
+        <input type="file" id="q_file" accept="image/*" multiple style="display:none" onchange="onQuotFiles(this)">
+        <button class="btn mini edit-only" onclick="document.getElementById('q_file').click()">📷 เพิ่มรูป</button>
+        <span id="q_stat" class="muted" style="font-size:12px;margin-left:8px"></span>
+        <div id="qtPics" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
+      </div>
+
+      <div id="qtPaper" style="margin-top:14px"></div>
     </div>
   </div>
 
@@ -2608,7 +2689,8 @@ async function delDoc(id){
 /* ===== TABS ===== */
 function goTab(t){
   document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on',el.dataset.t===t));
-  ['bills','plan','doc','month','freight','lot','ledger','wallet','remit'].forEach(k=>$('tab-'+k).style.display=k===t?'':'none');
+  ['bills','plan','doc','quot','month','freight','lot','ledger','wallet','remit'].forEach(k=>$('tab-'+k).style.display=k===t?'':'none');
+  if(t==='quot')loadQuot();
   if(t==='wallet'){ loadWallet().then(renderWallet); }
   if(t==='remit')renderRemit();
   if(t==='ledger')renderLedger();
@@ -2748,6 +2830,217 @@ async function copyLineMsg(){
   try{ await navigator.clipboard.writeText(t); }
   catch(e){ $('lineTxt').select(); document.execCommand('copy'); }
   $('lineStat').innerHTML='<b style="color:#1E7145">✅ คัดลอกแล้ว — ไปวางในไลน์ได้เลย</b>';
+}
+
+/* ==================================================================
+   ใบเสนอราคา (Quotation)
+   ส่วนบน = ฟอร์มจาก PO (ดึง SKU/จำนวน/ราคา จาก Purchase Board)
+   ส่วนล่าง = รูปแนบ เก็บใน Google Drive โฟลเดอร์ "ใบเสนอราคา"
+   ================================================================== */
+let QUOTS=[], QT_ROWS=[], QT_PICS=[], QT_ID=null;
+
+async function loadQuot(){
+  const {data,error}=await sb.from('quotations').select('*').order('created_at',{ascending:false}).limit(300);
+  if(error){
+    $('qtList').innerHTML='<div class="empty">โหลดไม่ได้: '+esc(error.message)
+      +(/does not exist/i.test(error.message)?'<br><span class="muted">ยังไม่ได้สร้างตาราง — รันไฟล์ quotation.sql ก่อน</span>':'')+'</div>';
+    return;
+  }
+  QUOTS=data||[];
+  const pos=[...new Set(POROWS.map(r=>r.po_number).filter(Boolean))].sort();
+  $('qtPoList').innerHTML=pos.slice(0,800).map(function(x){return '<option value="'+esc(x)+'">';}).join('');
+  renderQuotList();
+}
+function renderQuotList(){
+  const q=($('qtSearch').value||'').toLowerCase();
+  const list=QUOTS.filter(function(x){return !q||((x.po_number||'')+' '+(x.vendor||'')).toLowerCase().includes(q);});
+  if(!list.length){$('qtList').innerHTML='<div class="empty">ยังไม่มีใบเสนอราคา — กด "+ สร้างใบเสนอราคา"</div>';return;}
+  var h='<table><thead><tr><th>PO number</th><th>PO date</th><th>Vendor</th><th>Deliver</th>'
+    +'<th class="right">รายการ</th><th class="right">รูปแนบ</th><th class="right">TOTAL</th>'
+    +(canEdit?'<th></th>':'')+'</tr></thead><tbody>';
+  list.forEach(function(x){
+    h+='<tr><td><b>'+esc(x.po_number||'-')+'</b></td><td>'+esc(x.po_date||'-')+'</td>'
+      +'<td>'+esc(x.vendor||'-')+'</td><td>'+esc(x.deliver_by||'-')+'</td>'
+      +'<td class="right">'+((x.items||[]).length)+'</td>'
+      +'<td class="right">'+((x.pics||[]).length||'-')+'</td>'
+      +'<td class="right"><b>'+money(x.total)+' '+curSym(x.currency)+'</b></td>'
+      +(canEdit?'<td style="white-space:nowrap"><button class="btn mini" onclick="openQuot(\''+x.id+'\')">แก้</button> '
+        +'<button class="btn mini red" onclick="delQuot(\''+x.id+'\')">ลบ</button></td>':'')+'</tr>';});
+  $('qtList').innerHTML=h+'</tbody></table>';
+}
+
+function openQuot(id){
+  QT_ID=id||null;
+  const x=id?QUOTS.find(function(v){return String(v.id)===String(id);}):null;
+  $('qtTitle').textContent=x?('แก้ไขใบเสนอราคา PO '+(x.po_number||'')):'สร้างใบเสนอราคา';
+  $('q_po').value=(x&&x.po_number)||''; $('q_date').value=(x&&x.po_date)||'';
+  $('q_pr').value=(x&&x.ref_pr)||'';    $('q_vendor').value=(x&&x.vendor)||'';
+  $('q_deliver').value=(x&&x.deliver_by)||'SEA'; $('q_cur').value=(x&&x.currency)||'CNY';
+  $('q_ship').value=(x&&x.ship_fee)||0; $('q_title').value=(x&&x.title_note)||'';
+  $('q_note').value=(x&&x.note)||'';
+  QT_ROWS=(x&&Array.isArray(x.items))?JSON.parse(JSON.stringify(x.items)):[];
+  QT_PICS=(x&&Array.isArray(x.pics))?JSON.parse(JSON.stringify(x.pics)):[];
+  if(!QT_ROWS.length&&$('q_po').value)pullQuotPo();
+  $('qtEditor').style.display=''; bindQuotPaste();
+  drawQuotRows(); drawQuotPics(); drawQuot();
+  $('qtEditor').scrollIntoView({behavior:'smooth',block:'start'});
+}
+/* ดึง SKU / จำนวน / ราคา จาก Purchase Board ตามเลข PO */
+function pullQuotPo(force){
+  const po=String($('q_po').value||'').trim(); if(!po)return;
+  const rows=POROWS.filter(function(r){return String(r.po_number||'')===po;});
+  if(!rows.length){ if(force)alert('ไม่พบ PO '+po+' ใน Purchase Board'); drawQuot(); return; }
+  if(QT_ROWS.length&&!force&&!confirm('ดึงรายการจาก PO '+po+' มาแทนของเดิม?')){drawQuot();return;}
+  QT_ROWS=rows.map(function(r){return {sku:r.sku||'',colors:r.sku||'',qty:num(r.quantity)||0,price:num(r.price)||0};});
+  const v=[...new Set(rows.map(function(r){return r.vendor;}).filter(Boolean))];
+  if(v.length&&!$('q_vendor').value)$('q_vendor').value=v[0];
+  drawQuotRows(); drawQuot();
+}
+function addQuotRow(){ QT_ROWS.push({sku:'',colors:'',qty:0,price:0}); drawQuotRows(); }
+function delQuotRow(i){ QT_ROWS.splice(i,1); drawQuotRows(); drawQuot(); }
+function setQuot(i,k,v){ QT_ROWS[i][k]=(k==='qty'||k==='price')?(parseFloat(v)||0):v; drawQuot(); }
+
+function drawQuotRows(){
+  var h='<table style="font-size:12.5px"><thead><tr><th style="width:34px">No.</th><th>SKU</th><th>SKU Colors</th>'
+    +'<th class="right" style="width:100px">Qty</th><th class="right" style="width:110px">Unit Price</th>'
+    +'<th class="right" style="width:130px">Total Price</th><th style="width:36px"></th></tr></thead><tbody>';
+  QT_ROWS.forEach(function(r,i){
+    h+='<tr><td style="text-align:center">'+(i+1)+'</td>'
+      +'<td><input value="'+esc(r.sku||'')+'" style="width:100%" oninput="setQuot('+i+',\'sku\',this.value)"></td>'
+      +'<td><input value="'+esc(r.colors||'')+'" style="width:100%" oninput="setQuot('+i+',\'colors\',this.value)"></td>'
+      +'<td><input type="number" step="1" value="'+(r.qty||'')+'" style="width:100%;text-align:right" oninput="setQuot('+i+',\'qty\',this.value)"></td>'
+      +'<td><input type="number" step="0.01" value="'+(r.price||'')+'" style="width:100%;text-align:right" oninput="setQuot('+i+',\'price\',this.value)"></td>'
+      +'<td class="right"><b>'+money2((+r.qty||0)*(+r.price||0))+'</b></td>'
+      +'<td><button class="btn mini red" onclick="delQuotRow('+i+')">✕</button></td></tr>';});
+  $('qtRows').innerHTML=h+'</tbody></table>';
+}
+
+/* ---------- รูปแนบ → Google Drive โฟลเดอร์ "ใบเสนอราคา" ---------- */
+function drawQuotPics(){
+  if(!QT_PICS.length){$('qtPics').innerHTML='<span class="muted" style="font-size:12px">ยังไม่มีรูป</span>';return;}
+  $('qtPics').innerHTML=QT_PICS.map(function(p,i){
+    return '<div style="position:relative">'
+      +'<img src="'+esc(p.thumb||p.url)+'" style="width:118px;height:118px;object-fit:cover;border:1px solid var(--line);border-radius:8px">'
+      +'<button class="btn mini red" style="position:absolute;top:3px;right:3px;padding:1px 6px" onclick="delQuotPic('+i+')">✕</button>'
+      +(p.url?'<div style="text-align:center"><a href="'+esc(p.url)+'" target="_blank" rel="noopener" style="font-size:10px">☁️ Drive</a></div>':'')
+      +'</div>';}).join('');
+}
+function delQuotPic(i){ QT_PICS.splice(i,1); drawQuotPics(); drawQuot(); }
+async function onQuotFiles(inp){
+  const files=[...inp.files]; inp.value='';
+  for(let i=0;i<files.length;i++){
+    $('q_stat').textContent='⏳ '+(i+1)+'/'+files.length+'…';
+    await addQuotPic(files[i]);
+  }
+  $('q_stat').textContent='✅ เพิ่มรูปแล้ว';
+}
+async function addQuotPic(file){
+  if(!file||!/^image\//.test(file.type))return;
+  const thumb=await shrinkImg(file,420,0.72);          // ภาพย่อไว้แสดง/พิมพ์
+  const item={thumb:thumb,url:'',id:'',name:file.name};
+  QT_PICS.push(item); drawQuotPics(); drawQuot();
+  try{
+    const j=await gasCall({action:'upload',
+      filename:(($('q_po').value||'PO')+'_'+Date.now()+'_'+file.name),
+      folder:'ใบเสนอราคา/'+String($('q_po').value||'ไม่ระบุ PO').replace(/[\\/:*?"<>|]/g,'-'),
+      mime:file.type,data:await fileToB64(file),po:$('q_po').value||'',actor:ME||''});
+    item.url=j.openUrl||j.viewUrl||''; item.id=j.fileId||'';
+    drawQuotPics();
+  }catch(e){ console.warn('[quot] drive:',e.message); }
+}
+function shrinkImg(file,max,q){return new Promise(function(res){
+  const r=new FileReader();
+  r.onload=function(ev){const img=new Image();img.onload=function(){
+    let w=img.width,h=img.height; if(w>max){h=Math.round(h*max/w);w=max;}
+    const c=document.createElement('canvas');c.width=w;c.height=h;
+    c.getContext('2d').drawImage(img,0,0,w,h);res(c.toDataURL('image/jpeg',q));};
+  img.src=ev.target.result;};
+  r.readAsDataURL(file);});}
+let QT_PASTE=false;
+function bindQuotPaste(){
+  if(QT_PASTE)return; QT_PASTE=true;
+  document.addEventListener('paste',async function(ev){
+    if(!$('qtEditor')||$('qtEditor').style.display==='none')return;
+    const items=[...(ev.clipboardData&&ev.clipboardData.items||[])];
+    const f=items.map(function(x){return x.kind==='file'?x.getAsFile():null;}).find(function(x){return x&&/^image\//.test(x.type);});
+    if(!f)return;
+    ev.preventDefault(); $('q_stat').textContent='⏳ กำลังเพิ่มรูป…';
+    await addQuotPic(f); $('q_stat').textContent='✅ วางรูปแล้ว';
+  });
+}
+
+/* ---------- ตัวอย่างใบ ---------- */
+function drawQuot(){
+  if(!$('qtPaper'))return;
+  const cur=$('q_cur').value||'CNY';
+  const ship=parseFloat($('q_ship').value)||0;
+  let sub=0, body='';
+  const N=Math.max(QT_ROWS.length,10);
+  for(let i=0;i<N;i++){
+    const r=QT_ROWS[i];
+    if(r){
+      const tp=(+r.qty||0)*(+r.price||0); sub+=tp;
+      body+='<tr><td class="c">'+(i+1)+'</td><td>'+esc(r.sku||'')+'</td><td>'+esc(r.colors||'')+'</td>'
+        +'<td class="num">'+money(r.qty)+'</td><td class="num">'+money2(r.price)+'</td>'
+        +'<td class="num">'+money2(tp)+'</td></tr>';
+    }else{
+      body+='<tr><td class="c">'+(i+1)+'</td><td></td><td></td><td></td><td></td><td></td></tr>';
+    }
+  }
+  const d=$('q_date').value;
+  const dd=d?(function(){const x=new Date(d+'T00:00:00');
+    return x.getDate()+'/'+(x.getMonth()+1)+'/'+x.getFullYear();})():'-';
+  const pics=QT_PICS.map(function(p){
+    return '<img src="'+esc(p.thumb||p.url)+'" style="max-width:100%;margin:6px 0;border:1px solid #ccc">';}).join('');
+
+  $('qtPaper').innerHTML='<div class="qt-sheet" id="qtSheet">'
+    +'<div class="qt-h1">ใบเสนอราคา</div><div class="qt-h2">Quotation</div>'
+    +'<table class="qt-meta"><tr>'
+      +'<td style="width:50%"><b>Vendor</b><br>'+esc($('q_vendor').value||'')+'</td>'
+      +'<td class="num"><b>PO number</b> '+esc($('q_po').value||'')+'<br>'
+        +'<b>PO date</b> '+esc(dd)+'<br><b>Reference PR No:</b> '+esc($('q_pr').value||'-')+'<br>'
+        +'<b>Deliver By</b> '+esc($('q_deliver').value||'')+'</td></tr></table>'
+    +'<table class="qt-tb"><thead><tr><th style="width:34px">No.</th><th style="width:24%">SKU</th>'
+      +'<th style="width:24%">SKU Colors</th><th class="num">Qty</th>'
+      +'<th class="num">Unit Price</th><th class="num">Total Price</th></tr></thead>'
+    +'<tbody>'+body
+    +'<tr><td colspan="4"></td><td class="num b">SHIP</td><td class="num b">'+money2(ship)+'</td></tr>'
+    +'<tr><td colspan="4"></td><td class="num b">TOTAL</td><td class="num b">'+money2(sub+ship)+'</td></tr>'
+    +'</tbody></table>'
+    +'<div style="margin-top:10px;font-size:12.5px">ใบเสนอราคา (Quotation) /โรงงานจีน</div>'
+    +($('q_title').value?'<div style="text-align:center;font-weight:800;margin:12px 0">'+esc($('q_title').value)+'</div>':'')
+    +(pics?'<div style="text-align:center">'+pics+'</div>':'')
+    +($('q_note').value?'<div style="white-space:pre-wrap;font-size:12.5px;margin-top:10px">'+esc($('q_note').value)+'</div>':'')
+    +'</div>';
+}
+
+async function saveQuot(){
+  if(!$('q_po').value.trim())return alert('ใส่ PO number ก่อน');
+  const ship=parseFloat($('q_ship').value)||0;
+  const sub=QT_ROWS.reduce(function(s,r){return s+(+r.qty||0)*(+r.price||0);},0);
+  const rec={po_number:$('q_po').value.trim(), po_date:$('q_date').value||null,
+    ref_pr:$('q_pr').value.trim()||null, vendor:$('q_vendor').value.trim()||null,
+    deliver_by:$('q_deliver').value, currency:$('q_cur').value,
+    items:QT_ROWS, ship_fee:ship, total:+(sub+ship).toFixed(2),
+    title_note:$('q_title').value.trim()||null, note:$('q_note').value.trim()||null,
+    pics:QT_PICS, created_by:ME||'', updated_at:new Date().toISOString()};
+  const q=QT_ID? sb.from('quotations').update(rec).eq('id',QT_ID)
+                : sb.from('quotations').insert(rec);
+  const {error}=await q;
+  if(error)return alert('บันทึกไม่สำเร็จ: '+error.message);
+  await loadQuot(); $('qtEditor').style.display='none'; toast('บันทึกใบเสนอราคาแล้ว ✅');
+}
+async function delQuot(id){
+  if(!confirm('ลบใบเสนอราคานี้?'))return;
+  const {error}=await sb.from('quotations').delete().eq('id',id);
+  if(error)return toast('ลบไม่สำเร็จ: '+error.message);
+  await loadQuot();
+}
+function printQuot(){
+  document.body.classList.add('printing-qt');
+  const done=function(){document.body.classList.remove('printing-qt');window.removeEventListener('afterprint',done);};
+  window.addEventListener('afterprint',done);
+  setTimeout(function(){window.print();setTimeout(done,1200);},60);
 }
 
 /* ==================================================================
