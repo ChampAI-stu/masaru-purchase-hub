@@ -371,6 +371,7 @@ body.price-on .sl-price{display:block}
   <div class="tabbar">
     <button class="tab-btn active" id="tabBoard">📋 Purchase Board</button>
     <button class="tab-btn" id="tabPlan">🚚 แผนรับสินค้า</button>
+    <button class="tab-btn" id="tabRep">📈 รายงาน On-Time</button>
     <button class="tab-btn" id="tabUp">📜 ประวัติการอัพโหลด</button>
   </div>
 
@@ -467,6 +468,34 @@ body.price-on .sl-price{display:block}
       </div>
       <div id="planContent"></div>
     </div>
+  </div>
+</div>
+
+<div id="viewRep" style="display:none">
+  <div class="container">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0">
+      <h2 style="margin:0">📈 รายงาน On-Time Delivery</h2>
+      <select id="repRange" onchange="renderReport()" style="padding:8px 11px;border:1px solid #d9e0ec;border-radius:8px">
+        <option value="6">6 เดือนล่าสุด</option>
+        <option value="12" selected>12 เดือนล่าสุด</option>
+        <option value="0">ทั้งหมด</option>
+      </select>
+      <select id="repCarrier" onchange="renderReport()" style="padding:8px 11px;border:1px solid #d9e0ec;border-radius:8px;max-width:190px">
+        <option value="">— ทุกบริษัทขนส่ง —</option>
+      </select>
+      <select id="repGrace" onchange="renderReport()" style="padding:8px 11px;border:1px solid #d9e0ec;border-radius:8px" title="ยอมให้ช้าได้กี่วันถึงยังนับว่าตรงเวลา">
+        <option value="0" selected>ตรงเวลา = ไม่เกินวันคาด</option>
+        <option value="1">ผ่อนผัน 1 วัน</option>
+        <option value="3">ผ่อนผัน 3 วัน</option>
+        <option value="7">ผ่อนผัน 7 วัน</option>
+      </select>
+      <div style="flex:1"></div>
+      <button class="wk-btn" onclick="exportReport()">⬇️ Export Excel</button>
+    </div>
+    <div id="repKpi"></div>
+    <div id="repMonth"></div>
+    <div id="repSplit"></div>
+    <div id="repTable"></div>
   </div>
 </div>
 
@@ -1721,6 +1750,219 @@ async function confirmImport(){
   loadOrders();
 }
 
+// ==================================================================
+//  รายงาน On-Time Delivery
+//  ตรงเวลา = วันที่นำส่งคลัง ≤ วันที่คาดเข้า (+ วันผ่อนผัน)
+// ==================================================================
+const RP_C={ok:'#1E7145',late:'#D0212B',wait:'#B45309',none:'#94A3B8'};
+
+function repRows(){
+  const n=+$('repRange').value||0, car=$('repCarrier').value;
+  let rows=allOrders.filter(o=>o.eta);                 // ต้องมีวันคาดเข้าถึงวัดได้
+  if(car)rows=rows.filter(o=>(o.carrier||'')===car);
+  if(n){
+    const d=new Date(); d.setMonth(d.getMonth()-n+1); d.setDate(1);
+    const from=d.toISOString().slice(0,10);
+    rows=rows.filter(o=>String(o.eta)>=from);
+  }
+  return rows;
+}
+/* จัดประเภทแต่ละรายการ */
+function repClass(o){
+  const g=+$('repGrace').value||0;
+  const today=new Date().toISOString().slice(0,10);
+  if(!o.delivered_at) return String(o.eta)<today ? 'late_open' : 'waiting';
+  const diff=Math.round((new Date(o.delivered_at)-new Date(o.eta))/86400000);
+  return diff<=g ? 'ontime' : 'late';
+}
+function repDiff(o){
+  if(!o.delivered_at)return null;
+  return Math.round((new Date(o.delivered_at)-new Date(o.eta))/86400000);
+}
+
+function renderReport(){
+  if(!$('repKpi'))return;
+  // เติมตัวเลือกบริษัทขนส่ง
+  const cars=[...new Set(allOrders.map(o=>o.carrier).filter(Boolean))].sort();
+  const cur=$('repCarrier').value;
+  $('repCarrier').innerHTML='<option value="">— ทุกบริษัทขนส่ง —</option>'
+    +cars.map(c=>`<option ${c===cur?'selected':''}>${esc(c)}</option>`).join('');
+
+  const rows=repRows();
+  const g=x=>rows.filter(o=>repClass(o)===x);
+  const ontime=g('ontime'), late=g('late'), lateOpen=g('late_open'), wait=g('waiting');
+  const done=ontime.length+late.length;
+  const pct=done?Math.round(ontime.length/done*1000)/10:0;
+  const early=ontime.filter(o=>repDiff(o)<0);
+  const avgLate=late.length?Math.round(late.reduce((s,o)=>s+repDiff(o),0)/late.length):0;
+  const avgEarly=early.length?Math.round(early.reduce((s,o)=>s+repDiff(o),0)/early.length):0;
+
+  const card=(t,v,sub,c)=>`<div style="flex:1 1 175px;background:#fff;border:1px solid #e6ebf3;border-left:5px solid ${c};
+      border-radius:12px;padding:13px 16px;box-shadow:0 1px 3px rgba(15,23,42,.05)">
+      <div style="font-size:12px;color:#64748B">${t}</div>
+      <div style="font-size:26px;font-weight:800;color:${c};line-height:1.25">${v}</div>
+      <div style="font-size:11.5px;color:#94A3B8">${sub}</div></div>`;
+
+  // วงแหวนเปอร์เซ็นต์
+  const R=52, C=2*Math.PI*R, off=C*(1-pct/100);
+  const ring=`<div style="flex:0 0 200px;background:#fff;border:1px solid #e6ebf3;border-radius:12px;padding:14px;text-align:center">
+      <svg width="140" height="140" viewBox="0 0 140 140">
+        <circle cx="70" cy="70" r="${R}" fill="none" stroke="#EEF2F7" stroke-width="15"></circle>
+        <circle cx="70" cy="70" r="${R}" fill="none" stroke="${pct>=90?RP_C.ok:(pct>=75?RP_C.wait:RP_C.late)}"
+          stroke-width="15" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}"
+          transform="rotate(-90 70 70)"></circle>
+        <text x="70" y="66" text-anchor="middle" font-size="27" font-weight="800"
+          fill="${pct>=90?RP_C.ok:(pct>=75?RP_C.wait:RP_C.late)}">${pct}%</text>
+        <text x="70" y="88" text-anchor="middle" font-size="12" fill="#64748B">On-Time</text>
+      </svg>
+      <div style="font-size:12px;color:#64748B">จาก ${done} รายการที่ส่งแล้ว</div></div>`;
+
+  $('repKpi').innerHTML=`<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:stretch;margin-bottom:14px">
+    ${ring}
+    <div style="flex:1;display:flex;gap:12px;flex-wrap:wrap;align-content:flex-start">
+      ${card('✅ เข้าตรงเวลา / ก่อนกำหนด',ontime.length,early.length?`เข้าก่อนกำหนด ${early.length} รายการ (เฉลี่ย ${Math.abs(avgEarly)} วัน)`:'ตรงตามวันคาดเข้า',RP_C.ok)}
+      ${card('⛔ เข้าช้ากว่ากำหนด',late.length,late.length?`ช้าเฉลี่ย ${avgLate} วัน`:'ไม่มีรายการล่าช้า',RP_C.late)}
+      ${card('⚠️ เลยกำหนด ยังไม่ส่ง',lateOpen.length,'เลยวันคาดเข้าแล้วแต่ยังไม่มีวันนำส่ง',RP_C.wait)}
+      ${card('🕐 รอถึงกำหนด',wait.length,'ยังไม่ถึงวันคาดเข้า',RP_C.none)}
+    </div></div>`;
+
+  renderRepMonth(rows);
+  renderRepSplit(rows);
+  renderRepTable(rows);
+}
+
+/* ---------- สรุปรายเดือน ---------- */
+function renderRepMonth(rows){
+  const by={};
+  rows.forEach(o=>{
+    const m=String(o.eta).slice(0,7);
+    (by[m]=by[m]||{ontime:0,late:0,late_open:0,waiting:0,days:[]});
+    by[m][repClass(o)]++;
+    const d=repDiff(o); if(d!=null)by[m].days.push(d);
+  });
+  const ms=Object.keys(by).sort();
+  if(!ms.length){$('repMonth').innerHTML='<div style="padding:24px;text-align:center;color:var(--muted)">ยังไม่มีข้อมูลพอทำรายงาน — ต้องมี "วันที่คาดเข้า" อย่างน้อย 1 รายการ</div>';return;}
+  const max=Math.max(...ms.map(m=>by[m].ontime+by[m].late+by[m].late_open+by[m].waiting));
+  const TH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const lbl=m=>TH[+m.slice(5,7)-1]+' '+(+m.slice(0,4)+543-2500);
+
+  let bars='';
+  ms.forEach(m=>{
+    const v=by[m], tot=v.ontime+v.late+v.late_open+v.waiting;
+    const done=v.ontime+v.late, pc=done?Math.round(v.ontime/done*100):0;
+    const H=150, seg=(n,c)=>n?`<div style="height:${n/max*H}px;background:${c}" title="${n}"></div>`:'';
+    bars+=`<div style="flex:1;min-width:52px;text-align:center">
+      <div style="font-size:11.5px;font-weight:800;color:${pc>=90?RP_C.ok:(pc>=75?RP_C.wait:RP_C.late)}">${done?pc+'%':'—'}</div>
+      <div style="height:${H}px;display:flex;flex-direction:column;justify-content:flex-end;border-radius:6px;overflow:hidden;margin:4px 3px">
+        ${seg(v.waiting,RP_C.none)}${seg(v.late_open,RP_C.wait)}${seg(v.late,RP_C.late)}${seg(v.ontime,RP_C.ok)}
+      </div>
+      <div style="font-size:11px;color:#64748B">${lbl(m)}</div>
+      <div style="font-size:10.5px;color:#94A3B8">${tot} รายการ</div></div>`;
+  });
+
+  let tb='<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:14px">'
+    +'<thead><tr style="background:#1F3864;color:#fff">'
+    +'<th style="padding:8px 11px;text-align:left">เดือน</th>'
+    +'<th style="padding:8px 11px;text-align:right">รายการ</th>'
+    +'<th style="padding:8px 11px;text-align:right">✅ ตรงเวลา</th>'
+    +'<th style="padding:8px 11px;text-align:right">⛔ ช้า</th>'
+    +'<th style="padding:8px 11px;text-align:right">⚠️ เลยกำหนด</th>'
+    +'<th style="padding:8px 11px;text-align:right">🕐 รอ</th>'
+    +'<th style="padding:8px 11px;text-align:right">% On-Time</th>'
+    +'<th style="padding:8px 11px;text-align:right">ช้าเฉลี่ย (วัน)</th></tr></thead><tbody>';
+  ms.slice().reverse().forEach((m,i)=>{
+    const v=by[m], tot=v.ontime+v.late+v.late_open+v.waiting, done=v.ontime+v.late;
+    const pc=done?Math.round(v.ontime/done*1000)/10:null;
+    const lateD=v.days.filter(d=>d>0);
+    tb+=`<tr style="border-bottom:1px solid #e6ebf3;${i%2?'background:#fafbfd':''}">
+      <td style="padding:8px 11px"><b>${lbl(m)}</b></td>
+      <td style="padding:8px 11px;text-align:right">${tot}</td>
+      <td style="padding:8px 11px;text-align:right;color:${RP_C.ok};font-weight:700">${v.ontime}</td>
+      <td style="padding:8px 11px;text-align:right;color:${RP_C.late};font-weight:700">${v.late}</td>
+      <td style="padding:8px 11px;text-align:right;color:${RP_C.wait}">${v.late_open}</td>
+      <td style="padding:8px 11px;text-align:right;color:#94A3B8">${v.waiting}</td>
+      <td style="padding:8px 11px;text-align:right"><b style="color:${pc==null?'#94A3B8':(pc>=90?RP_C.ok:(pc>=75?RP_C.wait:RP_C.late))}">${pc==null?'—':pc+'%'}</b></td>
+      <td style="padding:8px 11px;text-align:right">${lateD.length?Math.round(lateD.reduce((s,d)=>s+d,0)/lateD.length):'—'}</td>
+    </tr>`;});
+
+  $('repMonth').innerHTML=`<div style="background:#fff;border:1px solid #e6ebf3;border-radius:12px;padding:16px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px">
+      <b style="font-size:14.5px">📊 สรุปรายเดือน</b>
+      <span style="font-size:11.5px"><span style="display:inline-block;width:10px;height:10px;background:${RP_C.ok};border-radius:2px"></span> ตรงเวลา</span>
+      <span style="font-size:11.5px"><span style="display:inline-block;width:10px;height:10px;background:${RP_C.late};border-radius:2px"></span> ช้า</span>
+      <span style="font-size:11.5px"><span style="display:inline-block;width:10px;height:10px;background:${RP_C.wait};border-radius:2px"></span> เลยกำหนด</span>
+      <span style="font-size:11.5px"><span style="display:inline-block;width:10px;height:10px;background:${RP_C.none};border-radius:2px"></span> รอ</span>
+    </div>
+    <div style="display:flex;gap:2px;align-items:flex-end;overflow-x:auto;padding-bottom:4px">${bars}</div>
+    ${tb}</tbody></table></div>`;
+}
+
+/* ---------- แยกตามบริษัทขนส่ง ---------- */
+function renderRepSplit(rows){
+  const by={};
+  rows.forEach(o=>{const k=o.carrier||'(ไม่ระบุขนส่ง)';
+    (by[k]=by[k]||{ontime:0,late:0,late_open:0,waiting:0})[repClass(o)]++;});
+  const ks=Object.keys(by).sort((a,b)=>{
+    const f=x=>{const v=by[x],d=v.ontime+v.late;return d?v.ontime/d:-1;};
+    return f(b)-f(a);});
+  if(!ks.length){$('repSplit').innerHTML='';return;}
+  let h='<div style="background:#fff;border:1px solid #e6ebf3;border-radius:12px;padding:16px;margin-bottom:14px">'
+    +'<b style="font-size:14.5px">🚚 แยกตามบริษัทขนส่ง</b><div style="margin-top:12px">';
+  ks.forEach(k=>{
+    const v=by[k], done=v.ontime+v.late, tot=done+v.late_open+v.waiting;
+    const pc=done?Math.round(v.ontime/done*100):0;
+    h+=`<div style="display:flex;align-items:center;gap:11px;margin-bottom:9px">
+      <div style="flex:0 0 165px;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(k)}</div>
+      <div style="flex:1;height:22px;background:#EEF2F7;border-radius:6px;overflow:hidden;display:flex">
+        ${v.ontime?`<div style="width:${v.ontime/tot*100}%;background:${RP_C.ok}"></div>`:''}
+        ${v.late?`<div style="width:${v.late/tot*100}%;background:${RP_C.late}"></div>`:''}
+        ${v.late_open?`<div style="width:${v.late_open/tot*100}%;background:${RP_C.wait}"></div>`:''}
+        ${v.waiting?`<div style="width:${v.waiting/tot*100}%;background:${RP_C.none}"></div>`:''}
+      </div>
+      <div style="flex:0 0 96px;text-align:right;font-size:12.5px">
+        <b style="color:${done?(pc>=90?RP_C.ok:(pc>=75?RP_C.wait:RP_C.late)):'#94A3B8'}">${done?pc+'%':'—'}</b>
+        <span style="color:#94A3B8"> · ${tot}</span></div></div>`;});
+  $('repSplit').innerHTML=h+'</div></div>';
+}
+
+/* ---------- รายการที่ช้าที่สุด ---------- */
+function renderRepTable(rows){
+  const late=rows.filter(o=>repClass(o)==='late'||repClass(o)==='late_open')
+    .map(o=>({o,d:repDiff(o)!=null?repDiff(o):Math.round((new Date()-new Date(o.eta))/86400000)}))
+    .sort((a,b)=>b.d-a.d).slice(0,40);
+  if(!late.length){$('repTable').innerHTML='<div style="background:#E8F5EC;border:1px solid #BFE2CB;border-radius:12px;padding:16px;color:#146C38"><b>🎉 ไม่มีรายการล่าช้าในช่วงที่เลือก</b></div>';return;}
+  let h='<div style="background:#fff;border:1px solid #e6ebf3;border-radius:12px;padding:16px">'
+    +'<b style="font-size:14.5px">⛔ รายการที่ช้าที่สุด (40 อันดับแรก)</b>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:11px">'
+    +'<thead><tr style="background:#1F3864;color:#fff">'
+    +'<th style="padding:8px 11px;text-align:left">PO</th><th style="padding:8px 11px;text-align:left">SKU</th>'
+    +'<th style="padding:8px 11px;text-align:left">ขนส่ง</th>'
+    +'<th style="padding:8px 11px;text-align:left">วันที่คาดเข้า</th><th style="padding:8px 11px;text-align:left">วันที่นำส่งคลัง</th>'
+    +'<th style="padding:8px 11px;text-align:right">ช้า (วัน)</th><th style="padding:8px 11px;text-align:left">สถานะ</th></tr></thead><tbody>';
+  late.forEach((x,i)=>{const o=x.o, open=!o.delivered_at;
+    h+=`<tr style="border-bottom:1px solid #e6ebf3;${i%2?'background:#fafbfd':''}">
+      <td style="padding:8px 11px"><b>${esc(o.po_number||'—')}</b></td>
+      <td style="padding:8px 11px">${esc(o.sku||'—')}</td>
+      <td style="padding:8px 11px;color:var(--muted)">${esc(o.carrier||'—')}</td>
+      <td style="padding:8px 11px">${fmtDate(o.eta)}</td>
+      <td style="padding:8px 11px">${open?'<span style="color:'+RP_C.wait+'">ยังไม่ส่ง</span>':fmtDate(o.delivered_at)}</td>
+      <td style="padding:8px 11px;text-align:right"><b style="color:${RP_C.late}">+${x.d}</b></td>
+      <td style="padding:8px 11px;font-size:12px">${esc(o.status||'—')}</td></tr>`;});
+  $('repTable').innerHTML=h+'</tbody></table></div>';
+}
+
+function exportReport(){
+  const rows=repRows();
+  const L={ontime:'ตรงเวลา',late:'ช้ากว่ากำหนด',late_open:'เลยกำหนด ยังไม่ส่ง',waiting:'รอถึงกำหนด'};
+  const out=[['PO','SKU','บริษัทขนส่ง','วันที่คาดเข้า','วันที่นำส่งคลัง','ต่าง (วัน)','ผล','สถานะ PO','จำนวน','เข้าแล้ว']];
+  rows.forEach(o=>out.push([o.po_number||'',o.sku||'',o.carrier||'',o.eta||'',o.delivered_at||'',
+    repDiff(o)??'',L[repClass(o)]||'',o.status||'',o.quantity??'',o.received_qty??'']));
+  const ws=XLSX.utils.aoa_to_sheet(out), wb=XLSX.utils.book_new();
+  ws['!cols']=[{wch:14},{wch:18},{wch:16},{wch:13},{wch:14},{wch:10},{wch:20},{wch:18},{wch:9},{wch:9}];
+  XLSX.utils.book_append_sheet(wb,ws,'OnTime');
+  XLSX.writeFile(wb,'รายงาน_OnTime_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
 // ===== ประวัติการอัพโหลดข้อมูล =====
 let IMPORT_META = { name:'', size:0, sheet:'' };
 let UPLOADS = [];
@@ -1928,13 +2170,17 @@ let allTrips = [];   // [{...trip, items:[...]}]
 $('tabBoard').addEventListener('click', () => switchTab('board'));
 $('tabPlan').addEventListener('click', () => switchTab('plan'));
 $('tabUp').addEventListener('click',   () => switchTab('up'));
+$('tabRep').addEventListener('click',  () => switchTab('rep'));
 function switchTab(t){
   $('viewBoard').style.display = t==='board' ? 'block' : 'none';
   $('viewPlan').style.display  = t==='plan'  ? 'block' : 'none';
   $('viewUp').style.display    = t==='up'    ? 'block' : 'none';
+  $('viewRep').style.display   = t==='rep'   ? 'block' : 'none';
   $('tabBoard').classList.toggle('active', t==='board');
   $('tabPlan').classList.toggle('active',  t==='plan');
   $('tabUp').classList.toggle('active',    t==='up');
+  $('tabRep').classList.toggle('active',   t==='rep');
+  if(t==='rep')renderReport();
   if(t==='up')loadUploads();
 }
 
