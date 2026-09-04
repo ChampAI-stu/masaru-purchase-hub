@@ -99,14 +99,17 @@ td.num,th.num{text-align:right;white-space:nowrap}
 .sl-item .ph{display:flex;align-items:center;justify-content:center;font-size:20px}
 .slip-more{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;
   border-radius:6px;background:#EEF2F7;color:#1F3864;font-size:11px;font-weight:800;cursor:pointer;margin-left:3px}
-.qt-sheet{background:#fff;color:#000;padding:14px 16px;border:1px solid var(--line);border-radius:8px;max-width:820px;margin:0 auto}
-.qt-h1{text-align:center;font-weight:800;font-size:18px}
-.qt-h2{text-align:center;font-weight:700;font-size:14px;margin-bottom:12px}
-table.qt-meta{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:8px}
-table.qt-meta td{padding:4px 6px;vertical-align:top}
+.qt-sheet img{max-width:78%;height:auto}
+.qt-sheet{background:#fff;color:#000;padding:22px 26px;border:1px solid var(--line);border-radius:8px;
+  width:720px;max-width:100%;margin:0 auto}
+.qt-h1{text-align:center;font-weight:800;font-size:19px;letter-spacing:.5px}
+.qt-h2{text-align:center;font-weight:700;font-size:14px;margin-bottom:18px}
+table.qt-meta{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
+table.qt-meta td{padding:2px 4px;vertical-align:top;line-height:1.65}
 table.qt-meta td.num{text-align:right}
-table.qt-tb{width:100%;border-collapse:collapse;font-size:12.5px}
-table.qt-tb th,table.qt-tb td{border:1px solid #333!important;padding:4px 7px;color:#000!important;height:21px}
+table.qt-tb{width:100%;border-collapse:collapse;font-size:11.5px;table-layout:fixed}
+table.qt-tb th,table.qt-tb td{border:1px solid #333!important;padding:3px 6px;color:#000!important;
+  height:19px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 table.qt-tb thead th{background:#EDEDED!important;color:#000!important;font-weight:800!important}
 table.qt-tb td.num,table.qt-tb th.num{text-align:right}
 table.qt-tb td.c{text-align:center}
@@ -159,7 +162,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-06</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-07</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -997,7 +1000,7 @@ async function loadAll(){
     pageAll('freight_bills','*','arrive_date'),
     pageAll('freight_items','*',null),
     pageAll('sku_master','sku,supplier,standard_price,currency',null),
-    pageAll('purchase_orders','po_number,sku,price,quantity',null),
+    pageAll('purchase_orders','po_number,sku,price,quantity,vendor,received_qty',null),
     pageAll('tax_summaries','*',null),
     pageAll('shipment_tracking','*',null)
   ]);
@@ -1119,7 +1122,8 @@ function renderBills(){
       <td><span class="pill ${b.status==='closed'?'p-closed':'p-open'}">${b.status==='closed'?'ปิดบิลแล้ว':'ยังไม่ปิด'}</span></td>
       <td style="white-space:nowrap">
         ${canEdit?`<button class="btn mini green" onclick="openPay('${b.id}')">+ งวดจ่าย</button> `:''}
-        <button class="btn mini ghost" onclick="openHist('${b.id}')">ประวัติ (${billPays(b.id).length})</button> <button class="btn mini ghost" onclick="openMemo('${b.id}')" title="เมโม + ประวัติการแก้ไข">📝${MEMOS.filter(m=>String(m.bill_id)===String(b.id)).length?' '+MEMOS.filter(m=>String(m.bill_id)===String(b.id)).length:''}</button>
+        <button class="btn mini ghost" onclick="openHist('${b.id}')">ประวัติ (${billPays(b.id).length})</button> <button class="btn mini ghost" onclick="syncOneBill('${b.id}')" title="ดึงข้อมูล SKU / ยอดเต็ม ของ PO นี้จาก Purchase Board ใหม่">🔄</button>
+        <button class="btn mini ghost" onclick="openMemo('${b.id}')" title="เมโม + ประวัติการแก้ไข">📝${MEMOS.filter(m=>String(m.bill_id)===String(b.id)).length?' '+MEMOS.filter(m=>String(m.bill_id)===String(b.id)).length:''}</button>
         ${canEdit?` <button class="btn mini ghost" onclick="openBill('${b.id}')">แก้</button>
         <button class="btn mini red" onclick="delBill('${b.id}')">ลบ</button>`:''}
       </td></tr>`;
@@ -1183,6 +1187,36 @@ async function saveBill(){
    }}
   $('billBg').style.display='none';toast('บันทึกบิลเรียบร้อย ✅');loadAll();
 }
+/* ซิงก์เฉพาะ PO นี้จาก Purchase Board — ไม่ต้องซิงก์ทั้งระบบ */
+async function syncOneBill(id){
+  const b=BILLS.find(x=>String(x.id)===String(id));
+  if(!b)return toast('ไม่พบบิลนี้');
+  const po=String(b.po_number||'').trim();
+  if(!po)return toast('บิลนี้ไม่มีเลข PO');
+  const rows=POROWS.filter(r=>String(r.po_number||'')===po);
+  if(!rows.length)return alert('ไม่พบ PO '+po+' ใน Purchase Board\n\nอาจถูกลบไปแล้ว หรือยังไม่ได้นำเข้าไฟล์');
+
+  const sku=[...new Set(rows.map(r=>String(r.sku||'').trim()).filter(Boolean))].join(', ');
+  const total=rows.reduce((s,r)=>s+((+r.quantity||0)*(+r.price||0)),0);
+  const vendor=[...new Set(rows.map(r=>r.vendor).filter(Boolean))][0]||b.vendor||null;
+
+  const chg=[];
+  if(sku && sku!==(b.sku||''))                      chg.push('SKU:\n   เดิม  '+(b.sku||'-')+'\n   ใหม่  '+sku);
+  if(total && Math.abs(total-(+b.total_amount||0))>0.004)
+    chg.push('ยอดเต็ม: '+money(b.total_amount)+' → '+money(total));
+  if(vendor && vendor!==(b.vendor||''))             chg.push('Vendor: '+(b.vendor||'-')+' → '+vendor);
+  if(!chg.length)return alert('PO '+po+' ตรงกับ Purchase Board อยู่แล้ว ✅\n\nไม่มีอะไรต้องอัปเดต');
+
+  if(!confirm('อัปเดตบิล PO '+po+' จาก Purchase Board?\n\n'+chg.join('\n\n')
+    +'\n\n(งวดจ่าย / ประวัติ / สลิป ไม่ถูกแตะ)'))return;
+
+  const up={sku:sku||b.sku, total_amount:total||b.total_amount, vendor:vendor};
+  const {error}=await sb.from('pay_bills').update(up).eq('id',b.id);
+  if(error)return toast('อัปเดตไม่สำเร็จ: '+error.message);
+  await addLog(b,'updated','ซิงก์จาก Purchase Board — '+chg.join(' · ').replace(/\n\s*/g,' '));
+  await loadAll(); toast('ซิงก์ PO '+po+' แล้ว ✅');
+}
+
 async function delBill(id){
   const b=BILLS.find(x=>String(x.id)===String(id));
   if(!b){alert('ไม่พบบิลนี้ — ลองรีเฟรชหน้าแล้วกดใหม่');loadAll();return;}
@@ -1829,7 +1863,7 @@ function poGroups(){
   return Object.values(by).sort((a,b)=>String(b.po).localeCompare(String(a.po)));
 }
 async function openSync(){
-  if(!POROWS.length)POROWS=await pageAll('purchase_orders','po_number,sku,quantity,price',null);
+  if(!POROWS.length)POROWS=await pageAll('purchase_orders','po_number,sku,quantity,price,vendor,received_qty',null);
   renderSync(); $('syncBg').style.display='flex';
 }
 function renderSync(){
@@ -2991,18 +3025,19 @@ function drawQuot(){
   const dd=d?(function(){const x=new Date(d+'T00:00:00');
     return x.getDate()+'/'+(x.getMonth()+1)+'/'+x.getFullYear();})():'-';
   const pics=QT_PICS.map(function(p){
-    return '<img src="'+esc(p.thumb||p.url)+'" style="max-width:100%;margin:6px 0;border:1px solid #ccc">';}).join('');
+    return '<img src="'+esc(p.thumb||p.url)+'" style="max-width:78%;margin:8px auto;display:block;border:1px solid #bbb">';}).join('');
 
   $('qtPaper').innerHTML='<div class="qt-sheet" id="qtSheet">'
     +'<div class="qt-h1">ใบเสนอราคา</div><div class="qt-h2">Quotation</div>'
     +'<table class="qt-meta"><tr>'
-      +'<td style="width:50%"><b>Vendor</b><br>'+esc($('q_vendor').value||'')+'</td>'
-      +'<td class="num"><b>PO number</b> '+esc($('q_po').value||'')+'<br>'
-        +'<b>PO date</b> '+esc(dd)+'<br><b>Reference PR No:</b> '+esc($('q_pr').value||'-')+'<br>'
-        +'<b>Deliver By</b> '+esc($('q_deliver').value||'')+'</td></tr></table>'
-    +'<table class="qt-tb"><thead><tr><th style="width:34px">No.</th><th style="width:24%">SKU</th>'
-      +'<th style="width:24%">SKU Colors</th><th class="num">Qty</th>'
-      +'<th class="num">Unit Price</th><th class="num">Total Price</th></tr></thead>'
+      +'<td style="width:52%;padding-top:14px"><b>Vendor</b><br><span style="font-size:12.5px">'+esc($('q_vendor').value||'')+'</span></td>'
+      +'<td class="num"><b>PO number</b> <span style="font-weight:400">'+esc($('q_po').value||'')+'</span><br>'
+        +'<b>PO date</b> <span style="font-weight:400">'+esc(dd)+'</span><br>'
+        +'<b>Reference PR No:</b> <span style="font-weight:400">'+esc($('q_pr').value||'-')+'</span><br>'
+        +'<b>Deliver By</b> <span style="font-weight:400">'+esc($('q_deliver').value||'')+'</span></td></tr></table>'
+    +'<table class="qt-tb"><thead><tr><th style="width:32px">No.</th><th style="width:27%">SKU</th>'
+      +'<th style="width:27%">SKU Colors</th><th class="num" style="width:12%">Qty</th>'
+      +'<th class="num" style="width:14%">Unit Price</th><th class="num" style="width:16%">Total Price</th></tr></thead>'
     +'<tbody>'+body
     +'<tr><td colspan="4"></td><td class="num b">SHIP</td><td class="num b">'+money2(ship)+'</td></tr>'
     +'<tr><td colspan="4"></td><td class="num b">TOTAL</td><td class="num b">'+money2(sub+ship)+'</td></tr>'
