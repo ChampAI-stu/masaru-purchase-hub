@@ -109,6 +109,25 @@
   .doc table.items img,.doc .pic{page-break-inside:avoid;break-inside:avoid}
   .doc .rmark{white-space:pre-line;font-size:10px}
   .doc .pic{max-width:80px;max-height:80px;object-fit:contain}
+  /* ===== ใบวางบิลค่าขนส่ง ===== */
+  .fi-sheet{background:#fff;color:#000;padding:10px;border:1px solid var(--line);border-radius:8px}
+  .fi-title{text-align:center;font-weight:800;font-size:15px;background:#DCE6F1;border:1px solid #333;padding:7px}
+  table.fi-tb{width:100%;border-collapse:collapse;font-size:12px}
+  table.fi-tb th,table.fi-tb td{border:1px solid #333;padding:4px 7px}
+  table.fi-tb thead th{background:#D6E3BC;font-weight:700;text-align:center}
+  table.fi-tb td.num,table.fi-tb th.num{text-align:right}
+  table.fi-tb td.fi-en{color:#B01722;text-align:right;font-size:11px}
+  table.fi-tb td.fi-v{background:#F2DCDB}
+  table.fi-tb td.fi-w{background:#D8E4BC}
+  table.fi-tb tr.fi-sum td{background:#FDEADA;font-weight:800}
+  table.fi-tb td.fi-foot{background:#FDEADA;font-size:11.5px;vertical-align:top}
+  @media print{
+    body.printing-fi *{visibility:hidden}
+    body.printing-fi #fiSheet,body.printing-fi #fiSheet *{visibility:visible}
+    body.printing-fi #fiSheet{position:absolute;left:0;top:0;width:100%;border:0}
+    body.printing-fi,body.printing-fi *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+    @page{size:A4 landscape;margin:8mm}
+  }
   .sku-pic-box{width:74px;height:74px;border-radius:8px;border:1px dashed #94A3B8;background:#F4F6FA;
     display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:17px;
     color:#64748B;cursor:pointer;object-fit:cover;margin:0 auto}
@@ -153,6 +172,7 @@
     <button data-tab="track" onclick="go('track')">📋 ตาราง Shipment</button>
     <button data-tab="parties" onclick="go('parties')">🏢 ผู้ขาย/ผู้ซื้อ</button>
     <button data-tab="invpl" onclick="go('invpl')">📄 ออก INV + PL</button>
+    <button data-tab="frinv" onclick="go('frinv')">🚛 ใบวางบิลขนส่ง</button>
     <button data-tab="taxsum" onclick="go('taxsum')">🧾 สรุปภาษี</button>
     <button data-tab="summary" onclick="go('summary')">📊 สรุปรายเดือน</button>
     <button data-tab="posum" onclick="go('posum')">📦 รวม PO</button>
@@ -319,6 +339,49 @@
         <div id="poTable" style="overflow-x:auto"></div>
       </div>
     </section>
+    <section id="tab-frinv" style="display:none">
+      <div class="card">
+        <div class="toolbar">
+          <h2 style="margin:0;border:0;padding:0">🚛 ใบวางบิลค่าขนส่ง</h2><span class="sp"></span>
+          <input id="fiSearch" placeholder="ค้นหา ใบขน / เลขอ้างอิง / ขนส่ง" style="max-width:250px" oninput="renderFrInvList()">
+          <button class="btn edit-only" onclick="openFrInv()">+ สร้างใบวางบิล</button>
+        </div>
+        <div id="fiKpi" class="kpis"></div>
+        <div class="scroll"><div id="fiList"></div></div>
+      </div>
+
+      <div class="card" id="fiEditor" style="display:none">
+        <div class="toolbar">
+          <h2 style="margin:0;border:0;padding:0" id="fiTitle">สร้างใบวางบิล</h2><span class="sp"></span>
+          <button class="btn ghost" onclick="closeFrInv()">ปิด</button>
+          <button class="btn ghost" onclick="printFrInv()">🖨️ พิมพ์ / บันทึก PDF</button>
+          <button class="btn green edit-only" onclick="saveFrInv()">💾 บันทึกใบวางบิล</button>
+        </div>
+        <div class="grid4">
+          <div><label>บริษัทขนส่ง</label><input id="fi_carrier" list="carrierList2" placeholder="GTL" oninput="drawFrInv()"></div>
+          <div><label>ใบขนเลขที่</label><input id="fi_entry" placeholder="DHSX000061424" oninput="drawFrInv()"></div>
+          <div><label>เลขอ้างอิง</label><input id="fi_book" placeholder="A022-0-6907-07766" oninput="drawFrInv()"></div>
+          <div><label>กำหนดชำระ</label><input type="date" id="fi_due" onchange="drawFrInv()"></div>
+          <div><label>IVSI / PO</label><input id="fi_ivsi" placeholder="IVSI26080221 - PO2606011" oninput="drawFrInv()"></div>
+          <div style="grid-column:2/-1"><label>รายละเอียด PO (ท้ายใบ)</label>
+            <textarea id="fi_po" rows="3" placeholder="PO 19210 + 19300 + 19358&#10;1. PO 19210 SCCG-100 = 1400 ชุด" oninput="drawFrInv()"></textarea></div>
+        </div>
+        <datalist id="carrierList2"><option value="GTL"><option value="JMF CARGO"><option value="G TECH"><option value="Angel"><option value="TSD"></datalist>
+        <div class="row" style="margin:10px 0;gap:10px;flex-wrap:wrap;align-items:center">
+          <label style="display:inline-flex;align-items:center;gap:6px;margin:0">VAT %
+            <input type="number" step="0.01" id="fi_vat" value="7" style="width:70px" oninput="calcFrInv()"></label>
+          <label style="display:inline-flex;align-items:center;gap:6px;margin:0">หัก ณ ที่จ่าย %
+            <input type="number" step="0.01" id="fi_wht" value="3" style="width:70px" oninput="calcFrInv()"></label>
+          <span class="muted" style="font-size:12px">ติ๊กช่อง V / W ในตารางเพื่อเลือกว่าแถวไหนคิดภาษี</span>
+          <div style="flex:1"></div>
+          <button class="btn mini ghost" onclick="addFrRow()">+ เพิ่มแถว</button>
+          <button class="btn mini ghost" onclick="resetFrRows()">↺ ใช้รายการมาตรฐาน</button>
+        </div>
+        <div class="scroll"><div id="fiRows"></div></div>
+        <div id="fiPaper" style="margin-top:16px"></div>
+      </div>
+    </section>
+
     <section id="tab-taxsum" style="display:none">
       <div class="card">
         <div class="toolbar"><h2 style="margin:0;border:0;padding:0">🧾 สรุปภาษีนำเข้า (คำนวณอัตโนมัติ)</h2><span class="sp"></span>
@@ -738,7 +801,7 @@ function prod(sku){return db.products.find(p=>p.sku===sku);}
 function go(t){
   CUR_TAB=t;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
-  ['dashboard','sku','track','parties','invpl','taxsum','summary','posum'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
+  ['dashboard','sku','track','parties','invpl','frinv','taxsum','summary','posum'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
   if(t==='dashboard')renderDashboard();
   if(t==='sku')renderSkuTable();
   if(t==='track')renderTrack();
@@ -912,6 +975,173 @@ function skuPic(sku){
   const e=db.expMap[String(sku||'').trim()]||{};
   return e.pic?{pic:e.pic,pic_url:e.pic_url||'',pic_id:e.pic_id||''}:null;
 }
+/* ==================================================================
+   ใบวางบิลค่าขนส่ง (freight_invoices)
+   ทุกช่องเป็นบาท · VAT และ หัก ณ ที่จ่าย เลือกได้รายแถว
+   ================================================================== */
+const FR_STD=[
+  ['FREIGHT CHARGE','ค่าขนส่งสินค้า',0,0],
+  ['EX-WORK SERVICE CHARGE','ค่าบริการรับสินค้าจากโรงงาน',0,0],
+  ['PICK UP','ค่ารับตู้คอนเทนเนอร์',0,0],
+  ['IMPORT&EXPORT LICENCE CHARGE','ค่าธรรมเนียมใบอนุญาตนำเข้าและส่งออก',0,0],
+  ['FROM E','ค่า FROM E',0,0],
+  ['TERMINAL HANDLING CHARGE','ค่าธรรมเนียมการยกขน/เคลื่อนย้ายตู้',1,1],
+  ['CLEANING','ค่าล้างตู้คอนเทนเนอร์',1,1],
+  ['HANDLING CHARGE','ค่าดำเนินการเดินเรื่องเอกสาร',1,1],
+  ['DO FEE','ค่าใบปล่อยสินค้า (DO)',1,1],
+  ['','ค่าธรรมเนียมประเมินตู้จากท่าเรือ',0,0],
+  ['EQUIPMENT CHARGE','ค่าใช้เครื่องมือที่ช่วยยก/เคลื่อนย้ายสินค้าในท่าเรือ',1,1],
+  ['','ค่าธรรมเนียมใช้สถานที่ในท่าเรือหรือคลังสินค้า',0,0],
+  ['CUSTOMS CLEARANCE','ค่าผ่านพิธีการศุลกากร',1,1],
+  ['SERVICE CHARGE','ค่าบริการอื่นๆ',1,1],
+  ['TRANSPORTATION CHARGE','ค่าขนส่งในประเทศ',1,1],
+  ['ADVANCE OVER TIME CHARGE','ค่าล่วงเวลาทำงานนอกเวลาทำการของท่าเรือ',0,0],
+  ['ADVANCE STORAGE CHARGE','ค่าฝากตู้ 1 lift on',0,0],
+  ['ADVANCE STORAGE CHARGE','ค่าฝากตู้ 2',0,0],
+  ['ADVANCE INSURANCE FEE','ค่าประกันภัยสินค้า',0,0],
+  ['ADVANCE DEMEURAGE CHARGE','ค่าธรรมเนียมหรือค่าปรับที่ต้องชำระล่วงหน้า',0,0],
+  ['ADVANCE CUSTOMS FEE','ค่าใช้จ่ายศุลกากรที่สำรองจ่ายแทน',0,0],
+  ['ADVANCE GATE FEE','ค่าผ่านประตู (Gate Fee)ของท่าเรือหรือ ICD',0,0]
+];
+let FRINVS=[], FR_ROWS=[], FR_ID=null, FR_SUM={a:0,v:0,w:0,t:0};
+
+function stdRows(){ return FR_STD.map(r=>({en:r[0],th:r[1],amt:0,v:!!r[2],w:!!r[3]})); }
+function resetFrRows(){ if(confirm('ใช้รายการมาตรฐาน 22 แถวแทนของเดิม?')){FR_ROWS=stdRows();drawFrRows();calcFrInv();} }
+function addFrRow(){ FR_ROWS.push({en:'',th:'',amt:0,v:false,w:false}); drawFrRows(); }
+function delFrRow(i){ FR_ROWS.splice(i,1); drawFrRows(); calcFrInv(); }
+function setFr(i,k,v){ FR_ROWS[i][k]=(k==='amt')?(parseFloat(v)||0):((k==='v'||k==='w')?!!v:v); calcFrInv(); }
+
+async function loadFrInv(){
+  const {data,error}=await sb.from('freight_invoices').select('*').order('created_at',{ascending:false}).limit(300);
+  if(error){
+    $('fiList').innerHTML='<div class="empty">โหลดไม่ได้: '+esc(error.message)
+      +(/does not exist/i.test(error.message)?'<br><span class="muted">ยังไม่ได้สร้างตาราง — รันไฟล์ freight_invoice.sql ก่อน</span>':'')+'</div>';
+    return;
+  }
+  FRINVS=data||[]; renderFrInvList();
+}
+function renderFrInvList(){
+  const q=($('fiSearch').value||'').toLowerCase();
+  const list=FRINVS.filter(x=>!q||((x.entry_no||'')+' '+(x.booking_no||'')+' '+(x.carrier||'')+' '+(x.ivsi_no||'')).toLowerCase().includes(q));
+  const tot=list.reduce((s,x)=>s+(+x.sum_total||0),0);
+  const today=new Date().toISOString().slice(0,10);
+  const due=list.filter(x=>x.due_date&&x.due_date<=today);
+  $('fiKpi').innerHTML='<div class="kpi"><div class="lbl">ใบวางบิลทั้งหมด</div><div class="val">'+list.length+'</div></div>'
+    +'<div class="kpi gold"><div class="lbl">ยอดรวม (บาท)</div><div class="val">'+money(tot)+'</div></div>'
+    +'<div class="kpi '+(due.length?'red':'green')+'"><div class="lbl">'+(due.length?'⚠️ ถึง/เลยกำหนดชำระ':'ไม่มีใบเลยกำหนด')+'</div><div class="val">'+due.length+'</div></div>';
+  if(!list.length){$('fiList').innerHTML='<div class="empty">ยังไม่มีใบวางบิล — กด "+ สร้างใบวางบิล"</div>';return;}
+  let h='<table><thead><tr><th>ใบขนเลขที่</th><th>เลขอ้างอิง</th><th>ขนส่ง</th><th>IVSI / PO</th>'
+    +'<th class="right">ยอดก่อนภาษี</th><th class="right">VAT</th><th class="right">หัก ณ ที่จ่าย</th>'
+    +'<th class="right">ต้องชำระ</th><th>กำหนดชำระ</th>'+(canEdit?'<th></th>':'')+'</tr></thead><tbody>';
+  list.forEach(x=>{
+    const late=x.due_date&&x.due_date<=today;
+    h+='<tr><td><b>'+esc(x.entry_no||'-')+'</b></td><td>'+esc(x.booking_no||'-')+'</td>'
+      +'<td>'+esc(x.carrier||'-')+'</td><td style="font-size:11.5px">'+esc(x.ivsi_no||'-')+'</td>'
+      +'<td class="right">'+money(x.sum_amount)+'</td><td class="right">'+money(x.sum_vat)+'</td>'
+      +'<td class="right" style="color:#1E7145">'+money(x.sum_wht)+'</td>'
+      +'<td class="right"><b>'+money(x.sum_total)+'</b></td>'
+      +'<td>'+(x.due_date?'<span style="'+(late?'color:#D0212B;font-weight:700':'')+'">'+esc(x.due_date)+'</span>':'-')+'</td>'
+      +(canEdit?'<td style="white-space:nowrap"><button class="mini btn" onclick="openFrInv(\''+x.id+'\')">แก้</button> <button class="mini btn red" onclick="delFrInv(\''+x.id+'\')">ลบ</button></td>':'')
+      +'</tr>';});
+  $('fiList').innerHTML=h+'</tbody></table>';
+}
+
+function openFrInv(id){
+  FR_ID=id||null;
+  const x=id?FRINVS.find(v=>String(v.id)===String(id)):null;
+  $('fiTitle').textContent=x?('แก้ไขใบวางบิล '+(x.entry_no||'')):'สร้างใบวางบิล';
+  $('fi_carrier').value=(x&&x.carrier)||''; $('fi_entry').value=(x&&x.entry_no)||'';
+  $('fi_book').value=(x&&x.booking_no)||''; $('fi_due').value=(x&&x.due_date)||'';
+  $('fi_ivsi').value=(x&&x.ivsi_no)||'';    $('fi_po').value=(x&&x.po_list)||'';
+  FR_ROWS=(x&&Array.isArray(x.items)&&x.items.length)?JSON.parse(JSON.stringify(x.items)):stdRows();
+  $('fiEditor').style.display=''; drawFrRows(); calcFrInv();
+  $('fiEditor').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function closeFrInv(){ $('fiEditor').style.display='none'; FR_ID=null; }
+
+function drawFrRows(){
+  let h='<table style="font-size:12.5px"><thead><tr><th style="width:210px">DESCRIPTION</th><th>รายละเอียด</th>'
+    +'<th class="right" style="width:118px">จำนวนเงิน</th><th style="width:40px">V</th><th style="width:40px">W</th>'
+    +'<th class="right" style="width:98px">Vat</th><th class="right" style="width:98px">WHT</th>'
+    +'<th class="right" style="width:118px">ต้องชำระ</th><th style="width:36px"></th></tr></thead><tbody>';
+  FR_ROWS.forEach(function(r,i){
+    h+='<tr><td><input value="'+esc(r.en||'')+'" style="width:100%;font-size:11.5px;color:#B01722" oninput="setFr('+i+',\'en\',this.value)"></td>'
+      +'<td><input value="'+esc(r.th||'')+'" style="width:100%;font-size:12px" oninput="setFr('+i+',\'th\',this.value)"></td>'
+      +'<td><input type="number" step="0.01" value="'+(r.amt||'')+'" style="width:100%;text-align:right" oninput="setFr('+i+',\'amt\',this.value)"></td>'
+      +'<td style="text-align:center"><input type="checkbox" '+(r.v?'checked':'')+' onchange="setFr('+i+',\'v\',this.checked)"></td>'
+      +'<td style="text-align:center"><input type="checkbox" '+(r.w?'checked':'')+' onchange="setFr('+i+',\'w\',this.checked)"></td>'
+      +'<td class="right" id="frv'+i+'"></td><td class="right" id="frw'+i+'"></td><td class="right" id="frt'+i+'"></td>'
+      +'<td><button class="mini btn red" onclick="delFrRow('+i+')">✕</button></td></tr>';});
+  $('fiRows').innerHTML=h+'</tbody></table>';
+}
+
+function calcFrInv(){
+  const vp=(parseFloat($('fi_vat').value)||0)/100, wp=(parseFloat($('fi_wht').value)||0)/100;
+  let sa=0,sv=0,sw=0,st=0;
+  FR_ROWS.forEach(function(r,i){
+    const a=+r.amt||0, v=r.v?+(a*vp).toFixed(2):0, w=r.w?+(a*wp).toFixed(2):0, t=+(a+v-w).toFixed(2);
+    r._v=v; r._w=w; r._t=t; sa+=a; sv+=v; sw+=w; st+=t;
+    if($('frv'+i)){ $('frv'+i).textContent=money(v); $('frw'+i).textContent=money(w); $('frt'+i).textContent=money(t); }
+  });
+  FR_SUM={a:sa,v:sv,w:sw,t:st};
+  drawFrInv();
+}
+
+function drawFrInv(){
+  if(!$('fiPaper'))return;
+  const thd=function(d){ if(!d)return '-'; const x=new Date(d+'T00:00:00');
+    return x.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit'})+'/'+(x.getFullYear()+543); };
+  let rows='';
+  FR_ROWS.forEach(function(r){
+    const a=+r.amt||0;
+    rows+='<tr><td class="fi-en">'+esc(r.en||'')+'</td><td>'+esc(r.th||'')+'</td>'
+      +'<td class="num">'+money(a)+'</td>'
+      +'<td class="num'+(r.v?' fi-v':'')+'">'+money(r._v||0)+'</td>'
+      +'<td class="num'+(r.w?' fi-w':'')+'">'+money(r._w||0)+'</td>'
+      +'<td class="num">'+money(r._t||0)+'</td></tr>';});
+  $('fiPaper').innerHTML='<div class="fi-sheet" id="fiSheet">'
+    +'<div class="fi-title">สรุปรายละเอียด ค่าขนส่ง '+esc($('fi_carrier').value||'')+' ใบขนเลขที่ '+esc($('fi_entry').value||'')
+      +($('fi_book').value?(' / '+esc($('fi_book').value)):'')+'</div>'
+    +'<table class="fi-tb"><thead><tr><th style="width:21%">DESCRIPTION</th><th style="width:27%">รายละเอียด</th>'
+    +'<th class="num">จำนวนเงิน</th><th class="num">Vat '+esc($('fi_vat').value||7)+'%</th>'
+    +'<th class="num">WHT</th><th class="num">จำนวนเงินที่ต้องชำระ</th></tr></thead><tbody>'+rows
+    +'<tr class="fi-sum"><td colspan="2" style="text-align:center">รวม</td>'
+    +'<td class="num">'+money(FR_SUM.a)+'</td><td class="num">'+money(FR_SUM.v)+'</td>'
+    +'<td class="num">'+money(FR_SUM.w)+'</td><td class="num">'+money(FR_SUM.t)+'</td></tr>'
+    +'<tr><td class="fi-foot" style="text-align:center"><b>'+esc($('fi_ivsi').value||'')+'</b><br><br><b>กำหนดชำระ '+thd($('fi_due').value)+'</b></td>'
+    +'<td class="fi-foot" colspan="5" style="white-space:pre-wrap">'+esc($('fi_po').value||'')+'</td></tr>'
+    +'</tbody></table></div>';
+}
+
+async function saveFrInv(){
+  if(!$('fi_entry').value.trim())return alert('ใส่ใบขนเลขที่ก่อน');
+  calcFrInv();
+  const rec={carrier:$('fi_carrier').value.trim()||null, entry_no:$('fi_entry').value.trim(),
+    booking_no:$('fi_book').value.trim()||null, ivsi_no:$('fi_ivsi').value.trim()||null,
+    due_date:$('fi_due').value||null, po_list:$('fi_po').value.trim()||null,
+    items:FR_ROWS.map(function(r){return {en:r.en,th:r.th,amt:+r.amt||0,v:!!r.v,w:!!r.w};}),
+    sum_amount:+FR_SUM.a.toFixed(2), sum_vat:+FR_SUM.v.toFixed(2),
+    sum_wht:+FR_SUM.w.toFixed(2), sum_total:+FR_SUM.t.toFixed(2),
+    created_by:(typeof ME==='string'?ME:''), updated_at:new Date().toISOString()};
+  const q=FR_ID? sb.from('freight_invoices').update(rec).eq('id',FR_ID)
+               : sb.from('freight_invoices').insert(rec);
+  const {error}=await q;
+  if(error)return alert('บันทึกไม่สำเร็จ: '+error.message);
+  await loadFrInv(); closeFrInv(); alert('บันทึกใบวางบิลแล้ว ✅');
+}
+async function delFrInv(id){
+  if(!confirm('ลบใบวางบิลนี้?'))return;
+  const {error}=await sb.from('freight_invoices').delete().eq('id',id);
+  if(error)return alert('ลบไม่สำเร็จ: '+error.message);
+  await loadFrInv();
+}
+function printFrInv(){
+  document.body.classList.add('printing-fi');
+  const done=function(){document.body.classList.remove('printing-fi');window.removeEventListener('afterprint',done);};
+  window.addEventListener('afterprint',done);
+  setTimeout(function(){window.print();setTimeout(done,1200);},60);
+}
+
 /* ==================================================================
    รูปสินค้าราย SKU — อยู่ในแท็บ 📦 สินค้า + ข้อมูลส่งออก
    เก็บรูปครั้งเดียวต่อ SKU ใช้ได้ทุกใบ INV
