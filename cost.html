@@ -109,16 +109,7 @@
   .doc table.items img,.doc .pic{page-break-inside:avoid;break-inside:avoid}
   .doc .rmark{white-space:pre-line;font-size:10px}
   .doc .pic{max-width:80px;max-height:80px;object-fit:contain}
-  .pic-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}
-  .pic-card{border:1px solid var(--line);border-radius:11px;padding:9px;text-align:center;cursor:pointer;background:#fff;transition:.12s}
-  .pic-card:hover{border-color:#2E75B6;box-shadow:0 3px 12px rgba(46,117,182,.18)}
-  .pic-card.on{outline:3px solid #FFD966;border-color:#B45309}
-  .pic-card img,.pic-card .ph{width:100%;height:96px;object-fit:contain;border-radius:8px;background:#F4F6FA}
-  .pic-card .ph{display:flex;align-items:center;justify-content:center;font-size:30px;color:#94A3B8}
-  .pic-card .nm{font-weight:700;font-size:12.5px;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .pic-card .sub{font-size:10.5px;color:#64748B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .pic-card .act{margin-top:4px;font-size:10.5px;display:flex;gap:8px;justify-content:center}
-  .sku-pic-box{width:66px;height:66px;border-radius:8px;border:1px dashed #94A3B8;background:#F4F6FA;
+  .sku-pic-box{width:74px;height:74px;border-radius:8px;border:1px dashed #94A3B8;background:#F4F6FA;
     display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:17px;
     color:#64748B;cursor:pointer;object-fit:cover;margin:0 auto}
   img.sku-pic-box{border-style:solid;border-color:#CBD5E1;background:#fff}
@@ -159,7 +150,6 @@
   <div class="tabs no-print">
     <button data-tab="dashboard" class="active" onclick="go('dashboard')">📊 Dashboard</button>
     <button data-tab="sku" onclick="go('sku')">📦 สินค้า + ข้อมูลส่งออก</button>
-    <button data-tab="pics" onclick="go('pics')">🖼️ คลังรูปสินค้า</button>
     <button data-tab="track" onclick="go('track')">📋 ตาราง Shipment</button>
     <button data-tab="parties" onclick="go('parties')">🏢 ผู้ขาย/ผู้ซื้อ</button>
     <button data-tab="invpl" onclick="go('invpl')">📄 ออก INV + PL</button>
@@ -189,6 +179,15 @@
             <option value="done">✔ เคยออกแล้ว</option>
             <option value="never">— ยังไม่เคย</option>
           </select>
+          <select id="skuPicFilter" onchange="renderSkuTable()" style="max-width:165px">
+            <option value="">รูปสินค้า: ทั้งหมด</option>
+            <option value="no">📷 ยังไม่มีรูป</option>
+            <option value="yes">✅ มีรูปแล้ว</option>
+          </select>
+          <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;white-space:nowrap"
+                 title="ใส่รูปเสร็จแล้วเลื่อนไปตัวถัดไปที่ยังไม่มีรูปให้เอง">
+            <input type="checkbox" id="picAuto" checked> ไปตัวถัดไปอัตโนมัติ</label>
+          <input type="file" id="skuPicFile" accept="image/*" style="display:none" onchange="onSkuPicFile(this)">
           <button class="btn ghost" onclick="exportSkuTemplate()">โหลดเทมเพลตส่งออก</button>
           <button class="btn ghost edit-only" onclick="document.getElementById('expImport').click()">นำเข้าข้อมูลส่งออก</button>
           <button class="btn gold" onclick="exportSkuExcel()">⬇️ Export Excel</button>
@@ -196,35 +195,15 @@
           <button class="btn gold edit-only" id="seedBtn" style="display:none" onclick="seedSample()">โหลดตัวอย่าง PO2607014</button>
         </div>
         <div class="note">รายการ SKU + ราคาต้นทุน มาจากระบบกลาง <b>sku_master</b> (แก้ราคาที่ระบบ PR › ข้อมูลกลาง) · ที่นี่กรอกเฉพาะ <b>ข้อมูลสำหรับใบขนสินค้า</b> — ชื่อ EN/TH, Brand/Model, ขนาดกล่อง, CBM, น้ำหนัก/กล่อง · <b>รูปสินค้า</b> แนบตอนออกใบ INV (ชั่วคราว ล้างได้)</div>
+        <div id="skuPicHint" style="display:none;background:#EEF6FF;border:1px solid #BBD6F5;border-radius:9px;padding:9px 13px;margin:8px 0;font-size:12.5px">
+          📋 <b>คลิกรูปในคอลัมน์แรก</b> เพื่อเลือก แล้ว <b>Ctrl+V</b> วางรูป (หรือเลือกไฟล์)
+          &nbsp;·&nbsp; รูปเก็บครั้งเดียวต่อ SKU ใช้ได้ทุกใบ INV อัตโนมัติ
+          &nbsp;·&nbsp; <span id="skuPicStat" class="muted"></span>
+        </div>
         <div id="skuTable"></div>
       </div>
     </section>
 
-
-    <section id="tab-pics" style="display:none">
-      <div class="card">
-        <div class="toolbar">
-          <h2 style="margin:0;border:0;padding:0">🖼️ คลังรูปสินค้า</h2><span class="sp"></span>
-          <input id="picSearch" placeholder="ค้นหา SKU / ชื่อ" style="max-width:230px" oninput="renderPicLib()">
-          <select id="picFilter" onchange="renderPicLib()" style="max-width:170px">
-            <option value="no">📷 ยังไม่มีรูป</option>
-            <option value="yes">✅ มีรูปแล้ว</option>
-            <option value="">ทั้งหมด</option>
-          </select>
-          <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;white-space:nowrap"
-                 title="ใส่รูปเสร็จแล้วเลื่อนไปตัวถัดไปที่ยังไม่มีรูปให้เอง">
-            <input type="checkbox" id="picAuto" checked> ไปตัวถัดไปอัตโนมัติ</label>
-          <input type="file" id="skuPicFile" accept="image/*" style="display:none" onchange="onSkuPicFile(this)">
-        </div>
-        <div style="background:#EEF6FF;border:1px solid #BBD6F5;border-radius:9px;padding:9px 13px;margin:8px 0;font-size:12.5px">
-          📋 <b>คลิกการ์ด</b> เพื่อเลือก แล้ว <b>Ctrl+V</b> วางรูป (หรือเลือกไฟล์)
-          &nbsp;·&nbsp; รูปเก็บครั้งเดียวต่อ SKU ใช้ได้ทุกใบ INV อัตโนมัติ
-          &nbsp;·&nbsp; <span id="skuPicStat" class="muted"></span>
-        </div>
-        <div id="picKpi" class="cards" style="margin-bottom:10px"></div>
-        <div id="picGrid"></div>
-      </div>
-    </section>
 
     <section id="tab-track" style="display:none">
       <div class="card">
@@ -756,10 +735,9 @@ function prod(sku){return db.products.find(p=>p.sku===sku);}
 function go(t){
   CUR_TAB=t;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
-  ['dashboard','sku','pics','track','parties','invpl','taxsum','summary','posum'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
+  ['dashboard','sku','track','parties','invpl','taxsum','summary','posum'].forEach(x=>$('tab-'+x).style.display=x===t?'':'none');
   if(t==='dashboard')renderDashboard();
   if(t==='sku')renderSkuTable();
-  if(t==='pics'){bindSkuPaste();renderPicLib();}
   if(t==='track')renderTrack();
   if(t==='parties')renderParties();
   if(t==='invpl')initInvPl();
@@ -770,6 +748,8 @@ function go(t){
 
 /* ===== SKU + EXPORT INFO ===== */
 function renderSkuTable(){
+  bindSkuPaste();
+  if($('skuPicHint'))$('skuPicHint').style.display='';
   fillSkuSelects();
   const q=($('skuSearch').value||'').toLowerCase();
   const cf=($('skuCustomsFilter')&&$('skuCustomsFilter').value)||'';
@@ -780,10 +760,17 @@ function renderSkuTable(){
     if(q && !(((p.sku||'')+(p.name_en||'')+(p.name_th||'')+(p.product_name||'')+(p.brand||'')+(p.model||'')).toLowerCase().includes(q))) return false;
     if(cf==='done' && !custDone(p)) return false;
     if(cf==='never' && custDone(p)) return false;
+    const pf=($('skuPicFilter')&&$('skuPicFilter').value)||'';
+    if(pf==='no'  &&  skuPic(p.sku)) return false;
+    if(pf==='yes' && !skuPic(p.sku)) return false;
     return true;
   });
   if(!list.length){$('skuTable').innerHTML='<div class="empty">ไม่พบสินค้า (ดึงจาก sku_master + sku_export_info)</div>';return;}
-  let h='<table><thead><tr><th>SKU</th><th>Supplier</th><th>ต้นทุน (CNY)</th><th>ชื่อ (กลาง / EN / ไทย)</th><th>Brand·Model</th><th>ขนาดกล่อง·CBM·Kg</th><th>ดำเนินการตามกรมศุลกากร</th><th class="no-print">จัดการ</th></tr></thead><tbody>';
+  const noPic=db.products.filter(x=>!skuPic(x.sku)).length;
+  if($('skuPicStat'))$('skuPicStat').innerHTML=noPic
+    ? `เหลืออีก <b style="color:#B45309">${noPic}</b> SKU ที่ยังไม่มีรูป`
+    : '<b style="color:#1E7145">✅ ใส่รูปครบทุก SKU แล้ว</b>';
+  let h='<table><thead><tr><th style="width:92px">รูป</th><th>SKU</th><th>Supplier</th><th>ต้นทุน (CNY)</th><th>ชื่อ (กลาง / EN / ไทย)</th><th>Brand·Model</th><th>ขนาดกล่อง·CBM·Kg</th><th>ดำเนินการตามกรมศุลกากร</th><th class="no-print">จัดการ</th></tr></thead><tbody>';
   list.forEach(p=>{
     const packed=(p.box_size||p.cbm_ctn||p.w_ctn)?`${esc(p.box_size||'')} · ${p.cbm_ctn||'-'} · ${p.w_ctn||'-'}`:'<span class="muted">ยังไม่กรอก</span>';
     const sups=(p.suppliers&&p.suppliers.length)?p.suppliers:[{supplier:'',price:null,product_name:'',stock:null}];
@@ -793,6 +780,7 @@ function renderSkuTable(){
       const priceTxt=sup.price!=null?money(sup.price):'<span class="muted">—</span>';
       const nameMid=sup.product_name||p.product_name||'';
       h+=`<tr>
+        ${first?`<td rowspan="${sups.length}" style="text-align:center;vertical-align:middle;border-top:2px solid var(--line)">${skuPicCell(p.sku)}</td>`:''}
         <td${bt}><b>${esc(p.sku)}</b></td>
         <td${bt}>${esc(sup.supplier||'')||'<span class="muted">—</span>'}</td>
         <td${bt}>${priceTxt}</td>
@@ -922,42 +910,21 @@ function skuPic(sku){
   return e.pic?{pic:e.pic,pic_url:e.pic_url||'',pic_id:e.pic_id||''}:null;
 }
 /* ==================================================================
-   แท็บ คลังรูปสินค้า — เก็บรูปครั้งเดียวต่อ SKU ใช้ได้ทุกใบ INV
+   รูปสินค้าราย SKU — อยู่ในแท็บ 📦 สินค้า + ข้อมูลส่งออก
+   เก็บรูปครั้งเดียวต่อ SKU ใช้ได้ทุกใบ INV
    ================================================================== */
 let SKU_PIC_TARGET='';
-function picList(){
-  const q=(($('picSearch')&&$('picSearch').value)||'').toLowerCase();
-  const f=($('picFilter')&&$('picFilter').value)||'';
-  return db.products.filter(p=>{
-    if(q && !((p.sku+' '+(p.product_name||'')+' '+(p.name_en||'')+' '+(p.name_th||'')).toLowerCase().includes(q)))return false;
-    if(f==='no'  &&  skuPic(p.sku))return false;
-    if(f==='yes' && !skuPic(p.sku))return false;
-    return true;
-  });
-}
-function renderPicLib(){
-  if(!$('picGrid'))return;
-  const all=db.products.length, has=db.products.filter(p=>skuPic(p.sku)).length;
-  $('picKpi').innerHTML=
-    '<div class="card kpi"><div class="lbl">SKU ทั้งหมด</div><div class="val">'+all+'</div></div>'+
-    '<div class="card kpi" style="background:#EAF3DE"><div class="lbl">✅ มีรูปแล้ว</div><div class="val">'+has+'</div></div>'+
-    '<div class="card kpi" style="background:#FCE4E4"><div class="lbl">📷 ยังไม่มีรูป</div><div class="val">'+(all-has)+'</div></div>';
-  const list=picList();
-  if(!list.length){$('picGrid').innerHTML='<div class="empty">ไม่พบ SKU ตามเงื่อนไข</div>';return;}
-  $('picGrid').innerHTML='<div class="pic-grid">'+list.slice(0,400).map(p=>{
-    const pp=skuPic(p.sku), on=SKU_PIC_TARGET===p.sku;
-    return '<div class="pic-card'+(on?' on':'')+'" onclick="pickSkuPic(\''+esc(p.sku)+'\')" title="คลิกเลือก แล้วกด Ctrl+V">'
-      +(pp?'<img src="'+esc(pp.pic)+'">':'<div class="ph">📷</div>')
-      +'<div class="nm">'+esc(p.sku)+'</div>'
-      +'<div class="sub">'+esc(String(p.product_name||p.name_en||p.name_th||'').slice(0,28))+'</div>'
-      +(pp?'<div class="act">'
-        +(pp.pic_url?'<a href="'+esc(pp.pic_url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">☁️</a>':'')
-        +'<a href="#" onclick="event.preventDefault();event.stopPropagation();delSkuPic(\''+esc(p.sku)+'\')" style="color:#D0212B">ลบ</a></div>':'')
-      +'</div>';}).join('')+'</div>'
-    +(list.length>400?'<div class="muted" style="margin-top:8px">แสดง 400 จาก '+list.length+' รายการ — ใช้ช่องค้นหาเพื่อกรองให้แคบลง</div>':'');
+/* เซลล์รูปในคอลัมน์แรกของตารางสินค้า */
+function skuPicCell(sku){
+  const pp=skuPic(sku), on=SKU_PIC_TARGET===sku?' on':'';
+  if(!pp)return `<div class="sku-pic-box${on}" onclick="pickSkuPic('${esc(sku)}')" title="คลิกเลือก แล้ววางรูปด้วย Ctrl+V">📷<div style="font-size:9px">เพิ่มรูป</div></div>`;
+  return `<img class="sku-pic-box${on}" src="${esc(pp.pic)}" onclick="pickSkuPic('${esc(sku)}')" title="คลิกเพื่อเปลี่ยนรูป">`
+    +`<div style="font-size:9.5px;margin-top:2px">`
+    +(pp.pic_url?`<a href="${esc(pp.pic_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">☁️</a> `:'')
+    +`<a href="#" onclick="event.preventDefault();event.stopPropagation();delSkuPic('${esc(sku)}')" style="color:#D0212B">ลบ</a></div>`;
 }
 function pickSkuPic(sku){
-  SKU_PIC_TARGET=sku; renderPicLib();
+  SKU_PIC_TARGET=sku; renderSkuTable();
   $('skuPicStat').innerHTML='เลือก <b>'+esc(sku)+'</b> — กด <b>Ctrl+V</b> วางรูป หรือเลือกไฟล์';
   $('skuPicFile').click();
 }
@@ -979,7 +946,7 @@ async function saveSkuPic(sku,file){
   $('skuPicStat').innerHTML='⏳ กำลังบันทึกรูปของ <b>'+esc(sku)+'</b>…';
   const thumb=await shrink(file,200,0.7);
   await rememberSkuPic(sku,{pic:thumb});
-  renderPicLib();
+  renderSkuTable();
   try{
     const j=await gasCall({action:'upload',
       filename:String(sku).replace(/[\\/:*?"<>|]/g,'-')+'_'+Date.now()+'.jpg',
@@ -991,19 +958,19 @@ async function saveSkuPic(sku,file){
   }catch(e){
     $('skuPicStat').innerHTML='⚠️ บันทึกในระบบแล้ว แต่ขึ้น Drive ไม่ได้: '+esc(e.message);
   }
-  nextPicTarget(sku); renderPicLib(); renderLines&&renderLines();
+  nextPicTarget(sku); renderSkuTable(); renderLines&&renderLines();
 }
 async function delSkuPic(sku){
   if(!confirm('ลบรูปของ '+sku+' ?\nใบ INV ที่ฝังรูปไว้เองจะไม่ถูกแตะ'))return;
   await rememberSkuPic(sku,{pic:null,pic_url:null,pic_id:null});
-  renderPicLib();
+  renderSkuTable();
 }
 /* วางรูปในแท็บคลังรูป */
 let SKU_PASTE_BOUND=false;
 function bindSkuPaste(){
   if(SKU_PASTE_BOUND)return; SKU_PASTE_BOUND=true;
   document.addEventListener('paste',async ev=>{
-    const tab=$('tab-pics'); if(!tab||tab.style.display==='none')return;
+    const tab=$('tab-sku'); if(!tab||tab.style.display==='none')return;
     if(!SKU_PIC_TARGET)return;
     const items=[...(ev.clipboardData&&ev.clipboardData.items||[])];
     const f=items.map(x=>x.kind==='file'?x.getAsFile():null).find(x=>x&&/^image\//.test(x.type));
