@@ -1834,7 +1834,7 @@ function repDiff(o){
 let REP_INIT=false;
 function renderReport(){
   if(!$('repKpi'))return;
-  if(!REP_INIT){ REP_INIT=true; repQuick(12); return; }   // ครั้งแรก = 12 เดือนล่าสุด
+  if(!REP_INIT){ REP_INIT=true; repQuick(1); return; }    // เปิดมาครั้งแรก = เดือนนี้
   // เติมตัวเลือกบริษัทขนส่ง
   const cars=[...new Set(allOrders.map(o=>o.carrier).filter(Boolean))].sort();
   const cur=$('repCarrier').value;
