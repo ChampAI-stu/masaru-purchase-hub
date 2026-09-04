@@ -140,7 +140,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-04e</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-04f</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -1101,17 +1101,6 @@ function lastKuser(bid){
     .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
   return mine.length?mine[0].ksher_user:'';
 }
-function lastPayee(bid){
-  const mine=billPays(bid).filter(p=>p.payee).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
-  if(mine.length)return mine[0].payee;
-  const b=BILLS.find(x=>String(x.id)===String(bid));
-  if(b&&b.vendor){
-    const sameV=PAYS.filter(p=>{const bb=billOf(p.bill_id);return p.payee&&bb&&bb.vendor===b.vendor;})
-      .sort((a,b2)=>String(b2.created_at||'').localeCompare(String(a.created_at||'')));
-    if(sameV.length)return sameV[0].payee;
-  }
-  return '';
-}
 const KSHER_CH='Ksher Payment Co.Ltd.';
 const CO_OPTS=['LIKESHOP','MASARU','DAIKI','นามบุคคล'];
 const KSHER_USERS=['LIKESHOP','MASARU','DAIKI','คุณวุฒิ','คุณแนน'];
@@ -1160,12 +1149,12 @@ function openPay(bid){
   $('payTitle').textContent='+ งวดจ่าย — '+(b.po_number||'');
   $('p_curlbl').textContent=curSym(b.currency);
   $('payBillInfo').innerHTML=`ยอดเต็ม <b>${money(b.total_amount)} ${curSym(b.currency)}</b> · จ่ายแล้ว <b style="color:var(--green)">${money(paid)}</b> · <b style="color:var(--red)">ค้าง ${money(remain)}</b>`;
-  $('p_date').value=todayStr();
+  $('p_date').value='';        // ให้ว่างเสมอ — บังคับให้เลือกวันที่จ่ายจริงเอง
   $('p_amount').value=''; $('p_rate').value=b.currency==='THB'?'1':''; $('p_thb').value='';
   $('p_fee').value='0'; setSelKeep('p_channel','',CH_OPTS); setSelKeep('p_paytype',defaultPayType(bid),PT_OPTS);
   $('p_kuser').value=lastKuser(bid); toggleKuser();
   $('p_paycur').value=''; $('p_cross').value=''; $('p_usd').value=''; $('p_ship').value='0'; calcThb();
-  $('p_inst').value=''; $('p_resp').value=''; $('p_note').value=''; $('p_payee').value=lastPayee(bid);
+  $('p_inst').value=''; $('p_resp').value=''; $('p_note').value=''; $('p_payee').value='';   // ให้ว่างเสมอ
   $('p_status').value='planned';
   if($('p_optPaid'))$('p_optPaid').style.display=(!APPROVAL_MODE||IS_EXEC)?'':'none';
   $('payWarn').style.display='none';
