@@ -130,7 +130,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-04</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-04b</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -538,7 +538,9 @@ td.num,th.num{text-align:right;white-space:nowrap}
         <input id="p_usd" type="number" step="0.01" oninput="calcFromUsd()"></div>
       <div class="fld" id="p_rateWrap" style="display:none"><label id="p_rateLbl">เรทโอน (฿/¥)</label><input id="p_rate" type="number" step="0.0001" oninput="calcThb()"></div>
       <div class="fld" id="p_thbWrap" style="display:none"><label>ยอดบาท</label><input id="p_thb" type="number" step="0.01"></div>
-      <div class="fld"><label>ค่าธรรมเนียม (฿)</label><input id="p_fee" type="number" step="0.01" value="0"></div>
+      <div class="fld"><label>ค่าส่ง (<span id="p_shiplbl">¥</span>)</label>
+        <input id="p_ship" type="number" step="0.01" value="0" oninput="calcThb()"></div>
+      <div class="fld"><label>ค่าธรรมเนียมโอน (฿)</label><input id="p_fee" type="number" step="0.01" value="0"></div>
       <div class="fld"><label>ช่องทางการโอน ★</label>
         <select id="p_channel" onchange="toggleKuser()">
           <option value="">— เลือกช่องทาง —</option>
@@ -1152,7 +1154,7 @@ function openPay(bid){
   $('p_amount').value=''; $('p_rate').value=b.currency==='THB'?'1':''; $('p_thb').value='';
   $('p_fee').value='0'; setSelKeep('p_channel','',CH_OPTS); setSelKeep('p_paytype',defaultPayType(bid),PT_OPTS);
   $('p_kuser').value=lastKuser(bid); toggleKuser();
-  $('p_paycur').value=''; $('p_cross').value=''; $('p_usd').value=''; calcThb();
+  $('p_paycur').value=''; $('p_cross').value=''; $('p_usd').value=''; $('p_ship').value='0'; calcThb();
   $('p_inst').value=''; $('p_resp').value=''; $('p_note').value=''; $('p_payee').value=lastPayee(bid);
   $('p_status').value='planned';
   if($('p_optPaid'))$('p_optPaid').style.display=(!APPROVAL_MODE||IS_EXEC)?'':'none';
@@ -1179,7 +1181,8 @@ function editPay(pid,bid){
   setSelKeep('p_channel',p.channel||'',CH_OPTS);
   setSelKeep('p_paytype',p.pay_type||'',PT_OPTS);
   $('p_kuser').value=p.ksher_user||''; toggleKuser();
-  $('p_paycur').value=p.pay_currency||''; $('p_cross').value=p.fx_cross||''; $('p_usd').value=p.amount_usd||''; calcThb();
+  $('p_paycur').value=p.pay_currency||''; $('p_cross').value=p.fx_cross||''; $('p_usd').value=p.amount_usd||'';
+  $('p_ship').value=p.ship_fee||0; calcThb();
   $('p_payee').value=p.payee||'';
   $('p_inst').value=p.installment||'';
   $('p_resp').value=p.responsible||'';
@@ -1199,7 +1202,11 @@ function calcThb(){
   $('p_rateWrap').style.display  = '';
   $('p_thbWrap').style.display   = '';
   $('p_rateLbl').textContent = usd?'เรทโอน (฿/USD)':('เรทโอน (฿/'+curSym(cur)+')');
-  const a=parseFloat($('p_amount').value)||0, r=parseFloat($('p_rate').value)||0;
+  const sh=parseFloat($('p_ship').value)||0;
+  const a=(parseFloat($('p_amount').value)||0)+sh;   // ยอดสินค้า + ค่าส่ง
+  const r=parseFloat($('p_rate').value)||0;
+  const b=BILLS.find(x=>String(x.id)===String(payBillId))||{};
+  $('p_shiplbl').textContent=curSym(b.currency||'CNY');
   if(usd){
     const x=parseFloat($('p_cross').value)||0;
     if(a&&x)$('p_usd').value=(a/x).toFixed(2);
@@ -1210,7 +1217,8 @@ function calcThb(){
   }
 }
 function calcFromUsd(){   // กรอก USD มาเอง → ถอดอัตราแลกกลับ
-  const a=parseFloat($('p_amount').value)||0, u=parseFloat($('p_usd').value)||0, r=parseFloat($('p_rate').value)||0;
+  const a=(parseFloat($('p_amount').value)||0)+(parseFloat($('p_ship').value)||0);
+  const u=parseFloat($('p_usd').value)||0, r=parseFloat($('p_rate').value)||0;
   if(a&&u)$('p_cross').value=(a/u).toFixed(4);
   if(u&&r)$('p_thb').value=(u*r).toFixed(2);
 }
@@ -1247,7 +1255,7 @@ async function savePayment(){
     fee:parseFloat($('p_fee').value)||0,channel:$('p_channel').value.trim()||null,
     pay_type:$('p_paytype').value.trim()||null,
     ksher_user:($('p_channel').value===KSHER_CH ? ($('p_kuser').value||null) : null),
-    pay_currency:payCur(),
+    pay_currency:payCur(), ship_fee:parseFloat($('p_ship').value)||0,
     fx_cross:parseFloat($('p_cross').value)||null,
     amount_usd:parseFloat($('p_usd').value)||null,
     payee:$('p_payee').value.trim()||null,
@@ -2325,9 +2333,10 @@ function buildDoc(show){
       +((p.pay_currency==='USD'&&_usd)?(' ( '+money2(_usd)+' USD )'):'')
       +(remain>0?(' ค้างชำระ '+money(remain)+' '+s):'');
     const cross=+p.fx_cross||0;
-    const usd=(+p.amount_usd)||(cross?((+p.amount||0)/cross):0);
+    const usd=(+p.amount_usd)||(cross?(((+p.amount||0)+(+p.ship_fee||0))/cross):0);
+    const ship=+p.ship_fee||0;
     groups.push({po:b.po_number,cur:s,note,
-      amt:+p.amount||0, rate:p.rate, fee:+p.fee||0, thb:thbOf(p),
+      amt:+p.amount||0, ship, rate:p.rate, fee:+p.fee||0, thb:thbOf(p),
       paycur:p.pay_currency||b.currency||'CNY', cross, usd,
       items: its.length?its.map(r=>({sku:r.sku,qty:r.quantity,unit:r.price}))
                        :[{sku:b.sku||'-',qty:'',unit:''}]});
@@ -2366,7 +2375,7 @@ function buildDoc(show){
         + `<td class="num">${it.qty!==''?money(it.qty):''}</td>`
         + `<td class="num">${it.unit!==''?money2(it.unit):''}</td>`
         + (k===0?`<td rowspan="${n}" class="num">${money2(g.amt)}</td>`:'')
-        + (k===0?`<td rowspan="${n}" class="num"></td>`:'')
+        + (k===0?`<td rowspan="${n}" class="num">${g.ship?money2(g.ship):''}</td>`:'')
         + (hasUsd
             ? (k===0?`<td rowspan="${n}" class="num">${g.cross?money2(g.cross):'-'}</td>`
                     +`<td rowspan="${n}" class="num"><b>${g.usd?money2(g.usd):'-'}</b></td>`
@@ -2380,14 +2389,14 @@ function buildDoc(show){
     });
   });
   h+=`<tr style="background:#EFEFEF;font-weight:800"><td colspan="4" style="text-align:center">รวม</td>
-      <td class="num">-</td><td class="num">${money2(T('amt'))}</td><td class="num">0.00</td>
+      <td class="num">-</td><td class="num">${money2(T('amt'))}</td><td class="num">${money2(T('ship'))}</td>
       ${hasUsd?`<td class="num">-</td><td class="num">${money2(T('usd'))}</td><td class="num">-</td>`:'<td class="num">-</td>'}
       <td class="num">${money2(T('thb'))}</td><td class="num">${money2(T('fee'))}</td>
       <td class="num">${money2(T('thb')+T('fee'))}</td><td></td></tr>
     </tbody></table>
     <div style="margin-top:16px;line-height:2">
       <div style="font-weight:700">สรุป</div>
-      <div>ยอดเงินรวม${esc(curWord(rows))}ทั้งหมด : ${money2(T('amt'))} ${esc(curWord(rows))}</div>
+      <div>ยอดเงินรวม${esc(curWord(rows))}ทั้งหมด : ${money2(T('amt'))} ${esc(curWord(rows))}${T('ship')?` + ค่าส่ง ${money2(T('ship'))} = ${money2(T('amt')+T('ship'))}`:''}</div>
       ${hasUsd?`<div>ยอดเงินรวม USD ที่โอนจริง : ${money2(T('usd'))} USD</div>`:''}
       <div>ยอดเงินรวมบาททั้งหมด : ${money2(T('thb')+T('fee'))} บาท</div>
     </div>
