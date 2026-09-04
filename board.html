@@ -100,6 +100,24 @@
   .sku{font-size:14px;color:var(--text);white-space:nowrap}
   .po-tag{font-size:14px;font-weight:600;color:var(--blue);white-space:nowrap}
   .eta-soon{color:var(--amber);font-weight:600}
+  /* ===== พิมพ์รายงาน On-Time =====
+     ซ่อนทุกอย่างยกเว้นเนื้อรายงาน · บังคับสีพื้นหลังไม่ให้เบราว์เซอร์ตัดทิ้ง */
+  @media print{
+    body.printing-rep *{visibility:hidden}
+    body.printing-rep #viewRep,body.printing-rep #viewRep *{visibility:visible}
+    body.printing-rep #viewRep{position:absolute;left:0;top:0;width:100%}
+    body.printing-rep #viewRep .wk-btn,
+    body.printing-rep #viewRep select,
+    body.printing-rep #viewRep input,
+    body.printing-rep #viewRep label{display:none!important}
+    body.printing-rep #viewRep h2{display:none}
+    body.printing-rep #repMonth,body.printing-rep #repSplit,body.printing-rep #repTable{
+      break-inside:avoid;page-break-inside:avoid}
+    body.printing-rep #viewRep table thead th{background:#E8E8E8!important;color:#000!important}
+    body.printing-rep #viewRep table td,body.printing-rep #viewRep table th{border:1px solid #999!important}
+    body.printing-rep,body.printing-rep *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+    @page{size:A4 portrait;margin:12mm}
+  }
   /* ETA badge ใกล้เข้า / เลยกำหนด */
   .eta-tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;
     margin-left:6px;vertical-align:middle}
@@ -495,7 +513,14 @@ body.price-on .sl-price{display:block}
         <option value="7">ผ่อนผัน 7 วัน</option>
       </select>
       <div style="flex:1"></div>
-      <button class="wk-btn" onclick="exportReport()">⬇️ Export Excel</button>
+      <button class="wk-btn" onclick="exportReport()">⬇️ Excel</button>
+      <button class="wk-btn" onclick="printReport()" style="background:#1F3864;color:#fff;border-color:#1F3864">🖨️ บันทึก PDF</button>
+    </div>
+    <div id="repHead" style="display:none">
+      <div style="text-align:center;line-height:1.6;margin-bottom:14px">
+        <div style="font-weight:800;font-size:17px">MASARU — รายงาน On-Time Delivery</div>
+        <div style="font-size:13px" id="repHeadSub"></div>
+      </div>
     </div>
     <div id="repKpi"></div>
     <div id="repMonth"></div>
@@ -1977,6 +2002,26 @@ function renderRepTable(rows){
       <td style="padding:8px 11px;text-align:right"><b style="color:${RP_C.late}">+${x.d}</b></td>
       <td style="padding:8px 11px;font-size:12px">${esc(o.status||'—')}</td></tr>`;});
   $('repTable').innerHTML=h+'</tbody></table></div>';
+}
+
+/* บันทึกเป็น PDF — ใช้ระบบพิมพ์ของเบราว์เซอร์ (คมกว่า ไฟล์เล็กกว่า)
+   ในหน้าต่างพิมพ์เลือก "ปลายทาง: บันทึกเป็น PDF" */
+function printReport(){
+  const f=$('repFrom').value, t=$('repTo').value, car=$('repCarrier').value;
+  const TH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const mth=m=>m?TH[+m.slice(5,7)-1]+' '+(+m.slice(0,4)+543):'';
+  const span=(f&&t)?(f===t?mth(f):mth(f)+' – '+mth(t)):(f?'ตั้งแต่ '+mth(f):(t?'ถึง '+mth(t):'ทุกเดือน'));
+  const g=$('repGrace').value;
+  $('repHeadSub').innerHTML='ช่วง: <b>'+esc(span)+'</b>'
+    + (car?' · ขนส่ง: <b>'+esc(car)+'</b>':' · ทุกบริษัทขนส่ง')
+    + (+g?' · ผ่อนผัน '+g+' วัน':'')
+    + '<br>พิมพ์เมื่อ '+new Date().toLocaleString('th-TH',{dateStyle:'long',timeStyle:'short'});
+  $('repHead').style.display='';
+  document.body.classList.add('printing-rep');
+  const done=()=>{document.body.classList.remove('printing-rep');$('repHead').style.display='none';
+    window.removeEventListener('afterprint',done);};
+  window.addEventListener('afterprint',done);
+  setTimeout(()=>{window.print();setTimeout(done,1500);},80);
 }
 
 function exportReport(){
