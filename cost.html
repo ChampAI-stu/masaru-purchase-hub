@@ -111,16 +111,19 @@
   .doc .pic{max-width:80px;max-height:80px;object-fit:contain}
   /* ===== ใบวางบิลค่าขนส่ง ===== */
   .fi-sheet{background:#fff;color:#000;padding:10px;border:1px solid var(--line);border-radius:8px}
-  .fi-title{text-align:center;font-weight:800;font-size:15px;background:#DCE6F1;border:1px solid #333;padding:7px}
-  table.fi-tb{width:100%;border-collapse:collapse;font-size:12px}
-  table.fi-tb th,table.fi-tb td{border:1px solid #333;padding:4px 7px}
-  table.fi-tb thead th{background:#D6E3BC;font-weight:700;text-align:center}
+  .fi-title{text-align:center;font-weight:800;font-size:15px;background:#DCE6F1!important;
+    color:#000!important;border:1px solid #333;padding:7px}
+  table.fi-tb{width:100%;border-collapse:collapse;font-size:12.5px;background:#fff}
+  table.fi-tb th,table.fi-tb td{border:1px solid #333!important;padding:5px 7px;color:#000!important}
+  /* ⚠️ ตารางหลักของระบบตั้ง thead th เป็นตัวหนังสือขาว — ต้องทับให้เป็นดำ ไม่งั้นอ่านไม่ออก */
+  table.fi-tb thead th{background:#C6D9A0!important;color:#000!important;font-weight:800!important;
+    text-align:center;font-size:12.5px;text-shadow:none}
   table.fi-tb td.num,table.fi-tb th.num{text-align:right}
-  table.fi-tb td.fi-en{color:#B01722;text-align:right;font-size:11px}
-  table.fi-tb td.fi-v{background:#F2DCDB}
-  table.fi-tb td.fi-w{background:#D8E4BC}
-  table.fi-tb tr.fi-sum td{background:#FDEADA;font-weight:800}
-  table.fi-tb td.fi-foot{background:#FDEADA;font-size:11.5px;vertical-align:top}
+  table.fi-tb td.fi-en{color:#B01722!important;text-align:right;font-size:11.5px;font-weight:600}
+  table.fi-tb td.fi-v{background:#F2DCDB!important}
+  table.fi-tb td.fi-w{background:#D8E4BC!important}
+  table.fi-tb tr.fi-sum td{background:#FDE0C8!important;font-weight:800;font-size:13px}
+  table.fi-tb td.fi-foot{background:#FDEADA!important;font-size:12px;vertical-align:top}
   @media print{
     body.printing-fi *{visibility:hidden}
     body.printing-fi #fiSheet,body.printing-fi #fiSheet *{visibility:visible}
