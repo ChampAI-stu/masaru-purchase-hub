@@ -188,6 +188,9 @@
                  title="ใส่รูปเสร็จแล้วเลื่อนไปตัวถัดไปที่ยังไม่มีรูปให้เอง">
             <input type="checkbox" id="picAuto" checked> ไปตัวถัดไปอัตโนมัติ</label>
           <input type="file" id="skuPicFile" accept="image/*" style="display:none" onchange="onSkuPicFile(this)">
+          <input type="file" id="skuPicBulk" accept="image/*" multiple style="display:none" onchange="onSkuPicBulk(this)">
+          <button class="btn ghost edit-only" onclick="document.getElementById('skuPicBulk').click()"
+            title="เลือกรูปหลายไฟล์พร้อมกัน — ตั้งชื่อไฟล์เป็นชื่อ SKU เช่น SCS-415.jpg ระบบจะจับคู่ให้เอง">📤 อัปหลายรูป</button>
           <button class="btn ghost" onclick="exportSkuTemplate()">โหลดเทมเพลตส่งออก</button>
           <button class="btn ghost edit-only" onclick="document.getElementById('expImport').click()">นำเข้าข้อมูลส่งออก</button>
           <button class="btn gold" onclick="exportSkuExcel()">⬇️ Export Excel</button>
@@ -917,11 +920,19 @@ let SKU_PIC_TARGET='';
 /* เซลล์รูปในคอลัมน์แรกของตารางสินค้า */
 function skuPicCell(sku){
   const pp=skuPic(sku), on=SKU_PIC_TARGET===sku?' on':'';
-  if(!pp)return `<div class="sku-pic-box${on}" onclick="pickSkuPic('${esc(sku)}')" title="คลิกเลือก แล้ววางรูปด้วย Ctrl+V">📷<div style="font-size:9px">เพิ่มรูป</div></div>`;
-  return `<img class="sku-pic-box${on}" src="${esc(pp.pic)}" onclick="pickSkuPic('${esc(sku)}')" title="คลิกเพื่อเปลี่ยนรูป">`
-    +`<div style="font-size:9.5px;margin-top:2px">`
-    +(pp.pic_url?`<a href="${esc(pp.pic_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">☁️</a> `:'')
-    +`<a href="#" onclick="event.preventDefault();event.stopPropagation();delSkuPic('${esc(sku)}')" style="color:#D0212B">ลบ</a></div>`;
+  const box=pp
+    ? `<img class="sku-pic-box${on}" src="${esc(pp.pic)}" onclick="pickSkuPic('${esc(sku)}')" title="คลิกเพื่อเปลี่ยนรูป">`
+    : `<div class="sku-pic-box${on}" onclick="pickSkuPic('${esc(sku)}')" title="คลิกเลือก แล้ววางรูปด้วย Ctrl+V">📷<div style="font-size:9px">ยังไม่มีรูป</div></div>`;
+  const btn=canEdit
+    ? `<button class="mini btn${pp?' ghost':''}" style="margin-top:4px;white-space:nowrap" onclick="pickSkuPic('${esc(sku)}')">${pp?'🔄 เปลี่ยนรูป':'📷 อัปรูป'}</button>`
+    : '';
+  const links=pp
+    ? `<div style="font-size:9.5px;margin-top:3px">`
+      +(pp.pic_url?`<a href="${esc(pp.pic_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">☁️ ดูเต็ม</a> · `:'')
+      +(canEdit?`<a href="#" onclick="event.preventDefault();event.stopPropagation();delSkuPic('${esc(sku)}')" style="color:#D0212B">ลบ</a>`:'')
+      +`</div>`
+    : '';
+  return box+btn+links;
 }
 function pickSkuPic(sku){
   SKU_PIC_TARGET=sku; renderSkuTable();
@@ -936,12 +947,34 @@ function nextPicTarget(cur){
   SKU_PIC_TARGET=nx?nx.sku:'';
   if(nx)$('skuPicStat').innerHTML='ถัดไป: <b>'+esc(nx.sku)+'</b> — กด <b>Ctrl+V</b> ได้เลย';
 }
+/* อัปหลายรูปพร้อมกัน — จับคู่ SKU จากชื่อไฟล์ (SCS-415.jpg → SCS-415) */
+async function onSkuPicBulk(inp){
+  const files=[...inp.files]; inp.value='';
+  if(!files.length)return;
+  const norm=x=>String(x||'').trim().toUpperCase().replace(/[\s_]+/g,'-');
+  const map={}; db.products.forEach(p=>map[norm(p.sku)]=p.sku);
+  const hit=[], miss=[];
+  files.forEach(f=>{
+    const base=norm(f.name.replace(/\.[^.]+$/,'').replace(/[ _]*\(\d+\)$/,''));
+    if(map[base])hit.push({sku:map[base],f}); else miss.push(f.name);
+  });
+  let msg='พบไฟล์ '+files.length+' รูป\n✅ จับคู่ SKU ได้ '+hit.length+' รูป';
+  if(miss.length)msg+='\n⚠️ ไม่พบ SKU '+miss.length+' รูป (จะข้ามไป):\n   '+miss.slice(0,8).join(', ');
+  if(!hit.length)return alert(msg+'\n\n💡 ตั้งชื่อไฟล์ให้ตรงกับ SKU เช่น SCS-415.jpg');
+  if(!confirm(msg+'\n\nอัปโหลดเลยไหม?'))return;
+  for(let i=0;i<hit.length;i++){
+    $('skuPicStat').innerHTML='⏳ '+(i+1)+'/'+hit.length+' — <b>'+esc(hit[i].sku)+'</b>';
+    await saveSkuPic(hit[i].sku,hit[i].f,true);
+  }
+  renderSkuTable();
+  $('skuPicStat').innerHTML='✅ อัปโหลดครบ '+hit.length+' รูปแล้ว';
+}
 async function onSkuPicFile(inp){
   const f=inp.files[0]; inp.value='';
   if(f&&SKU_PIC_TARGET)await saveSkuPic(SKU_PIC_TARGET,f);
 }
 /* อัปรูปให้ SKU — ย่อเก็บใน DB + ตัวเต็มขึ้น Drive */
-async function saveSkuPic(sku,file){
+async function saveSkuPic(sku,file,quiet){
   if(!file||!/^image\//.test(file.type))return;
   $('skuPicStat').innerHTML='⏳ กำลังบันทึกรูปของ <b>'+esc(sku)+'</b>…';
   const thumb=await shrink(file,200,0.7);
@@ -958,7 +991,7 @@ async function saveSkuPic(sku,file){
   }catch(e){
     $('skuPicStat').innerHTML='⚠️ บันทึกในระบบแล้ว แต่ขึ้น Drive ไม่ได้: '+esc(e.message);
   }
-  nextPicTarget(sku); renderSkuTable(); renderLines&&renderLines();
+  if(!quiet){ nextPicTarget(sku); renderSkuTable(); renderLines&&renderLines(); }
 }
 async function delSkuPic(sku){
   if(!confirm('ลบรูปของ '+sku+' ?\nใบ INV ที่ฝังรูปไว้เองจะไม่ถูกแตะ'))return;
