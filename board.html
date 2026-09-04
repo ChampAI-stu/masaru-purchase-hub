@@ -475,11 +475,16 @@ body.price-on .sl-price{display:block}
   <div class="container">
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0">
       <h2 style="margin:0">📈 รายงาน On-Time Delivery</h2>
-      <select id="repRange" onchange="renderReport()" style="padding:8px 11px;border:1px solid #d9e0ec;border-radius:8px">
-        <option value="6">6 เดือนล่าสุด</option>
-        <option value="12" selected>12 เดือนล่าสุด</option>
-        <option value="0">ทั้งหมด</option>
-      </select>
+      <span style="display:inline-flex;align-items:center;gap:7px;white-space:nowrap">
+        <label style="font-size:13px;color:#64748B">เดือน</label>
+        <input type="month" id="repFrom" onchange="renderReport()" style="padding:7px 10px;border:1px solid #d9e0ec;border-radius:8px">
+        <span style="color:#94A3B8">ถึง</span>
+        <input type="month" id="repTo" onchange="renderReport()" style="padding:7px 10px;border:1px solid #d9e0ec;border-radius:8px">
+      </span>
+      <button class="wk-btn" onclick="repQuick(1)">เดือนนี้</button>
+      <button class="wk-btn" onclick="repQuick(3)">3 เดือน</button>
+      <button class="wk-btn" onclick="repQuick(12)">12 เดือน</button>
+      <button class="wk-btn" onclick="repQuick(0)">ทั้งหมด</button>
       <select id="repCarrier" onchange="renderReport()" style="padding:8px 11px;border:1px solid #d9e0ec;border-radius:8px;max-width:190px">
         <option value="">— ทุกบริษัทขนส่ง —</option>
       </select>
@@ -797,12 +802,17 @@ body.price-on .sl-price{display:block}
         </select>
       </div>
       <div class="m-field">
-        <label>วันที่เข้าคลัง</label>
+        <label>วันที่คาดเข้า (ETA)</label>
         <input type="date" id="puEta">
         <label style="display:flex;align-items:center;gap:7px;margin-top:8px;font-weight:400;cursor:pointer">
           <input type="checkbox" id="puClearEta" style="width:16px;height:16px;cursor:pointer">
           ล้างวันที่ (ทำให้เป็น —)
         </label>
+      </div>
+      <div class="m-field">
+        <label>วันที่นำส่งคลัง</label>
+        <input type="date" id="puDelivered">
+        <div style="font-size:11.5px;color:var(--muted);margin-top:5px">เว้นว่าง + เลือกสถานะ "เข้าคลังแล้ว" = ใส่วันนี้ให้อัตโนมัติ</div>
       </div>
     </div>
     <div class="m-field">
@@ -1455,7 +1465,11 @@ window.openEdit = function(id){
   const o = allOrders.find(x=>x.id===id); if(!o) return;
   $('modalTitle').textContent = 'แก้ไขรายการ';
   $('editId').value=o.id; $('mPO').value=o.po_number||'';
-  $('mEta').value=o.eta||''; $('mDelivered').value=o.delivered_at||''; $('mStatus').value=o.status||'อยู่ระหว่างสั่งซื้อ'; $('mNote').value=o.note||'';
+  $('mEta').value=o.eta||''; $('mDelivered').value=o.delivered_at||'';
+  $('mStatus').onchange=()=>{
+    if($('mStatus').value==='เข้าคลังแล้ว' && !$('mDelivered').value)
+      $('mDelivered').value=new Date().toISOString().slice(0,10);
+  }; $('mStatus').value=o.status||'อยู่ระหว่างสั่งซื้อ'; $('mNote').value=o.note||'';
   $('carrierList').innerHTML=CARRIERS.map(c=>`<option value="${c.name}">`).join(''); $('mCarrier').value=o.carrier||'';
   $('skuLines').innerHTML='';
   addSkuLine({ sku:o.sku, qty:o.quantity, recv:(o.received_qty!=null)?o.received_qty:null, price:(o.price!=null)?o.price:null });
@@ -1484,7 +1498,9 @@ async function saveOrder(){
     carrier: $('mCarrier').value.trim() || null,
     po_number: $('mPO').value.trim() || null,
     eta: $('mEta').value || null,
-    delivered_at: $('mDelivered').value || null,
+    // สถานะเข้าคลังแล้ว แต่ยังไม่กรอกวันนำส่ง → ใส่วันนี้ให้อัตโนมัติ
+    delivered_at: $('mDelivered').value
+      || ($('mStatus').value==='เข้าคลังแล้ว' ? new Date().toISOString().slice(0,10) : null),
     status: $('mStatus').value,
     note: $('mNote').value.trim() || null,
     updated_at: new Date().toISOString()
@@ -1756,15 +1772,25 @@ async function confirmImport(){
 // ==================================================================
 const RP_C={ok:'#1E7145',late:'#D0212B',wait:'#B45309',none:'#94A3B8'};
 
+/* วันอ้างอิงของแต่ละรายการ — ใช้วันนำส่งจริงก่อน ถ้าไม่มีใช้วันคาดเข้า */
+function repRef(o){ return o.delivered_at || o.eta || ''; }
+
+/* ปุ่มลัดเลือกช่วงเดือน (0 = ทั้งหมด) */
+function repQuick(n){
+  if(!n){ $('repFrom').value=''; $('repTo').value=''; renderReport(); return; }
+  const d=new Date();
+  $('repTo').value=d.toISOString().slice(0,7);
+  d.setMonth(d.getMonth()-n+1);
+  $('repFrom').value=d.toISOString().slice(0,7);
+  renderReport();
+}
 function repRows(){
-  const n=+$('repRange').value||0, car=$('repCarrier').value;
-  let rows=allOrders.filter(o=>o.eta);                 // ต้องมีวันคาดเข้าถึงวัดได้
+  const car=$('repCarrier').value;
+  const f=$('repFrom').value, t=$('repTo').value;
+  let rows=allOrders.filter(o=>repRef(o));            // ต้องมีวันที่อ้างอิงถึงนับได้
   if(car)rows=rows.filter(o=>(o.carrier||'')===car);
-  if(n){
-    const d=new Date(); d.setMonth(d.getMonth()-n+1); d.setDate(1);
-    const from=d.toISOString().slice(0,10);
-    rows=rows.filter(o=>String(o.eta)>=from);
-  }
+  if(f)rows=rows.filter(o=>repRef(o).slice(0,7)>=f);
+  if(t)rows=rows.filter(o=>repRef(o).slice(0,7)<=t);
   return rows;
 }
 /* จัดประเภทแต่ละรายการ */
@@ -1780,8 +1806,10 @@ function repDiff(o){
   return Math.round((new Date(o.delivered_at)-new Date(o.eta))/86400000);
 }
 
+let REP_INIT=false;
 function renderReport(){
   if(!$('repKpi'))return;
+  if(!REP_INIT){ REP_INIT=true; repQuick(12); return; }   // ครั้งแรก = 12 เดือนล่าสุด
   // เติมตัวเลือกบริษัทขนส่ง
   const cars=[...new Set(allOrders.map(o=>o.carrier).filter(Boolean))].sort();
   const cur=$('repCarrier').value;
@@ -1835,13 +1863,13 @@ function renderReport(){
 function renderRepMonth(rows){
   const by={};
   rows.forEach(o=>{
-    const m=String(o.eta).slice(0,7);
+    const m=repRef(o).slice(0,7);
     (by[m]=by[m]||{ontime:0,late:0,late_open:0,waiting:0,days:[]});
     by[m][repClass(o)]++;
     const d=repDiff(o); if(d!=null)by[m].days.push(d);
   });
   const ms=Object.keys(by).sort();
-  if(!ms.length){$('repMonth').innerHTML='<div style="padding:24px;text-align:center;color:var(--muted)">ยังไม่มีข้อมูลพอทำรายงาน — ต้องมี "วันที่คาดเข้า" อย่างน้อย 1 รายการ</div>';return;}
+  if(!ms.length){$('repMonth').innerHTML='<div style="padding:24px;text-align:center;color:var(--muted)">ไม่มีข้อมูลในช่วงเดือนที่เลือก — ลองกด "ทั้งหมด" หรือขยายช่วงเดือน</div>';return;}
   const max=Math.max(...ms.map(m=>by[m].ontime+by[m].late+by[m].late_open+by[m].waiting));
   const TH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
   const lbl=m=>TH[+m.slice(5,7)-1]+' '+(+m.slice(0,4)+543-2500);
@@ -2049,7 +2077,7 @@ function openPoUpdate(){
   const pos = [...new Set(allOrders.map(o=>o.po_number).filter(Boolean))].sort();
   $('poList').innerHTML = pos.map(p=>`<option value="${esc(p)}">`).join('');
   $('carrierList').innerHTML = CARRIERS.map(c=>`<option value="${c.name}">`).join('');
-  $('puPO').value=''; $('puStatus').value=''; $('puEta').value=''; $('puNote').value=''; $('puCarrier').value='';
+  $('puPO').value=''; $('puStatus').value=''; $('puEta').value=''; $('puDelivered').value=''; $('puNote').value=''; $('puCarrier').value='';
   $('puClearEta').checked = false; $('puEta').disabled = false;
   $('puCount').textContent='';
   $('poUpdateBg').style.display='flex';
@@ -2072,6 +2100,8 @@ async function savePoUpdate(){
   if($('puStatus').value)      upd.status = $('puStatus').value;
   if($('puClearEta').checked)  upd.eta = null;                    // ล้างวันที่ → เป็น —
   else if($('puEta').value)    upd.eta = $('puEta').value;
+  if($('puDelivered').value)   upd.delivered_at = $('puDelivered').value;
+  else if($('puStatus').value==='เข้าคลังแล้ว') upd.delivered_at = new Date().toISOString().slice(0,10);
   if($('puCarrier').value.trim()) upd.carrier = $('puCarrier').value.trim();
   if($('puNote').value.trim()) upd.note = $('puNote').value.trim();
   if(Object.keys(upd).length===1){ toast('กรอกอย่างน้อย 1 ช่อง (สถานะ/วันที่/ขนส่ง/หมายเหตุ)'); return; }
