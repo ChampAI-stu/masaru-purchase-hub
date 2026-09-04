@@ -225,6 +225,7 @@
           📋 <b>คลิกรูปในคอลัมน์แรก</b> เพื่อเลือก แล้ว <b>Ctrl+V</b> วางรูป (หรือเลือกไฟล์)
           &nbsp;·&nbsp; รูปเก็บครั้งเดียวต่อ SKU ใช้ได้ทุกใบ INV อัตโนมัติ
           &nbsp;·&nbsp; <span id="skuPicStat" class="muted"></span>
+          &nbsp;·&nbsp;<a href="#" onclick="event.preventDefault();testGasCost()" style="font-size:12px">🔌 ทดสอบเชื่อม Drive</a>
         </div>
         <div id="skuTable"></div>
       </div>
@@ -927,7 +928,9 @@ async function gasCall(payload){
     headers:{'Content-Type':'text/plain;charset=utf-8'},          // เลี่ยง CORS preflight
     body:JSON.stringify(Object.assign({secret:GAS_SECRET},payload))});
   const t=await r.text(); let j;
-  try{j=JSON.parse(t);}catch(e){throw new Error('Apps Script ตอบกลับผิดรูปแบบ');}
+  try{j=JSON.parse(t);}catch(e){
+    throw new Error('Apps Script ตอบกลับไม่ใช่ JSON — เช็ค Deploy: type=Web app, Who has access=Anyone, URL ลงท้าย /exec');
+  }
   if(!j.ok)throw new Error(j.error||'อัปโหลดไม่สำเร็จ');
   return j;
 }
@@ -1207,6 +1210,17 @@ async function onSkuPicFile(inp){
   if(f&&SKU_PIC_TARGET)await saveSkuPic(SKU_PIC_TARGET,f);
 }
 /* อัปรูปให้ SKU — ย่อเก็บใน DB + ตัวเต็มขึ้น Drive */
+/* ทดสอบว่าเว็บคุยกับ Apps Script ได้ไหม */
+async function testGasCost(){
+  $('skuPicStat').innerHTML='⏳ กำลังทดสอบ…';
+  try{
+    const j=await gasCall({action:'ping'});
+    $('skuPicStat').innerHTML='<b style="color:#1E7145">✅ '+esc(j.msg||'เชื่อมต่อสำเร็จ')+'</b>'
+      +(j.folder?' <span class="muted">· โฟลเดอร์ '+esc(j.folder)+'</span>':'');
+  }catch(e){
+    $('skuPicStat').innerHTML='<b style="color:#D0212B">❌ '+esc(e.message)+'</b>';
+  }
+}
 async function saveSkuPic(sku,file,quiet){
   if(!file||!/^image\//.test(file.type))return;
   $('skuPicStat').innerHTML='⏳ กำลังบันทึกรูปของ <b>'+esc(sku)+'</b>…';
@@ -1222,7 +1236,15 @@ async function saveSkuPic(sku,file,quiet){
     await rememberSkuPic(sku,{pic:thumb,pic_url:j.openUrl||j.viewUrl||'',pic_id:j.fileId||''});
     $('skuPicStat').innerHTML='✅ บันทึกรูป <b>'+esc(sku)+'</b> แล้ว (ขึ้น Drive เรียบร้อย)';
   }catch(e){
-    $('skuPicStat').innerHTML='⚠️ บันทึกในระบบแล้ว แต่ขึ้น Drive ไม่ได้: '+esc(e.message);
+    console.error('[img] drive:',e);
+    $('skuPicStat').innerHTML='<b style="color:#D0212B">⚠️ ขึ้น Google Drive ไม่ได้</b> — รูปเก็บในระบบแล้ว ใช้งานได้ปกติ'
+      +'<br><span class="muted" style="font-size:11.5px">'+esc(e.message)+'</span>';
+    if(!window.GAS_WARNED){ window.GAS_WARNED=true;
+      alert('⚠️ อัปรูปขึ้น Google Drive ไม่สำเร็จ\n\nรูปเก็บในระบบแล้ว ใช้งานได้ปกติ แต่ไม่มีไฟล์ต้นฉบับใน Drive\n\n'
+        +'สาเหตุ: '+e.message+'\n\nตรวจตามนี้:\n'
+        +'1. Apps Script → Deploy → Manage deployments → ✏️ → Version: New version → Deploy\n'
+        +'2. Who has access ต้องเป็น Anyone\n'
+        +'3. รัน testSetup ใน Apps Script ดูว่าเปิดโฟลเดอร์ได้ไหม'); }
   }
   if(!quiet){ nextPicTarget(sku); renderSkuTable(); renderLines&&renderLines(); }
 }
