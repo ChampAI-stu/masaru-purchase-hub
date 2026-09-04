@@ -1215,8 +1215,11 @@ async function testGasCost(){
   $('skuPicStat').innerHTML='⏳ กำลังทดสอบ…';
   try{
     const j=await gasCall({action:'ping'});
-    $('skuPicStat').innerHTML='<b style="color:#1E7145">✅ '+esc(j.msg||'เชื่อมต่อสำเร็จ')+'</b>'
-      +(j.folder?' <span class="muted">· โฟลเดอร์ '+esc(j.folder)+'</span>':'');
+    const ver=j.version||'';
+    $('skuPicStat').innerHTML='<b style="color:'+(ver?'#1E7145':'#B45309')+'">✅ '+esc(j.msg||'เชื่อมต่อสำเร็จ')+'</b>'
+      +' <span class="muted">· เวอร์ชันสคริปต์: '+(ver?esc(ver):'<b style="color:#B45309">ตัวเก่า — ยังไม่ได้ Deploy โค้ดใหม่</b>')+'</span>'
+      +(j.roots&&j.roots.length?'<br><span class="muted" style="font-size:11.5px">'+j.roots.map(esc).join(' · ')+'</span>'
+        :'<br><span class="muted" style="font-size:11.5px">⚠️ สคริปต์ตัวเก่าไม่รู้จักโฟลเดอร์แยก — รูปจะไปกองที่ '+esc(j.folder||'')+'</span>');
   }catch(e){
     $('skuPicStat').innerHTML='<b style="color:#D0212B">❌ '+esc(e.message)+'</b>';
   }
