@@ -162,7 +162,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-10</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-11</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -865,6 +865,9 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
       <input id="sySearch" placeholder="ค้นหา PO / SKU" oninput="renderSync()" style="max-width:200px">
       <span style="display:inline-flex;align-items:center;gap:6px">
         <label style="margin:0;white-space:nowrap">สกุลเงินของบิลที่จะสร้าง</label>
+        <label style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;margin:0;cursor:pointer"
+               title="PO ที่ยังไม่ได้กรอกราคาในบอร์ด — สร้างบิลไว้ก่อนแล้วมาเติมยอดทีหลังได้">
+          <input type="checkbox" id="syNoPrice" onchange="renderSync()"> รวม PO ที่ยังไม่มีราคา</label>
         <select id="syCur" style="width:150px" onchange="renderSync()">
           <option value="CNY">¥ CNY (หยวน)</option>
           <option value="THB">฿ THB (บาท)</option>
@@ -1895,13 +1898,17 @@ function exportMonth(){
 
 /* ===== ซิงก์บิลจาก Purchase Board ===== */
 // POROWS ประกาศไว้ด้านบนแล้ว (ใช้ร่วมกับต้นทุนต่อล็อต)
-function poGroups(){
+/* จัดกลุ่ม PO จาก Purchase Board
+   noPrice=true → เอา PO ที่ยังไม่มีราคามาด้วย (ยอดเป็น 0 ไว้มาเติมทีหลัง) */
+function poGroups(noPrice){
   const by={};
   POROWS.forEach(o=>{
     const price=+o.price||0, qty=+o.quantity||0;
-    if(!o.po_number||price<=0)return;
-    const g=by[o.po_number]=by[o.po_number]||{po:o.po_number,skus:[],total:0,qty:0};
+    if(!o.po_number)return;
+    if(price<=0 && !noPrice)return;
+    const g=by[o.po_number]=by[o.po_number]||{po:o.po_number,skus:[],total:0,qty:0,noPrice:true};
     g.skus.push(o.sku||'-'); g.total+=price*qty; g.qty+=qty;
+    if(price>0)g.noPrice=false;
   });
   return Object.values(by).sort((a,b)=>String(b.po).localeCompare(String(a.po)));
 }
@@ -1911,23 +1918,40 @@ async function openSync(){
 }
 function renderSync(){
   const q=($('sySearch').value||'').toLowerCase();
+  const np=$('syNoPrice')&&$('syNoPrice').checked;
   const have=new Set(BILLS.map(b=>String(b.po_number||'').trim()));
-  let list=poGroups().filter(g=>!have.has(String(g.po).trim()));
+  const all=poGroups(true);                       // ทุก PO ในบอร์ด
+  const withPrice=all.filter(g=>!g.noPrice);
+  const newAll=all.filter(g=>!have.has(String(g.po).trim()));
+  const stat=`<div class="muted" style="font-size:12.5px;margin:6px 0">
+      PO ในบอร์ดทั้งหมด <b>${all.length}</b> ใบ ·
+      มีราคาแล้ว <b>${withPrice.length}</b> ·
+      <b style="color:#B45309">ยังไม่มีราคา ${all.length-withPrice.length}</b> ·
+      สร้างบิลแล้ว <b>${all.length-newAll.length}</b></div>`;
+  let list=poGroups(np).filter(g=>!have.has(String(g.po).trim()));
   if(q)list=list.filter(g=>(g.po+' '+g.skus.join(' ')).toLowerCase().includes(q));
-  if(!list.length){$('syncBody').innerHTML='<div class="empty">ไม่มี PO ใหม่ให้ซิงก์ — PO ที่มีราคาในบอร์ดถูกสร้างบิลครบแล้ว</div>';return;}
+  if(!list.length){
+    $('syncBody').innerHTML=stat+'<div class="empty">'
+      +(newAll.length&&!np
+        ? 'PO ที่มีราคาถูกสร้างบิลครบแล้ว<br><span class="muted">ยังเหลือ '+newAll.length+' PO ที่<b>ยังไม่มีราคา</b> — ติ๊ก "รวม PO ที่ยังไม่มีราคา" ด้านบนเพื่อสร้างบิลไว้ก่อน</span>'
+        : 'ไม่มี PO ใหม่ให้ซิงก์ — สร้างบิลครบทุกใบแล้ว')
+      +'</div>';
+    return;
+  }
   const syc=curSym(($('syCur')&&$('syCur').value)||'CNY');
-  let h='<table><thead><tr><th style="width:38px"></th><th>เลขที่ PO</th><th>SKU</th><th class="right">จำนวน</th><th class="right">ยอดรวม ('+syc+')</th></tr></thead><tbody>';
+  let h=stat+'<table><thead><tr><th style="width:38px"></th><th>เลขที่ PO</th><th>SKU</th><th class="right">จำนวน</th><th class="right">ยอดรวม ('+syc+')</th></tr></thead><tbody>';
   list.forEach(g=>{
     h+=`<tr><td style="text-align:center"><input type="checkbox" class="sy-ck" data-po="${esc(g.po)}" checked style="width:16px;height:16px;cursor:pointer"></td>
       <td><b>${esc(g.po)}</b></td><td style="font-size:12.5px">${esc([...new Set(g.skus)].join(', '))}</td>
-      <td class="right">${money(g.qty)}</td><td class="right"><b>${money(g.total)}</b></td></tr>`;});
+      <td class="right">${money(g.qty)}</td>
+      <td class="right">${g.noPrice?'<span style="color:#B45309;font-size:11.5px">⚠️ ยังไม่มีราคา</span>':`<b>${money(g.total)}</b>`}</td></tr>`;});
   $('syncBody').innerHTML=h+'</tbody></table>';
 }
 function syncAll(on){document.querySelectorAll('.sy-ck').forEach(c=>c.checked=on);}
 async function doSync(){
   const pick=[...document.querySelectorAll('.sy-ck')].filter(c=>c.checked).map(c=>c.dataset.po);
   if(!pick.length)return toast('ยังไม่ได้เลือก PO');
-  const gs=poGroups().filter(g=>pick.includes(String(g.po)));
+  const gs=poGroups(true).filter(g=>pick.includes(String(g.po)));
   const rows=gs.map(g=>({po_number:g.po,sku:[...new Set(g.skus)].join(', '),
     currency:(($('syCur')&&$('syCur').value)||'CNY'),total_amount:+g.total.toFixed(2),status:'open',
     note:'ซิงก์จาก Purchase Board',created_by:ME}));
