@@ -177,7 +177,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-42</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-43</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -2566,13 +2566,12 @@ function curWord(rows){
 /* บรรทัดที่ 3 ของหัวเอกสาร — ธนาคาร/ช่องทางที่โอน */
 function bankLine(rows){
   const ch=[...new Set(rows.map(p=>p.channel).filter(Boolean))];
-  const B={'ธนาคาร (SWIFT Code)':'ธนาคารกสิกรไทย',
-           'Ksher Payment Co.Ltd.':'Ksher Payment Co.,Ltd.',
-           'JMF CARGO':'JMF CARGO'};
+  // แสดงชื่อช่องทางตามที่เลือกไว้ตรงๆ ไม่แปลงเป็นชื่อธนาคาร
+  const B={'Ksher Payment Co.Ltd.':'Ksher Payment Co.,Ltd.'};
   if(ch.length===1)return B[ch[0]]||ch[0];
   if(ch.length>1)return ch.map(c=>B[c]||c).join(' / ');
   const pt=[...new Set(rows.map(p=>p.pay_type).filter(Boolean))];
-  return pt.length===1?pt[0]:'ธนาคารกสิกรไทย';
+  return pt.length===1?pt[0]:'';        // ไม่มีช่องทางเลย = เว้นว่าง ไม่เดาชื่อธนาคารให้
 }
 /* บล็อกสรุป Ksher Wallet — ขึ้นเฉพาะใบที่โอนผ่าน Ksher เท่านั้น
    ต้องจ่าย / ยอดคงเหลือ / ยอดเติม แยกตาม User */
