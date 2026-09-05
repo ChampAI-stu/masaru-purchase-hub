@@ -162,7 +162,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-09</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-10</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -287,6 +287,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
           <input type="checkbox" id="dcPaid" onchange="renderDoc()" style="width:16px;height:16px">รวมที่จ่ายแล้ว
         </label>
         <button class="btn" onclick="buildDoc(true)">📄 สร้างใบปะหน้า</button>
+        <button class="btn mini ghost" onclick="checkDocData()" title="ตรวจว่าดึงจำนวน/ราคาจาก Purchase Board ได้ครบไหม">🔍 ตรวจข้อมูล</button>
       </div>
       <div id="dcKsher"></div>
       <div class="scroll"><div id="dcPick"></div></div>
@@ -2568,6 +2569,39 @@ function buildDocDomestic(rows,coName,thDate){
   </div>`;
 }
 
+/* ตรวจว่ารายการไหนดึงจำนวน/ราคาไม่ได้ และเพราะอะไร */
+function checkDocData(){
+  const rows=docSelected();
+  if(!rows.length)return alert('ยังไม่ได้เลือกรายการ');
+  const nz=x=>String(x||'').trim().toUpperCase().replace(/[\s_]+/g,'');
+  const miss=[], ok=[];
+  rows.forEach(p=>{
+    const b=billOf(p.bill_id), po=nz(b.po_number);
+    const pos=POROWS.filter(r=>nz(r.po_number)===po);
+    const skus=String(b.sku||'').split(',').map(x=>x.trim()).filter(Boolean);
+    skus.forEach(sk=>{
+      const k=nz(sk);
+      const r=pos.find(x=>nz(x.sku)===k);
+      if(r&&(num(r.quantity)||num(r.price)))ok.push(b.po_number+' · '+sk);
+      else{
+        const any=POROWS.find(x=>nz(x.sku)===k);
+        const m=MASTER.find(x=>nz(x.sku)===k&&num(x.standard_price)>0);
+        miss.push('· '+b.po_number+' / '+sk+'  → '
+          +(!pos.length?'ไม่พบ PO นี้ใน Purchase Board'
+            :(!r?'PO มีอยู่ แต่ไม่มี SKU นี้ในใบ'
+              :'มีแถวแต่จำนวน+ราคาเป็น 0'))
+          +(any?' (มี SKU นี้ใน PO อื่น → ใช้ราคานั้นแทน)':'')
+          +(m?' (มีราคามาตรฐานใน sku_master → ใช้แทน)':''));
+      }
+    });
+  });
+  alert('ตรวจข้อมูลใบปะหน้า\n\n'
+    +'✅ ดึงจาก PO ได้ครบ: '+ok.length+' รายการ\n'
+    +'⚠️ ดึงไม่ได้: '+miss.length+' รายการ\n\n'
+    +(miss.length?miss.slice(0,25).join('\n')+(miss.length>25?'\n… และอีก '+(miss.length-25):''):'')
+    +'\n\nจำนวนสินค้า/ราคาต่อหน่วยมาจาก Purchase Board เท่านั้น\nถ้า PO ยังไม่ได้นำเข้าไฟล์ ช่องพวกนี้จะว่าง');
+}
+
 function buildDoc(show){
   if(show===true)$('dcPaper').style.display='';
   if($('dcPaper').style.display==='none')return;
@@ -2595,14 +2629,24 @@ function buildDoc(show){
     // แตกรายการ SKU: ยึดจาก SKU ในบิลก่อน (ครบเสมอ) แล้วค่อยเติมจำนวน/ราคาจาก Purchase Board
     let its=[];
     if(showDetail){
-      const po=String(b.po_number||'');
-      const pos=POROWS.filter(r=>String(r.po_number||'')===po);
+      const nz=x=>String(x||'').trim().toUpperCase().replace(/[\s_]+/g,'');   // ตัดช่องว่าง/ตัวพิมพ์
+      const po=nz(b.po_number);
+      const pos=POROWS.filter(r=>nz(r.po_number)===po);
       const skus=String(b.sku||'').split(',').map(x=>x.trim()).filter(Boolean);
+      /* หาจำนวน/ราคาแบบไล่ลำดับ:
+         ① PO เดียวกัน + SKU ตรง  ② SKU ตรง (PO ไหนก็ได้ เอาใบล่าสุด)  ③ ราคามาตรฐานจาก sku_master */
+      const look=sk=>{
+        const k=nz(sk);
+        let r=pos.find(x=>nz(x.sku)===k);
+        if(r&&(num(r.quantity)||num(r.price)))return {quantity:r.quantity,price:r.price,src:'po'};
+        r=POROWS.filter(x=>nz(x.sku)===k&&(num(x.quantity)||num(x.price))).pop();
+        if(r)return {quantity:'',price:r.price,src:'sku'};
+        const m=MASTER.find(x=>nz(x.sku)===k&&num(x.standard_price)>0);
+        if(m)return {quantity:'',price:m.standard_price,src:'master'};
+        return {quantity:'',price:'',src:''};
+      };
       if(skus.length){
-        its=skus.map(sk=>{
-          const r=pos.find(x=>String(x.sku||'').trim()===sk)||{};
-          return {sku:sk, quantity:r.quantity, price:r.price};
-        });
+        its=skus.map(sk=>{ const f=look(sk); return {sku:sk, quantity:f.quantity, price:f.price}; });
       }else if(pos.length){
         its=pos.map(r=>({sku:r.sku, quantity:r.quantity, price:r.price}));
       }
