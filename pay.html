@@ -99,7 +99,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
 .sl-item .ph{display:flex;align-items:center;justify-content:center;font-size:20px}
 .slip-more{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;
   border-radius:6px;background:#EEF2F7;color:#1F3864;font-size:11px;font-weight:800;cursor:pointer;margin-left:3px}
-.qt-sheet img{max-width:92%;height:auto}
+.qt-sheet img{width:100%;max-width:100%;height:auto;display:block;margin:10px auto}
 .qt-sheet{background:#fff;color:#000;padding:26px 30px;border:1px solid var(--line);border-radius:8px;
   width:760px;max-width:100%;margin:0 auto}
 .qt-h1{text-align:center;font-weight:800;font-size:21px;letter-spacing:.5px}
@@ -124,7 +124,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   body.printing-qt #qtSheet table.qt-tb th,
   body.printing-qt #qtSheet table.qt-tb td{height:30px;font-size:13px;padding:7px 9px}
   body.printing-qt #qtSheet .qt-h1{font-size:23px}
-  body.printing-qt #qtSheet img{max-width:88%}
+  body.printing-qt #qtSheet img{width:100%!important;max-width:100%!important}
   body.printing-qt,body.printing-qt *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   @page{size:A4 portrait;margin:12mm}
 }
@@ -169,7 +169,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-31</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-32</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -3389,7 +3389,7 @@ async function onQuotFiles(inp){
 }
 async function addQuotPic(file){
   if(!file||!/^image\//.test(file.type))return;
-  const thumb=await shrinkImg(file,420,0.72);          // ภาพย่อไว้แสดง/พิมพ์
+  const thumb=await shrinkImg(file,1400,0.82);         // ภาพย่อไว้แสดง/พิมพ์ — ต้องใหญ่พอไม่ให้เบลอตอนขยายเต็มใบ
   const item={thumb:thumb,url:'',id:'',name:file.name};
   QT_PICS.push(item); drawQuotPics(); drawQuot();
   try{
@@ -3444,7 +3444,7 @@ function drawQuot(){
   const dd=d?(function(){const x=new Date(d+'T00:00:00');
     return x.getDate()+'/'+(x.getMonth()+1)+'/'+x.getFullYear();})():'-';
   const pics=QT_PICS.map(function(p){
-    return '<img src="'+esc(p.thumb||p.url)+'" style="max-width:78%;margin:8px auto;display:block;border:1px solid #bbb">';}).join('');
+    return '<img src="'+esc(p.thumb||p.url)+'" style="width:100%;margin:10px auto;display:block;border:1px solid #bbb">';}).join('');
 
   $('qtPaper').innerHTML='<div class="qt-sheet" id="qtSheet">'
     +'<div class="qt-h1">ใบเสนอราคา</div><div class="qt-h2">Quotation</div>'
