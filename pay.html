@@ -162,7 +162,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-15</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-16</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -605,7 +605,13 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
       <div class="fld"><label>SKU / สินค้า</label><input id="f_sku"></div>
       <div class="fld"><label>สกุลเงิน</label>
         <select id="f_cur"><option value="CNY">¥ CNY (หยวน)</option><option value="USD">$ USD (ดอลลาร์)</option><option value="THB">฿ THB (บาท)</option></select></div>
-      <div class="fld"><label>ยอดเต็มของบิล ★</label><input id="f_total" type="number" step="0.01"></div>
+      <div class="fld"><label>จำนวนชิ้น</label>
+        <input id="f_qty" type="number" step="1" oninput="calcBillTotal()" placeholder="เช่น 1000"></div>
+      <div class="fld"><label>ราคาต่อหน่วย</label>
+        <input id="f_unit" type="number" step="0.0001" oninput="calcBillTotal()" placeholder="เช่น 142.00"></div>
+      <div class="fld"><label>ยอดเต็มของบิล ★</label>
+        <input id="f_total" type="number" step="0.01">
+        <div id="f_calcHint" class="muted" style="font-size:11.5px;margin-top:3px"></div></div>
     </div>
     <div class="fld"><label>หมายเหตุ</label><textarea id="f_note" rows="2"></textarea></div>
     <div class="row" style="margin-top:16px;justify-content:flex-end">
@@ -1163,6 +1169,13 @@ function renderBills(){
 
 /* ===== BILL CRUD ===== */
 let editBillId=null;
+/* จำนวน × ราคาต่อหน่วย → ยอดเต็ม (แก้ยอดเต็มทับเองได้) */
+function calcBillTotal(){
+  const q=parseFloat($('f_qty').value)||0, u=parseFloat($('f_unit').value)||0;
+  if(q&&u)$('f_total').value=+(q*u).toFixed(2);
+  const hint=$('f_calcHint');
+  if(hint)hint.textContent=(q&&u)?(money(q)+' × '+money2(u)+' = '+money2(q*u)):'';
+}
 function openBill(id){
   const found=id?BILLS.find(x=>String(x.id)===String(id)):null;
   if(id&&!found){console.warn('[pay] openBill: ไม่พบบิล',id);alert('ไม่พบบิลนี้ — อาจถูกลบหรือข้อมูลยังไม่อัปเดต\nกำลังรีเฟรชให้ใหม่ แล้วลองกด "แก้" อีกครั้ง');loadAll();return;}
@@ -1174,12 +1187,15 @@ function openBill(id){
   setSelKeep('f_co', b?.company||'LIKESHOP', CO_OPTS);
   $('f_vendor').value=b?.vendor||''; $('f_sku').value=b?.sku||'';
   $('f_cur').value=b?.currency||'CNY'; $('f_total').value=b?.total_amount||'';
+  $('f_qty').value=(b&&b.qty!=null)?b.qty:''; $('f_unit').value=(b&&b.unit_price!=null)?b.unit_price:'';
+  calcBillTotal();
   $('f_note').value=b?.note||'';
   $('billBg').style.display='flex';
 }
 async function saveBill(){
   const row={po_number:$('f_po').value.trim(),company:$('f_co').value,vendor:$('f_vendor').value.trim()||null,
     sku:$('f_sku').value.trim()||null,currency:$('f_cur').value,total_amount:parseFloat($('f_total').value)||0,
+    qty:parseFloat($('f_qty').value)||null, unit_price:parseFloat($('f_unit').value)||null,
     note:$('f_note').value.trim()||null,updated_at:new Date().toISOString()};
   if(!row.po_number)return toast('ใส่รหัส PO ก่อน');
   if(!(row.total_amount>0))return toast('ใส่ยอดเต็มของบิลก่อน');
@@ -1193,7 +1209,7 @@ async function saveBill(){
   {const before=BILLS.find(x=>String(x.id)===String(editBillId));
    if(editBillId&&before){
      const LB={po_number:'เลข PO',company:'บริษัท',vendor:'Vendor',sku:'SKU',
-       total_amount:'ยอดเต็ม',currency:'สกุลเงิน',note:'หมายเหตุ'};
+       total_amount:'ยอดเต็ม',qty:'จำนวนชิ้น',unit_price:'ราคาต่อหน่วย',currency:'สกุลเงิน',note:'หมายเหตุ'};
      const ch=[];
      Object.keys(LB).forEach(k=>{
        let a=before[k]??'', b=row[k]??'';
@@ -2708,6 +2724,10 @@ function buildDoc(show){
         if(price===''){                                  // ③ ราคามาตรฐานจาก sku_master
           const m=MASTER.find(x=>nz(x.sku)===k&&num(x.standard_price)>0);
           if(m)price=m.standard_price;
+        }
+        if(skus.length===1){                             // ④ บิล SKU เดียว → ใช้ค่าที่กรอกในบิลเอง
+          if(qty===''  &&num(b.qty))       qty=b.qty;
+          if(price===''&&num(b.unit_price))price=b.unit_price;
         }
         return {quantity:qty, price:price};
       };
