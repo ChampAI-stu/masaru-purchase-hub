@@ -99,17 +99,17 @@ td.num,th.num{text-align:right;white-space:nowrap}
 .sl-item .ph{display:flex;align-items:center;justify-content:center;font-size:20px}
 .slip-more{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;
   border-radius:6px;background:#EEF2F7;color:#1F3864;font-size:11px;font-weight:800;cursor:pointer;margin-left:3px}
-.qt-sheet img{max-width:78%;height:auto}
-.qt-sheet{background:#fff;color:#000;padding:22px 26px;border:1px solid var(--line);border-radius:8px;
-  width:720px;max-width:100%;margin:0 auto}
-.qt-h1{text-align:center;font-weight:800;font-size:19px;letter-spacing:.5px}
-.qt-h2{text-align:center;font-weight:700;font-size:14px;margin-bottom:18px}
-table.qt-meta{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
-table.qt-meta td{padding:2px 4px;vertical-align:top;line-height:1.65}
+.qt-sheet img{max-width:92%;height:auto}
+.qt-sheet{background:#fff;color:#000;padding:26px 30px;border:1px solid var(--line);border-radius:8px;
+  width:760px;max-width:100%;margin:0 auto}
+.qt-h1{text-align:center;font-weight:800;font-size:21px;letter-spacing:.5px}
+.qt-h2{text-align:center;font-weight:700;font-size:15px;margin-bottom:20px}
+table.qt-meta{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:12px}
+table.qt-meta td{padding:3px 4px;vertical-align:top;line-height:1.75}
 table.qt-meta td.num{text-align:right}
-table.qt-tb{width:100%;border-collapse:collapse;font-size:11.5px;table-layout:fixed}
-table.qt-tb th,table.qt-tb td{border:1px solid #333!important;padding:3px 6px;color:#000!important;
-  height:19px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+table.qt-tb{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed}
+table.qt-tb th,table.qt-tb td{border:1px solid #333!important;padding:6px 8px;color:#000!important;
+  height:27px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 table.qt-tb thead th{background:#EDEDED!important;color:#000!important;font-weight:800!important}
 table.qt-tb td.num,table.qt-tb th.num{text-align:right}
 table.qt-tb td.c{text-align:center}
@@ -117,7 +117,14 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
 @media print{
   body.printing-qt *{visibility:hidden}
   body.printing-qt #qtSheet,body.printing-qt #qtSheet *{visibility:visible}
-  body.printing-qt #qtSheet{position:absolute;left:0;top:0;width:100%;max-width:none;border:0}
+  /* ⚠️ ห้ามล็อกความกว้างเป็น px ตอนพิมพ์ — เกินพื้นที่ A4 แล้วเบราว์เซอร์จะย่อทั้งหน้า
+        ทำให้ตัวหนังสือเล็กและแถวดูบางผิดสัดส่วน */
+  body.printing-qt #qtSheet{position:absolute;left:0;top:0;
+    width:100%!important;max-width:none!important;padding:0!important;border:0;border-radius:0}
+  body.printing-qt #qtSheet table.qt-tb th,
+  body.printing-qt #qtSheet table.qt-tb td{height:30px;font-size:13px;padding:7px 9px}
+  body.printing-qt #qtSheet .qt-h1{font-size:23px}
+  body.printing-qt #qtSheet img{max-width:88%}
   body.printing-qt,body.printing-qt *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   @page{size:A4 portrait;margin:12mm}
 }
@@ -162,7 +169,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-28</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-29</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
