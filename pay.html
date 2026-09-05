@@ -177,7 +177,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-44</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-45</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -192,7 +192,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="tab" data-t="month" onclick="goTab('month')">📊 สรุปเดือน</div>
   <div class="tab" data-t="ledger" onclick="goTab('ledger')">📒 ตารางสรุปบันทึก</div>
   <div class="tab" data-t="wallet" onclick="goTab('wallet')">💰 Ksher Wallet</div>
-  <div class="tab" data-t="remit" onclick="goTab('remit')">🧾 แจ้งโอน</div>
+  <div class="tab" data-t="remit" onclick="goTab('remit')">🧾 หลักฐานชำระเงินร้านค้า</div>
 </div>
 
 <div class="wrap">
@@ -471,10 +471,10 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
     </div>
   </div>
 
-  <!-- ============ TAB: แจ้งโอน (หลักฐานการโอนเงิน) ============ -->
+  <!-- ============ TAB: หลักฐานชำระเงินร้านค้า ============ -->
   <div id="tab-remit" style="display:none">
     <div class="card">
-      <h2>🧾 แจ้งโอน — หลักฐานการโอนเงิน</h2>
+      <h2>🧾 หลักฐานชำระเงินร้านค้า</h2>
       <div class="sub-note">แนบสลิป (รูป / PDF) ให้แต่ละงวดจ่าย · อัปโหลดเข้าระบบ หรือวางลิงก์ Google Drive ก็ได้</div>
       <div id="rmKpi" class="kpis"></div>
       <div class="row" style="flex-wrap:wrap">
@@ -3528,7 +3528,7 @@ function exportLedger(){
 }
 
 /* ==================================================================
-   แท็บ แจ้งโอน — หลักฐานการโอนเงิน
+   แท็บ หลักฐานชำระเงินร้านค้า
    สลิปเก็บได้ 2 ทาง: อัปโหลดเข้า Supabase Storage (bucket "slips")
    หรือวางลิงก์ Google Drive — เผื่อ Edge Function ดันเข้า Drive ทีหลัง
    ================================================================== */
@@ -3838,8 +3838,8 @@ function exportRemit(){
       +thbOf(p).toFixed(2),p.channel||'',p.pay_type||'',p.payee||'',
       p.status==='paid'?'จ่ายแล้ว':'ส่งยอด',slipList(p).map(i=>i.url).join('\n'),slipCount(p),p.slip_note||'']);});
   const ws=XLSX.utils.aoa_to_sheet(rows), wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'แจ้งโอน');
-  XLSX.writeFile(wb,'แจ้งโอน_'+($('rmMonth').value||monthStr())+'.xlsx');
+  XLSX.utils.book_append_sheet(wb,ws,'หลักฐานชำระเงิน');
+  XLSX.writeFile(wb,'หลักฐานชำระเงินร้านค้า_'+($('rmMonth').value||monthStr())+'.xlsx');
 }
 
 boot();
