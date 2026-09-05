@@ -169,7 +169,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-30</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-31</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -2513,23 +2513,21 @@ function ksherBlock(rows){
     .sort((a,b)=>KSHER_USERS.indexOf(a)-KSHER_USERS.indexOf(b));
 
   const d=$('dcDate').value||'';
-  let body='', tNeed=0, tTop=0, tPrev=0, tAdd=0, tAdj=0;
-  const hasAdj=users.some(u=>KSHER_USERS.includes(u)&&(walletSplit(u,$('dcDate').value||'').adj||0)!==0);
+  let body='', tNeed=0, tTop=0, tPrev=0, tAdd=0;
   users.forEach(u=>{
     const grp=ks.filter(p=>(p.ksher_user||'(ยังไม่ระบุ User)')===u);
     const need=grp.reduce((s,p)=>s+thbOf(p),0);          // ยอดที่ต้องจ่ายวันนี้ (บาท)
     const known=KSHER_USERS.includes(u);
     const sp=known?walletSplit(u,d):{prev:0,top:0,spent:0,avail:0};
-    const prev=sp.prev, added=sp.top, adj=sp.adj||0;     // ยกมา / เติมวันนี้ / ปรับยอดวันนี้
-    const usable=Math.max(0,prev)+added+adj;             // เงินที่ใช้ได้จริงวันนี้
+    const prev=sp.prev, added=sp.top;                    // ยกมา (รวมปรับยอดแล้ว) / เติมวันนี้
+    const usable=Math.max(0,prev)+added;                 // เงินที่ใช้ได้จริงวันนี้
     const short=Math.max(0,need-usable);
     const more=short>0?Math.ceil(short*(1+buf/100)):0;   // ยังต้องเติมเพิ่มอีก
-    tPrev+=prev; tAdd+=added; tAdj+=adj; tNeed+=need; tTop+=more;
+    tPrev+=prev; tAdd+=added; tNeed+=need; tTop+=more;
     body+=`<tr>
       <td>${esc(u)}</td>
       <td class="num">${money2(prev)}</td>
       <td class="num">${added?('+'+money2(added)):'—'}</td>
-      ${hasAdj?`<td class="num">${adj?((adj>0?'+':'')+money2(adj)):'—'}</td>`:''}
       <td class="num">${money2(usable)}</td>
       <td class="num">${money2(need)}</td>
       <td class="num"><b>${more?money2(more):'—'}</b></td>
@@ -2540,18 +2538,16 @@ function ksherBlock(rows){
     <div style="font-weight:700;margin-bottom:6px">สรุปเงิน Ksher Wallet</div>
     <table style="width:auto;min-width:620px">
       <thead><tr><th>User</th>
-        <th class="num">ยอดยกมา</th><th class="num">เติมวันนี้</th>
-        ${hasAdj?'<th class="num">ปรับยอดวันนี้</th>':''}<th class="num">รวมใช้ได้</th>
+        <th class="num">ยอดยกมา</th><th class="num">เติมวันนี้</th><th class="num">รวมใช้ได้</th>
         <th class="num">ต้องจ่าย</th><th class="num">ต้องเติมเพิ่ม</th><th class="num">คงเหลือหลังจ่าย</th></tr></thead>
       <tbody>${body}
         <tr style="background:#EFEFEF;font-weight:800">
           <td>รวม</td><td class="num">${money2(tPrev)}</td>
           <td class="num">${tAdd?('+'+money2(tAdd)):'—'}</td>
-          ${hasAdj?`<td class="num">${tAdj?((tAdj>0?'+':'')+money2(tAdj)):'—'}</td>`:''}
-          <td class="num">${money2(Math.max(0,tPrev)+tAdd+tAdj)}</td>
+          <td class="num">${money2(Math.max(0,tPrev)+tAdd)}</td>
           <td class="num">${money2(tNeed)}</td>
           <td class="num">${tTop?money2(tTop):'—'}</td>
-          <td class="num">${money2(Math.max(0,tPrev)+tAdd+tAdj-tNeed)}</td></tr>
+          <td class="num">${money2(Math.max(0,tPrev)+tAdd-tNeed)}</td></tr>
       </tbody></table></div>`;
 }
 
@@ -2979,8 +2975,8 @@ function renderKsherBox(){
     },0);
     const known=KSHER_USERS.includes(u);
     const sp=known?walletSplit(u,d):{prev:0,top:0,spent:0};
-    const prev=sp.prev, added=sp.top, adj=sp.adj||0;   // ยกมา / เติมวันนี้ / ปรับยอด
-    const avail=Math.max(0,prev)+added+adj;            // เงินที่ใช้ได้จริงวันนี้
+    const prev=sp.prev, added=sp.top;                  // ยกมา (รวมปรับยอดแล้ว) / เติมวันนี้
+    const avail=Math.max(0,prev)+added;                // เงินที่ใช้ได้จริงวันนี้
     const debt=prev<0?-prev:0;
     const short=Math.max(0,need-avail);
     const sug=short>0?Math.ceil(short*(1+buf/100)):0;
@@ -3005,8 +3001,7 @@ function renderKsherBox(){
           <b style="font-size:15px;color:${prev>=0?'#146C38':'#B01722'}">${money(prev)} ฿</b></div>
         <div style="flex:0 0 auto"><div class="muted" style="font-size:11px">เติมวันนี้</div>
           <b style="font-size:15px;color:${added?'#2E75B6':'#94A3B8'}">${added?('+'+money(added)):'—'} ${added?'฿':''}</b></div>
-        ${adj?`<div style="flex:0 0 auto"><div class="muted" style="font-size:11px">ปรับยอดวันนี้</div>
-          <b style="font-size:15px;color:#B45309">${adj>0?'+':''}${money(adj)} ฿</b></div>`:''}
+
         <div style="flex:0 0 auto;border-left:2px solid #E2E8F0;padding-left:14px">
           <div class="muted" style="font-size:11px">รวมใช้ได้วันนี้</div>
           <b style="font-size:15px;color:${avail>=need?'#146C38':'#B45309'}">${money(avail)} ฿</b>
@@ -3531,12 +3526,15 @@ function walletSplit(user,d){
     const v=+w.amount_thb||0, dt=String(w.txn_date||''), ty=w.txn_type;
     if(!d||dt<d){ prev+=v; return; }
     if(dt!==d)return;                       // รายการวันหลัง ไม่นับ
-    // 🔑 แยกตาม "ประเภทรายการ" ไม่ใช่ดูแค่ว่าเป็นบวกหรือลบ
-    if(ty==='topup')      top+=v;           // เติมเงินจริง
+    // แยกตามประเภทรายการ:
+    //   topup  = เติมเงินเข้า Wallet วันนี้
+    //   adjust = ปรับยอด → ถือเป็นการแก้ "ยอดยกมา" ไม่ใช่การเติม
+    //   spend  = ตัดจ่ายวันนี้
+    if(ty==='topup')      top+=v;
     else if(ty==='spend') spent+=Math.abs(v);
-    else                  adj+=v;           // ปรับยอด — คนละอย่างกับการเติม
+    else                  prev+=v;
   });
-  return {prev, top, adj, spent, avail:prev+top+adj-spent};
+  return {prev, top, spent, avail:prev+top-spent};
 }
 function walletAll(){ return KSHER_USERS.map(u=>({user:u, ...walletBal(u)})); }
 /* ยอดบาทคงเหลือ → คิดเป็นหยวนได้เท่าไหร่ที่เรทวันนี้ */
