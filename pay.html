@@ -177,7 +177,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-41</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-42</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -823,6 +823,18 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
     <div class="row" style="margin-top:14px;justify-content:flex-end">
       <button class="btn ghost" onclick="$('wlBg').style.display='none'">ยกเลิก</button>
       <button class="btn" onclick="saveWl()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: ความผิดปกติรายบิล ============ -->
+<div class="modal-bg" id="riskBg">
+  <div class="modal" style="max-width:620px">
+    <h3 id="riskTitle" style="color:#B01722">⚠️ พบความผิดปกติ</h3>
+    <div id="riskBody"></div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('riskBg').style.display='none'">ปิด</button>
+      <button class="btn" onclick="$('riskBg').style.display='none';runAudit()">🔍 ดูรายงานทั้งหมด</button>
     </div>
   </div>
 </div>
@@ -3200,8 +3212,30 @@ function riskBadge(b){
   const r=RISK[b.id];
   if(!r||!r.length)return '';
   return `<button class="btn mini" style="background:#D0212B;padding:2px 8px"
-    onclick="alert('⚠️ พบความผิดปกติ — PO ${esc(b.po_number||'')}\\n\\n${esc(r.join('\\n'))}\\n\\nตรวจสอบก่อนอนุมัติจ่าย')"
-    title="พบความผิดปกติ">⚠️ ${r.length}</button>`;
+    onclick="showRisk('${b.id}')" title="พบความผิดปกติ — กดดูรายละเอียด">⚠️ ${r.length}</button>`;
+}
+/* กล่องแจ้งความผิดปกติรายบิล */
+function showRisk(id){
+  const b=BILLS.find(x=>String(x.id)===String(id)); if(!b)return;
+  const r=RISK[b.id]||[];
+  const paid=paidSum(b.id), plan=planSum(b.id);
+  $('riskTitle').innerHTML=`⚠️ พบความผิดปกติ — PO ${esc(b.po_number||'')}`;
+  $('riskBody').innerHTML=`
+    <div style="display:flex;gap:20px;flex-wrap:wrap;background:#F7F9FC;border-radius:10px;padding:11px 14px;margin-bottom:12px;font-size:12.5px">
+      <div><div class="muted" style="font-size:11px">บริษัท</div><b>${esc(b.company||'-')}</b></div>
+      <div><div class="muted" style="font-size:11px">SKU</div><b>${esc(b.sku||'-')}</b></div>
+      <div><div class="muted" style="font-size:11px">ยอดเต็ม</div><b>${money(b.total_amount)} ${curSym(b.currency)}</b></div>
+      <div><div class="muted" style="font-size:11px">จ่ายแล้ว</div>
+        <b style="color:${paid>0?'#B01722':'#94A3B8'}">${paid>0?money(paid):'—'}</b></div>
+      <div><div class="muted" style="font-size:11px">วางแผนไว้</div><b>${plan>0?money(plan):'—'}</b></div>
+    </div>
+    ${r.map(x=>`<div style="background:#FCE4E4;border-left:5px solid #D0212B;border-radius:9px;
+        padding:11px 14px;margin-bottom:8px;font-size:13px;line-height:1.7;color:#8a1220">${esc(x)}</div>`).join('')}
+    <div style="background:#FFF6E5;border:1px solid #F3DFB6;border-radius:9px;padding:11px 14px;font-size:12.5px;margin-top:10px">
+      💡 <b>ตรวจสอบก่อนอนุมัติจ่าย</b> — เทียบใบขอซื้อ (PR) กับ PO ว่าเป็นการสั่งซื้อคนละครั้งจริง
+      ไม่ใช่เอกสารเก่าถูกนำมาใช้ซ้ำ
+    </div>`;
+  $('riskBg').style.display='flex';
 }
 
 /* รายงานตรวจสอบเต็ม */
