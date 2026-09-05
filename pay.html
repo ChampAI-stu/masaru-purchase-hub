@@ -162,7 +162,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-19</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-20</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -205,6 +205,8 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
         </select>
         <div style="flex:1"></div>
         <button class="btn" id="syncBtn" onclick="openSync()" style="background:#1E7145">🔄 ซิงก์จาก Purchase Board</button>
+        <button class="btn ghost" onclick="runAudit()" style="border-color:#D0212B;color:#D0212B"
+          title="ตรวจจับ PR ที่ถูกใช้ซ้ำหลาย PO · บิลซ้ำ · ยอดไม่ตรง Purchase Board">🔍 ตรวจสอบ</button>
         <button class="btn" id="addBillBtn" onclick="openBill('')">+ เพิ่มบิล</button>
       </div>
       <div class="scroll"><div id="billTable"></div></div>
@@ -767,6 +769,22 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   </div>
 </div>
 
+<!-- ============ MODAL: ตรวจสอบความผิดปกติ ============ -->
+<div class="modal-bg" id="auditBg">
+  <div class="modal" id="auditModal" style="max-width:1100px">
+    <button class="expand-btn" onclick="toggleWide('auditModal',this)">⛶ ขยายเต็มจอ</button>
+    <h3>🔍 ตรวจสอบความผิดปกติ</h3>
+    <div class="sub-note" style="margin-bottom:10px">
+      จับเคสเอา <b>PR เก่ามาสวมเป็น PO ใหม่</b> · บิลซ้ำ · SKU+ยอดตรงกันเป๊ะ · ยอดไม่ตรงกับ Purchase Board
+    </div>
+    <div id="auditBody" class="scroll"></div>
+    <div class="row" style="margin-top:12px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('auditBg').style.display='none'">ปิด</button>
+      <button class="btn" onclick="runAudit()">🔄 ตรวจใหม่</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ MODAL: ข้อความแจ้งจ่าย (LINE) ============ -->
 <div class="modal-bg" id="lineBg">
   <div class="modal" style="max-width:640px">
@@ -1031,6 +1049,10 @@ async function loadAll(){
   ]);
   await loadWallet();     // ต้องมีก่อน renderDoc เพื่อคำนวณยอด Ksher ที่ต้องเติม
   showLoadErrors();       // ตารางไหนโหลดไม่ได้ ต้องเห็นทันที ไม่ใช่เงียบแล้วได้ 0 แถว
+  try{                    // ตรวจความผิดปกติทุกครั้งที่โหลด → ป้าย ⚠️ ในตาราง
+    const {data}=await sb.from('pr').select('pr_number,po_number');
+    computeRisk(data||[]);
+  }catch(e){ computeRisk([]); }
   if($('tab-doc').style.display!=='none')renderDoc();
   if($('tab-freight').style.display!=='none')renderFreight();
   if($('tab-lot').style.display!=='none'){fillLotSelect();renderLot();}
@@ -1148,8 +1170,7 @@ function renderBills(){
       <td><span class="pill ${b.status==='closed'?'p-closed':'p-open'}">${b.status==='closed'?'ปิดบิลแล้ว':'ยังไม่ปิด'}</span></td>
       <td style="white-space:nowrap">
         ${canEdit?`<button class="btn mini green" onclick="openPay('${b.id}')">+ งวดจ่าย</button> `:''}
-        <button class="btn mini ghost" onclick="openHist('${b.id}')">ประวัติ (${billPays(b.id).length})</button> <button class="btn mini ghost" onclick="syncOneBill('${b.id}')" title="ดึงข้อมูลจาก Purchase Board">🔄 PO</button>
-        <button class="btn mini ghost" onclick="syncBillPR('${b.id}')" title="ดึงข้อมูลจากใบขอซื้อ (PR) ที่ผูกกับ PO นี้" style="border-color:#2E75B6;color:#2E75B6">📑 PR</button>
+        <button class="btn mini ghost" onclick="openHist('${b.id}')">ประวัติ (${billPays(b.id).length})</button> ${riskBadge(b)}
         <button class="btn mini ghost" onclick="openMemo('${b.id}')" title="เมโม + ประวัติการแก้ไข">📝${MEMOS.filter(m=>String(m.bill_id)===String(b.id)).length?' '+MEMOS.filter(m=>String(m.bill_id)===String(b.id)).length:''}</button>
         ${canEdit?` <button class="btn mini ghost" onclick="openBill('${b.id}')">แก้</button>
         <button class="btn mini red" onclick="delBill('${b.id}')">ลบ</button>`:''}
@@ -1224,76 +1245,7 @@ async function saveBill(){
    }}
   $('billBg').style.display='none';toast('บันทึกบิลเรียบร้อย ✅');loadAll();
 }
-/* ดึงข้อมูลจากใบขอซื้อ (PR) ที่ผูกกับ PO นี้
-   pr.po_number = เลข PO ที่จัดซื้อกรอกกลับหลังอนุมัติ */
-async function syncBillPR(id){
-  const b=BILLS.find(x=>String(x.id)===String(id));
-  if(!b)return toast('ไม่พบบิลนี้');
-  const po=String(b.po_number||'').trim();
-  if(!po)return toast('บิลนี้ไม่มีเลข PO');
 
-  toast('กำลังค้นหา PR ของ PO '+po+'…');
-  const {data:prs,error}=await sb.from('pr').select('*').eq('po_number',po);
-  if(error)return alert('ค้นหา PR ไม่สำเร็จ: '+error.message
-    +(/does not exist/i.test(error.message)?'\n\nระบบ PR อาจอยู่คนละฐานข้อมูล':''));
-  if(!prs||!prs.length)return alert('ไม่พบใบขอซื้อ (PR) ที่ผูกกับ PO '+po
-    +'\n\nต้องให้จัดซื้อกรอกเลข PO ลงในใบ PR ก่อน จึงจะเชื่อมกันได้');
-
-  const pr=prs[0];
-  const {data:items}=await sb.from('pr_items').select('*').eq('pr_id',pr.id).order('seq');
-  const its=items||[];
-  const sku=[...new Set(its.map(x=>String(x.sku||'').trim()).filter(Boolean))].join(', ');
-  const totCny=its.reduce((s,x)=>s+(+x.total_cny||0),0);
-  const sup=[...new Set(its.map(x=>x.supplier).filter(Boolean))][0]||'';
-
-  const chg=[];
-  if(sku && sku!==(b.sku||''))    chg.push('SKU:\n   เดิม  '+(b.sku||'-')+'\n   ใหม่  '+sku);
-  if(totCny && Math.abs(totCny-(+b.total_amount||0))>0.004)
-    chg.push('ยอดเต็ม: '+money(b.total_amount)+' → '+money(totCny));
-  if(sup && sup!==(b.vendor||'')) chg.push('Vendor: '+(b.vendor||'-')+' → '+sup);
-
-  const info='PR '+(pr.pr_number||'')+' · '+(pr.status||'')+' · '+its.length+' รายการ'
-    +(pr.requester?' · ผู้ขอ '+pr.requester:'');
-  if(!chg.length)return alert('พบ '+info+'\n\nข้อมูลตรงกับบิลนี้อยู่แล้ว ✅ ไม่มีอะไรต้องอัปเดต');
-  if(!confirm('พบ '+info+'\n\nอัปเดตบิล PO '+po+' ตาม PR นี้?\n\n'+chg.join('\n\n')
-    +'\n\n(งวดจ่าย / ประวัติ / สลิป ไม่ถูกแตะ)'))return;
-
-  const up={sku:sku||b.sku, total_amount:totCny||b.total_amount, vendor:sup||b.vendor};
-  const {error:e2}=await sb.from('pay_bills').update(up).eq('id',b.id);
-  if(e2)return toast('อัปเดตไม่สำเร็จ: '+e2.message);
-  await addLog(b,'updated','ซิงก์จาก PR '+(pr.pr_number||'')+' — '+chg.join(' · ').replace(/\n\s*/g,' '));
-  await loadAll(); toast('ซิงก์ PR '+(pr.pr_number||'')+' แล้ว ✅');
-}
-
-/* ซิงก์เฉพาะ PO นี้จาก Purchase Board — ไม่ต้องซิงก์ทั้งระบบ */
-async function syncOneBill(id){
-  const b=BILLS.find(x=>String(x.id)===String(id));
-  if(!b)return toast('ไม่พบบิลนี้');
-  const po=String(b.po_number||'').trim();
-  if(!po)return toast('บิลนี้ไม่มีเลข PO');
-  const rows=POROWS.filter(r=>String(r.po_number||'')===po);
-  if(!rows.length)return alert('ไม่พบ PO '+po+' ใน Purchase Board\n\nอาจถูกลบไปแล้ว หรือยังไม่ได้นำเข้าไฟล์');
-
-  const sku=[...new Set(rows.map(r=>String(r.sku||'').trim()).filter(Boolean))].join(', ');
-  const total=rows.reduce((s,r)=>s+((+r.quantity||0)*(+r.price||0)),0);
-  const vendor=[...new Set(rows.map(r=>r.vendor).filter(Boolean))][0]||b.vendor||null;
-
-  const chg=[];
-  if(sku && sku!==(b.sku||''))                      chg.push('SKU:\n   เดิม  '+(b.sku||'-')+'\n   ใหม่  '+sku);
-  if(total && Math.abs(total-(+b.total_amount||0))>0.004)
-    chg.push('ยอดเต็ม: '+money(b.total_amount)+' → '+money(total));
-  if(vendor && vendor!==(b.vendor||''))             chg.push('Vendor: '+(b.vendor||'-')+' → '+vendor);
-  if(!chg.length)return alert('PO '+po+' ตรงกับ Purchase Board อยู่แล้ว ✅\n\nไม่มีอะไรต้องอัปเดต');
-
-  if(!confirm('อัปเดตบิล PO '+po+' จาก Purchase Board?\n\n'+chg.join('\n\n')
-    +'\n\n(งวดจ่าย / ประวัติ / สลิป ไม่ถูกแตะ)'))return;
-
-  const up={sku:sku||b.sku, total_amount:total||b.total_amount, vendor:vendor};
-  const {error}=await sb.from('pay_bills').update(up).eq('id',b.id);
-  if(error)return toast('อัปเดตไม่สำเร็จ: '+error.message);
-  await addLog(b,'updated','ซิงก์จาก Purchase Board — '+chg.join(' · ').replace(/\n\s*/g,' '));
-  await loadAll(); toast('ซิงก์ PO '+po+' แล้ว ✅');
-}
 
 async function delBill(id){
   const b=BILLS.find(x=>String(x.id)===String(id));
@@ -3049,6 +3001,122 @@ function openWlFor(thb,user,rate){
   $('w_thb').value=Math.ceil(thb);
   $('w_note').value='เติมสำหรับจ่ายวันที่ '+$('dcDate').value;
   wlCalc();
+}
+
+/* ==================================================================
+   ตรวจสอบความผิดปกติ — จับเคส "เอา PR/PO เก่ามาสวมเป็นใบใหม่"
+   ตรวจ 4 อย่าง:
+     ① PR ใบเดียวถูกอ้างในหลาย PO
+     ② PO ต่างใบ แต่ SKU + ยอด ตรงกันเป๊ะ
+     ③ บิลซ้ำ PO เดียวกันหลายใบ
+     ④ ยอดบิลไม่ตรงกับ Purchase Board
+   ================================================================== */
+let RISK={}, RISK_DONE=false;
+
+const nzs=x=>String(x||'').trim().toUpperCase().replace(/[\s_]+/g,'');
+
+/* คำนวณความเสี่ยงของทุกบิล เก็บไว้ใน RISK[bill_id] = [เหตุผล...] */
+function computeRisk(prs){
+  RISK={};
+  const add=(id,msg)=>{ (RISK[id]=RISK[id]||[]).push(msg); };
+
+  // ③ บิลซ้ำ PO เดียวกัน
+  const byPo={};
+  BILLS.forEach(b=>{ const k=nzs(b.po_number); if(k)(byPo[k]=byPo[k]||[]).push(b); });
+  Object.keys(byPo).forEach(k=>{
+    if(byPo[k].length>1)byPo[k].forEach(b=>add(b.id,'มีบิล PO '+b.po_number+' ซ้ำ '+byPo[k].length+' ใบ'));
+  });
+
+  // ② SKU + ยอด ตรงกันเป๊ะ แต่คนละ PO
+  const sig={};
+  BILLS.forEach(b=>{
+    const k=nzs(b.sku)+'|'+(+b.total_amount||0)+'|'+(b.currency||'CNY');
+    if(!nzs(b.sku)||!(+b.total_amount))return;
+    (sig[k]=sig[k]||[]).push(b);
+  });
+  Object.keys(sig).forEach(k=>{
+    const g=sig[k]; if(g.length<2)return;
+    const pos=[...new Set(g.map(x=>nzs(x.po_number)))];
+    if(pos.length<2)return;                       // PO เดียวกัน = จับได้จากข้อ ③ แล้ว
+    g.forEach(b=>add(b.id,'SKU + ยอด ตรงกับ PO '
+      +g.filter(x=>x.id!==b.id).map(x=>x.po_number).join(', ')+' เป๊ะ'));
+  });
+
+  // ④ ยอดไม่ตรงกับ Purchase Board
+  BILLS.forEach(b=>{
+    const rows=POROWS.filter(r=>nzs(r.po_number)===nzs(b.po_number));
+    if(!rows.length)return;
+    const tot=rows.reduce((s,r)=>s+((+r.quantity||0)*(+r.price||0)),0);
+    if(tot>0 && Math.abs(tot-(+b.total_amount||0))>1)
+      add(b.id,'ยอดต่างจาก Purchase Board ('+money(tot)+' vs '+money(b.total_amount)+')');
+  });
+
+  // ① PR ใบเดียวผูกหลาย PO
+  if(prs&&prs.length){
+    const byPr={};
+    prs.forEach(p=>{ const k=nzs(p.pr_number); if(k&&p.po_number)(byPr[k]=byPr[k]||[]).push(p); });
+    Object.keys(byPr).forEach(k=>{
+      const pos=[...new Set(byPr[k].map(x=>nzs(x.po_number)))];
+      if(pos.length<2)return;
+      byPr[k].forEach(pr=>{
+        BILLS.filter(b=>nzs(b.po_number)===nzs(pr.po_number)).forEach(b=>
+          add(b.id,'⚠️ PR '+pr.pr_number+' ถูกใช้กับ PO หลายใบ: '+pos.join(', ')));
+      });
+    });
+  }
+  RISK_DONE=true;
+}
+
+/* ป้ายเตือนในแถวบิล */
+function riskBadge(b){
+  const r=RISK[b.id];
+  if(!r||!r.length)return '';
+  return `<button class="btn mini" style="background:#D0212B;padding:2px 8px"
+    onclick="alert('⚠️ พบความผิดปกติ — PO ${esc(b.po_number||'')}\\n\\n${esc(r.join('\\n'))}\\n\\nตรวจสอบก่อนอนุมัติจ่าย')"
+    title="พบความผิดปกติ">⚠️ ${r.length}</button>`;
+}
+
+/* รายงานตรวจสอบเต็ม */
+async function runAudit(){
+  let prs=[];
+  try{
+    const {data}=await sb.from('pr').select('pr_number,po_number,pr_date,status,requester,total_thb');
+    prs=data||[];
+  }catch(e){ console.warn('[audit] pr:',e.message); }
+  computeRisk(prs);
+  renderBills();
+
+  const flagged=BILLS.filter(b=>RISK[b.id]&&RISK[b.id].length)
+    .sort((a,b)=>RISK[b.id].length-RISK[a.id].length);
+  const dupPr=flagged.filter(b=>RISK[b.id].some(x=>x.includes('PR ')));
+
+  let h=`<div class="kpis">
+    <div class="kpi ${flagged.length?'red':'green'}"><div class="lbl">บิลที่พบความผิดปกติ</div><div class="val">${flagged.length}</div></div>
+    <div class="kpi ${dupPr.length?'red':''}"><div class="lbl">⚠️ PR ถูกใช้ซ้ำหลาย PO</div><div class="val">${dupPr.length}</div></div>
+    <div class="kpi"><div class="lbl">ตรวจทั้งหมด</div><div class="val">${BILLS.length}</div></div>
+    <div class="kpi"><div class="lbl">ใบ PR ที่อ่านได้</div><div class="val">${prs.length}</div></div></div>`;
+
+  if(!flagged.length){
+    h+='<div style="background:#E8F5EC;border:1px solid #BFE2CB;border-radius:10px;padding:16px;color:#146C38">'
+      +'<b>🎉 ไม่พบความผิดปกติ</b><div class="muted" style="margin-top:5px">ไม่มี PR ที่ถูกใช้ซ้ำ · ไม่มีบิลซ้ำ · ยอดตรงกับ Purchase Board</div></div>';
+  }else{
+    h+='<table><thead><tr><th>PO</th><th>บริษัท</th><th>SKU</th><th class="right">ยอดเต็ม</th>'
+      +'<th class="right">จ่ายแล้ว</th><th>สิ่งที่พบ</th></tr></thead><tbody>';
+    flagged.forEach(b=>{
+      const paid=paidSum(b.id);
+      h+=`<tr>
+        <td><b>${esc(b.po_number||'-')}</b></td>
+        <td>${esc(b.company||'-')}</td>
+        <td style="font-size:11.5px">${esc(b.sku||'-')}</td>
+        <td class="right">${money(b.total_amount)} ${curSym(b.currency)}</td>
+        <td class="right" style="color:${paid>0?'#B01722':'#94A3B8'}">${paid>0?money(paid):'—'}</td>
+        <td style="font-size:12px;color:#B01722">${RISK[b.id].map(esc).join('<br>')}</td></tr>`;});
+    h+='</tbody></table>';
+    if(!prs.length)h+='<div class="muted" style="margin-top:10px;font-size:12px">'
+      +'ℹ️ อ่านตาราง PR ไม่ได้ — ตรวจได้เฉพาะบิลซ้ำ / SKU+ยอดตรงกัน / ยอดไม่ตรงบอร์ด</div>';
+  }
+  $('auditBody').innerHTML=h;
+  $('auditBg').style.display='flex';
 }
 
 /* ==================================================================
