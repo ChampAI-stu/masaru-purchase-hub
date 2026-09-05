@@ -145,6 +145,9 @@ const APPS_FALLBACK = [
   { key:'pr', icon:'📝', title:'ใบขอซื้อ (PR)',
     desc:'ออกใบขอซื้อ + ตรวจ AI + อนุมัติ + พิมพ์ PDF',
     url:'pr.html', roles:['purchase'] },
+  { key:'payapprove', icon:'✅', title:'แจ้งขออนุมัติการชำระเงิน',
+    desc:'ยื่นขออนุมัติจ่ายเงิน → หัวหน้า/ผู้บริหารอนุมัติ → ออกหลักฐานการชำระ',
+    url:'payapprove.html', roles:['purchase','pr_manager','pr_exec','executive'] },
 ];
 
 // ดึงรายการเว็บจากตาราง portal_apps (ถ้าไม่ได้ → ใช้ค่าสำรอง)
