@@ -162,7 +162,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-22</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-23</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -2971,20 +2971,29 @@ function renderKsherBox(){
       </div>
       ${!known?`<div style="color:#B01722;font-size:12px;margin-top:7px">
           ยังไม่ได้ระบุ User Ksher — กด "แก้" ที่งวดนั้นแล้วเลือก User ก่อน จึงจะคำนวณยอดเติมได้</div>`
-      :`<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:9px;font-size:12.5px">
-        <div><div class="muted" style="font-size:11px">ต้องจ่าย</div>
+      :`
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:9px;font-size:12.5px;align-items:stretch">
+        <div style="flex:0 0 auto"><div class="muted" style="font-size:11px">ต้องจ่ายวันนี้</div>
           <b style="font-size:15px">${money(need)} ฿</b>
           <div class="muted" style="font-size:10.5px">${money(needCny)} ¥${rate?' @'+rate:''}</div></div>
-        <div><div class="muted" style="font-size:11px">คงเหลือใน Wallet</div>
+        <div style="flex:0 0 auto"><div class="muted" style="font-size:11px">คงเหลือใน Wallet</div>
           <b style="font-size:15px;color:${bal>0?'#146C38':'#B01722'}">${money(bal)} ฿</b>
           ${rate?`<div class="muted" style="font-size:10.5px">≈ ${money(balToCny(bal,rate))} ¥</div>`:''}</div>
-        <div><div class="muted" style="font-size:11px">ต้องเติม</div>
-          <b style="font-size:15px;color:${short>0?'#B45309':'#146C38'}">${short>0?money(sug)+' ฿':'พอแล้ว ✅'}</b>
-          ${short>0?`<div class="muted" style="font-size:10.5px">เผื่อ ${buf}% แล้ว</div>`:''}</div>
         <div style="flex:1"></div>
-        ${canEdit&&short>0?`<button class="btn mini" style="align-self:center" onclick="openWlFor(${sug},'${esc(u)}',${rate||0},${short})">💵 เติม</button>`:''}
-      </div>
-      ${ok&&need>0?`<div class="muted" style="font-size:11.5px;margin-top:6px">เหลือหลังจ่าย <b>${money(bal-need)} ฿</b> ยกไปวันถัดไป</div>`:''}`}
+        ${short>0
+          ? `<div style="background:#B45309;color:#fff;border-radius:10px;padding:9px 15px;text-align:center;min-width:190px">
+               <div style="font-size:11.5px;opacity:.9">💵 ต้องเติมเงินเข้า Wallet</div>
+               <div style="font-size:21px;font-weight:800;line-height:1.25">${money(sug)} ฿</div>
+               <div style="font-size:10.5px;opacity:.9">ขาด ${money(short)} ฿ · เผื่อ ${buf}% แล้ว</div>
+               ${canEdit?`<button class="btn mini" style="background:#fff;color:#B45309;margin-top:5px;font-weight:700"
+                  onclick="openWlFor(${sug},'${esc(u)}',${rate||0},${short})">เติมเลย →</button>`:''}
+             </div>`
+          : `<div style="background:#E8F5EC;border:1px solid #BFE2CB;border-radius:10px;padding:9px 15px;text-align:center;min-width:190px">
+               <div style="font-size:11.5px;color:#146C38">✅ ไม่ต้องเติม</div>
+               <div style="font-size:17px;font-weight:800;color:#146C38;line-height:1.3">เงินพอจ่าย</div>
+               ${need>0?`<div style="font-size:10.5px;color:#146C38">เหลือหลังจ่าย ${money(bal-need)} ฿</div>`:''}
+             </div>`}
+      </div>`}
     </div>`;
   });
 
