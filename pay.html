@@ -171,7 +171,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-35</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-36</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -397,7 +397,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
       <div class="row" style="flex-wrap:wrap">
         <h2 style="margin:0;border:0;padding:0" id="qtTitle">สร้างใบเสนอราคา</h2>
         <div style="flex:1"></div>
-        <button class="btn ghost" onclick="$('qtEditor').style.display='none'">ปิด</button>
+        <button class="btn ghost" onclick="closeQuot()">ปิด</button>
         <button class="btn ghost" onclick="printQuot()">🖨️ พิมพ์ / บันทึก PDF</button>
         <button class="btn green edit-only" onclick="saveQuot()">💾 บันทึก</button>
       </div>
@@ -3293,6 +3293,10 @@ function renderQuotList(){
   $('qtList').innerHTML=h+'</tbody></table>';
 }
 
+function closeQuot(){
+  if(QT_PICS.some(p=>p._new)&&!confirm('มีรูปที่ยังไม่ได้บันทึก — ปิดแล้วรูปจะหาย\n\nปิดเลยไหม?'))return;
+  $('qtEditor').style.display='none';
+}
 function openQuot(id){
   QT_ID=id||null;
   const x=id?QUOTS.find(function(v){return String(v.id)===String(id);}):null;
@@ -3399,10 +3403,18 @@ function drawQuotPics(){
     return '<div style="position:relative">'
       +'<img src="'+esc(p.thumb||p.url)+'" style="width:118px;height:118px;object-fit:cover;border:1px solid var(--line);border-radius:8px">'
       +'<button class="btn mini red" style="position:absolute;top:3px;right:3px;padding:1px 6px" onclick="delQuotPic('+i+')">✕</button>'
-      +(p.url?'<div style="text-align:center"><a href="'+esc(p.url)+'" target="_blank" rel="noopener" style="font-size:10px">☁️ Drive</a></div>':'')
+      +(p.url?'<div style="text-align:center"><a href="'+esc(p.url)+'" target="_blank" rel="noopener" style="font-size:10px">☁️ Drive</a></div>'
+             :'<div style="text-align:center;font-size:10px;color:#B45309">รอบันทึก</div>')
       +'</div>';}).join('');
 }
-function delQuotPic(i){ QT_PICS.splice(i,1); drawQuotPics(); drawQuot(); }
+async function delQuotPic(i){
+  const p=QT_PICS[i];
+  QT_PICS.splice(i,1); drawQuotPics(); drawQuot();
+  if(p&&p.id){                                   // เคยขึ้น Drive แล้ว → ลบไฟล์ทิ้งด้วย
+    try{ await gasCall({action:'delete',fileId:p.id}); $('q_stat').textContent='ลบรูปใน Drive แล้ว'; }
+    catch(e){ console.warn('[quot] ลบใน Drive ไม่ได้:',e.message); }
+  }
+}
 async function onQuotFiles(inp){
   const files=[...inp.files]; inp.value='';
   for(let i=0;i<files.length;i++){
@@ -3411,19 +3423,14 @@ async function onQuotFiles(inp){
   }
   $('q_stat').textContent='✅ เพิ่มรูปแล้ว';
 }
+/* วางรูป → เก็บไว้ในหน่วยความจำก่อน ยังไม่อัปขึ้น Drive
+   อัปจริงตอนกด 💾 บันทึก เท่านั้น — ปิดฟอร์มทิ้งจะไม่มีไฟล์ค้างใน Drive */
 async function addQuotPic(file){
   if(!file||!/^image\//.test(file.type))return;
-  const thumb=await shrinkImg(file,1400,0.82);         // ภาพย่อไว้แสดง/พิมพ์ — ต้องใหญ่พอไม่ให้เบลอตอนขยายเต็มใบ
-  const item={thumb:thumb,url:'',id:'',name:file.name};
-  QT_PICS.push(item); drawQuotPics(); drawQuot();
-  try{
-    const j=await gasCall({action:'upload',
-      filename:(($('q_po').value||'PO')+'_'+Date.now()+'_'+file.name),
-      folder:'ใบเสนอราคา/'+String($('q_po').value||'ไม่ระบุ PO').replace(/[\\/:*?"<>|]/g,'-'),
-      mime:file.type,data:await fileToB64(file),po:$('q_po').value||'',actor:ME||''});
-    item.url=j.openUrl||j.viewUrl||''; item.id=j.fileId||'';
-    drawQuotPics();
-  }catch(e){ console.warn('[quot] drive:',e.message); }
+  const thumb=await shrinkImg(file,1400,0.82);
+  QT_PICS.push({thumb:thumb,url:'',id:'',name:file.name,_file:file,_new:true});
+  drawQuotPics(); drawQuot();
+  $('q_stat').innerHTML='<span style="color:#B45309">📎 รอบันทึก — รูปจะขึ้น Drive เมื่อกด 💾 บันทึก</span>';
 }
 function shrinkImg(file,max,q){return new Promise(function(res){
   const r=new FileReader();
@@ -3491,6 +3498,21 @@ function drawQuot(){
 
 async function saveQuot(){
   if(!$('q_po').value.trim())return alert('ใส่ PO number ก่อน');
+  // อัปรูปที่ยังไม่ขึ้น Drive ตอนนี้ทีเดียว
+  const pend=QT_PICS.filter(p=>p._new&&p._file);
+  for(let i=0;i<pend.length;i++){
+    const p=pend[i];
+    $('q_stat').innerHTML='⏳ กำลังอัปรูป '+(i+1)+'/'+pend.length+' ขึ้น Drive…';
+    try{
+      const j=await gasCall({action:'upload',
+        filename:(($('q_po').value||'PO')+'_'+Date.now()+'_'+p.name),
+        folder:'ใบเสนอราคา/'+String($('q_po').value||'ไม่ระบุ PO').replace(/[\\/:*?"<>|]/g,'-'),
+        mime:p._file.type,data:await fileToB64(p._file),po:$('q_po').value||'',actor:ME||''});
+      p.url=j.openUrl||j.viewUrl||''; p.id=j.fileId||''; p._new=false; delete p._file;
+    }catch(e){ console.warn('[quot] drive:',e.message); p._new=false; delete p._file; }
+  }
+  $('q_stat').textContent='';
+  drawQuotPics();
   const ship=parseFloat($('q_ship').value)||0;
   const sub=QT_ROWS.reduce(function(s,r){return s+(+r.qty||0)*(+r.price||0);},0);
   const rec={po_number:$('q_po').value.trim(), po_date:$('q_date').value||null,
@@ -3498,7 +3520,8 @@ async function saveQuot(){
     deliver_by:$('q_deliver').value, currency:$('q_cur').value,
     items:QT_ROWS, ship_fee:ship, total:+(sub+ship).toFixed(2),
     title_note:$('q_title').value.trim()||null, note:$('q_note').value.trim()||null,
-    pics:QT_PICS, created_by:ME||'', updated_at:new Date().toISOString()};
+    pics:QT_PICS.map(p=>({thumb:p.thumb,url:p.url||'',id:p.id||'',name:p.name||''})),
+    created_by:ME||'', updated_at:new Date().toISOString()};
   const q=QT_ID? sb.from('quotations').update(rec).eq('id',QT_ID)
                 : sb.from('quotations').insert(rec);
   const {error}=await q;
