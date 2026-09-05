@@ -162,7 +162,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-07</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-09</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -1122,7 +1122,8 @@ function renderBills(){
       <td><span class="pill ${b.status==='closed'?'p-closed':'p-open'}">${b.status==='closed'?'ปิดบิลแล้ว':'ยังไม่ปิด'}</span></td>
       <td style="white-space:nowrap">
         ${canEdit?`<button class="btn mini green" onclick="openPay('${b.id}')">+ งวดจ่าย</button> `:''}
-        <button class="btn mini ghost" onclick="openHist('${b.id}')">ประวัติ (${billPays(b.id).length})</button> <button class="btn mini ghost" onclick="syncOneBill('${b.id}')" title="ดึงข้อมูล SKU / ยอดเต็ม ของ PO นี้จาก Purchase Board ใหม่">🔄</button>
+        <button class="btn mini ghost" onclick="openHist('${b.id}')">ประวัติ (${billPays(b.id).length})</button> <button class="btn mini ghost" onclick="syncOneBill('${b.id}')" title="ดึงข้อมูลจาก Purchase Board">🔄 PO</button>
+        <button class="btn mini ghost" onclick="syncBillPR('${b.id}')" title="ดึงข้อมูลจากใบขอซื้อ (PR) ที่ผูกกับ PO นี้" style="border-color:#2E75B6;color:#2E75B6">📑 PR</button>
         <button class="btn mini ghost" onclick="openMemo('${b.id}')" title="เมโม + ประวัติการแก้ไข">📝${MEMOS.filter(m=>String(m.bill_id)===String(b.id)).length?' '+MEMOS.filter(m=>String(m.bill_id)===String(b.id)).length:''}</button>
         ${canEdit?` <button class="btn mini ghost" onclick="openBill('${b.id}')">แก้</button>
         <button class="btn mini red" onclick="delBill('${b.id}')">ลบ</button>`:''}
@@ -1187,6 +1188,47 @@ async function saveBill(){
    }}
   $('billBg').style.display='none';toast('บันทึกบิลเรียบร้อย ✅');loadAll();
 }
+/* ดึงข้อมูลจากใบขอซื้อ (PR) ที่ผูกกับ PO นี้
+   pr.po_number = เลข PO ที่จัดซื้อกรอกกลับหลังอนุมัติ */
+async function syncBillPR(id){
+  const b=BILLS.find(x=>String(x.id)===String(id));
+  if(!b)return toast('ไม่พบบิลนี้');
+  const po=String(b.po_number||'').trim();
+  if(!po)return toast('บิลนี้ไม่มีเลข PO');
+
+  toast('กำลังค้นหา PR ของ PO '+po+'…');
+  const {data:prs,error}=await sb.from('pr').select('*').eq('po_number',po);
+  if(error)return alert('ค้นหา PR ไม่สำเร็จ: '+error.message
+    +(/does not exist/i.test(error.message)?'\n\nระบบ PR อาจอยู่คนละฐานข้อมูล':''));
+  if(!prs||!prs.length)return alert('ไม่พบใบขอซื้อ (PR) ที่ผูกกับ PO '+po
+    +'\n\nต้องให้จัดซื้อกรอกเลข PO ลงในใบ PR ก่อน จึงจะเชื่อมกันได้');
+
+  const pr=prs[0];
+  const {data:items}=await sb.from('pr_items').select('*').eq('pr_id',pr.id).order('seq');
+  const its=items||[];
+  const sku=[...new Set(its.map(x=>String(x.sku||'').trim()).filter(Boolean))].join(', ');
+  const totCny=its.reduce((s,x)=>s+(+x.total_cny||0),0);
+  const sup=[...new Set(its.map(x=>x.supplier).filter(Boolean))][0]||'';
+
+  const chg=[];
+  if(sku && sku!==(b.sku||''))    chg.push('SKU:\n   เดิม  '+(b.sku||'-')+'\n   ใหม่  '+sku);
+  if(totCny && Math.abs(totCny-(+b.total_amount||0))>0.004)
+    chg.push('ยอดเต็ม: '+money(b.total_amount)+' → '+money(totCny));
+  if(sup && sup!==(b.vendor||'')) chg.push('Vendor: '+(b.vendor||'-')+' → '+sup);
+
+  const info='PR '+(pr.pr_number||'')+' · '+(pr.status||'')+' · '+its.length+' รายการ'
+    +(pr.requester?' · ผู้ขอ '+pr.requester:'');
+  if(!chg.length)return alert('พบ '+info+'\n\nข้อมูลตรงกับบิลนี้อยู่แล้ว ✅ ไม่มีอะไรต้องอัปเดต');
+  if(!confirm('พบ '+info+'\n\nอัปเดตบิล PO '+po+' ตาม PR นี้?\n\n'+chg.join('\n\n')
+    +'\n\n(งวดจ่าย / ประวัติ / สลิป ไม่ถูกแตะ)'))return;
+
+  const up={sku:sku||b.sku, total_amount:totCny||b.total_amount, vendor:sup||b.vendor};
+  const {error:e2}=await sb.from('pay_bills').update(up).eq('id',b.id);
+  if(e2)return toast('อัปเดตไม่สำเร็จ: '+e2.message);
+  await addLog(b,'updated','ซิงก์จาก PR '+(pr.pr_number||'')+' — '+chg.join(' · ').replace(/\n\s*/g,' '));
+  await loadAll(); toast('ซิงก์ PR '+(pr.pr_number||'')+' แล้ว ✅');
+}
+
 /* ซิงก์เฉพาะ PO นี้จาก Purchase Board — ไม่ต้องซิงก์ทั้งระบบ */
 async function syncOneBill(id){
   const b=BILLS.find(x=>String(x.id)===String(id));
@@ -2550,7 +2592,21 @@ function buildDoc(show){
   const groups=[];
   rows.forEach(p=>{
     const b=billOf(p.bill_id), s=curSym(b.currency);
-    const its=showDetail?POROWS.filter(r=>String(r.po_number||'')===String(b.po_number||'')&&(+r.price>0||+r.quantity>0)):[];
+    // แตกรายการ SKU: ยึดจาก SKU ในบิลก่อน (ครบเสมอ) แล้วค่อยเติมจำนวน/ราคาจาก Purchase Board
+    let its=[];
+    if(showDetail){
+      const po=String(b.po_number||'');
+      const pos=POROWS.filter(r=>String(r.po_number||'')===po);
+      const skus=String(b.sku||'').split(',').map(x=>x.trim()).filter(Boolean);
+      if(skus.length){
+        its=skus.map(sk=>{
+          const r=pos.find(x=>String(x.sku||'').trim()===sk)||{};
+          return {sku:sk, quantity:r.quantity, price:r.price};
+        });
+      }else if(pos.length){
+        its=pos.map(r=>({sku:r.sku, quantity:r.quantity, price:r.price}));
+      }
+    }
     const remain=Math.max(0,(+b.total_amount||0)-paidSum(p.bill_id));
     const _cr=+p.fx_cross||0, _usd=(+p.amount_usd)||(_cr?((+p.amount||0)/_cr):0);
     const note=(p.installment||'')+' ยอด '+money(p.amount)+' '+s
@@ -2581,8 +2637,10 @@ function buildDoc(show){
         <th rowspan="2" class="num">จำนวนสินค้า</th>
         <th colspan="${hasUsd?3:4}" style="text-align:center">${esc(curWord(rows))}</th>
         ${hasUsd?'<th colspan="2" style="text-align:center">ดอลลาร์ (USD)</th><th rowspan="2" class="num">เรทโอน<br><span style="font-weight:400;font-size:10px">฿/USD</span></th>':''}
-        <th rowspan="2" class="num">จำนวนเงินบาท</th><th rowspan="2" class="num">ค่าธรรมเนียม</th>
-        <th rowspan="2" class="num">รวมจำนวนเงินบาท</th><th rowspan="2">หมายเหตุ</th></tr>
+        <th rowspan="2" class="num" style="width:10%">จำนวนเงินบาท</th>
+        <th rowspan="2" class="num" style="width:8%">ค่าธรรมเนียม</th>
+        <th rowspan="2" class="num" style="width:10%">รวมจำนวนเงินบาท</th>
+        <th rowspan="2" style="width:20%">หมายเหตุ</th></tr>
       <tr><th class="num">จำนวนเงินต่อหน่วย</th><th class="num">จำนวนเงิน / ${esc(curWord(rows))}</th>
         <th class="num">ค่าส่ง</th>${hasUsd
           ? '<th class="num">อัตราแลก<br><span style="font-weight:400;font-size:10px">¥ ต่อ 1 USD</span></th><th class="num">จำนวนเงิน USD</th>'
