@@ -177,7 +177,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-43</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-44</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -190,8 +190,6 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="tab" data-t="doc" onclick="goTab('doc')">🧾 เอกสารประจำวัน</div>
   <div class="tab" data-t="quot" onclick="goTab('quot')">💱 ใบเสนอราคา</div>
   <div class="tab" data-t="month" onclick="goTab('month')">📊 สรุปเดือน</div>
-  <div class="tab" data-t="freight" onclick="goTab('freight')">🚛 ตรวจค่าขนส่ง</div>
-  <div class="tab" data-t="lot" onclick="goTab('lot')">📦 ต้นทุนต่อล็อต</div>
   <div class="tab" data-t="ledger" onclick="goTab('ledger')">📒 ตารางสรุปบันทึก</div>
   <div class="tab" data-t="wallet" onclick="goTab('wallet')">💰 Ksher Wallet</div>
   <div class="tab" data-t="remit" onclick="goTab('remit')">🧾 แจ้งโอน</div>
@@ -341,52 +339,6 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
     </div>
   </div>
 </div>
-
-<!-- ============ TAB 1: ตรวจค่าขนส่ง ============ -->
-  <div id="tab-freight" style="display:none">
-    <div class="kpis" id="frKpi"></div>
-    <div class="card">
-      <h2>🚛 บิลค่าขนส่งระหว่างประเทศ</h2>
-      <div class="sub-note">
-        <b>สูตรคิดค่าขนส่ง (ตามไฟล์ Excel):</b> ค่าขนส่ง = (กว้าง×ยาว×สูง ÷ 1,000,000) × <b>เรทคิว</b> × จำนวนกล่อง<br>
-        <b>YES</b> = นำเข้าถูกต้อง (ต้นทุนรวมภาษี/ค่าใช้จ่ายจากระบบ Shipment) · <b>NO</b> = เหมาตู้/เรทขนส่ง (ไม่มีภาษีแยก)<br>
-        ราคาเหมาตู้ใช้ <b>เทียบ</b>กับผลรวมที่คำนวณได้ → เห็นส่วนต่างทันที
-      </div>
-      <div class="row">
-        <input id="frSearch" placeholder="ค้นหา บิล / PO / SKU / ตู้" oninput="renderFreight()" style="max-width:210px">
-        <input type="month" id="frMonth" onchange="renderFreight()" style="max-width:165px">
-        <select id="frType" onchange="renderFreight()" style="max-width:150px">
-          <option value="">— ทุกประเภท —</option><option value="YES">YES (นำเข้าถูกต้อง)</option><option value="NO">NO (เหมาตู้)</option>
-        </select>
-        <button class="btn mini ghost" onclick="$('frMonth').value='';renderFreight()">ทุกเดือน</button>
-        <div style="flex:1"></div>
-        <button class="btn" style="background:#1E7145" onclick="$('fimpFile').click()">📥 นำเข้า Excel</button>
-        <input type="file" id="fimpFile" accept=".xlsx,.xls" style="display:none" onchange="fImportXlsx(event)">
-        <button class="btn" id="addFBillBtn" onclick="openFBill('')">+ เพิ่มบิล</button>
-      </div>
-      <div id="frBody"></div>
-    </div>
-  </div>
-
-  <!-- ============ TAB 2: ต้นทุนต่อล็อต ============ -->
-  <div id="tab-lot" style="display:none">
-    <div class="card">
-      <h2>📦 ต้นทุนสินค้าต่อล็อต (Landed Cost)</h2>
-      <div class="sub-note">
-        ต้นทุน/หน่วย = <b>ค่าสินค้า</b> (ราคา¥ × เรทแลกเปลี่ยน) + <b>ค่าขนส่ง</b> (ปันตาม CBM) + <b>ค่าใช้จ่ายอื่น</b> (ปันตาม CBM)
-        <span id="lotYesNote"></span>
-      </div>
-      <div class="row">
-        <label>เลือกบิล/ล็อต</label>
-        <select id="lotBill" onchange="renderLot()" style="max-width:340px"></select>
-        <label>เรท ¥→฿</label>
-        <input type="number" id="lotRate" step="0.0001" value="5.2" oninput="renderLot()" style="max-width:100px">
-        <div style="flex:1"></div>
-        <button class="btn mini" onclick="exportLot()">📥 Export Excel</button>
-      </div>
-      <div id="lotBody"></div>
-    </div>
-  </div>
 
   <!-- ============ TAB: ใบเสนอราคา ============ -->
   <div id="tab-quot" style="display:none">
@@ -544,79 +496,6 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
       <div class="scroll"><div id="rmBody"></div></div>
     </div>
   </div>
-
-  <!-- Modal บิล -->
-<div class="modal-bg" id="fbillBg">
-  <div class="modal" style="max-width:640px">
-    <h3 id="fbillTitle">เพิ่มบิลขนส่ง</h3>
-    <input type="hidden" id="b_id">
-    <div class="grid2">
-      <div><label>เลขที่บิล *</label><input id="b_no" placeholder="3598"></div>
-      <div><label>วันที่แจ้งเข้า</label><input type="date" id="b_date"></div>
-      <div><label>บริษัทขนส่ง</label><input id="b_carrier" placeholder="JMF CARGO"></div>
-      <div><label>เลขที่รายการ / ตู้</label><input id="b_ref" placeholder="199015 TRHU8546466"></div>
-      <div><label>ประเภทนำเข้า</label><select id="b_type"><option value="NO">NO — เหมาตู้ / เรทขนส่ง</option><option value="YES">YES — นำเข้าถูกต้อง (มีภาษี)</option></select></div>
-      <div><label>เลขที่ INV (ถ้า YES)</label><input id="b_inv" placeholder="PO2608001"></div>
-      <div><label>เรทคิว (บาท/CBM)</label><input type="number" id="b_rate" step="0.01" placeholder="3100"></div>
-      <div><label>เรทน้ำหนัก (บาท/กก.)</label><input type="number" id="b_ratekg" step="0.01" placeholder="ไม่บังคับ"></div>
-      <div><label>ราคาเหมาตู้ (ไว้เทียบ)</label><input type="number" id="b_lump" step="0.01" placeholder="179000"></div>
-      <div><label>ค่าใช้จ่ายอื่น (บาท)</label><input type="number" id="b_extra" step="0.01" placeholder="ผ่านพิธี/DEM/ในประเทศ"></div>
-    </div>
-    <label>หมายเหตุ</label><input id="b_note">
-    <div class="row" style="margin-top:14px;justify-content:flex-end">
-      <button class="btn ghost" onclick="$('fbillBg').style.display='none'">ยกเลิก</button>
-      <button class="btn" onclick="saveFBill()">บันทึก</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal รายการสินค้า -->
-<div class="modal-bg" id="fitemBg">
-  <div class="modal" style="max-width:560px">
-    <h3>เพิ่มรายการสินค้าในบิล</h3>
-    <input type="hidden" id="i_bill">
-    <div class="grid2">
-      <div><label>รหัสใบจัดซื้อ (PO)</label><input id="i_po"></div>
-      <div><label>รหัสสินค้า (SKU)</label><input id="i_sku"></div>
-      <div><label>จำนวนชิ้น</label><input type="number" id="i_qty"></div>
-      <div><label>จำนวนกล่อง</label><input type="number" id="i_ctn"></div>
-      <div><label>กว้าง (ซม.)</label><input type="number" id="i_w" step="0.1"></div>
-      <div><label>ยาว (ซม.)</label><input type="number" id="i_l" step="0.1"></div>
-      <div><label>สูง (ซม.)</label><input type="number" id="i_h" step="0.1"></div>
-      <div><label>น้ำหนักรวม (กก.)</label><input type="number" id="i_wt" step="0.01"></div>
-    </div>
-    <div class="row" style="margin-top:14px;justify-content:flex-end">
-      <button class="btn ghost" onclick="$('fitemBg').style.display='none'">ยกเลิก</button>
-      <button class="btn" onclick="saveFItem()">บันทึก</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal ตัวอย่างนำเข้า -->
-<div class="modal-bg" id="fimpBg">
-  <div class="modal" style="max-width:900px">
-    <h3>📥 นำเข้าจาก Excel</h3>
-    <div id="fimpInfo" class="sub-note"></div>
-    <div class="row" style="margin-bottom:10px">
-      <label style="white-space:nowrap">บริษัทขนส่ง <span class="muted">(ใส่ให้ทุกบิลที่นำเข้ารอบนี้)</span></label>
-      <input id="fimpCarrier" list="carrierList" placeholder="เช่น JMF CARGO" style="max-width:230px">
-      <datalist id="carrierList">
-        <option value="JMF CARGO"><option value="GTL"><option value="Angel"><option value="TSD">
-        <option value="สาย2 (168)"><option value="สาย3 (FCL)"><option value="ลำพยา (JMF)"><option value="ร่มเกล้า (NEXT)">
-      </datalist>
-      <label style="white-space:nowrap">ประเภท</label>
-      <select id="fimpType" style="max-width:190px"><option value="NO">NO — เหมาตู้/เรทขนส่ง</option><option value="YES">YES — นำเข้าถูกต้อง</option></select>
-    </div>
-    <div class="scroll" style="max-height:340px"><div id="fimpPrev"></div></div>
-    <div class="row" style="margin-top:14px;justify-content:flex-end">
-      <button class="btn ghost" onclick="$('fimpBg').style.display='none'">ยกเลิก</button>
-      <button class="btn" onclick="fDoImport()">ยืนยันนำเข้า</button>
-    </div>
-  </div>
-</div>
-
-
-
 
 <!-- ============ MODAL: บิล ============ -->
 <div class="modal-bg" id="billBg">
@@ -1013,7 +892,7 @@ function toggleWide(id,btn){
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2600);}
 
 let canEdit=false, IS_EXEC=false, ME='', BILLS=[], PAYS=[];
-let FBILLS=[], FITEMS=[], MASTER=[], POROWS=[], TAXES=[], TRACKS=[], LOGS=[], MEMOS=[];
+let MASTER=[], POROWS=[], TAXES=[], TRACKS=[], LOGS=[], MEMOS=[];
 
 /* ===== AUTH ===== */
 async function boot(){
@@ -1050,8 +929,6 @@ function subscribeRealtime(){
   sb.channel('pay-live')
     .on('postgres_changes',{event:'*',schema:'public',table:'pay_bills'},bump)
     .on('postgres_changes',{event:'*',schema:'public',table:'pay_payments'},bump)
-    .on('postgres_changes',{event:'*',schema:'public',table:'freight_bills'},bump)
-    .on('postgres_changes',{event:'*',schema:'public',table:'freight_items'},bump)
     .on('postgres_changes',{event:'*',schema:'public',table:'pay_memos'},bump)
     .on('postgres_changes',{event:'*',schema:'public',table:'pay_logs'},bump)
     .subscribe();
@@ -1105,13 +982,11 @@ function showLoadErrors(){
 }
 
 async function loadAll(){
-  [BILLS,PAYS,LOGS,MEMOS,FBILLS,FITEMS,MASTER,POROWS,TAXES,TRACKS]=await Promise.all([
+  [BILLS,PAYS,LOGS,MEMOS,MASTER,POROWS,TAXES,TRACKS]=await Promise.all([
     pageAll('pay_bills','*','created_at'),
     pageAll('pay_payments','*','created_at'),
     pageAll('pay_logs','*','created_at'),
     pageAll('pay_memos','*','created_at'),
-    pageAll('freight_bills','*','arrive_date'),
-    pageAll('freight_items','*',null),
     pageAll('sku_master','sku,supplier,standard_price,currency',null),
     pageAll('purchase_orders','*',null),
     pageAll('tax_summaries','*',null),
@@ -1124,8 +999,6 @@ async function loadAll(){
     computeRisk(data||[]);
   }catch(e){ computeRisk([]); }
   if($('tab-doc').style.display!=='none')renderDoc();
-  if($('tab-freight').style.display!=='none')renderFreight();
-  if($('tab-lot').style.display!=='none'){fillLotSelect();renderLot();}
   renderBills();
   if($('tab-plan').style.display!=='none'){ PLANVIEW==='month'?renderPlanMonth():renderPlan(); }
   if($('tab-month').style.display!=='none')renderMonth();
@@ -1965,7 +1838,7 @@ function exportMonth(){
 }
 
 /* ===== ซิงก์บิลจาก Purchase Board ===== */
-// POROWS ประกาศไว้ด้านบนแล้ว (ใช้ร่วมกับต้นทุนต่อล็อต)
+// POROWS ประกาศไว้ด้านบนแล้ว
 /* จัดกลุ่ม PO จาก Purchase Board
    noPrice=true → เอา PO ที่ยังไม่มีราคามาด้วย (ยอดเป็น 0 ไว้มาเติมทีหลัง) */
 function poGroups(noPrice){
@@ -2085,235 +1958,7 @@ function renderPlanMonth(){
 }
 
 
-/* ==================== ตรวจค่าขนส่ง + ต้นทุนต่อล็อต ==================== */
-/* ===== CBM & ค่าขนส่ง (สูตรตามไฟล์ Excel) ===== */
-const cbmPerCtn=it=>(num(it.w)*num(it.l)*num(it.h))/1e6;
-const cbmTotal =it=>cbmPerCtn(it)*num(it.cartons);
-function itemFreight(it,bill){
-  const byCbm=cbmTotal(it)*num(bill.rate_cbm);
-  const byKg =num(it.weight)*num(bill.rate_kg);
-  return (num(bill.rate_cbm)>0)?byCbm:byKg;   // มีเรทคิว → ใช้คิวเป็นหลัก
-}
-const itemsOf=bid=>FITEMS.filter(i=>i.bill_id===bid);
-const billCbm=bid=>itemsOf(bid).reduce((s,i)=>s+cbmTotal(i),0);
-const billFreight=(b)=>itemsOf(b.id).reduce((s,i)=>s+itemFreight(i,b),0);
 
-/* ===== LOAD ===== */
-
-/* ===== TAB 1: ตรวจค่าขนส่ง ===== */
-function renderFreight(){
-  const q=($('frSearch').value||'').toLowerCase(), mo=$('frMonth').value, ty=$('frType').value;
-  let list=FBILLS.slice();
-  if(mo)list=list.filter(b=>(b.arrive_date||'').startsWith(mo));
-  if(ty)list=list.filter(b=>(b.import_type||'NO')===ty);
-  if(q)list=list.filter(b=>{
-    const its=itemsOf(b.id).map(i=>(i.po_number||'')+' '+(i.sku||'')).join(' ');
-    return ((b.bill_no||'')+' '+(b.carrier||'')+' '+(b.ref_no||'')+' '+its).toLowerCase().includes(q);
-  });
-  const tCbm=list.reduce((s,b)=>s+billCbm(b.id),0);
-  const tFr =list.reduce((s,b)=>s+billFreight(b),0);
-  const tLump=list.reduce((s,b)=>s+num(b.lump_sum),0);
-  $('frKpi').innerHTML=`
-    <div class="kpi"><div class="lbl">บิลขนส่ง</div><div class="val">${list.length}</div></div>
-    <div class="kpi"><div class="lbl">ปริมาตรรวม (CBM)</div><div class="val">${money(tCbm)}</div></div>
-    <div class="kpi gold"><div class="lbl">ค่าขนส่งคำนวณ (฿)</div><div class="val">${money(tFr)}</div></div>
-    <div class="kpi green"><div class="lbl">ราคาเหมาตู้รวม (฿)</div><div class="val">${money(tLump)}</div></div>`;
-  if(!list.length){$('frBody').innerHTML='<div class="empty">ยังไม่มีบิล — กด "📥 นำเข้า Excel" หรือ "+ เพิ่มบิล"</div>';return;}
-  let h='';
-  list.sort((a,b)=>String(b.arrive_date||'').localeCompare(String(a.arrive_date||'')));
-  list.forEach(b=>{
-    const its=itemsOf(b.id), fr=billFreight(b), cbm=billCbm(b.id), lump=num(b.lump_sum);
-    const diff=lump>0?(lump-fr):0;
-    const diffTxt=lump>0?`<b class="${diff>=0?'diff-ok':'diff-bad'}">${diff>=0?'ต่ำกว่าเหมา':'เกินเหมา'} ${money(Math.abs(diff))} ฿</b>`:'<span class="muted">— ไม่ได้ใส่ราคาเหมา —</span>';
-    h+=`<div class="billhead">
-      <b style="font-size:15px">บิล ${esc(b.bill_no)}</b>
-      <span class="pill ${(b.import_type||'NO')==='YES'?'yes':'no'}">${(b.import_type||'NO')==='YES'?'YES นำเข้าถูกต้อง':'NO เหมาตู้'}</span>
-      <span class="muted">${esc(b.arrive_date||'-')} · ${esc(b.carrier||'-')} · ${esc(b.ref_no||'-')}</span>
-      <div style="flex:1"></div>
-      <span>CBM <b>${money(cbm)}</b> · เรท <b>${money(b.rate_cbm)}</b>/คิว · คำนวณ <b style="color:var(--navy)">${money(fr)} ฿</b></span>
-      ${canEdit?`<button class="btn mini" onclick="openFItem('${b.id}')">+ สินค้า</button>
-        <button class="btn mini ghost" onclick="openFBill('${b.id}')">แก้</button>
-        <button class="btn mini red" onclick="delFBill('${b.id}')">ลบ</button>`:''}
-    </div>`;
-    if(!its.length){h+='<div class="empty" style="padding:14px">ยังไม่มีรายการสินค้าในบิลนี้</div>';return;}
-    h+='<table><thead><tr><th>PO</th><th>SKU</th><th class="num">ชิ้น</th><th class="num">กล่อง</th><th class="num">ก×ย×ส (ซม.)</th><th class="num">CBM/กล่อง</th><th class="num">CBM รวม</th><th class="num">ค่าขนส่ง (฿)</th>'+(canEdit?'<th></th>':'')+'</tr></thead><tbody>';
-    its.forEach(i=>{
-      h+=`<tr><td>${esc(i.po_number||'-')}</td><td><b>${esc(i.sku||'-')}</b></td>
-        <td class="num">${money(i.qty)}</td><td class="num">${money(i.cartons)}</td>
-        <td class="num">${num(i.w)}×${num(i.l)}×${num(i.h)}</td>
-        <td class="num">${cbmPerCtn(i).toFixed(5)}</td><td class="num">${money(cbmTotal(i))}</td>
-        <td class="num"><b>${money(itemFreight(i,b))}</b></td>
-        ${canEdit?`<td class="num"><button class="btn mini red" onclick="delFItem('${i.id}')">ลบ</button></td>`:''}</tr>`;});
-    h+=`<tr style="background:#FFF7DF;font-weight:800"><td colspan="6">รวมบิล ${esc(b.bill_no)}</td>
-      <td class="num">${money(cbm)}</td><td class="num">${money(fr)}</td>${canEdit?'<td></td>':''}</tr>`;
-    h+=`<tr><td colspan="${canEdit?9:8}" style="background:#F8FAFC">
-      ราคาเหมาตู้ <b>${lump>0?money(lump)+' ฿':'-'}</b> · ส่วนต่าง ${diffTxt}
-      ${num(b.extra_cost)>0?` · ค่าใช้จ่ายอื่น <b>${money(b.extra_cost)} ฿</b>`:''}</td></tr>`;
-    h+='</tbody></table>';
-  });
-  $('frBody').innerHTML=h;
-}
-
-/* ===== บิล CRUD ===== */
-function openFBill(id){
-  if(id&&!FBILLS.some(x=>String(x.id)===String(id))){alert('ไม่พบบิลขนส่งนี้ — ลองรีเฟรชหน้าแล้วกดใหม่');loadAll();return;}
-  const b=FBILLS.find(x=>String(x.id)===String(id))||{};
-  $('fbillTitle').textContent=id?'แก้ไขบิลขนส่ง':'เพิ่มบิลขนส่ง';
-  $('b_id').value=id||'';$('b_no').value=b.bill_no||'';$('b_date').value=b.arrive_date||'';
-  $('b_carrier').value=b.carrier||'';$('b_ref').value=b.ref_no||'';$('b_type').value=b.import_type||'NO';
-  $('b_inv').value=b.invoice_no||'';$('b_rate').value=b.rate_cbm||'';$('b_ratekg').value=b.rate_kg||'';
-  $('b_lump').value=b.lump_sum||'';$('b_extra').value=b.extra_cost||'';$('b_note').value=b.note||'';
-  $('fbillBg').style.display='flex';
-}
-async function saveFBill(){
-  const id=$('b_id').value;
-  const row={bill_no:$('b_no').value.trim(),arrive_date:$('b_date').value||null,carrier:$('b_carrier').value.trim()||null,
-    ref_no:$('b_ref').value.trim()||null,import_type:$('b_type').value,invoice_no:$('b_inv').value.trim()||null,
-    rate_cbm:num($('b_rate').value),rate_kg:num($('b_ratekg').value),lump_sum:num($('b_lump').value),
-    extra_cost:num($('b_extra').value),note:$('b_note').value.trim()||null};
-  if(!row.bill_no)return toast('ใส่เลขที่บิลก่อน');
-  const {error}=id?await sb.from('freight_bills').update(row).eq('id',id)
-                 :await sb.from('freight_bills').insert({...row,created_by:ME});
-  if(error){
-    console.error('freight_bills:',error);
-    const miss=/does not exist|schema cache/i.test(error.message||'');
-    alert(miss ? 'ยังไม่ได้สร้างตารางในฐานข้อมูล\n\nกรุณารันไฟล์ freight_setup.sql บน Supabase (unlvcdgqqljuoyvionqx) ก่อน แล้วลองใหม่\n\nรายละเอียด: '+error.message
-               : 'บันทึกไม่สำเร็จ: '+error.message);
-    return;
-  }
-  $('fbillBg').style.display='none';toast('บันทึกแล้ว ✅');loadAll();
-}
-async function delFBill(id){
-  const b=FBILLS.find(x=>String(x.id)===String(id));
-  if(!confirm(`ลบบิล ${b?.bill_no} และรายการสินค้าทั้งหมดในบิล?`))return;
-  const {error}=await sb.from('freight_bills').delete().eq('id',id);
-  if(error)return toast('ลบไม่สำเร็จ: '+error.message);
-  toast('ลบแล้ว');loadAll();
-}
-function openFItem(bid){
-  $('i_bill').value=bid;['i_po','i_sku','i_qty','i_ctn','i_w','i_l','i_h','i_wt'].forEach(k=>$(k).value='');
-  $('fitemBg').style.display='flex';
-}
-async function saveFItem(){
-  const row={bill_id:$('i_bill').value,po_number:$('i_po').value.trim()||null,sku:$('i_sku').value.trim()||null,
-    qty:num($('i_qty').value),cartons:num($('i_ctn').value),w:num($('i_w').value),l:num($('i_l').value),
-    h:num($('i_h').value),weight:num($('i_wt').value)};
-  if(!row.sku&&!row.po_number)return toast('ใส่ SKU หรือ PO อย่างน้อย 1 ช่อง');
-  const {error}=await sb.from('freight_items').insert(row);
-  if(error){console.error(error);alert('บันทึกไม่สำเร็จ: '+error.message);return;}
-  $('fitemBg').style.display='none';toast('เพิ่มรายการแล้ว ✅');loadAll();
-}
-async function delFItem(id){
-  if(!confirm('ลบรายการนี้?'))return;
-  const {error}=await sb.from('freight_items').delete().eq('id',id);
-  if(error)return toast('ลบไม่สำเร็จ: '+error.message);
-  loadAll();
-}
-
-/* ===== นำเข้า Excel (รองรับทั้งแบบมี/ไม่มีคอลัมน์ "บริษัทขนส่ง") ===== */
-let FIMP=null;
-function fImportXlsx(ev){
-  const f=ev.target.files[0]; if(!f)return; ev.target.value='';
-  const rd=new FileReader();
-  rd.onload=e=>{
-    try{
-      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
-      let bills=[],rows=0,sheets=[];
-      wb.SheetNames.forEach(sn=>{
-        const ws=wb.Sheets[sn], aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-        if(aoa.length<4)return;
-        // หาแถวหัวคอลัมน์ (แถวที่มีคำว่า "รหัสสินค้า")
-        let hi=-1; for(let i=0;i<Math.min(aoa.length,10);i++){ if(aoa[i].some(c=>String(c).includes('รหัสสินค้า'))){hi=i;break;} }
-        if(hi<0)return;
-        const H=aoa[hi].map(c=>String(c).trim());
-        const col=(...names)=>{for(const n of names){const i=H.findIndex(h=>h===n);if(i>=0)return i;}
-          for(const n of names){const i=H.findIndex(h=>h.includes(n));if(i>=0)return i;} return -1;};
-        const c={date:col('วันที่แจ้งเข้า'),carrier:col('บริษัทขนส่ง'),bill:col('เลขที่บิล'),ref:col('เลขที่รายการ'),
-          po:col('รหัสใบจัดซื้อ'),sku:col('รหัสสินค้า'),qty:col('จำนวนชิ้น'),ctn:col('จำนวนกล่อง'),
-          w:col('กว้าง'),l:col('ยาว'),h:col('สูง'),wt:col('น้ำหนัก'),st:col('สถานะการรับสินค้า')};
-        // เรทคิว = คอลัมน์ "คิว" ตัวแรกหลังหัว "เรทค่าขนส่ง"
-        let rateCol=-1; const hdr2=aoa[hi-1]?aoa[hi-1].map(x=>String(x)):[];
-        const rIdx=hdr2.findIndex(x=>x.includes('เรทค่าขนส่ง'));
-        if(rIdx>=0){ for(let k=rIdx;k<H.length;k++){ if(H[k]==='คิว'){rateCol=k;break;} } }
-        if(rateCol<0)rateCol=H.findIndex(h=>h==='คิว');
-        let cur=null, added=0;
-        for(let r=hi+1;r<aoa.length;r++){
-          const R=aoa[r]; if(!R||!R.length)continue;
-          const sku=String(R[c.sku]||'').trim();
-          const billNo=c.bill>=0?String(R[c.bill]||'').trim():'';
-          if(billNo){   // เริ่มบิลใหม่
-            const d=R[c.date];
-            let ds=null;
-            if(d instanceof Date)ds=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
-            else if(d){const m=String(d).match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-              if(m)ds=`${m[3]}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;}
-            cur={bill_no:billNo.replace(/\.0$/,''),arrive_date:ds,
-              carrier:null,   // ไม่ดึงจากไฟล์ — กรอกเองตอนยืนยันนำเข้า
-              ref_no:c.ref>=0?String(R[c.ref]||'').replace(/\n/g,' ').trim()||null:null,
-              rate_cbm:rateCol>=0?num(R[rateCol]):0, import_type:'NO', items:[]};
-            bills.push(cur);
-          }
-          if(!cur||!sku)continue;
-          cur.items.push({po_number:c.po>=0?String(R[c.po]||'').replace(/\.0$/,'').trim()||null:null,
-            sku, qty:num(R[c.qty]), cartons:num(R[c.ctn]),
-            w:num(R[c.w]), l:num(R[c.l]), h:num(R[c.h]), weight:c.wt>=0?num(R[c.wt]):0,
-            status:c.st>=0?String(R[c.st]||'').trim()||null:null});
-          added++;
-        }
-        if(added)sheets.push(sn+' ('+added+')');
-        rows+=added;
-      });
-      bills=bills.filter(b=>b.items.length);
-      if(!bills.length)return toast('ไม่พบข้อมูลในไฟล์ (ต้องมีคอลัมน์ "รหัสสินค้า")');
-      FIMP=bills;
-      const have=new Set(FBILLS.map(b=>b.bill_no+'|'+(b.ref_no||'')));
-      const dup=bills.filter(b=>have.has(b.bill_no+'|'+(b.ref_no||''))).length;
-      $('fimpInfo').innerHTML=`พบ <b>${bills.length}</b> บิล · <b>${rows}</b> รายการ จากชีต: ${esc(sheets.join(', '))}`
-        +(dup?`<br><b style="color:var(--red)">⚠️ ซ้ำกับที่มีอยู่แล้ว ${dup} บิล — ระบบจะข้ามให้อัตโนมัติ</b>`:'')
-        +`<br>เรทคิวอ่านจากไฟล์ · <b>บริษัทขนส่ง + ประเภท</b> ใส่จากช่องด้านล่าง (แก้รายบิลทีหลังได้)`;
-      $('fimpPrev').innerHTML='<table><thead><tr><th>บิล</th><th>วันที่</th><th>ตู้</th><th class="num">เรทคิว</th><th class="num">รายการ</th><th class="num">CBM</th><th class="num">ค่าขนส่ง (฿)</th></tr></thead><tbody>'
-        +bills.slice(0,60).map(b=>{const cb=b.items.reduce((s,i)=>s+cbmPerCtn(i)*num(i.cartons),0);
-          return `<tr><td><b>${esc(b.bill_no)}</b></td><td>${esc(b.arrive_date||'-')}</td><td>${esc(b.ref_no||'-')}</td>
-          <td class="num">${money(b.rate_cbm)}</td><td class="num">${b.items.length}</td>
-          <td class="num">${money(cb)}</td><td class="num"><b>${money(cb*num(b.rate_cbm))}</b></td></tr>`;}).join('')
-        +(bills.length>60?`<tr><td colspan="7" class="muted" style="text-align:center">…และอีก ${bills.length-60} บิล</td></tr>`:'')
-        +'</tbody></table>';
-      $('fimpBg').style.display='flex';
-    }catch(err){console.error(err);toast('อ่านไฟล์ไม่สำเร็จ: '+err.message);}
-  };
-  rd.readAsArrayBuffer(f);
-}
-async function fDoImport(){
-  if(!FIMP)return;
-  const have=new Set(FBILLS.map(b=>b.bill_no+'|'+(b.ref_no||'')));
-  const fresh=FIMP.filter(b=>!have.has(b.bill_no+'|'+(b.ref_no||'')));
-  if(!fresh.length){$('fimpBg').style.display='none';return toast('ทุกบิลมีอยู่แล้ว ไม่มีอะไรให้นำเข้า');}
-  const carrier=($('fimpCarrier').value||'').trim()||null;
-  const itype=$('fimpType').value||'NO';
-  let ok=0,fail=0;
-  for(const b of fresh){
-    const {items,...head}=b;
-    const {data,error}=await sb.from('freight_bills').insert({...head,carrier,import_type:itype,created_by:ME}).select('id').single();
-    if(error){fail++;continue;}
-    const rows=items.map(i=>({...i,bill_id:data.id}));
-    for(let k=0;k<rows.length;k+=200){
-      const r=await sb.from('freight_items').insert(rows.slice(k,k+200));
-      if(r.error)fail++;
-    }
-    ok++;
-  }
-  $('fimpBg').style.display='none';
-  toast(`นำเข้า ${ok} บิลเรียบร้อย${fail?` (มีปัญหา ${fail} จุด)`:''} ✅`);
-  loadAll();
-}
-
-/* ===== TAB 2: ต้นทุนต่อล็อต ===== */
-function fillLotSelect(){
-  const cur=$('lotBill').value;
-  $('lotBill').innerHTML=FBILLS.slice().sort((a,b)=>String(b.arrive_date||'').localeCompare(String(a.arrive_date||'')))
-    .map(b=>`<option value="${b.id}">บิล ${esc(b.bill_no)} · ${esc(b.arrive_date||'-')} · ${esc(b.carrier||'')} [${b.import_type||'NO'}]</option>`).join('');
-  if(cur&&FBILLS.some(b=>b.id===cur))$('lotBill').value=cur;
-}
 function skuPrice(sku,po){
   const p=POROWS.find(r=>r.sku===sku&&String(r.po_number||'')===String(po||''));
   if(p&&num(p.price)>0)return {price:num(p.price),src:'PO'};
@@ -2322,70 +1967,6 @@ function skuPrice(sku,po){
   const m=MASTER.find(r=>r.sku===sku&&num(r.standard_price)>0);
   if(m)return {price:num(m.standard_price),src:'ข้อมูลกลาง',cur:m.currency};
   return {price:0,src:'—'};
-}
-function billTaxes(b){
-  if((b.import_type||'NO')!=='YES')return 0;
-  const inv=String(b.invoice_no||'').trim(); if(!inv)return 0;
-  let sum=0;
-  TAXES.forEach(t=>{ if(String(t.invoice_no||t.invno||'').trim()===inv){
-    (t.items||[]).forEach(it=>{const amt=num(it.amount),dr=num(it.duty)/100;const duty=amt*dr;sum+=duty+(amt+duty)*0.07;});
-    if(num(t.total)>0&&!t.items)sum+=num(t.total);
-  }});
-  if(!sum){const tr=TRACKS.find(x=>String(x.invoice_no||'').trim()===inv); if(tr)sum=num(tr.tax_amount);}
-  return sum;
-}
-function renderLot(){
-  const b=FBILLS.find(x=>String(x.id)===String($('lotBill').value));
-  $('lotYesNote').innerHTML = b&&(b.import_type||'NO')==='YES'
-    ? '<br><b style="color:var(--green)">บิลนี้เป็น YES</b> → รวม <b>ภาษีอากร+VAT</b> จากระบบ Shipment (ปันตามมูลค่าสินค้า)'
-    : '<br><b style="color:var(--amber)">บิลนี้เป็น NO</b> → คิดเฉพาะค่าสินค้า + ค่าขนส่งตามเรท (ไม่มีภาษีแยก)';
-  if(!b){$('lotBody').innerHTML='<div class="empty">ยังไม่มีบิล</div>';return;}
-  const its=itemsOf(b.id);
-  if(!its.length){$('lotBody').innerHTML='<div class="empty">บิลนี้ยังไม่มีรายการสินค้า</div>';return;}
-  const fx=num($('lotRate').value)||5.2;
-  const totCbm=billCbm(b.id), extra=num(b.extra_cost), tax=billTaxes(b);
-  const rows=its.map(i=>{
-    const pi=skuPrice(i.sku,i.po_number);
-    const goodsCur=pi.price*num(i.qty);
-    const goods=(pi.cur==='THB')?goodsCur:goodsCur*fx;   // fx = เรทที่กรอกในแท็บต้นทุนล็อต
-    const cbm=cbmTotal(i);
-    const fr=itemFreight(i,b);
-    const share=totCbm>0?(cbm/totCbm):0;
-    return {i,pi,goods,cbm,fr,extraShare:extra*share};
-  });
-  const totGoods=rows.reduce((s,r)=>s+r.goods,0);
-  rows.forEach(r=>{ r.tax = totGoods>0 ? tax*(r.goods/totGoods) : 0;
-    r.landed = r.goods + r.fr + r.extraShare + r.tax;
-    r.unit = num(r.i.qty)>0 ? r.landed/num(r.i.qty) : 0; });
-  const T=k=>rows.reduce((s,r)=>s+r[k],0);
-  let h=`<table><thead><tr><th>PO</th><th>SKU</th><th class="num">จำนวน</th><th class="num">ราคา/หน่วย</th>
-    <th class="num">ค่าสินค้า (฿)</th><th class="num">ค่าขนส่ง (฿)</th><th class="num">ค่าใช้จ่ายอื่น</th>
-    <th class="num">ภาษี (฿)</th><th class="num">ต้นทุนรวม (฿)</th><th class="num">ต้นทุน/หน่วย</th></tr></thead><tbody>`;
-  rows.forEach(r=>{
-    h+=`<tr><td>${esc(r.i.po_number||'-')}</td><td><b>${esc(r.i.sku||'-')}</b>
-      <div class="muted" style="font-size:11px">ราคาจาก: ${esc(r.pi.src)}</div></td>
-      <td class="num">${money(r.i.qty)}</td>
-      <td class="num">${r.pi.price?money(r.pi.price)+' '+((r.pi.cur==='THB')?'฿':'¥'):'<span style="color:var(--red)">ไม่พบราคา</span>'}</td>
-      <td class="num">${money(r.goods)}</td><td class="num">${money(r.fr)}</td>
-      <td class="num">${money(r.extraShare)}</td><td class="num">${money(r.tax)}</td>
-      <td class="num"><b>${money(r.landed)}</b></td>
-      <td class="num"><b style="color:var(--navy);font-size:14px">${money(r.unit)}</b></td></tr>`;});
-  h+=`<tr style="background:#FFF7DF;font-weight:800"><td colspan="4">รวมทั้งล็อต (CBM ${money(totCbm)})</td>
-    <td class="num">${money(T('goods'))}</td><td class="num">${money(T('fr'))}</td>
-    <td class="num">${money(T('extraShare'))}</td><td class="num">${money(T('tax'))}</td>
-    <td class="num">${money(T('landed'))}</td><td class="num"></td></tr></tbody></table>`;
-  const miss=rows.filter(r=>!r.pi.price).length;
-  if(miss)h+=`<div class="sub-note" style="border-color:var(--red);background:#FCE4E4;margin-top:10px">
-    ⚠️ มี ${miss} SKU ที่ยังไม่พบราคาสินค้า — ต้นทุนจะคิดเฉพาะค่าขนส่ง/ภาษี
-    <br>เพิ่มราคาได้ที่ Purchase Board (ช่องราคาสินค้า) หรือข้อมูลกลางในระบบ PR</div>`;
-  $('lotBody').innerHTML=h;
-}
-function exportLot(){
-  const b=FBILLS.find(x=>String(x.id)===String($('lotBill').value)); if(!b)return;
-  const tb=$('lotBody').querySelector('table'); if(!tb)return toast('ไม่มีข้อมูล');
-  const ws=XLSX.utils.table_to_sheet(tb), wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'ต้นทุนล็อต');
-  XLSX.writeFile(wb,`ต้นทุนล็อต_บิล${b.bill_no}.xlsx`);
 }
 
 
@@ -3004,7 +2585,7 @@ async function delDoc(id){
 /* ===== TABS ===== */
 function goTab(t){
   document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on',el.dataset.t===t));
-  ['bills','plan','doc','quot','month','freight','lot','ledger','wallet','remit'].forEach(k=>$('tab-'+k).style.display=k===t?'':'none');
+  ['bills','plan','doc','quot','month','ledger','wallet','remit'].forEach(k=>$('tab-'+k).style.display=k===t?'':'none');
   if(t==='quot')loadQuot();
   if(t==='wallet'){ loadWallet().then(renderWallet); }
   if(t==='remit')renderRemit();
@@ -3012,8 +2593,6 @@ function goTab(t){
   if(t==='plan')planView(PLANVIEW);
   if(t==='month')renderMonth();
   if(t==='doc'){renderDoc();loadDocs();}
-  if(t==='freight')renderFreight();
-  if(t==='lot'){fillLotSelect();renderLot();}
 }
 
 /* กล่องสรุป Ksher ในหน้าเอกสารประจำวัน — บอกว่าวันนี้ต้องเติมเท่าไหร่ */
