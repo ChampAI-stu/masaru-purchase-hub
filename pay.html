@@ -171,7 +171,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-36</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-37</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -298,6 +298,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
           <input type="checkbox" id="dcPaid" onchange="renderDoc()" style="width:16px;height:16px">รวมที่จ่ายแล้ว
         </label>
         <button class="btn" onclick="buildDoc(true)">📄 สร้างใบปะหน้า</button>
+        <button class="btn mini ghost" onclick="applyFeeAll()" title="ใส่ค่าธรรมเนียมโอนเท่ากันให้ทุกรายการที่ติ๊กไว้">💸 ใส่ค่าธรรมเนียมทุกรายการ</button>
         <button class="btn mini ghost" onclick="checkDocData()" title="ตรวจว่าดึงจำนวน/ราคาจาก Purchase Board ได้ครบไหม">🔍 ตรวจข้อมูล</button>
       </div>
       <div id="dcKsher"></div>
@@ -2437,7 +2438,10 @@ function renderDoc(){
       <td>${esc(p.installment||'-')}</td><td class="num">${money(p.amount)} ${curSym(b.currency)}</td>
       <td class="num">${b.currency==='THB'?'<span class="muted">-</span>':`<input type="number" step="0.0001" value="${p.rate||''}" placeholder="ใส่เรท" style="width:92px;text-align:right;padding:5px 7px" onchange="setPayRate('${p.id}',this.value)">`}</td>
       <td class="num">${isEst(p)?'<span class="muted">~</span> ':''}${money(thbOf(p))}</td>
-      <td class="num">${money(p.fee)}</td><td>${stPill(p.status)}</td></tr>`;});
+      <td class="num">${canEdit
+        ? `<input type="number" step="0.01" value="${p.fee||''}" placeholder="0"
+             style="width:92px;text-align:right;padding:5px 7px" onchange="setPayFee('${p.id}',this.value)">`
+        : money(p.fee)}</td><td>${stPill(p.status)}</td></tr>`;});
   h+='</tbody></table>';
   $('dcPick').innerHTML=h;
   renderDocHist();
@@ -2473,6 +2477,24 @@ function renderPlanAlert(){
   </div>`;
 }
 function refreshAlerts(){ if($('plAlert'))renderPlanAlert(); }
+/* ค่าธรรมเนียมโอน (บาท) — แก้ได้จากหน้าเอกสารประจำวันโดยตรง */
+async function setPayFee(pid,v){
+  const f=parseFloat(v)||0;
+  const {error}=await sb.from('pay_payments').update({fee:f}).eq('id',pid);
+  if(error){alert('บันทึกค่าธรรมเนียมไม่สำเร็จ: '+error.message);return;}
+  await loadAll(); renderDoc(); buildDoc(); toast('บันทึกค่าธรรมเนียมแล้ว ✅');
+}
+/* ใส่ค่าธรรมเนียมเท่ากันให้ทุกรายการที่ติ๊กไว้ */
+async function applyFeeAll(){
+  const rows=docSelected();
+  if(!rows.length)return toast('ยังไม่ได้เลือกรายการ');
+  const v=prompt('ใส่ค่าธรรมเนียมโอน (บาท) ให้ทุกรายการที่เลือก ('+rows.length+' งวด)','0');
+  if(v===null)return;
+  const f=parseFloat(v)||0;
+  const {error}=await sb.from('pay_payments').update({fee:f}).in('id',rows.map(p=>p.id));
+  if(error)return toast('บันทึกไม่สำเร็จ: '+error.message);
+  await loadAll(); renderDoc(); buildDoc(); toast('ใส่ค่าธรรมเนียม '+money(f)+' ฿ ให้ '+rows.length+' งวดแล้ว ✅');
+}
 async function setPayRate(pid,v){
   const p=PAYS.find(x=>String(x.id)===String(pid)); if(!p)return;
   const r=parseFloat(v)||0;
