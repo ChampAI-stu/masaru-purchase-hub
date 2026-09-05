@@ -178,7 +178,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-49</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-50</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -419,8 +419,9 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
       <div class="row" style="flex-wrap:wrap">
         <input id="lgSearch" placeholder="ค้นหา PO / Vendor / ผู้รับเงิน" style="max-width:230px" oninput="renderLedger()">
         <span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap">
-          <label style="margin:0">ตั้งแต่</label><input type="date" id="lgFrom" onchange="renderLedger()" style="width:158px">
-          <label style="margin:0">ถึง</label><input type="date" id="lgTo" onchange="renderLedger()" style="width:158px">
+          <label style="margin:0">ตั้งแต่</label><input type="date" id="lgFrom" onchange="renderLedger()" style="width:158px"
+            title="เลือกช่องเดียว = ดูเฉพาะวันนั้น">
+          <label style="margin:0">ถึง</label><input type="date" id="lgTo" onchange="renderLedger()" style="width:158px" title="เว้นว่างได้ — จะดูเฉพาะวันในช่องแรก">
           <button class="btn mini ghost" onclick="lgThisMonth()">เดือนนี้</button>
         </span>
         <select id="lgPt" onchange="renderLedger()" style="max-width:175px">
@@ -3538,11 +3539,13 @@ function ledgerRows(){
     $('lgFrom').value=m+'-01'; $('lgTo').value=ymdLocal(new Date(+m.slice(0,4),+m.slice(5,7),0));}
   const q=($('lgSearch').value||'').toLowerCase();
   const f=$('lgFrom').value, t=$('lgTo').value;
+  // เลือกช่องเดียว = ดูเฉพาะวันนั้นวันเดียว
+  const from=f||t, to=t||f;
   const pt=$('lgPt').value, st=$('lgSt').value||'sp', cu=$('lgCur').value;
   const okSt=x=>st==='all'?x!=='rejected':(st==='sp'?(x==='submitted'||x==='paid'):x===st);
   return PAYS.filter(p=>okSt(p.status))
-    .filter(p=>!f||String(p.pay_date||'')>=f)
-    .filter(p=>!t||String(p.pay_date||'')<=t)
+    .filter(p=>!from||String(p.pay_date||'')>=from)
+    .filter(p=>!to||String(p.pay_date||'')<=to)
     .filter(p=>!pt||(p.pay_type||'')===pt)
     .filter(p=>!cu||((billOf(p.bill_id).currency||'CNY')===cu))
     .filter(p=>{ if(!q)return true; const b=billOf(p.bill_id);
@@ -3651,11 +3654,13 @@ function remitRows(){
   const f=$('rmFrom').value||'', t=$('rmTo').value||'';
   const sl=$('rmSlip').value||'';
   const pt=$('rmPt').value||'';
-  const useDay=!!(f||t);            // ถ้าระบุช่วงวันที่ ให้ใช้แทนตัวกรองเดือน
+  // เลือกช่องเดียว = เจาะจงวันนั้นวันเดียว · เลือกทั้งคู่ = ช่วงวัน
+  const from=f||t, to=t||f;
+  const useDay=!!(f||t);            // ถ้าระบุวันที่ ให้ใช้แทนตัวกรองเดือน
   return PAYS.filter(p=>p.status==='paid'||p.status==='submitted')
     .filter(p=>{
       const d=String(p.pay_date||'');
-      if(useDay)return (!f||d>=f)&&(!t||d<=t);
+      if(useDay)return d>=from&&d<=to;
       return !mo||d.slice(0,7)===mo;
     })
     .filter(p=>!pt||(p.pay_type||'')===pt)
@@ -3673,8 +3678,7 @@ function remitRows(){
 function rmSpanLabel(){
   const f=$('rmFrom').value, t=$('rmTo').value;
   if(f&&t)return f===t?(' · '+f):(' · '+f+' ถึง '+t);
-  if(f)return ' · ตั้งแต่ '+f;
-  if(t)return ' · ถึง '+t;
+  if(f||t)return ' · '+(f||t);      // เลือกช่องเดียว = วันนั้นวันเดียว
   return $('rmMonth').value?(' · '+$('rmMonth').value):'';
 }
 function rmClearDays(){ $('rmFrom').value=''; $('rmTo').value=''; renderRemit(); }
@@ -3942,7 +3946,7 @@ function exportRemit(){
   const ws=XLSX.utils.aoa_to_sheet(rows), wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'หลักฐานชำระเงิน');
   const f=$('rmFrom').value, t=$('rmTo').value;
-  const tag=(f||t)?((f||'')+(t&&t!==f?('_ถึง_'+t):'')):($('rmMonth').value||monthStr());
+  const tag=(f||t)?((f&&t&&f!==t)?(f+'_ถึง_'+t):(f||t)):($('rmMonth').value||monthStr());
   XLSX.writeFile(wb,'หลักฐานชำระเงินร้านค้า_'+tag+'.xlsx');
 }
 
