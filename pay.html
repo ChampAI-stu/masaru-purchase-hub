@@ -162,7 +162,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-11</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-12</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -2661,13 +2661,19 @@ function buildDoc(show){
          ① PO เดียวกัน + SKU ตรง  ② SKU ตรง (PO ไหนก็ได้ เอาใบล่าสุด)  ③ ราคามาตรฐานจาก sku_master */
       const look=sk=>{
         const k=nz(sk);
-        let r=pos.find(x=>nz(x.sku)===k);
-        if(r&&(num(r.quantity)||num(r.price)))return {quantity:r.quantity,price:r.price,src:'po'};
-        r=POROWS.filter(x=>nz(x.sku)===k&&(num(x.quantity)||num(x.price))).pop();
-        if(r)return {quantity:'',price:r.price,src:'sku'};
-        const m=MASTER.find(x=>nz(x.sku)===k&&num(x.standard_price)>0);
-        if(m)return {quantity:'',price:m.standard_price,src:'master'};
-        return {quantity:'',price:'',src:''};
+        let qty='', price='';
+        const inPo=pos.find(x=>nz(x.sku)===k);          // ① PO เดียวกัน + SKU ตรง
+        if(inPo){ if(num(inPo.quantity))qty=inPo.quantity; if(num(inPo.price))price=inPo.price; }
+        if(qty===''||price===''){                        // ② SKU ตรง (PO ไหนก็ได้ เอาใบล่าสุด)
+          const any=POROWS.filter(x=>nz(x.sku)===k&&(num(x.quantity)||num(x.price))).pop();
+          if(any){ if(qty==='' &&num(any.quantity))qty=any.quantity;
+                   if(price===''&&num(any.price))price=any.price; }
+        }
+        if(price===''){                                  // ③ ราคามาตรฐานจาก sku_master
+          const m=MASTER.find(x=>nz(x.sku)===k&&num(x.standard_price)>0);
+          if(m)price=m.standard_price;
+        }
+        return {quantity:qty, price:price};
       };
       if(skus.length){
         its=skus.map(sk=>{ const f=look(sk); return {sku:sk, quantity:f.quantity, price:f.price}; });
@@ -2686,8 +2692,8 @@ function buildDoc(show){
     groups.push({po:b.po_number,cur:s,note,
       amt:+p.amount||0, ship, rate:p.rate, fee:+p.fee||0, thb:thbOf(p),
       paycur:p.pay_currency||b.currency||'CNY', cross, usd,
-      items: its.length?its.map(r=>({sku:r.sku,qty:r.quantity,unit:r.price}))
-                       :[{sku:b.sku||'-',qty:'',unit:''}]});
+      items: its.length?its.map(r=>({sku:r.sku,qty:num(r.quantity),unit:num(r.price)}))
+                       :[{sku:b.sku||'-',qty:0,unit:0}]});
   });
   const lines=groups;   // ใช้ชื่อเดิมสำหรับผลรวม
   const T=k=>lines.reduce((s,l)=>s+(+l[k]||0),0);
@@ -2722,8 +2728,8 @@ function buildDoc(show){
       h+=`<tr><td style="text-align:center">${no}</td>`
         + (k===0?`<td rowspan="${n}">${esc(g.po||'-')}</td>`:'')
         + `<td>${esc(it.sku||'-')}</td>`
-        + `<td class="num">${it.qty!==''?money(it.qty):''}</td>`
-        + `<td class="num">${it.unit!==''?money2(it.unit):''}</td>`
+        + `<td class="num">${num(it.qty)?money(it.qty):''}</td>`
+        + `<td class="num">${num(it.unit)?money2(it.unit):''}</td>`
         + (k===0?`<td rowspan="${n}" class="num">${money2(g.amt)}</td>`:'')
         + (k===0?`<td rowspan="${n}" class="num">${g.ship?money2(g.ship):''}</td>`:'')
         + (hasUsd
