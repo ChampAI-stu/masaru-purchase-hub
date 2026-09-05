@@ -59,8 +59,9 @@ td.num,th.num{text-align:right;white-space:nowrap}
 .doc-sheet table{width:100%;border-collapse:collapse;font-size:12.5px}
 .doc-sheet th,.doc-sheet td{border:1px solid #333;padding:6px 8px}
 .doc-sheet thead th{background:var(--navy);color:#fff}
-.sign-row{display:flex;gap:26px;margin-top:34px;font-size:12.5px}
+.sign-row{display:flex;gap:18px;margin-top:34px;font-size:12px}
 .sign-box{flex:1;text-align:center}
+.sign-sub{color:#555;font-size:11px}
 .sign-line{border-top:1px dotted #333;margin:38px 12px 6px}
 .chk{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;margin:10px 0}
 /* ===== ตอนพิมพ์ =====
@@ -177,7 +178,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-47</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-48</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -2358,15 +2359,16 @@ function buildDocDomestic(rows,coName,thDate){
           <td class="num">${T('ship')?money2(T('ship')):''}</td>
           <td class="num">${money2(T('amt'))}</td><td></td></tr>
       </tbody></table>
-    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:18px">
-      <div style="line-height:2">
-        <div style="font-weight:700">สรุป</div>
-        <div>ยอดเงินบาททั้งหมด : ${money2(T('amt'))} บาท</div>
-      </div>
-      <div style="text-align:center;min-width:220px">
-        <div style="font-size:13.5px">${esc(maker)||'&nbsp;'}</div>
-        ${maker?'':'<div style="border-top:1px dotted #333;margin-top:26px"></div><div style="font-size:12px">ผู้จัดทำ</div>'}
-      </div>
+    <div style="margin-top:18px;line-height:2">
+      <div style="font-weight:700">สรุป</div>
+      <div>ยอดเงินบาททั้งหมด : ${money2(T('amt'))} บาท</div>
+    </div>
+    <div class="sign-row">
+      <div class="sign-box"><div class="sign-line"></div>ผู้จัดทำเอกสาร<div class="sign-sub">(ฝ่ายจัดซื้อ)</div>
+        <div style="color:#666;font-size:11px">${esc(maker)}</div></div>
+      <div class="sign-box"><div class="sign-line"></div>ผู้ตรวจสอบ<div class="sign-sub">(ฝ่ายจัดซื้อ)</div></div>
+      <div class="sign-box"><div class="sign-line"></div>ผู้ตรวจสอบ<div class="sign-sub">(ฝ่ายบัญชี)</div></div>
+      <div class="sign-box"><div class="sign-line"></div>ผู้อนุมัติจ่าย<div class="sign-sub">(ผู้บริหาร)</div></div>
     </div>
   </div>`;
 }
@@ -2552,9 +2554,11 @@ function buildDoc(show){
       <label><input type="checkbox" checked disabled> หลักฐานการขอซื้อ</label>
       <label><input type="checkbox" checked disabled> ใบปะหน้าสรุปนี้</label></div>
     <div class="sign-row">
-      <div class="sign-box"><div class="sign-line"></div>ผู้จัดทำ (จัดซื้อ)<div style="color:#666">${esc(ME)}</div></div>
-      <div class="sign-box"><div class="sign-line"></div>ผู้ตรวจสอบ (หัวหน้า)</div>
-      <div class="sign-box"><div class="sign-line"></div>ผู้อนุมัติ (ผู้บริหาร)</div>
+      <div class="sign-box"><div class="sign-line"></div>ผู้จัดทำเอกสาร<div class="sign-sub">(ฝ่ายจัดซื้อ)</div>
+        <div style="color:#666;font-size:11px">${esc(($('dcMaker')&&$('dcMaker').value.trim())||ME||'')}</div></div>
+      <div class="sign-box"><div class="sign-line"></div>ผู้ตรวจสอบ<div class="sign-sub">(ฝ่ายจัดซื้อ)</div></div>
+      <div class="sign-box"><div class="sign-line"></div>ผู้ตรวจสอบ<div class="sign-sub">(ฝ่ายบัญชี)</div></div>
+      <div class="sign-box"><div class="sign-line"></div>ผู้อนุมัติจ่าย<div class="sign-sub">(ผู้บริหาร)</div></div>
     </div>
     <div class="muted" style="margin-top:12px;font-size:11px">พิมพ์เมื่อ ${new Date().toLocaleString('th-TH')} · เอกสารภายใน (ความลับ)</div>
   </div>`;
