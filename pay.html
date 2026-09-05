@@ -162,7 +162,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-13</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-14</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -995,6 +995,21 @@ async function pageAll(table,sel,order){
   }
   return out;
 }
+/* ตารางไหนโหลดไม่สำเร็จ ให้ขึ้นแถบแดงบนสุด — กันเคส "ได้ 0 แถวแบบเงียบ ๆ" */
+function showLoadErrors(){
+  const keys=Object.keys(LOAD_ERR||{});
+  let bar=$('loadErrBar');
+  if(!keys.length){ if(bar)bar.remove(); return; }
+  if(!bar){
+    bar=document.createElement('div'); bar.id='loadErrBar';
+    bar.style.cssText='background:#FCE4E4;border-bottom:2px solid #D0212B;color:#B01722;'
+      +'padding:9px 16px;font-size:13px;position:sticky;top:0;z-index:80';
+    document.body.insertBefore(bar,document.body.firstChild);
+  }
+  bar.innerHTML='⚠️ <b>โหลดข้อมูลบางตารางไม่สำเร็จ</b> — ตัวเลขอาจไม่ครบ<br>'
+    +keys.map(k=>'<span style="font-size:11.5px">· <b>'+esc(k)+'</b> — '+esc(LOAD_ERR[k])+'</span>').join('<br>');
+}
+
 async function loadAll(){
   [BILLS,PAYS,LOGS,MEMOS,FBILLS,FITEMS,MASTER,POROWS,TAXES,TRACKS]=await Promise.all([
     pageAll('pay_bills','*','created_at'),
@@ -1004,11 +1019,12 @@ async function loadAll(){
     pageAll('freight_bills','*','arrive_date'),
     pageAll('freight_items','*',null),
     pageAll('sku_master','sku,supplier,standard_price,currency',null),
-    pageAll('purchase_orders','po_number,sku,price,quantity,vendor,received_qty',null),
+    pageAll('purchase_orders','*',null),
     pageAll('tax_summaries','*',null),
     pageAll('shipment_tracking','*',null)
   ]);
   await loadWallet();     // ต้องมีก่อน renderDoc เพื่อคำนวณยอด Ksher ที่ต้องเติม
+  showLoadErrors();       // ตารางไหนโหลดไม่ได้ ต้องเห็นทันที ไม่ใช่เงียบแล้วได้ 0 แถว
   if($('tab-doc').style.display!=='none')renderDoc();
   if($('tab-freight').style.display!=='none')renderFreight();
   if($('tab-lot').style.display!=='none'){fillLotSelect();renderLot();}
@@ -1913,7 +1929,7 @@ function poGroups(noPrice){
   return Object.values(by).sort((a,b)=>String(b.po).localeCompare(String(a.po)));
 }
 async function openSync(){
-  if(!POROWS.length)POROWS=await pageAll('purchase_orders','po_number,sku,quantity,price,vendor,received_qty',null);
+  if(!POROWS.length)POROWS=await pageAll('purchase_orders','*',null);
   renderSync(); $('syncBg').style.display='flex';
 }
 function renderSync(){
