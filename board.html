@@ -1048,6 +1048,10 @@ function enterApp(session){
   $('loginScreen').style.display='none';
   $('app').style.display='block';
   updatePortalBtn(roles);   // โชว์ปุ่มหน้ารวมเฉพาะคนที่เข้าได้หลายเว็บ
+  // 🔒 รายงาน On-Time + ประวัติการอัพโหลด = ข้อมูลภายในฝ่ายจัดซื้อ ไม่ให้การตลาดเห็น
+  const inner = (currentRole === 'purchase');
+  $('tabRep').style.display = inner ? '' : 'none';
+  $('tabUp').style.display  = inner ? '' : 'none';
   // role UI
   if(currentRole === 'purchase'){
     $('rolePill').textContent = ROLE_LABEL;
@@ -2241,6 +2245,8 @@ $('tabPlan').addEventListener('click', () => switchTab('plan'));
 $('tabUp').addEventListener('click',   () => switchTab('up'));
 $('tabRep').addEventListener('click',  () => switchTab('rep'));
 function switchTab(t){
+  // การตลาดเข้า 2 แท็บนี้ไม่ได้ แม้จะเรียกฟังก์ชันตรงๆ
+  if((t==='rep'||t==='up') && currentRole!=='purchase') t='board';
   $('viewBoard').style.display = t==='board' ? 'block' : 'none';
   $('viewPlan').style.display  = t==='plan'  ? 'block' : 'none';
   $('viewUp').style.display    = t==='up'    ? 'block' : 'none';
