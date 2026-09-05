@@ -177,7 +177,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-40</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-41</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -3735,7 +3735,7 @@ function syncKsherSpend(){
                          && !done.has(String(p.id)))
     .sort((a,b)=>String(a.pay_date||'').localeCompare(String(b.pay_date||'')));
   if(!SPEND_LIST.length)return toast('ไม่มีงวด Ksher ใหม่ที่ต้องตัดยอด');
-  SPEND_SEL=new Set(SPEND_LIST.filter(p=>p.ksher_user).map(p=>String(p.id)));  // ติ๊กเฉพาะที่พร้อม
+  SPEND_SEL=new Set();          // ไม่ติ๊กอะไรไว้ล่วงหน้า — ต้องเลือกเองทุกครั้ง
   $('spUser').innerHTML='<option value="">— ทุก User —</option>'
     +KSHER_USERS.map(u=>`<option>${esc(u)}</option>`).join('');
   $('spDate').value='';
@@ -3745,9 +3745,24 @@ function spendRows(){
   const u=$('spUser').value, d=$('spDate').value;
   return SPEND_LIST.filter(p=>(!u||(p.ksher_user||'')===u)&&(!d||String(p.pay_date||'')===d));
 }
+/* ระบุ User ให้งวดที่ยังว่าง — บันทึกทันที แล้วติ๊กให้เลย */
+async function setSpendUser(pid,u){
+  if(!u)return;
+  const {error}=await sb.from('pay_payments').update({ksher_user:u}).eq('id',pid);
+  if(error)return toast('บันทึกไม่สำเร็จ: '+error.message);
+  const p=PAYS.find(x=>String(x.id)===String(pid)); if(p)p.ksher_user=u;
+  const q=SPEND_LIST.find(x=>String(x.id)===String(pid)); if(q)q.ksher_user=u;
+  SPEND_SEL.add(String(pid));
+  renderSpendPick(); toast('ระบุ User เป็น '+u+' แล้ว ✅');
+}
 function spendPick(id,on){ on?SPEND_SEL.add(String(id)):SPEND_SEL.delete(String(id)); renderSpendPick(); }
-function spendAll(on){ spendRows().forEach(p=>{ if(!p.ksher_user)return;
-  on?SPEND_SEL.add(String(p.id)):SPEND_SEL.delete(String(p.id)); }); renderSpendPick(); }
+function spendAll(on){
+  const rows=spendRows().filter(p=>p.ksher_user);
+  if(on&&rows.length>5&&!confirm('เลือกทั้งหมด '+rows.length+' งวด?\n\nรวม '
+    +money(rows.reduce((s,p)=>s+thbOf(p)+(+p.fee||0),0))+' ฿'))return;
+  rows.forEach(p=>{ on?SPEND_SEL.add(String(p.id)):SPEND_SEL.delete(String(p.id)); });
+  renderSpendPick();
+}
 
 function renderSpendPick(){
   const rows=spendRows();
@@ -3757,7 +3772,7 @@ function renderSpendPick(){
   const noUser=rows.filter(p=>!p.ksher_user).length;
   $('spStat').innerHTML=`เลือก <b>${chosen.length}</b> จาก ${rows.length} งวด · รวม <b>${money(sum)} ฿</b>`
     +(fee?` <span class="muted">(รวมค่าธรรมเนียม ${money(fee)} ฿)</span>`:'')
-    +(noUser?` · <span style="color:#B01722">${noUser} งวดยังไม่ระบุ User (เลือกไม่ได้)</span>`:'');
+    +(noUser?` · <span style="color:#B01722">${noUser} งวดยังไม่ระบุ User — เลือกในช่อง User ของแถวนั้นได้เลย</span>`:'');
   if(!rows.length){$('spBody').innerHTML='<div class="empty">ไม่มีงวดตามเงื่อนไขที่เลือก</div>';return;}
   let h=`<table><thead><tr><th style="width:36px"></th><th style="width:96px">วันที่</th>
     <th style="width:110px">User</th><th>PO / งวด</th>
@@ -3769,7 +3784,10 @@ function renderSpendPick(){
         onchange="spendPick('${p.id}',this.checked)"></td>
       <td>${esc(p.pay_date||'-')}</td>
       <td>${ok?`<span class="pill" style="background:#EEF2F7;color:#1F3864">${esc(p.ksher_user)}</span>`
-             :'<span style="color:#B01722;font-size:11.5px">ยังไม่ระบุ</span>'}</td>
+             :`<select onchange="setSpendUser('${p.id}',this.value)" style="width:118px;padding:3px 5px;font-size:11.5px;border-color:#D0212B">
+                  <option value="">— เลือก User —</option>
+                  ${KSHER_USERS.map(u=>`<option>${esc(u)}</option>`).join('')}
+                </select>`}</td>
       <td><b>${esc(b.po_number||'-')}</b> <span class="muted" style="font-size:11.5px">${esc(p.installment||'')}</span></td>
       <td class="right">${money(p.amount)} ${curSym(b.currency)}</td>
       <td class="right">${money(thbOf(p))}</td>
