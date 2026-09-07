@@ -178,7 +178,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-53</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-54</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -348,7 +348,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
       <div class="row" style="flex-wrap:wrap">
         <h2 style="margin:0;border:0;padding:0">💱 ใบเสนอราคา (Quotation)</h2>
         <div style="flex:1"></div>
-        <input id="qtSearch" placeholder="ค้นหา PO / Vendor" style="max-width:220px" oninput="renderQuotList()">
+        <input id="qtSearch" placeholder="ค้นหา PO / Vendor / ผู้รับผิดชอบ" style="max-width:250px" oninput="renderQuotList()">
         <button class="btn edit-only" onclick="openQuot()">+ สร้างใบเสนอราคา</button>
       </div>
       <div class="scroll"><div id="qtList"></div></div>
@@ -372,8 +372,11 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
           <select id="q_deliver" onchange="drawQuot()"><option>SEA</option><option>AIR</option><option>LAND</option></select></div>
         <div class="fld"><label>สกุลเงิน</label>
           <select id="q_cur" onchange="drawQuot()"><option value="CNY">¥ CNY</option><option value="USD">$ USD</option><option value="THB">฿ THB</option></select></div>
+        <div class="fld"><label>ผู้รับผิดชอบ</label>
+          <input id="q_resp" list="respList" placeholder="ชื่อผู้ดูแลใบนี้" oninput="drawQuot()"></div>
       </div>
       <datalist id="qtPoList"></datalist>
+      <datalist id="respList"></datalist>
       <div class="row" style="margin:8px 0;flex-wrap:wrap;align-items:center">
         <button class="btn mini ghost" onclick="pullQuotPo(true)">🔄 ดึงรายการจาก PO</button>
         <button class="btn mini ghost" onclick="addQuotRow()">+ เพิ่มแถว</button>
@@ -714,6 +717,20 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
     <div class="row" style="margin-top:14px;justify-content:flex-end">
       <button class="btn ghost" onclick="$('wlBg').style.display='none'">ยกเลิก</button>
       <button class="btn" onclick="saveWl()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: เปิดดูใบเสนอราคา ============ -->
+<div class="modal-bg" id="quotViewBg" style="z-index:70">
+  <div class="modal" id="quotViewModal" style="max-width:880px">
+    <button class="expand-btn" onclick="toggleWide('quotViewModal',this)">⛶ ขยายเต็มจอ</button>
+    <h3 id="qvTitle">👁 ใบเสนอราคา</h3>
+    <div id="qvBody" class="scroll" style="background:#F4F6FA;padding:12px;border-radius:9px"></div>
+    <div class="row" style="margin-top:12px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('quotViewBg').style.display='none'">ปิด</button>
+      <button class="btn ghost edit-only" onclick="$('quotViewBg').style.display='none';openQuot(QT_ID)">✏️ แก้ไข</button>
+      <button class="btn" onclick="printQuotView()">🖨️ พิมพ์ / บันทึก PDF</button>
     </div>
   </div>
 </div>
@@ -3039,29 +3056,56 @@ async function loadQuot(){
   QUOTS=data||[];
   const pos=[...new Set(POROWS.map(r=>r.po_number).filter(Boolean))].sort();
   $('qtPoList').innerHTML=pos.slice(0,800).map(function(x){return '<option value="'+esc(x)+'">';}).join('');
+  const rs=[...new Set(QUOTS.map(function(x){return x.responsible;}).filter(Boolean))].sort();
+  $('respList').innerHTML=rs.map(function(x){return '<option value="'+esc(x)+'">';}).join('');
   renderQuotList();
 }
 function renderQuotList(){
   const q=($('qtSearch').value||'').toLowerCase();
-  const list=QUOTS.filter(function(x){return !q||((x.po_number||'')+' '+(x.vendor||'')).toLowerCase().includes(q);});
+  const list=QUOTS.filter(function(x){return !q||((x.po_number||'')+' '+(x.vendor||'')+' '+(x.responsible||'')).toLowerCase().includes(q);});
   if(!list.length){$('qtList').innerHTML='<div class="empty">ยังไม่มีใบเสนอราคา — กด "+ สร้างใบเสนอราคา"</div>';return;}
   var h='<table><thead><tr><th>PO number</th><th>PO date</th><th>Vendor</th><th>Deliver</th>'
-    +'<th class="right">รายการ</th><th class="right">รูปแนบ</th><th class="right">TOTAL</th>'
-    +(canEdit?'<th></th>':'')+'</tr></thead><tbody>';
+    +'<th>ผู้รับผิดชอบ</th><th class="right">รายการ</th><th class="right">รูปแนบ</th><th class="right">TOTAL</th>'
+    +'<th style="width:200px"></th></tr></thead><tbody>';
   list.forEach(function(x){
     h+='<tr><td><b>'+esc(x.po_number||'-')+'</b></td><td>'+esc(x.po_date||'-')+'</td>'
       +'<td>'+esc(x.vendor||'-')+'</td><td>'+esc(x.deliver_by||'-')+'</td>'
+      +'<td>'+(x.responsible?esc(x.responsible):'<span class="muted">—</span>')+'</td>'
       +'<td class="right">'+((x.items||[]).length)+'</td>'
       +'<td class="right">'+((x.pics||[]).length||'-')+'</td>'
       +'<td class="right"><b>'+money(x.total)+' '+curSym(x.currency)+'</b></td>'
-      +(canEdit?'<td style="white-space:nowrap"><button class="btn mini" onclick="openQuot(\''+x.id+'\')">แก้</button> '
-        +'<button class="btn mini red" onclick="delQuot(\''+x.id+'\')">ลบ</button></td>':'')+'</tr>';});
+      +'<td style="white-space:nowrap"><button class="btn mini ghost" onclick="viewQuot(\''+x.id+'\')">👁 เปิดดู</button> '
+      +(canEdit?'<button class="btn mini" onclick="openQuot(\''+x.id+'\')">แก้</button> '
+        +'<button class="btn mini red" onclick="delQuot(\''+x.id+'\')">ลบ</button>':'')+'</td></tr>';});
   $('qtList').innerHTML=h+'</tbody></table>';
 }
 
 function closeQuot(){
   if(QT_PICS.some(p=>p._new)&&!confirm('มีรูปที่ยังไม่ได้บันทึก — ปิดแล้วรูปจะหาย\n\nปิดเลยไหม?'))return;
   $('qtEditor').style.display='none';
+}
+/* เปิดดูใบเสนอราคาแบบอ่านอย่างเดียว */
+function viewQuot(id){
+  const x=QUOTS.find(function(v){return String(v.id)===String(id);});
+  if(!x)return toast('ไม่พบใบนี้');
+  QT_ID=id;
+  QT_ROWS=Array.isArray(x.items)?JSON.parse(JSON.stringify(x.items)):[];
+  QT_PICS=Array.isArray(x.pics)?JSON.parse(JSON.stringify(x.pics)):[];
+  $('q_po').value=x.po_number||''; $('q_date').value=x.po_date||'';
+  $('q_pr').value=x.ref_pr||'';    $('q_vendor').value=x.vendor||'';
+  $('q_deliver').value=x.deliver_by||'SEA'; $('q_cur').value=x.currency||'CNY';
+  $('q_ship').value=x.ship_fee||0; $('q_title').value=x.title_note||'';
+  $('q_note').value=x.note||'';    $('q_resp').value=x.responsible||'';
+  drawQuot();
+  $('qvBody').innerHTML=$('qtPaper').innerHTML;
+  $('qvTitle').textContent='👁 ใบเสนอราคา PO '+(x.po_number||'')
+    +(x.responsible?(' · ผู้รับผิดชอบ '+x.responsible):'');
+  $('quotViewBg').style.display='flex';
+}
+function printQuotView(){
+  $('qtPaper').innerHTML=$('qvBody').innerHTML;
+  $('quotViewBg').style.display='none';
+  printQuot();
 }
 function openQuot(id){
   QT_ID=id||null;
@@ -3071,6 +3115,7 @@ function openQuot(id){
   $('q_pr').value=(x&&x.ref_pr)||'';    $('q_vendor').value=(x&&x.vendor)||'';
   $('q_deliver').value=(x&&x.deliver_by)||'SEA'; $('q_cur').value=(x&&x.currency)||'CNY';
   $('q_ship').value=(x&&x.ship_fee)||0; $('q_title').value=(x&&x.title_note)||'';
+  $('q_resp').value=(x&&x.responsible)||'';
   $('q_note').value=(x&&x.note)||'';
   QT_ROWS=(x&&Array.isArray(x.items))?JSON.parse(JSON.stringify(x.items)):[];
   QT_PICS=(x&&Array.isArray(x.pics))?JSON.parse(JSON.stringify(x.pics)):[];
@@ -3246,7 +3291,9 @@ function drawQuot(){
       +'<td class="num"><b>PO number</b> <span style="font-weight:400">'+esc($('q_po').value||'')+'</span><br>'
         +'<b>PO date</b> <span style="font-weight:400">'+esc(dd)+'</span><br>'
         +'<b>Reference PR No:</b> <span style="font-weight:400">'+esc($('q_pr').value||'-')+'</span><br>'
-        +'<b>Deliver By</b> <span style="font-weight:400">'+esc($('q_deliver').value||'')+'</span></td></tr></table>'
+        +'<b>Deliver By</b> <span style="font-weight:400">'+esc($('q_deliver').value||'')+'</span>'
+        +($('q_resp').value?'<br><b>ผู้รับผิดชอบ</b> <span style="font-weight:400">'+esc($('q_resp').value)+'</span>':'')
+        +'</td></tr></table>'
     +'<table class="qt-tb"><thead><tr><th style="width:32px">No.</th><th style="width:27%">SKU</th>'
       +'<th style="width:27%">SKU Colors</th><th class="num" style="width:12%">Qty</th>'
       +'<th class="num" style="width:14%">Unit Price</th><th class="num" style="width:16%">Total Price</th></tr></thead>'
@@ -3287,6 +3334,7 @@ async function saveQuot(){
     deliver_by:$('q_deliver').value, currency:$('q_cur').value,
     items:QT_ROWS, ship_fee:ship, total:+(sub+ship).toFixed(2),
     title_note:$('q_title').value.trim()||null, note:$('q_note').value.trim()||null,
+    responsible:$('q_resp').value.trim()||null,
     pics:QT_PICS.map(p=>({thumb:p.thumb,url:p.url||'',id:p.id||'',name:p.name||''})),
     created_by:ME||'', updated_at:new Date().toISOString()};
   const q=QT_ID? sb.from('quotations').update(rec).eq('id',QT_ID)
