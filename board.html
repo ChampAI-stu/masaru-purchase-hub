@@ -1188,6 +1188,23 @@ $('statusHelpBg').addEventListener('click', e => { if(e.target===$('statusHelpBg
 /* ⚠️ Supabase ส่งกลับสูงสุด 1,000 แถวต่อครั้ง — ตารางนี้มีมากกว่านั้น
       ถ้าดึงรวดเดียวจะได้ไม่ครบ PO ที่เกินจะหายไปเงียบ ๆ (ค้นหาไม่เจอ)
       จึงต้องไล่ดึงทีละหน้าจนหมด และเรียงด้วย id เป็นตัวสำรองกันแถวข้าม/ซ้ำ */
+/* ดึงทั้งตารางแบบไล่ทีละหน้า — เลี่ยงลิมิต 1,000 แถวของ Supabase
+   เรียงด้วย id เป็นตัวสำรองเสมอ กันแถวข้าม/ซ้ำตรงรอยต่อหน้า */
+async function fetchAll(table, tune){
+  const SIZE=1000, out=[];
+  let from=0, guard=0;
+  while(guard++ < 60){
+    let q=sb.from(table).select('*');
+    if(tune)q=tune(q);
+    const { data, error } = await q.order('id').range(from, from+SIZE-1);
+    if(error){ console.error('['+table+']',error); if(!out.length)throw error; break; }
+    out.push(...(data||[]));
+    if(!data || data.length < SIZE) break;
+    from += SIZE;
+  }
+  return out;
+}
+
 async function loadOrders(){
   const SIZE=1000, all=[];
   let from=0, guard=0;
