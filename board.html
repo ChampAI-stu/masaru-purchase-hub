@@ -1185,13 +1185,30 @@ $('statusHelpOk').addEventListener('click', () => $('statusHelpBg').style.displa
 $('statusHelpBg').addEventListener('click', e => { if(e.target===$('statusHelpBg')) $('statusHelpBg').style.display='none'; });
 
 // ===== DATA =====
+/* ⚠️ Supabase ส่งกลับสูงสุด 1,000 แถวต่อครั้ง — ตารางนี้มีมากกว่านั้น
+      ถ้าดึงรวดเดียวจะได้ไม่ครบ PO ที่เกินจะหายไปเงียบ ๆ (ค้นหาไม่เจอ)
+      จึงต้องไล่ดึงทีละหน้าจนหมด และเรียงด้วย id เป็นตัวสำรองกันแถวข้าม/ซ้ำ */
 async function loadOrders(){
-  const { data, error } = await sb.from('purchase_orders')
-    .select('*')
-    .order('updated_at',{ascending:false,nullsFirst:false})
-    .order('created_at',{ascending:false});
-  if(error){ console.error(error); return; }
-  allOrders = data || [];
+  const SIZE=1000, all=[];
+  let from=0, guard=0;
+  while(guard++ < 60){
+    const { data, error } = await sb.from('purchase_orders')
+      .select('*')
+      .order('updated_at',{ascending:false,nullsFirst:false})
+      .order('created_at',{ascending:false})
+      .order('id')
+      .range(from, from+SIZE-1);
+    if(error){
+      console.error(error);
+      toast('โหลดข้อมูล PO ไม่สำเร็จ: '+error.message, true);
+      if(!all.length) return;
+      break;
+    }
+    all.push(...(data||[]));
+    if(!data || data.length < SIZE) break;
+    from += SIZE;
+  }
+  allOrders = all;
   render();
   stampUpdate();
 }
@@ -1815,7 +1832,9 @@ function repQuick(n){
 }
 function repRows(){
   const car=$('repCarrier').value;
-  const f=$('repFrom').value, t=$('repTo').value;
+  // เลือกช่องเดียว = เดือนนั้นเดือนเดียว · เลือกทั้งคู่ = ช่วงเดือน
+  const f0=$('repFrom').value, t0=$('repTo').value;
+  const f=f0||t0, t=t0||f0;
   let rows=allOrders.filter(o=>repRef(o));            // ต้องมีวันที่อ้างอิงถึงนับได้
   if(car)rows=rows.filter(o=>(o.carrier||'')===car);
   if(f)rows=rows.filter(o=>repRef(o).slice(0,7)>=f);
@@ -2013,7 +2032,7 @@ function repHeadFill(){
   const f=$('repFrom').value, t=$('repTo').value, car=$('repCarrier').value;
   const TH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
   const mth=m=>m?TH[+m.slice(5,7)-1]+' '+(+m.slice(0,4)+543):'';
-  const span=(f&&t)?(f===t?mth(f):mth(f)+' – '+mth(t)):(f?'ตั้งแต่ '+mth(f):(t?'ถึง '+mth(t):'ทุกเดือน'));
+  const span=(f&&t)?(f===t?mth(f):mth(f)+' – '+mth(t)):((f||t)?mth(f||t):'ทุกเดือน');
   const g=$('repGrace').value;
   $('repHeadSub').innerHTML='ช่วง: <b>'+esc(span)+'</b>'
     + (car?' · ขนส่ง: <b>'+esc(car)+'</b>':' · ทุกบริษัทขนส่ง')
@@ -2261,10 +2280,13 @@ function switchTab(t){
 
 // ---- โหลดข้อมูลแผน ----
 async function loadPlan(){
-  const [{ data: trips, error: e1 }, { data: items, error: e2 }] = await Promise.all([
-    sb.from('receipt_trips').select('*').order('plan_date',{ascending:false}).order('created_at',{ascending:true}),
-    sb.from('receipt_items').select('*').order('created_at',{ascending:true})
-  ]);
+  let trips=null, items=null, e1=null, e2=null;
+  try{
+    [trips, items] = await Promise.all([
+      fetchAll('receipt_trips', q=>q.order('plan_date',{ascending:false}).order('created_at',{ascending:true})),
+      fetchAll('receipt_items', q=>q.order('created_at',{ascending:true}))
+    ]);
+  }catch(err){ e1=err; }
   if(e1 || e2){
     console.error(e1||e2);
     $('planContent').innerHTML = `<div style="padding:44px 20px;text-align:center;color:var(--muted)">
