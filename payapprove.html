@@ -100,7 +100,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-08</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-09</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -197,7 +197,8 @@ tr:nth-child(even) td{background:#F8FAFD}
       </div>
 
       <div class="row" style="margin:6px 0">
-        <button class="btn mini" onclick="openPick()">＋ ดึงงวดจ่ายจากระบบวางแผน</button>
+        <button class="btn mini" onclick="openPick()">＋ ดึงงวดจ่าย</button>
+        <button class="btn mini" onclick="openDocPick()" style="background:#8a6d1f">📄 ดึงจากใบปะหน้า</button>
         <button class="btn mini ghost" onclick="addManual()">＋ เพิ่มรายการเอง</button>
         <div style="flex:1"></div>
         <span id="r_sum" class="muted" style="font-size:12.5px"></span>
@@ -224,10 +225,21 @@ tr:nth-child(even) td{background:#F8FAFD}
     <h3>＋ เลือกงวดจ่ายจากระบบวางแผนจ่ายเงิน</h3>
     <div class="sub-note">แสดงงวดที่ยัง<b>ไม่เคยถูกยื่นขออนุมัติ</b> — ติ๊กงวดที่ต้องการแล้วกดเพิ่ม</div>
     <div class="row">
-      <input type="date" id="pkFrom" onchange="renderPick()" style="max-width:155px">
+      <input type="date" id="pkFrom" onchange="renderPick()" style="max-width:150px" title="เลือกช่องเดียว = ดูเฉพาะวันนั้น">
       <span class="muted">ถึง</span>
-      <input type="date" id="pkTo" onchange="renderPick()" style="max-width:155px">
-      <input id="pkSearch" placeholder="ค้นหา PO / SKU" style="max-width:200px" oninput="renderPick()">
+      <input type="date" id="pkTo" onchange="renderPick()" style="max-width:150px">
+      <input id="pkSearch" placeholder="ค้นหา PO / SKU / ผู้รับเงิน" style="max-width:210px" oninput="renderPick()">
+      <select id="pkType" onchange="renderPick()" style="max-width:160px">
+        <option value="">— ทุกประเภทการจ่าย —</option></select>
+      <select id="pkCh" onchange="renderPick()" style="max-width:185px">
+        <option value="">— ทุกช่องทาง —</option></select>
+      <select id="pkSt" onchange="renderPick()" style="max-width:165px">
+        <option value="">— ทุกสถานะ —</option>
+        <option value="planned">🗓️ วางแผน</option>
+        <option value="submitted">📤 ส่งยอด</option>
+        <option value="paid">✅ จ่ายแล้ว</option>
+      </select>
+      <button class="btn mini ghost" onclick="pkClear()">ล้างตัวกรอง</button>
       <button class="btn mini ghost" onclick="pickAll(true)">เลือกทั้งหมด</button>
       <button class="btn mini ghost" onclick="pickAll(false)">ไม่เลือก</button>
       <div style="flex:1"></div>
@@ -237,6 +249,31 @@ tr:nth-child(even) td{background:#F8FAFD}
     <div class="row" style="margin-top:12px;justify-content:flex-end">
       <button class="btn ghost" onclick="$('pickBg').style.display='none'">ยกเลิก</button>
       <button class="btn" onclick="addPicked()">＋ เพิ่มที่เลือก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: เลือกใบปะหน้า ============ -->
+<div class="modal-bg" id="docPickBg" style="z-index:70">
+  <div class="modal" id="docPickModal" style="max-width:1040px">
+    <button class="expand-btn" onclick="toggleWide('docPickModal',this)">⛶ ขยายเต็มจอ</button>
+    <h3>📄 ดึงงวดจากใบปะหน้าที่บันทึกไว้</h3>
+    <div class="sub-note">
+      เลือกใบปะหน้าที่ทำไว้ในระบบ <b>วางแผนจ่ายเงิน</b> → ระบบดึงงวดในใบนั้นมาให้ทั้งชุด
+      พร้อมเติมจ่ายในนาม / ช่องทาง / กำหนดชำระ ให้อัตโนมัติ
+    </div>
+    <div class="row">
+      <input type="date" id="dpFrom" onchange="renderDocPick()" style="max-width:150px" title="เลือกช่องเดียว = วันนั้นวันเดียว">
+      <span class="muted">ถึง</span>
+      <input type="date" id="dpTo" onchange="renderDocPick()" style="max-width:150px">
+      <input id="dpSearch" placeholder="ค้นหา จ่ายในนาม / ช่องทาง / ผู้จัดทำ" style="max-width:250px" oninput="renderDocPick()">
+      <button class="btn mini ghost" onclick="dpClear()">ล้างตัวกรอง</button>
+      <div style="flex:1"></div>
+      <span id="dpStat" class="muted" style="font-size:12.5px"></span>
+    </div>
+    <div class="scroll"><div id="dpBody"></div></div>
+    <div class="row" style="margin-top:12px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('docPickBg').style.display='none'">ปิด</button>
     </div>
   </div>
 </div>
@@ -298,7 +335,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 
 let ME='', MY_NAME='', ROLES=[], IS_MGR=false, IS_EXEC=false, IS_BUYER=false;
-let REQS=[], LOGS=[], PAYS=[], BILLS=[];
+let REQS=[], LOGS=[], PAYS=[], BILLS=[], DOCS=[];
 let PAGE=1; const PER=20;
 let EDIT_ID=null, ITEMS=[], PICK_SEL=new Set(), REJ_ID=null, VIEW_ID=null;
 
@@ -390,12 +427,14 @@ async function pageAll(table,cols,order){
 }
 
 async function loadAll(){
-  const [rq,lg,py,bl]=await Promise.all([
+  const [rq,lg,py,bl,dc]=await Promise.all([
     pageAll('pay_requests','*','created_at'),
     pageAll('pay_request_logs','*','created_at'),
     pageAll('pay_payments','*','created_at'),
-    pageAll('pay_bills','*','created_at')
+    pageAll('pay_bills','*','created_at'),
+    pageAll('pay_docs','*','doc_date')          // ใบปะหน้าที่บันทึกไว้ในระบบ pay
   ]);
+  DOCS=(dc||[]).sort((a,b)=>String(b.doc_date||'').localeCompare(String(a.doc_date||'')));
   REQS=(rq||[]).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
   LOGS=lg||[]; PAYS=py||[]; BILLS=bl||[];
   fillTypeFilter();
@@ -614,29 +653,56 @@ function openPick(){
   if(!$('pkTo').value){const d=new Date();d.setDate(d.getDate()+30);$('pkTo').value=d.toISOString().slice(0,10);}
   renderPick();$('pickBg').style.display='flex';
 }
+function pkClear(){
+  ['pkFrom','pkTo','pkSearch','pkType','pkCh','pkSt'].forEach(id=>{if($(id))$(id).value='';});
+  renderPick();
+}
 function pickRows(){
   const used=usedPayIds(), inUse=new Set(ITEMS.map(i=>String(i.pay_id)).filter(Boolean));
   const f=$('pkFrom').value, t=$('pkTo').value, q=($('pkSearch').value||'').toLowerCase();
-  const ty=$('r_type').value, ch=$('r_ch').value, cu=$('r_cur').value;
+  const from=f||t, to=t||f;                 // เลือกช่องเดียว = วันนั้นวันเดียว
+  const ty=($('pkType')&&$('pkType').value)||'';
+  const ch=($('pkCh')&&$('pkCh').value)||'';
+  const st=($('pkSt')&&$('pkSt').value)||'';
   return PAYS.filter(p=>p.status!=='rejected')
     .filter(p=>!used.has(String(p.id))&&!inUse.has(String(p.id)))
-    .filter(p=>{const d=String(p.pay_date||'');return (!f||d>=f)&&(!t||d<=t);})
+    .filter(p=>{const d=String(p.pay_date||'');return (!from||(d>=from&&d<=to));})
     .filter(p=>!ty||(p.pay_type||'')===ty)
     .filter(p=>!ch||(p.channel||'')===ch)
-    .filter(p=>{const b=billOf(p.bill_id);return !cu||(b.currency||'CNY')===cu;})
+    .filter(p=>!st||p.status===st)
     .filter(p=>{if(!q)return true;const b=billOf(p.bill_id);
-      return ((b.po_number||'')+' '+(b.sku||'')).toLowerCase().includes(q);})
+      return ((b.po_number||'')+' '+(b.sku||'')+' '+(p.payee||'')+' '+(p.installment||''))
+        .toLowerCase().includes(q);})
     .sort((a,b)=>String(a.pay_date||'').localeCompare(String(b.pay_date||'')));
 }
 function pickAll(on){pickRows().forEach(p=>on?PICK_SEL.add(String(p.id)):PICK_SEL.delete(String(p.id)));renderPick();}
 function pickOne(id,on){on?PICK_SEL.add(String(id)):PICK_SEL.delete(String(id));renderPick();}
 function renderPick(){
+  // เติมตัวเลือกจากข้อมูลจริง
+  if($('pkType')){
+    const ts=[...new Set(PAYS.map(p=>p.pay_type).filter(Boolean))].sort(), cu=$('pkType').value;
+    $('pkType').innerHTML='<option value="">— ทุกประเภทการจ่าย —</option>'
+      +ts.map(x=>`<option ${x===cu?'selected':''}>${esc(x)}</option>`).join('');
+  }
+  if($('pkCh')){
+    const cs=[...new Set(PAYS.map(p=>p.channel).filter(Boolean))].sort(), cu=$('pkCh').value;
+    $('pkCh').innerHTML='<option value="">— ทุกช่องทาง —</option>'
+      +cs.map(x=>`<option ${x===cu?'selected':''}>${esc(x)}</option>`).join('');
+  }
   const rows=pickRows();
   const sel=rows.filter(p=>PICK_SEL.has(String(p.id)));
   $('pkStat').innerHTML=`เลือก <b>${sel.length}</b> จาก ${rows.length} งวด · รวม <b>${money(sel.reduce((s,p)=>s+thbOf(p)+(+p.fee||0),0))} ฿</b>`;
-  if(!rows.length){$('pkBody').innerHTML='<div class="empty">ไม่มีงวดจ่ายที่ตรงเงื่อนไข<br><span class="muted">ลองขยายช่วงวันที่ หรือเปลี่ยนประเภท/ช่องทาง/สกุลเงินในฟอร์ม</span></div>';return;}
+  if(!rows.length){
+    const used=usedPayIds();
+    const already=PAYS.filter(p=>used.has(String(p.id))).length;
+    $('pkBody').innerHTML='<div class="empty">ไม่มีงวดจ่ายที่ตรงเงื่อนไข'
+      +'<div class="muted" style="margin-top:6px">งวดทั้งหมดในระบบ '+PAYS.length
+      +' · ถูกยื่นขออนุมัติไปแล้ว '+already+'</div>'
+      +'<button class="btn mini" style="margin-top:9px" onclick="pkClear()">ล้างตัวกรอง</button></div>';
+    return;}
+  const PS={planned:'🗓️ วางแผน',submitted:'📤 ส่งยอด',paid:'✅ จ่ายแล้ว'};
   let h=`<table><thead><tr><th style="width:34px"></th><th style="width:96px">วันที่จ่าย</th><th>PO</th><th>SKU</th>
-    <th>งวด</th><th class="num">ยอด</th><th class="num">บาท</th><th>ช่องทาง</th><th>จ่ายในนาม</th></tr></thead><tbody>`;
+    <th>งวด</th><th class="num">ยอด</th><th class="num">บาท</th><th>ช่องทาง</th><th>จ่ายในนาม</th><th>สถานะ</th></tr></thead><tbody>`;
   rows.forEach(p=>{const b=billOf(p.bill_id);
     h+=`<tr><td><input type="checkbox" ${PICK_SEL.has(String(p.id))?'checked':''} onchange="pickOne('${p.id}',this.checked)"></td>
       <td>${esc(p.pay_date||'-')}</td><td><b>${esc(b.po_number||'-')}</b></td>
@@ -644,7 +710,8 @@ function renderPick(){
       <td class="num">${money(p.amount)} ${curSym(b.currency)}</td>
       <td class="num"><b>${money(thbOf(p))}</b></td>
       <td style="font-size:11.5px">${esc(p.channel||'-')}</td>
-      <td style="font-size:11.5px">${esc(p.pay_type||'-')}</td></tr>`;});
+      <td style="font-size:11.5px">${esc(p.pay_type||'-')}</td>
+      <td style="font-size:11.5px">${PS[p.status]||p.status||'-'}</td></tr>`;});
   $('pkBody').innerHTML=h+'</tbody></table>';
 }
 function addPicked(){
@@ -660,6 +727,87 @@ function addPicked(){
   $('pickBg').style.display='none';
   drawItems();
   toast('เพิ่ม '+rows.length+' งวดแล้ว');
+}
+
+/* ---------- ดึงงวดจากใบปะหน้าที่บันทึกไว้ (pay_docs) ---------- */
+function openDocPick(){
+  if(!DOCS.length)return toast('ยังไม่มีใบปะหน้าที่บันทึกไว้ในระบบวางแผนจ่ายเงิน');
+  renderDocPick(); $('docPickBg').style.display='flex';
+}
+function dpClear(){
+  ['dpFrom','dpTo','dpSearch'].forEach(id=>{if($(id))$(id).value='';});
+  renderDocPick();
+}
+/* ช่องทางของใบ — ใบเก่าไม่ได้เก็บไว้ ต้องไล่หาจากงวดจ่าย */
+function docChOf(x){
+  if(x.channel)return x.channel;
+  const ps=(x.payment_ids||[]).map(String).map(i=>payOf(i)).filter(Boolean);
+  return [...new Set(ps.map(q=>q.channel).filter(Boolean))].join(' / ');
+}
+function docPickRows(){
+  const f=$('dpFrom').value, t=$('dpTo').value;
+  const from=f||t, to=t||f;
+  const q=($('dpSearch').value||'').toLowerCase();
+  return DOCS.filter(x=>{
+    const d=String(x.doc_date||'');
+    if(from&&!(d>=from&&d<=to))return false;
+    if(!q)return true;
+    return ((x.company||'')+' '+docChOf(x)+' '+(x.maker||'')+' '+(x.note||'')).toLowerCase().includes(q);
+  });
+}
+function renderDocPick(){
+  const rows=docPickRows();
+  const used=usedPayIds();
+  $('dpStat').innerHTML=`พบ <b>${rows.length}</b> ใบ จากทั้งหมด ${DOCS.length}`;
+  if(!rows.length){
+    $('dpBody').innerHTML='<div class="empty">ไม่พบใบปะหน้าตามเงื่อนไข'
+      +'<button class="btn mini" style="margin-top:9px;display:block;margin-left:auto;margin-right:auto" onclick="dpClear()">ล้างตัวกรอง</button></div>';
+    return;}
+  let h=`<table><thead><tr><th style="width:100px">วันที่</th><th>จ่ายในนาม</th><th>ช่องทาง</th>
+    <th class="num">งวด</th><th class="num">ยังไม่เคยยื่น</th><th class="num">ยอดรวม</th>
+    <th>ผู้จัดทำ</th><th style="width:120px"></th></tr></thead><tbody>`;
+  rows.forEach(x=>{
+    const ids=(x.payment_ids||[]).map(String);
+    const ps=ids.map(i=>payOf(i)).filter(Boolean);
+    const fresh=ps.filter(p=>!used.has(String(p.id)));
+    const sum=fresh.reduce((s,p)=>s+thbOf(p)+(+p.fee||0),0);
+    h+=`<tr>
+      <td><b>${esc(x.doc_date||'-')}</b></td>
+      <td>${esc(x.company||'-')}</td>
+      <td style="font-size:11.5px">${esc(docChOf(x)||'-')}</td>
+      <td class="num">${ps.length}</td>
+      <td class="num"><b style="color:${fresh.length?'#1E7145':'#94A3B8'}">${fresh.length}</b></td>
+      <td class="num">${money(sum)} ฿</td>
+      <td style="font-size:11.5px">${esc(x.maker||x.created_by||'-')}</td>
+      <td>${fresh.length
+        ? `<button class="btn mini" onclick="useDoc('${x.id}')">＋ ดึงมาใช้</button>`
+        : '<span class="muted" style="font-size:11.5px">ยื่นครบแล้ว</span>'}</td></tr>`;});
+  $('dpBody').innerHTML=h+'</tbody></table>';
+}
+function useDoc(id){
+  const x=DOCS.find(v=>String(v.id)===String(id)); if(!x)return toast('ไม่พบใบนี้');
+  const used=usedPayIds(), inUse=new Set(ITEMS.map(i=>String(i.pay_id)).filter(Boolean));
+  const ps=(x.payment_ids||[]).map(String).map(i=>payOf(i)).filter(Boolean)
+    .filter(p=>!used.has(String(p.id))&&!inUse.has(String(p.id)));
+  if(!ps.length)return toast('งวดในใบนี้ถูกยื่นขออนุมัติไปหมดแล้ว');
+  // เตือนถ้าสกุลเงินปนกัน
+  const curs=[...new Set(ps.map(p=>billOf(p.bill_id).currency||'CNY'))];
+  if(curs.length>1&&!confirm('ใบนี้มีหลายสกุลเงิน ('+curs.join(', ')+')\n\nคำขอ 1 ใบควรเป็นสกุลเดียว — ดึงมาทั้งหมดไหม?'))return;
+  ps.forEach(p=>{const b=billOf(p.bill_id);
+    ITEMS.push({pay_id:String(p.id),po:b.po_number||'',sku:b.sku||'',inst:p.installment||'',
+      amount:Math.abs(+p.amount||0),rate:+p.rate||0,thb:thbOf(p),fee:+p.fee||0,
+      payee:p.payee||'',pay_date:p.pay_date||''});});
+  // เติมหัวคำขอจากใบปะหน้า
+  if(!$('r_type').value&&x.company)$('r_type').value=x.company;
+  if(!$('r_ch').value){const c=docChOf(x); if(c&&c.indexOf(' / ')<0)$('r_ch').value=c;}
+  if(!$('r_due').value&&x.doc_date)$('r_due').value=x.doc_date;
+  if(!$('r_cur').value||curs.length===1)$('r_cur').value=curs[0]||'CNY';
+  if(!$('r_reason').value.trim())
+    $('r_reason').value='ตามใบปะหน้าเอกสารค่าใช้จ่ายประจำวันที่ '+(x.doc_date||'')
+      +(x.company?(' · จ่ายในนาม '+x.company):'');
+  $('docPickBg').style.display='none';
+  drawItems();
+  toast('ดึง '+ps.length+' งวดจากใบปะหน้าแล้ว ✅');
 }
 
 /* ---------- บันทึก ---------- */
