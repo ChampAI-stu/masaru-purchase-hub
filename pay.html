@@ -23,7 +23,7 @@ body{font-family:'Sarabun',sans-serif;background:var(--bg);color:#1E293B;font-si
 .tab.on{color:#fff;border-bottom-color:var(--red)}
 .wrap{max-width:1720px;margin:20px auto;padding:0 22px}
 /* ใบปะหน้า/เอกสารพิมพ์ยังคงความกว้าง A4 เดิม ไม่ให้ยืดตามจอ */
-#dcPaper,#mdPaper{max-width:1000px;margin-left:auto;margin-right:auto}
+#mdPaper{max-width:1000px;margin-left:auto;margin-right:auto}
 .card{background:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 1px 4px rgba(16,42,80,.08);margin-bottom:16px}
 h2{font-size:16px;color:var(--navy);margin-bottom:12px;border-left:4px solid var(--red);padding-left:10px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
@@ -108,6 +108,15 @@ td.num,th.num{text-align:right;white-space:nowrap}
   object-fit:contain;display:inline-block;border:1px solid #bbb}
 /* หัวข้อ + รูปแรก = ส่วนเดียวกัน ห้ามตัดคนละหน้า */
 .qt-picblock{break-inside:avoid;page-break-inside:avoid}
+/* พิมพ์เฉพาะใบปะหน้าในโมดัล */
+@media print{
+  body.printing-dc *{visibility:hidden}
+  body.printing-dc #dcSheet,body.printing-dc #dcSheet *{visibility:visible}
+  body.printing-dc #dcSheet{position:absolute;left:0;top:0;width:100%}
+  body.printing-dc,body.printing-dc *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  body.printing-dc #dcModal{max-width:none!important;width:100%!important;padding:0!important;max-height:none!important}
+  @page{size:A4 portrait;margin:12mm}
+}
 /* ===== ใบเสนอราคา: ฟอร์มซ้าย · ตัวอย่างใบขวา (ตรึงไว้ ไม่ต้องเลื่อนไปมา) ===== */
 .qt-bar{background:#fff;padding:0 0 10px;margin-bottom:8px;border-bottom:1px solid var(--line)}
 .qt-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,700px);gap:18px;align-items:start}
@@ -191,7 +200,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-59</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-60</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -324,18 +333,23 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
       <div id="dcKsher"></div>
       <div class="scroll"><div id="dcPick"></div></div>
     </div>
-    <div class="card" id="dcPaper" style="display:none">
-      <div class="row no-print" style="margin-bottom:10px">
-        <b>ตัวอย่างใบปะหน้า</b><div style="flex:1"></div>
-        <button class="btn mini ghost" onclick="$('dcPaper').style.display='none'">ปิด</button>
-        <span id="dcExecBtns" style="display:none">
-          <button class="btn mini green" onclick="approveDoc('paid')">✔ อนุมัติทั้งใบ</button>
-          <button class="btn mini" style="background:#B45309" onclick="approveDoc('rejected')">✖ ไม่อนุมัติทั้งใบ</button>
-        </span>
-        <button class="btn mini" onclick="saveDoc()">💾 บันทึกเอกสาร</button>
-        <button class="btn" onclick="window.print()">🖨️ พิมพ์ / บันทึก PDF</button>
+    <div class="modal-bg" id="dcPaper">
+      <div class="modal" id="dcModal" style="max-width:calc(100vw - 40px);width:1120px">
+        <button class="expand-btn no-print" onclick="toggleWide('dcModal',this)">⛶ ขยายเต็มจอ</button>
+        <div class="row no-print qt-bar" style="margin-bottom:10px">
+          <b style="font-size:15px">📄 ตัวอย่างใบปะหน้า</b><div style="flex:1"></div>
+          <span id="dcExecBtns" style="display:none">
+            <button class="btn mini green" onclick="approveDoc('paid')">✔ อนุมัติทั้งใบ</button>
+            <button class="btn mini" style="background:#B45309" onclick="approveDoc('rejected')">✖ ไม่อนุมัติทั้งใบ</button>
+          </span>
+          <button class="btn mini ghost" onclick="$('dcPaper').style.display='none'">✕ ปิด</button>
+          <button class="btn mini" onclick="saveDoc()">💾 บันทึกเอกสาร</button>
+          <button class="btn" onclick="printDcSheet()">🖨️ พิมพ์ / PDF</button>
+        </div>
+        <div class="scroll" style="background:#F4F6FA;border-radius:9px;padding:12px">
+          <div id="dcSheet"></div>
+        </div>
       </div>
-      <div id="dcSheet"></div>
     </div>
     <div class="card no-print" id="dcHistCard">
       <div class="row">
@@ -2452,6 +2466,13 @@ function docNoteBlock(){
     <div style="white-space:pre-wrap;font-size:12.5px;line-height:1.75;margin-top:4px">${esc(t)}</div>
   </div>`;
 }
+/* พิมพ์เฉพาะใบปะหน้า ไม่ติดพื้นหลังโมดัล */
+function printDcSheet(){
+  document.body.classList.add('printing-dc');
+  const done=()=>{document.body.classList.remove('printing-dc');window.removeEventListener('afterprint',done);};
+  window.addEventListener('afterprint',done);
+  setTimeout(()=>{window.print();setTimeout(done,1200);},60);
+}
 function buildDocDomestic(rows,coName,thDate){
   const detail=$('dcDetail')&&$('dcDetail').checked;
   const lines=[];
@@ -2570,8 +2591,8 @@ function checkDocData(){
 }
 
 function buildDoc(show){
-  if(show===true)$('dcPaper').style.display='';
-  if($('dcPaper').style.display==='none')return;
+  if(show===true)$('dcPaper').style.display='flex';
+  if($('dcPaper').style.display!=='flex')return;
   const rows=docSelected();
   if(!rows.length){$('dcSheet').innerHTML='<div class="empty">ยังไม่ได้เลือกรายการ</div>';return;}
   const d=$('dcDate').value;
