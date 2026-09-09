@@ -109,12 +109,13 @@ td.num,th.num{text-align:right;white-space:nowrap}
 /* หัวข้อ + รูปแรก = ส่วนเดียวกัน ห้ามตัดคนละหน้า */
 .qt-picblock{break-inside:avoid;page-break-inside:avoid}
 /* ===== ใบเสนอราคา: ฟอร์มซ้าย · ตัวอย่างใบขวา (ตรึงไว้ ไม่ต้องเลื่อนไปมา) ===== */
-.qt-bar{position:sticky;top:0;z-index:5;background:#fff;padding:10px 0 8px;margin-bottom:6px;
-  border-bottom:1px solid var(--line)}
+.qt-bar{background:#fff;padding:0 0 10px;margin-bottom:8px;border-bottom:1px solid var(--line)}
 .qt-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,700px);gap:18px;align-items:start}
 .qt-left{min-width:0}
-.qt-right{position:sticky;top:66px;max-height:calc(100vh - 96px);overflow:auto;
-  background:#F4F6FA;border:1px solid var(--line);border-radius:10px;padding:10px}
+.qt-right{background:#F4F6FA;border:1px solid var(--line);border-radius:10px;padding:10px;
+  max-height:calc(100vh - 210px);overflow:auto;position:sticky;top:0}
+#qtEditor .qt-left{max-height:calc(100vh - 210px);overflow:auto;padding-right:6px}
+#qtEditor .qt-split{align-items:start}
 .qt-rt-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
 @media(max-width:1300px){
   .qt-split{grid-template-columns:1fr}
@@ -190,7 +191,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-57</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-58</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -374,18 +375,22 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
         <h2 style="margin:0;border:0;padding:0">💱 ใบเสนอราคา (Quotation)</h2>
         <div style="flex:1"></div>
         <input id="qtSearch" placeholder="ค้นหา PO / Vendor / ผู้รับผิดชอบ" style="max-width:250px" oninput="renderQuotList()">
-        <button class="btn edit-only" onclick="openQuot()">+ สร้างใบเสนอราคา</button>
+        <button class="btn edit-only" onclick="openQuot()" style="background:var(--green)">+ สร้างใบเสนอราคา</button>
       </div>
       <div class="scroll"><div id="qtList"></div></div>
     </div>
 
-    <div class="card" id="qtEditor" style="display:none">
+  </div><!-- /tab-quot -->
+
+<!-- ============ MODAL: ฟอร์มใบเสนอราคา ============ -->
+<div class="modal-bg" id="qtEditBg">
+  <div class="modal" id="qtEditor" style="max-width:calc(100vw - 40px);width:1560px">
       <div class="row qt-bar" style="flex-wrap:wrap">
         <h2 style="margin:0;border:0;padding:0" id="qtTitle">สร้างใบเสนอราคา</h2>
         <div style="flex:1"></div>
-        <button class="btn ghost" onclick="closeQuot()">ปิด</button>
+        <button class="btn ghost" onclick="closeQuot()">✕ ปิด</button>
         <button class="btn ghost" onclick="printQuot()">🖨️ พิมพ์ / PDF</button>
-        <button class="btn green edit-only" onclick="saveQuot()">💾 บันทึก</button>
+        <button class="btn green edit-only" onclick="saveQuot()">💾 บันทึกใบเสนอราคา</button>
       </div>
       <div class="qt-split">
       <div class="qt-left">
@@ -445,8 +450,8 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
         <div id="qtPaper"></div>
       </div>
       </div><!-- /qt-split -->
-    </div>
   </div>
+</div>
 
   <!-- ============ TAB: ตารางสรุปบันทึก ============ -->
   <div id="tab-ledger" style="display:none">
@@ -3168,7 +3173,7 @@ function renderQuotList(){
 
 function closeQuot(){
   if(QT_PICS.some(p=>p._new)&&!confirm('มีรูปที่ยังไม่ได้บันทึก — ปิดแล้วรูปจะหาย\n\nปิดเลยไหม?'))return;
-  $('qtEditor').style.display='none';
+  $('qtEditBg').style.display='none';
 }
 /* เปิดดูใบเสนอราคาแบบอ่านอย่างเดียว */
 function viewQuot(id){
@@ -3206,9 +3211,9 @@ function openQuot(id){
   QT_ROWS=(x&&Array.isArray(x.items))?JSON.parse(JSON.stringify(x.items)):[];
   QT_PICS=(x&&Array.isArray(x.pics))?JSON.parse(JSON.stringify(x.pics)):[];
   if(!QT_ROWS.length&&$('q_po').value)pullQuotPo();
-  $('qtEditor').style.display=''; bindQuotPaste();
+  $('qtEditBg').style.display='flex'; bindQuotPaste();
   drawQuotRows(); drawQuotPics(); drawQuot();
-  $('qtEditor').scrollIntoView({behavior:'smooth',block:'start'});
+  const sc=$('qtEditor').querySelector('.qt-left'); if(sc)sc.scrollTop=0;
 }
 /* ดึง SKU / จำนวน / ราคา จาก Purchase Board ตามเลข PO */
 async function pullQuotPo(force){
@@ -3341,7 +3346,7 @@ let QT_PASTE=false;
 function bindQuotPaste(){
   if(QT_PASTE)return; QT_PASTE=true;
   document.addEventListener('paste',async function(ev){
-    if(!$('qtEditor')||$('qtEditor').style.display==='none')return;
+    if(!$('qtEditBg')||$('qtEditBg').style.display!=='flex')return;
     const items=[...(ev.clipboardData&&ev.clipboardData.items||[])];
     const f=items.map(function(x){return x.kind==='file'?x.getAsFile():null;}).find(function(x){return x&&/^image\//.test(x.type);});
     if(!f)return;
@@ -3427,7 +3432,7 @@ async function saveQuot(){
                 : sb.from('quotations').insert(rec);
   const {error}=await q;
   if(error)return alert('บันทึกไม่สำเร็จ: '+error.message);
-  await loadQuot(); $('qtEditor').style.display='none'; toast('บันทึกใบเสนอราคาแล้ว ✅');
+  await loadQuot(); $('qtEditBg').style.display='none'; toast('บันทึกใบเสนอราคาแล้ว ✅');
 }
 async function delQuot(id){
   if(!confirm('ลบใบเสนอราคานี้?'))return;
