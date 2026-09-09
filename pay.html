@@ -168,6 +168,9 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   font-size:10.5px;font-weight:800;padding:0 5px;line-height:16px;vertical-align:1px}
 .cur-tag.thb{background:#E8F5EC;color:#146C38;border-color:#BFE2CB}
 .fold-btn{padding:2px 8px;font-size:12px;min-width:28px;line-height:1.5}
+.mdsw{display:inline-flex;background:#EEF2F7;border-radius:9px;padding:3px;gap:3px}
+.mds{padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--muted);white-space:nowrap}
+.mds.on{background:#fff;color:var(--navy);box-shadow:0 1px 3px rgba(16,42,80,.12)}
 /* แท็บย่อยในหน้าเอกสารประจำวัน — แยกส่วนทำงานกับส่วนประวัติ */
 .subtabs{display:flex;gap:8px;margin-bottom:14px;border-bottom:2px solid var(--line)}
 .subtab{padding:9px 18px;cursor:pointer;font-weight:700;font-size:13.5px;color:var(--muted);
@@ -209,7 +212,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-73</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-74</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -939,7 +942,14 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
 <!-- ============ MODAL: บันทึกข้อความภายใน (Internal Memo) ============ -->
 <div class="modal-bg" id="memoDocBg">
   <div class="modal" style="max-width:1080px">
-    <h3 class="no-print">📄 บันทึกข้อความภายใน</h3>
+    <div class="row no-print" style="align-items:center;margin-bottom:4px">
+      <h3 style="margin:0">📄 บันทึกข้อความภายใน</h3>
+      <div style="flex:1"></div>
+      <div class="mdsw">
+        <div class="mds on" id="mdSwPrice" onclick="setMdForm('price')">💲 เปลี่ยนแปลงราคา</div>
+        <div class="mds"    id="mdSwPay"   onclick="setMdForm('pay')">💰 ชี้แจงการชำระค่าสินค้า</div>
+      </div>
+    </div>
     <div class="row no-print" style="gap:10px;flex-wrap:wrap;margin:10px 0">
       <div class="fld" style="width:190px"><label>เลขที่</label><input id="md_no" oninput="renderMemoDoc()"></div>
       <div class="fld" style="width:165px"><label>วันที่</label><input id="md_date" type="date" onchange="renderMemoDoc()"></div>
@@ -948,13 +958,17 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
       <div class="fld" style="flex:1;min-width:220px"><label>เรื่อง</label><input id="md_subject" oninput="renderMemoDoc()"></div>
     </div>
     <div class="fld no-print"><label>เนื้อความ</label>
-      <textarea id="md_body" rows="2" oninput="renderMemoDoc()"></textarea></div>
-    <div class="no-print" style="margin:12px 0 6px;font-weight:700;display:flex;align-items:center;gap:10px">
-      รายการที่เปลี่ยนแปลง
-      <button class="btn mini ghost" onclick="mdAddRow()">+ เพิ่มแถว</button>
-      <span class="muted" style="font-size:11.5px">ดึงจาก Purchase Board อัตโนมัติ · แก้ไข/ลบได้</span>
+      <textarea id="md_body" rows="3" oninput="renderMemoDoc()"></textarea>
+      <button class="btn mini ghost" style="margin-top:5px" onclick="mdFillDefault(true);renderMemoDoc()"
+        title="สร้างเนื้อความใหม่จากข้อมูลบิล">↺ ร่างข้อความใหม่</button></div>
+    <div id="mdPriceBox">
+      <div class="no-print" style="margin:12px 0 6px;font-weight:700;display:flex;align-items:center;gap:10px">
+        รายการที่เปลี่ยนแปลง
+        <button class="btn mini ghost" onclick="mdAddRow()">+ เพิ่มแถว</button>
+        <span class="muted" style="font-size:11.5px">ดึงจาก Purchase Board อัตโนมัติ · แก้ไข/ลบได้</span>
+      </div>
+      <div id="mdItems" class="no-print scroll" style="margin-bottom:14px"></div>
     </div>
-    <div id="mdItems" class="no-print scroll" style="margin-bottom:14px"></div>
     <div id="mdPaper" style="border:1px solid var(--line);border-radius:8px"></div>
     <div class="row no-print" style="margin-top:14px;justify-content:flex-end">
       <button class="btn ghost" onclick="$('memoDocBg').style.display='none'">ปิด</button>
@@ -1704,6 +1718,64 @@ function mdNextNo(dstr){
   const n=MEMOS.filter(m=>/บันทึกข้อความภายใน/.test(m.memo||'')).length+1;
   return 'PU-'+String(n).padStart(3,'0')+'/Rev.00/'+y;
 }
+/* ===== แบบฟอร์มบันทึกข้อความ =====
+   price = ชี้แจงการเปลี่ยนแปลงราคาต่อหน่วย (ของเดิม)
+   pay   = ชี้แจงการชำระค่าสินค้า / โยกยอดจากนามบุคคลเป็นนามบริษัท   */
+let MD_FORM='price';
+function setMdForm(v){
+  MD_FORM=v;
+  $('mdSwPrice').classList.toggle('on',v==='price');
+  $('mdSwPay').classList.toggle('on',v==='pay');
+  $('mdPriceBox').style.display=(v==='price')?'':'none';
+  try{localStorage.setItem('mdForm',v);}catch(e){}
+  mdFillDefault(); renderMemoDoc();
+}
+/* เนื้อความ + เรื่อง ตามแบบฟอร์มที่เลือก */
+function mdFillDefault(force){
+  const b=BILLS.find(x=>String(x.id)===String(MEMO_BID))||{};
+  const po=String(b.po_number||'');
+  if(MD_FORM==='price'){
+    if(force||!$('md_subject').value||/ชำระค่าสินค้า/.test($('md_subject').value))
+      $('md_subject').value='ชี้แจงการเปลี่ยนแปลงราคาต่อหน่วย';
+    if(force||!$('md_body').value||/เนื่องจาก PO/.test($('md_body').value))
+      $('md_body').value='เนื่องจากแผนกจัดซื้อ มีรายละเอียดการเปลี่ยนแปลงราคาต่อหน่วย ดังนี้';
+    return;
+  }
+  // ----- แบบชี้แจงการชำระค่าสินค้า -----
+  if(force||!$('md_subject').value||/เปลี่ยนแปลงราคา/.test($('md_subject').value))
+    $('md_subject').value='ชี้แจงการชำระค่าสินค้าของ PO '+po;
+  if(force||!$('md_body').value||/เปลี่ยนแปลงราคาต่อหน่วย/.test($('md_body').value))
+    $('md_body').value=mdPayDraft(b);
+}
+/* ร่างเนื้อความจากข้อมูลบิลจริง */
+function mdPayDraft(b){
+  const W={CNY:'หยวน',USD:'ดอลลาร์',THB:'บาท'}[b.currency||'CNY']||'';
+  const ps=billPays(b.id).filter(p=>p.status!=='rejected')
+    .sort((a,c)=>String(a.pay_date||'').localeCompare(String(c.pay_date||'')));
+  const paid=ps.filter(p=>p.status==='paid');
+  const paidSumC=paid.reduce((s,p)=>s+Math.abs(+p.amount||0),0);
+  const left=Math.max(0,(+b.total_amount||0)-paidSumC);
+  const person=paid.filter(p=>(p.pay_type||'')==='นามบุคคล');
+  const co=({LIKESHOP:'บริษัท ไลค์ช็อป มอลล์ จำกัด',MASARU:'บริษัท มาซารุ มาร์เก็ตติ้ง จำกัด',
+             DAIKI:'บริษัท ไดกิ เทรดดิ้ง จำกัด'})[b.company]||b.company||'บริษัท';
+  const qty=(+b.qty||0);
+  const head='เนื่องจาก PO '+(b.po_number||'')
+    +(b.sku?(' ('+b.sku+(qty?(' จำนวน '+money(qty)+' ชิ้น'):'')+')'):'')
+    +' มียอดรวมทั้งสิ้น '+money(b.total_amount)+' '+W+' ';
+  if(person.length){
+    return head
+      +'ซึ่งได้มีการชำระเงิน'+(person[0].installment||'มัดจำ')+' แล้ว '
+      +'โดยโอนเงินในนามบุคคล ทั้งนี้ เนื่องจากจะดำเนินการนำเข้าสินค้าในนาม '+co+' '
+      +'จึงขอโยกยอดชำระเงินจำนวน '+money(paidSumC)+' '+W+' ของ PO ดังกล่าว '
+      +'ให้เป็นการโอนเงินในนามบริษัท เพื่อให้ข้อมูลการชำระเงินสอดคล้องกับเอกสารของบริษัท '
+      +'และดำเนินการชำระยอดค้างในนามบริษัทต่อไป';
+  }
+  return head
+    +(paid.length?('ชำระไปแล้ว '+money(paidSumC)+' '+W+' '):'')
+    +(left>0?('คงเหลือค้างชำระ '+money(left)+' '+W+' '):'ชำระครบถ้วนแล้ว ')
+    +'จึงขออนุมัติดำเนินการชำระเงินในนาม '+co+' ตามรายละเอียดข้างต้น';
+}
+
 function openMemoDoc(){
   const b=BILLS.find(x=>String(x.id)===String(MEMO_BID));
   if(!b){alert('ยังไม่ได้เลือกบิล');return;}
@@ -1712,8 +1784,12 @@ function openMemoDoc(){
   $('md_no').value=mdNextNo(today);
   $('md_to').value='แผนกบัญชี';
   $('md_from').value='แผนกจัดซื้อ';
-  $('md_subject').value='ชี้แจงการเปลี่ยนแปลงราคาต่อหน่วย';
-  $('md_body').value='เนื่องจากแผนกจัดซื้อ มีรายละเอียดการเปลี่ยนแปลงราคาต่อหน่วย ดังนี้';
+  try{MD_FORM=localStorage.getItem('mdForm')||'price';}catch(e){MD_FORM='price';}
+  $('mdSwPrice').classList.toggle('on',MD_FORM==='price');
+  $('mdSwPay').classList.toggle('on',MD_FORM==='pay');
+  $('mdPriceBox').style.display=(MD_FORM==='price')?'':'none';
+  $('md_subject').value=''; $('md_body').value='';
+  mdFillDefault(true);
   // ดึงรายการของ PO นี้จาก Purchase Board
   const po=String(b.po_number||'');
   const its=POROWS.filter(r=>String(r.po_number||'')===po);
@@ -1768,12 +1844,12 @@ function renderMemoDoc(){
       <tr><td colspan="2"><b>เรื่อง :</b> ${esc($('md_subject').value||'')}</td></tr>
     </table>
     <div style="white-space:pre-wrap;margin-bottom:8px">${esc($('md_body').value||'')}</div>
-    <div style="margin-bottom:4px">รายละเอียดการเปลี่ยนแปลงมีดังนี้</div>
+    ${MD_FORM==='price'?`<div style="margin-bottom:4px">รายละเอียดการเปลี่ยนแปลงมีดังนี้</div>
     <table class="md-items">
       <thead><tr><th style="width:19%">PO</th><th style="width:21%">SKU เดิม</th>
         <th style="width:16%">จำนวน</th><th style="width:22%">ราคา /หน่วย (เดิม)</th>
         <th style="width:22%">ราคา/หน่วย (ใหม่)</th></tr></thead>
-      <tbody>${rows}</tbody></table>
+      <tbody>${rows}</tbody></table>`:''}
     <div style="margin-top:26px">จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ</div>
     <div class="md-sign">
       <div>${sg('ผู้ขออนุมัติ','','ตำแหน่ง ..............................................')}</div>
