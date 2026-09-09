@@ -209,7 +209,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-70</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-71</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -3399,7 +3399,15 @@ let QT_PAGE=1;
 function qtGo(n){ QT_PAGE=n; renderQuotList(); const b=$('qtList'); if(b)b.scrollIntoView({block:'start'}); }
 
 async function loadQuot(){
-  const {data,error}=await sb.from('quotations').select('*').order('created_at',{ascending:false}).limit(300);
+  // ⚡ ไม่ดึงคอลัมน์ pics (ภาพย่อ base64 หนักมาก) — ดึงเฉพาะตอนเปิดใบนั้น
+  const COLS='id,po_number,po_date,ref_pr,vendor,deliver_by,currency,ship_fee,total,'
+    +'title_note,note,responsible,items,pic_count,item_count,created_by,created_at,updated_at';
+  let {data,error}=await sb.from('quotations').select(COLS).order('created_at',{ascending:false}).limit(500);
+  if(error&&/column|does not exist/i.test(error.message)){
+    // ยังไม่ได้รัน quotation_speed.sql → ถอยไปดึงแบบเดิม
+    const r2=await sb.from('quotations').select('*').order('created_at',{ascending:false}).limit(300);
+    data=r2.data; error=r2.error;
+  }
   if(error){
     $('qtList').innerHTML='<div class="empty">โหลดไม่ได้: '+esc(error.message)
       +(/does not exist/i.test(error.message)?'<br><span class="muted">ยังไม่ได้สร้างตาราง — รันไฟล์ quotation.sql ก่อน</span>':'')+'</div>';
@@ -3427,7 +3435,7 @@ function renderQuotList(){
       +'<td>'+esc(x.vendor||'-')+'</td><td>'+esc(x.deliver_by||'-')+'</td>'
       +'<td>'+(x.responsible?esc(x.responsible):'<span class="muted">—</span>')+'</td>'
       +'<td class="right">'+((x.items||[]).length)+'</td>'
-      +'<td class="right">'+((x.pics||[]).length||'-')+'</td>'
+      +'<td class="right">'+((x.pic_count!=null?x.pic_count:(x.pics||[]).length)||'-')+'</td>'
       +'<td class="right"><b>'+money(x.total)+' '+curSym(x.currency)+'</b></td>'
       +'<td style="white-space:nowrap"><button class="btn mini ghost" onclick="viewQuot(\''+x.id+'\')">👁 เปิดดู</button> '
       +(canEdit?'<button class="btn mini" onclick="openQuot(\''+x.id+'\')">แก้</button> '
@@ -3440,10 +3448,11 @@ function closeQuot(){
   $('qtEditBg').style.display='none';
 }
 /* เปิดดูใบเสนอราคาแบบอ่านอย่างเดียว */
-function viewQuot(id){
+async function viewQuot(id){
   const x=QUOTS.find(function(v){return String(v.id)===String(id);});
   if(!x)return toast('ไม่พบใบนี้');
   QT_ID=id;
+  if(x.pic_count>0&&!Array.isArray(x.pics)){ toast('กำลังโหลดรูป…'); await ensurePics(x); }
   QT_ROWS=Array.isArray(x.items)?JSON.parse(JSON.stringify(x.items)):[];
   QT_PICS=Array.isArray(x.pics)?JSON.parse(JSON.stringify(x.pics)):[];
   $('q_po').value=x.po_number||''; $('q_date').value=x.po_date||'';
@@ -3462,9 +3471,18 @@ function printQuotView(){
   $('quotViewBg').style.display='none';
   printQuot();
 }
-function openQuot(id){
+/* ดึง pics ของใบนั้นมาเมื่อจำเป็น (รายการไม่โหลดมาด้วยเพื่อความเร็ว) */
+async function ensurePics(x){
+  if(!x||Array.isArray(x.pics))return (x&&x.pics)||[];
+  if(!(x.pic_count>0)){x.pics=[];return [];}
+  const {data,error}=await sb.from('quotations').select('pics').eq('id',x.id).single();
+  x.pics=(!error&&data&&Array.isArray(data.pics))?data.pics:[];
+  return x.pics;
+}
+async function openQuot(id){
   QT_ID=id||null;
   const x=id?QUOTS.find(function(v){return String(v.id)===String(id);}):null;
+  if(x&&x.pic_count>0&&!Array.isArray(x.pics)){ toast('กำลังโหลดรูป…'); await ensurePics(x); }
   $('qtTitle').textContent=x?('แก้ไขใบเสนอราคา PO '+(x.po_number||'')):'สร้างใบเสนอราคา';
   $('q_po').value=(x&&x.po_number)||''; $('q_date').value=(x&&x.po_date)||'';
   $('q_pr').value=(x&&x.ref_pr)||'';    $('q_vendor').value=(x&&x.vendor)||'';
@@ -3714,6 +3732,7 @@ async function saveQuotInner(){
     title_note:$('q_title').value.trim()||null, note:$('q_note').value.trim()||null,
     responsible:$('q_resp').value.trim()||null,
     pics:QT_PICS.map(p=>({thumb:p.thumb,url:p.url||'',id:p.id||'',name:p.name||''})),
+    pic_count:QT_PICS.length, item_count:QT_ROWS.length,
     created_by:ME||'', updated_at:new Date().toISOString()};
   if(!QT_ID){
     // กันบันทึกซ้ำ: มีใบ PO เดียวกัน ยอดเท่ากัน สร้างภายใน 2 นาทีที่ผ่านมา
