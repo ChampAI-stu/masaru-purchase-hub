@@ -168,6 +168,12 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   font-size:10.5px;font-weight:800;padding:0 5px;line-height:16px;vertical-align:1px}
 .cur-tag.thb{background:#E8F5EC;color:#146C38;border-color:#BFE2CB}
 .fold-btn{padding:2px 8px;font-size:12px;min-width:28px;line-height:1.5}
+/* แท็บย่อยในหน้าเอกสารประจำวัน — แยกส่วนทำงานกับส่วนประวัติ */
+.subtabs{display:flex;gap:8px;margin-bottom:14px;border-bottom:2px solid var(--line)}
+.subtab{padding:9px 18px;cursor:pointer;font-weight:700;font-size:13.5px;color:var(--muted);
+  border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.subtab:hover{color:var(--navy)}
+.subtab.on{color:var(--navy);border-bottom-color:var(--red);background:#fff;border-radius:8px 8px 0 0}
 .bar{background:#E9EEF5;border-radius:20px;height:8px;overflow:hidden;min-width:90px}
 .bar>i{display:block;height:100%;background:var(--green)}
 .empty{text-align:center;color:var(--muted);padding:26px}
@@ -203,7 +209,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-64</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-65</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -315,9 +321,18 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
 
   <!-- ============ TAB 3: เอกสารประจำวัน (เฟส 3) ============ -->
   <div id="tab-doc" style="display:none">
+    <div class="subtabs no-print">
+      <div class="subtab on" id="stMake" onclick="docSub('make')">✏️ สร้างเอกสาร</div>
+      <div class="subtab" id="stHist" onclick="docSub('hist')">📚 เอกสารที่บันทึกไว้ <span id="dcCount"></span></div>
+    </div>
+    <div id="dcMakeWrap">
     <div class="card no-print">
-      <h2>🧾 เอกสารค่าใช้จ่ายประจำวัน</h2>
-      <div class="sub-note">
+      <div class="row" style="margin-bottom:8px">
+        <h2 style="margin:0;border:0;padding:0">🧾 เอกสารค่าใช้จ่ายประจำวัน</h2>
+        <div style="flex:1"></div>
+        <button class="btn mini ghost" onclick="toggleHelp()" id="helpBtn" title="ซ่อน/แสดงคำแนะนำ">💡 วิธีใช้</button>
+      </div>
+      <div class="sub-note" id="dcHelp" style="display:none">
         เลือกวันที่ → ติ๊กรายการที่จะรวมในใบปะหน้า → กด <b>สร้างใบปะหน้า</b> → พิมพ์/บันทึก PDF<br>
         เอกสารที่ต้องแนบประกอบ: ใบเสนอราคาจีน+แปล · PO จากระบบ JST · หลักฐานการขอซื้อ · ใบปะหน้านี้
       </div>
@@ -383,7 +398,8 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
         </div>
       </div>
     </div>
-    <div class="card no-print" id="dcHistCard">
+    </div><!-- /dcMakeWrap -->
+    <div class="card no-print" id="dcHistCard" style="display:none">
       <div class="row">
         <h2 style="margin:0;border:0;padding:0">📚 เอกสารที่บันทึกไว้</h2>
         <div style="flex:1"></div>
@@ -2291,6 +2307,15 @@ function fillDocCompany(){
     if(curCh&&chs.includes(curCh))$('dcChannel').value=curCh;
   }
 }
+/* คืนค่าที่เคยเลือกไว้ตอนเปิดแท็บ */
+let DC_SUB_INIT=false;
+function initDocSub(){
+  if(DC_SUB_INIT)return; DC_SUB_INIT=true;
+  let v='make', h='0';
+  try{ v=localStorage.getItem('dcSub')||'make'; h=localStorage.getItem('dcHelp')||'0'; }catch(e){}
+  if($('dcHelp'))$('dcHelp').style.display=(h==='1')?'':'none';
+  docSub(v);
+}
 function renderDoc(){
   if(!$('dcDate'))return;
   if(!$('dcDate').value)$('dcDate').value=todayStr();
@@ -2304,7 +2329,7 @@ function renderDoc(){
     $('dcPick').innerHTML='<div class="empty">'+(pend
       ? `วันนี้มี ${pend} งวดที่ยัง<b>ไม่ได้ส่งยอด</b> — ใบปะหน้าจะขึ้นเฉพาะงวดที่ส่งยอดแล้ว<br><span class="muted">ส่งยอดได้ที่แท็บ 🗓️ แผนจ่ายรายวัน</span>`
       : 'วันนี้ยังไม่มีงวดที่ส่งยอด — เพิ่มจากแท็บ Tracking บิล')+'</div>';
-    $('dcPaper').style.display='none';renderDocHist();return;}
+    $('dcPaper').style.display='none';renderDocHist();docSub('hist');return;}
   let h='<table><thead><tr><th style="width:38px"></th><th>PO</th><th>Vendor / SKU</th><th>งวด</th><th class="num">ยอด</th><th class="num">เรท</th><th class="num">บาท</th><th class="num">ค่าธรรมเนียม</th><th>สถานะ</th></tr></thead><tbody>';
   rows.forEach(p=>{const b=billOf(p.bill_id);
     h+=`<tr><td style="text-align:center"><input type="checkbox" class="dc-ck" data-id="${p.id}" checked style="width:16px;height:16px;cursor:pointer" onchange="pickDoc(this)"></td>
@@ -2900,7 +2925,9 @@ async function saveDoc(){
                : 'บันทึกไม่สำเร็จ: '+error.message);
     return;
   }
-  toast('บันทึกเอกสารแล้ว ✅'); loadDocs();
+  toast('บันทึกเอกสารแล้ว ✅');
+  await loadDocs();
+  if($('dcCount'))$('dcCount').innerHTML=`<span class="pill" style="background:#EAF3DE;color:#1E7145;margin-left:4px">${DOCS.length}</span>`;
 }
 async function loadDocs(){
   try{ DOCS=await pageAll('pay_docs','*','doc_date'); }catch(e){ DOCS=[]; }
@@ -2932,6 +2959,21 @@ function docHistRows(){
     return ((x.company||'')+' '+docCh(x)+' '+(x.maker||'')+' '+(x.note||'')+' '+(x.created_by||''))
       .toLowerCase().includes(q);
   });
+}
+/* สลับระหว่าง "สร้างเอกสาร" กับ "เอกสารที่บันทึกไว้" */
+function docSub(v){
+  const make=v==='make';
+  $('dcMakeWrap').style.display=make?'':'none';
+  $('dcHistCard').style.display=make?'none':'';
+  $('stMake').classList.toggle('on',make);
+  $('stHist').classList.toggle('on',!make);
+  try{localStorage.setItem('dcSub',v);}catch(e){}
+  if(!make)renderDocHist();
+}
+function toggleHelp(){
+  const h=$('dcHelp'), on=h.style.display==='none';
+  h.style.display=on?'':'none';
+  try{localStorage.setItem('dcHelp',on?'1':'0');}catch(e){}
 }
 function renderDocHist(){
   if(!$('dcHist'))return;
@@ -2967,6 +3009,8 @@ function renderDocHist(){
       <td class="num">${(x.payment_ids||[]).length}</td><td>${esc(x.note||'')}</td><td class="muted">${esc(x.created_by||'')}</td>
       <td class="num" style="white-space:nowrap"><button class="btn mini ghost" onclick="openSavedDoc('${x.id}')">👁️ เปิดดู</button> ${canEdit?`<button class="btn mini red" onclick="delDoc('${x.id}')">ลบ</button>`:''}</td></tr>`;});
   $('dcHist').innerHTML=h+'</tbody></table>'+pagerBar(_all.length,DH_PAGE,'dhGo');
+  if($('dcCount'))$('dcCount').innerHTML=DOCS.length
+    ?`<span class="pill" style="background:#EEF2F7;color:#1F3864;margin-left:4px">${DOCS.length}</span>`:'';
 }
 // เปิดดูเอกสารที่บันทึกไว้ — ตั้งค่าตัวกรองให้ตรง แล้วสร้างใบปะหน้าใหม่
 function openSavedDoc(id){
@@ -3010,7 +3054,7 @@ function goTab(t){
   if(t==='ledger')renderLedger();
   if(t==='plan')planView(PLANVIEW);
   if(t==='month')renderMonth();
-  if(t==='doc'){renderDoc();loadDocs();}
+  if(t==='doc'){initDocSub();renderDoc();renderDocHist();loadDocs();}
 }
 
 /* กล่องสรุป Ksher ในหน้าเอกสารประจำวัน — บอกว่าวันนี้ต้องเติมเท่าไหร่ */
