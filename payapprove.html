@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MASARU | แจ้งขออนุมัติการชำระเงิน</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--navy:#1A2942;--navy2:#223350;--red:#D0212B;--gold:#C9A84C;--bg:#F1F4F9;--line:#E3E8F0;--muted:#64748B;--green:#1E7145;--amber:#854F0B;--blue:#2E75B6}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun',sans-serif;background:var(--bg);color:#1E293B;font-size:14px}
+.topbar{background:var(--navy);color:#fff;padding:10px 22px;display:flex;align-items:center;gap:14px;border-bottom:3px solid var(--red);flex-wrap:wrap}
+.brand{font-weight:800;font-style:italic;font-size:20px;letter-spacing:.5px}
+.brand span{color:var(--red)}
+.topbar .sub{opacity:.85;font-size:13px}
+.topbar .sp{flex:1}
+.pill-top{background:#ffffff22;border:1px solid #ffffff44;border-radius:20px;padding:5px 14px;font-size:12.5px}
+.btn-top{background:#fff;color:var(--navy);border:0;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px}
+.logout-btn{background:transparent;border:1px solid #ffffff33;color:#ffffffcc;font-size:13px;padding:6px 14px;border-radius:8px;cursor:pointer;font-family:inherit}
+.tabs{background:var(--navy2);display:flex;gap:4px;padding:0 18px;overflow-x:auto}
+.tab{color:#C8D2E0;padding:12px 16px;cursor:pointer;font-weight:600;border-bottom:3px solid transparent;font-size:13.5px;white-space:nowrap}
+.tab.on{color:#fff;border-bottom-color:var(--red)}
+.wrap{max-width:1560px;margin:20px auto;padding:0 22px}
+.card{background:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 1px 4px rgba(16,42,80,.08);margin-bottom:16px}
+h2{font-size:16px;color:var(--navy);margin-bottom:12px;border-left:4px solid var(--red);padding-left:10px}
+h3{font-size:15px;color:var(--navy);margin-bottom:10px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--navy);color:#fff;border-radius:12px;padding:12px 16px}
+.kpi .lbl{font-size:12px;opacity:.85}.kpi .val{font-size:22px;font-weight:800;margin-top:2px}
+.kpi.green{background:var(--green)}.kpi.red{background:var(--red)}.kpi.gold{background:#8a6d1f}.kpi.blue{background:var(--blue)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+input,select,textarea{font-family:inherit;font-size:13.5px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid #2E75B655}
+.btn{background:var(--navy);color:#fff;border:0;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13.5px;white-space:nowrap}
+.btn.red{background:var(--red)}.btn.green{background:var(--green)}.btn.gold{background:#8a6d1f}
+.btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.mini{padding:5px 10px;font-size:12px;border-radius:7px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--navy);color:#fff;padding:9px 10px;text-align:left;white-space:nowrap;font-weight:600}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:nth-child(even) td{background:#F8FAFD}
+.right,td.num,th.num{text-align:right;white-space:nowrap}
+.muted{color:var(--muted)}
+.scroll{overflow-x:auto}
+.empty{padding:36px;text-align:center;color:var(--muted)}
+.pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.st-draft{background:#EEF2F7;color:#475569}
+.st-submitted{background:#FFF3CC;color:var(--amber)}
+.st-mgr{background:#E6F1FB;color:var(--blue)}
+.st-approved{background:#EAF3DE;color:var(--green)}
+.st-rejected{background:#FCE4E4;color:var(--red)}
+.st-paid{background:#DCFCE7;color:#166534}
+.sub-note{background:#E6F1FB;border-left:4px solid var(--blue);border-radius:8px;padding:10px 13px;font-size:12.5px;line-height:1.7;margin-bottom:12px}
+.fld{margin-bottom:10px}
+.fld label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+@media(max-width:860px){.grid2,.grid3{grid-template-columns:1fr}}
+.modal-bg{position:fixed;inset:0;background:rgba(15,25,45,.55);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:24px 14px;overflow:auto}
+.modal{background:#fff;border-radius:14px;padding:20px 22px;width:100%;max-width:680px;max-height:calc(100vh - 48px);display:flex;flex-direction:column;position:relative}
+.modal .scroll{overflow:auto;flex:1 1 auto;min-height:0}
+.modal.wide{max-width:calc(100vw - 28px)!important}
+.expand-btn{position:absolute;top:14px;right:16px;background:#EEF2F7;border:1px solid var(--line);border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--navy);z-index:2}
+/* ===== แถบสายอนุมัติ ===== */
+.flow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.flow .step{display:flex;align-items:center;gap:6px;background:#F1F5F9;border-radius:20px;padding:5px 13px;font-size:12px;color:#64748B}
+.flow .step.done{background:#EAF3DE;color:var(--green);font-weight:700}
+.flow .step.now{background:#FFF3CC;color:var(--amber);font-weight:700}
+.flow .step.bad{background:#FCE4E4;color:var(--red);font-weight:700}
+.flow .arrow{color:#CBD5E1}
+/* ===== เอกสารพิมพ์ ===== */
+.doc{background:#fff;color:#111;padding:26px 30px;width:780px;max-width:100%;margin:0 auto;border:1px solid var(--line);border-radius:8px}
+.doc h1{text-align:center;font-size:19px;font-weight:800;margin-bottom:2px}
+.doc .sub{text-align:center;font-size:13px;color:#444;margin-bottom:14px}
+.doc table{width:100%;border-collapse:collapse;font-size:12.5px}
+.doc th,.doc td{border:1px solid #333!important;padding:6px 8px;color:#000!important}
+.doc thead th{background:#E8E8E8!important;color:#000!important;font-weight:800}
+.doc .meta{display:flex;gap:26px;flex-wrap:wrap;font-size:12.5px;margin-bottom:12px;line-height:1.9}
+.sign-row{display:flex;gap:18px;margin-top:34px;font-size:12px}
+.sign-box{flex:1;text-align:center}
+.sign-line{border-top:1px dotted #333;margin:40px 10px 6px}
+.sign-sub{color:#555;font-size:11px}
+@media print{
+  body.printing *{visibility:hidden}
+  body.printing #docPaper,body.printing #docPaper *{visibility:visible}
+  body.printing #docPaper{position:absolute;left:0;top:0;width:100%!important;max-width:none!important;padding:0!important;border:0}
+  body.printing,body.printing *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  @page{size:A4 portrait;margin:12mm}
+}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 20px;border-radius:9px;font-size:13.5px;display:none;z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">MASA<span>RU</span></div>
+  <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
+  <div class="sp"></div>
+  <span class="pill-top" id="rolePill">—</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-08</span>
+  <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
+  <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
+</div>
+
+<div class="tabs">
+  <div class="tab on" data-t="list"  onclick="goTab('list')">📋 รายการคำขอ</div>
+  <div class="tab"    data-t="mine"  onclick="goTab('mine')">📝 ของฉัน</div>
+  <div class="tab"    data-t="todo"  onclick="goTab('todo')">⏳ รออนุมัติ <span id="todoBadge"></span></div>
+  <div class="tab"    data-t="report" onclick="goTab('report')">📊 สรุป</div>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ รายการคำขอ ============ -->
+  <div id="tab-list">
+    <div class="kpis" id="kpi"></div>
+    <div class="card">
+      <div class="row">
+        <h2 style="margin:0;border:0;padding:0">📋 รายการคำขออนุมัติชำระเงิน</h2>
+        <div style="flex:1"></div>
+        <input id="fSearch" placeholder="ค้นหา เลขคำขอ / PO / ผู้ยื่น" style="max-width:250px" oninput="PAGE=1;renderList()">
+        <select id="fStatus" style="max-width:190px" onchange="PAGE=1;renderList()">
+          <option value="">— ทุกสถานะ —</option>
+          <option value="draft">📄 ร่าง</option>
+          <option value="submitted">⏳ รอหัวหน้าอนุมัติ</option>
+          <option value="mgr_approved">⏳ รอผู้บริหารอนุมัติ</option>
+          <option value="approved">✅ อนุมัติแล้ว</option>
+          <option value="paid">💸 จ่ายแล้ว</option>
+          <option value="rejected">↩️ ตีกลับ</option>
+        </select>
+        <select id="fType" style="max-width:170px" onchange="PAGE=1;renderList()">
+          <option value="">— ทุกประเภทการจ่าย —</option>
+        </select>
+        <input type="month" id="fMonth" style="max-width:160px" onchange="PAGE=1;renderList()">
+        <button class="btn ghost" onclick="clearFilter()">ล้างตัวกรอง</button>
+        <button class="btn" id="newBtn" onclick="openReq()">+ สร้างคำขอ</button>
+      </div>
+      <div class="scroll"><div id="listBody"></div></div>
+    </div>
+  </div>
+
+  <!-- ============ ของฉัน ============ -->
+  <div id="tab-mine" style="display:none">
+    <div class="card">
+      <h2>📝 คำขอที่ฉันยื่น</h2>
+      <div class="sub-note">คำขอที่คุณเป็นผู้ยื่น — ร่างที่ยังไม่ส่ง และที่ถูกตีกลับจะอยู่บนสุด</div>
+      <div class="scroll"><div id="mineBody"></div></div>
+    </div>
+  </div>
+
+  <!-- ============ รออนุมัติ ============ -->
+  <div id="tab-todo" style="display:none">
+    <div class="card">
+      <h2>⏳ รอฉันอนุมัติ</h2>
+      <div class="sub-note" id="todoNote"></div>
+      <div class="scroll"><div id="todoBody"></div></div>
+    </div>
+  </div>
+
+  <!-- ============ สรุป ============ -->
+  <div id="tab-report" style="display:none">
+    <div class="card">
+      <div class="row">
+        <h2 style="margin:0;border:0;padding:0">📊 สรุปคำขออนุมัติ</h2>
+        <div style="flex:1"></div>
+        <input type="month" id="rpMonth" style="max-width:160px" onchange="renderReport()">
+        <button class="btn ghost" onclick="exportReport()">⬇️ Export Excel</button>
+      </div>
+      <div id="rpBody"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============ MODAL: ฟอร์มคำขอ ============ -->
+<div class="modal-bg" id="reqBg">
+  <div class="modal" id="reqModal" style="max-width:1060px">
+    <button class="expand-btn" onclick="toggleWide('reqModal',this)">⛶ ขยายเต็มจอ</button>
+    <h3 id="reqTitle">สร้างคำขออนุมัติชำระเงิน</h3>
+    <div class="scroll">
+      <div class="grid3">
+        <div class="fld"><label>วันที่ยื่น</label><input type="date" id="r_date"></div>
+        <div class="fld"><label>กำหนดชำระ ★</label><input type="date" id="r_due"></div>
+        <div class="fld"><label>ความเร่งด่วน</label>
+          <select id="r_urg"><option value="normal">ปกติ</option><option value="urgent">🔥 ด่วน</option></select></div>
+        <div class="fld"><label>จ่ายในนาม ★</label>
+          <select id="r_type"><option value="">— เลือก —</option>
+            <option>LIKESHOP</option><option>MASARU</option><option>DAIKI</option><option>นามบุคคล</option></select></div>
+        <div class="fld"><label>ช่องทางการโอน ★</label>
+          <select id="r_ch"><option value="">— เลือก —</option>
+            <option>JMF CARGO</option><option>Ksher Payment Co.Ltd.</option><option>ธนาคาร (SWIFT Code)</option></select></div>
+        <div class="fld"><label>สกุลเงิน</label>
+          <select id="r_cur"><option value="CNY">¥ CNY</option><option value="USD">$ USD</option><option value="THB">฿ THB</option></select></div>
+      </div>
+
+      <div class="row" style="margin:6px 0">
+        <button class="btn mini" onclick="openPick()">＋ ดึงงวดจ่ายจากระบบวางแผน</button>
+        <button class="btn mini ghost" onclick="addManual()">＋ เพิ่มรายการเอง</button>
+        <div style="flex:1"></div>
+        <span id="r_sum" class="muted" style="font-size:12.5px"></span>
+      </div>
+      <div class="scroll"><div id="r_items"></div></div>
+
+      <div class="fld" style="margin-top:10px"><label>เหตุผลการขออนุมัติ ★</label>
+        <textarea id="r_reason" rows="3" placeholder="เช่น มัดจำงวดที่ 2 ตามสัญญา ครบกำหนด 15/09/2026"></textarea></div>
+      <div class="fld"><label>หมายเหตุเพิ่มเติม</label>
+        <textarea id="r_note" rows="2"></textarea></div>
+    </div>
+    <div class="row" style="margin-top:12px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('reqBg').style.display='none'">ปิด</button>
+      <button class="btn ghost" onclick="saveReq('draft')">💾 บันทึกร่าง</button>
+      <button class="btn gold" onclick="saveReq('submitted')">📤 ส่งอนุมัติ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: เลือกงวดจ่าย ============ -->
+<div class="modal-bg" id="pickBg" style="z-index:70">
+  <div class="modal" id="pickModal" style="max-width:1040px">
+    <button class="expand-btn" onclick="toggleWide('pickModal',this)">⛶ ขยายเต็มจอ</button>
+    <h3>＋ เลือกงวดจ่ายจากระบบวางแผนจ่ายเงิน</h3>
+    <div class="sub-note">แสดงงวดที่ยัง<b>ไม่เคยถูกยื่นขออนุมัติ</b> — ติ๊กงวดที่ต้องการแล้วกดเพิ่ม</div>
+    <div class="row">
+      <input type="date" id="pkFrom" onchange="renderPick()" style="max-width:155px">
+      <span class="muted">ถึง</span>
+      <input type="date" id="pkTo" onchange="renderPick()" style="max-width:155px">
+      <input id="pkSearch" placeholder="ค้นหา PO / SKU" style="max-width:200px" oninput="renderPick()">
+      <button class="btn mini ghost" onclick="pickAll(true)">เลือกทั้งหมด</button>
+      <button class="btn mini ghost" onclick="pickAll(false)">ไม่เลือก</button>
+      <div style="flex:1"></div>
+      <span id="pkStat" class="muted" style="font-size:12.5px"></span>
+    </div>
+    <div class="scroll"><div id="pkBody"></div></div>
+    <div class="row" style="margin-top:12px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('pickBg').style.display='none'">ยกเลิก</button>
+      <button class="btn" onclick="addPicked()">＋ เพิ่มที่เลือก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: ดูคำขอ ============ -->
+<div class="modal-bg" id="viewBg">
+  <div class="modal" id="viewModal" style="max-width:1000px">
+    <button class="expand-btn" onclick="toggleWide('viewModal',this)">⛶ ขยายเต็มจอ</button>
+    <h3 id="vTitle">คำขออนุมัติชำระเงิน</h3>
+    <div id="vFlow" class="flow"></div>
+    <div class="scroll" id="vBody"></div>
+    <div class="row" style="margin-top:12px;justify-content:flex-end" id="vActions"></div>
+  </div>
+</div>
+
+<!-- ============ MODAL: ตีกลับ ============ -->
+<div class="modal-bg" id="rejBg" style="z-index:70">
+  <div class="modal" style="max-width:560px">
+    <h3 style="color:var(--red)">↩️ ตีกลับคำขอ</h3>
+    <div class="sub-note" id="rejInfo"></div>
+    <div class="fld"><label>เหตุผลที่ตีกลับ (ให้ผู้ยื่นแก้ไข) ★</label>
+      <textarea id="rejNote" rows="7" placeholder="เช่น&#10;• ยอดไม่ตรงกับใบเสนอราคา&#10;• ยังไม่แนบหลักฐานการขอซื้อ&#10;• กำหนดชำระเร็วเกินไป ขอเลื่อน"></textarea></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+      <button class="btn mini ghost" onclick="rejAdd('ยอดไม่ตรงกับใบเสนอราคา')">ยอดไม่ตรง</button>
+      <button class="btn mini ghost" onclick="rejAdd('ยังไม่แนบหลักฐานการขอซื้อ')">ไม่มีหลักฐาน</button>
+      <button class="btn mini ghost" onclick="rejAdd('กำหนดชำระเร็วเกินไป ขอเลื่อน')">ขอเลื่อนกำหนด</button>
+      <button class="btn mini ghost" onclick="rejAdd('รอตรวจสอบกับซัพพลายเออร์ก่อน')">รอตรวจสอบ</button>
+    </div>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn ghost" onclick="$('rejBg').style.display='none'">ยกเลิก</button>
+      <button class="btn red" onclick="doReject()">↩️ ยืนยันตีกลับ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: เอกสารพิมพ์ ============ -->
+<div class="modal-bg" id="printBg" style="z-index:70">
+  <div class="modal" id="printModal" style="max-width:900px">
+    <button class="expand-btn" onclick="toggleWide('printModal',this)">⛶ ขยายเต็มจอ</button>
+    <h3>🖨️ ใบขออนุมัติการชำระเงิน</h3>
+    <div class="scroll" style="background:#F4F6FA;padding:12px;border-radius:9px"><div id="docPaper"></div></div>
+    <div class="row" style="margin-top:12px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('printBg').style.display='none'">ปิด</button>
+      <button class="btn" onclick="doPrint()">🖨️ พิมพ์ / บันทึก PDF</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ==================================================================
+   MASARU — ระบบแจ้งขออนุมัติการชำระเงิน
+   ⚠️ ต้องเป็น project เดียวกับ index.html / pay.html เสมอ
+   ================================================================== */
+const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
+const SUPABASE_KEY='sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);
+
+let ME='', MY_NAME='', ROLES=[], IS_MGR=false, IS_EXEC=false, IS_BUYER=false;
+let REQS=[], LOGS=[], PAYS=[], BILLS=[];
+let PAGE=1; const PER=20;
+let EDIT_ID=null, ITEMS=[], PICK_SEL=new Set(), REJ_ID=null, VIEW_ID=null;
+
+/* ---------- utils ---------- */
+const num=v=>{const n=parseFloat(String(v??'').replace(/,/g,''));return isNaN(n)?0:n;};
+const money=n=>Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2});
+const money2=n=>Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const curSym=c=>({CNY:'¥',USD:'$',THB:'฿'}[c]||c||'');
+const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+const monthStr=()=>todayStr().slice(0,7);
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2600);}
+function toggleWide(id,btn){const m=$(id);if(!m)return;const on=m.classList.toggle('wide');if(btn)btn.textContent=on?'⤡ ย่อลง':'⛶ ขยายเต็มจอ';}
+const thDate=d=>{if(!d)return '-';const x=new Date(d+'T00:00:00');
+  return x.toLocaleDateString('th-TH',{day:'numeric',month:'long'})+' '+(x.getFullYear()+543);};
+const thShort=d=>{if(!d)return '-';const x=new Date(d+'T00:00:00');
+  return x.toLocaleDateString('th-TH',{day:'2-digit',month:'short'})+' '+String(x.getFullYear()+543).slice(2);};
+
+/* ---------- สถานะ ---------- */
+const ST={
+  draft:       {t:'📄 ร่าง',                cls:'st-draft'},
+  submitted:   {t:'⏳ รอหัวหน้าอนุมัติ',     cls:'st-submitted'},
+  mgr_approved:{t:'⏳ รอผู้บริหารอนุมัติ',   cls:'st-mgr'},
+  approved:    {t:'✅ อนุมัติแล้ว',          cls:'st-approved'},
+  paid:        {t:'💸 จ่ายแล้ว',            cls:'st-paid'},
+  rejected:    {t:'↩️ ตีกลับ',              cls:'st-rejected'}
+};
+const stPill=s=>{const x=ST[s]||{t:s||'-',cls:'st-draft'};return `<span class="pill ${x.cls}">${x.t}</span>`;};
+
+/* ==================================================================
+   AUTH
+   ================================================================== */
+let LOGGING_OUT=false;
+function markLogout(){LOGGING_OUT=true;}
+$('logoutBtn').addEventListener('click',async()=>{
+  markLogout();
+  try{await sb.auth.signOut();}catch(e){}
+  try{await sb.auth.signOut({scope:'local'});}catch(e){}
+  try{Object.keys(localStorage).filter(k=>k.indexOf('sb-')===0).forEach(k=>localStorage.removeItem(k));}catch(e){}
+  location.replace('index.html?logout=1');
+});
+$('portalBtn').addEventListener('click',()=>location.href='index.html');
+
+async function boot(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){location.replace('index.html');return;}
+  const md=session.user.app_metadata||{};
+  ROLES=Array.isArray(md.user_roles)?md.user_roles:(md.user_role?[md.user_role]:[]);
+  IS_EXEC=ROLES.includes('pr_exec')||ROLES.includes('executive');
+  IS_MGR=ROLES.includes('pr_manager');
+  IS_BUYER=ROLES.includes('purchase');
+  if(!IS_BUYER&&!IS_MGR&&!IS_EXEC){location.replace('index.html');return;}
+  ME=session.user.email||'';
+  MY_NAME=(session.user.user_metadata&&(session.user.user_metadata.full_name||session.user.user_metadata.name))||ME.split('@')[0];
+  $('rolePill').textContent=IS_EXEC?'👑 ผู้บริหาร':(IS_MGR?'🧑‍💼 หัวหน้าจัดซื้อ':'📦 จัดซื้อ');
+  $('todoNote').innerHTML=IS_EXEC
+    ? 'คำขอที่ <b>หัวหน้าอนุมัติแล้ว</b> รอผู้บริหารอนุมัติขั้นสุดท้าย'
+    : (IS_MGR ? 'คำขอที่ <b>ส่งอนุมัติแล้ว</b> รอหัวหน้าจัดซื้อตรวจสอบ'
+              : 'คุณไม่มีสิทธิ์อนุมัติ — แท็บนี้แสดงคำขอที่รอผู้อื่นดำเนินการ');
+  if(!IS_BUYER&&!IS_MGR)$('newBtn').style.display='none';
+
+  sb.auth.onAuthStateChange(async(e)=>{
+    if(LOGGING_OUT)return;
+    if(e!=='SIGNED_OUT'&&e!=='USER_DELETED')return;
+    const {data:{session:s2}}=await sb.auth.getSession();
+    if(s2)return;
+    markLogout();location.replace('index.html?logout=1');
+  });
+
+  await loadAll();
+  subscribe();
+}
+
+/* ==================================================================
+   DATA
+   ================================================================== */
+async function pageAll(table,cols,order){
+  const out=[];const SIZE=1000;let from=0,guard=0;
+  while(guard++<60){
+    let q=sb.from(table).select(cols||'*');
+    if(order)q=q.order(order);
+    const {data,error}=await q.order('id').range(from,from+SIZE-1);
+    if(error){console.error('['+table+']',error);break;}
+    out.push(...(data||[]));
+    if(!data||data.length<SIZE)break;
+    from+=SIZE;
+  }
+  return out;
+}
+
+async function loadAll(){
+  const [rq,lg,py,bl]=await Promise.all([
+    pageAll('pay_requests','*','created_at'),
+    pageAll('pay_request_logs','*','created_at'),
+    pageAll('pay_payments','*','created_at'),
+    pageAll('pay_bills','*','created_at')
+  ]);
+  REQS=(rq||[]).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+  LOGS=lg||[]; PAYS=py||[]; BILLS=bl||[];
+  fillTypeFilter();
+  renderAll();
+}
+function subscribe(){
+  sb.channel('pa-live')
+    .on('postgres_changes',{event:'*',schema:'public',table:'pay_requests'},()=>loadAll())
+    .subscribe();
+}
+const billOf=id=>BILLS.find(b=>String(b.id)===String(id))||{};
+const payOf=id=>PAYS.find(p=>String(p.id)===String(id))||null;
+const thbOf=p=>{if(!p)return 0;
+  if(p.amount_thb!=null&&p.amount_thb!=='')return +p.amount_thb||0;
+  const r=+p.rate||0;return r?(Math.abs(+p.amount||0)*r):0;};
+
+function renderAll(){renderKpi();renderList();renderMine();renderTodo();renderReport();}
+
+/* ==================================================================
+   TABS
+   ================================================================== */
+function goTab(t){
+  ['list','mine','todo','report'].forEach(k=>$('tab-'+k).style.display=k===t?'':'none');
+  document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on',el.dataset.t===t));
+  if(t==='report')renderReport();
+}
+function clearFilter(){
+  $('fSearch').value='';$('fStatus').value='';$('fType').value='';$('fMonth').value='';
+  PAGE=1;renderList();
+}
+function fillTypeFilter(){
+  const ts=[...new Set(REQS.map(r=>r.pay_type).filter(Boolean))].sort();
+  const cur=$('fType').value;
+  $('fType').innerHTML='<option value="">— ทุกประเภทการจ่าย —</option>'
+    +ts.map(t=>`<option ${t===cur?'selected':''}>${esc(t)}</option>`).join('');
+}
+
+/* ==================================================================
+   KPI
+   ================================================================== */
+function renderKpi(){
+  const waitMe=todoRows().length;
+  const mine=REQS.filter(r=>r.requester===ME);
+  const myOpen=mine.filter(r=>r.status==='draft'||r.status==='rejected').length;
+  const pending=REQS.filter(r=>r.status==='submitted'||r.status==='mgr_approved');
+  const sumThb=pending.reduce((s,r)=>s+(+r.total_thb||0),0);
+  const urgent=pending.filter(r=>r.urgency==='urgent').length;
+  const today=todayStr();
+  const late=pending.filter(r=>r.due_date&&r.due_date<=today).length;
+  $('kpi').innerHTML=`
+    <div class="kpi ${waitMe?'gold':''}"><div class="lbl">⏳ รอฉันอนุมัติ</div><div class="val">${waitMe}</div></div>
+    <div class="kpi blue"><div class="lbl">อยู่ระหว่างอนุมัติ</div><div class="val">${pending.length}</div>
+      <div class="lbl" style="opacity:.8">≈ ${money(sumThb)} ฿</div></div>
+    <div class="kpi ${urgent?'red':''}"><div class="lbl">🔥 ด่วน</div><div class="val">${urgent}</div></div>
+    <div class="kpi ${late?'red':''}"><div class="lbl">⛔ ถึง/เลยกำหนดชำระ</div><div class="val">${late}</div></div>
+    <div class="kpi ${myOpen?'gold':'green'}"><div class="lbl">📝 ร่าง/ตีกลับ ของฉัน</div><div class="val">${myOpen}</div></div>`;
+  $('todoBadge').innerHTML=waitMe?`<span class="pill st-submitted" style="margin-left:4px">${waitMe}</span>`:'';
+}
+
+/* ==================================================================
+   รายการ
+   ================================================================== */
+function filtered(){
+  const q=($('fSearch').value||'').toLowerCase();
+  const st=$('fStatus').value, ty=$('fType').value, mo=$('fMonth').value;
+  return REQS.filter(r=>
+    (!st||r.status===st)&&(!ty||r.pay_type===ty)&&
+    (!mo||String(r.req_date||'').slice(0,7)===mo)&&
+    (!q||((r.req_no||'')+' '+(r.requester||'')+' '+(r.requester_name||'')+' '
+        +(r.items||[]).map(i=>i.po+' '+i.sku).join(' ')).toLowerCase().includes(q)));
+}
+function pager(total,page,fn){
+  const pages=Math.max(1,Math.ceil(total/PER));
+  if(total<=PER)return '';
+  let nums='';
+  const st=Math.max(1,Math.min(page-2,pages-4)), en=Math.min(pages,st+4);
+  for(let i=st;i<=en;i++)nums+=`<button class="btn mini ${i===page?'':'ghost'}" onclick="${fn}(${i})">${i}</button>`;
+  return `<div class="row" style="margin-top:10px;justify-content:center">
+    <span class="muted" style="font-size:12.5px">แสดง ${(page-1)*PER+1}–${Math.min(page*PER,total)} จาก ${total}</span>
+    <span style="flex:1"></span>
+    <button class="btn mini ghost" ${page<=1?'disabled':''} onclick="${fn}(${page-1})">‹</button>${nums}
+    <button class="btn mini ghost" ${page>=pages?'disabled':''} onclick="${fn}(${page+1})">›</button></div>`;
+}
+function listGo(n){PAGE=n;renderList();}
+
+function reqTable(rows,opts){
+  if(!rows.length)return '<div class="empty">ไม่มีรายการ</div>';
+  const today=todayStr();
+  let h=`<table><thead><tr><th>เลขคำขอ</th><th>วันที่ยื่น</th><th>กำหนดชำระ</th>
+    <th>จ่ายในนาม</th><th>ช่องทาง</th><th class="num">รายการ</th><th class="num">ยอด</th>
+    <th class="num">รวมบาท</th><th>สถานะ</th><th>ผู้ยื่น</th><th style="width:130px"></th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const late=r.due_date&&r.due_date<=today&&r.status!=='paid'&&r.status!=='approved';
+    h+=`<tr>
+      <td><b>${esc(r.req_no||'-')}</b>${r.urgency==='urgent'?' <span class="pill st-rejected">🔥 ด่วน</span>':''}</td>
+      <td>${thShort(r.req_date)}</td>
+      <td${late?' style="color:var(--red);font-weight:700"':''}>${thShort(r.due_date)}</td>
+      <td>${esc(r.pay_type||'-')}</td>
+      <td style="font-size:11.5px">${esc(r.channel||'-')}</td>
+      <td class="num">${(r.items||[]).length}</td>
+      <td class="num">${money(r.total_amount)} ${curSym(r.currency)}</td>
+      <td class="num"><b>${money(r.total_thb)}</b></td>
+      <td>${stPill(r.status)}</td>
+      <td style="font-size:11.5px">${esc(r.requester_name||r.requester||'-')}</td>
+      <td style="white-space:nowrap">
+        <button class="btn mini ghost" onclick="viewReq('${r.id}')">👁 ดู</button>
+        ${canEditReq(r)?`<button class="btn mini" onclick="openReq('${r.id}')">✏️</button>`:''}
+      </td></tr>`;});
+  return h+'</tbody></table>'+(opts&&opts.pager?opts.pager:'');
+}
+
+function renderList(){
+  const rows=filtered();
+  const pages=Math.max(1,Math.ceil(rows.length/PER));
+  if(PAGE>pages)PAGE=pages; if(PAGE<1)PAGE=1;
+  $('listBody').innerHTML=reqTable(rows.slice((PAGE-1)*PER,PAGE*PER),
+    {pager:pager(rows.length,PAGE,'listGo')});
+}
+function renderMine(){
+  const rank=r=>r.status==='rejected'?0:(r.status==='draft'?1:2);
+  const rows=REQS.filter(r=>r.requester===ME).sort((a,b)=>rank(a)-rank(b));
+  $('mineBody').innerHTML=reqTable(rows);
+}
+function todoRows(){
+  if(IS_EXEC)return REQS.filter(r=>r.status==='mgr_approved');
+  if(IS_MGR) return REQS.filter(r=>r.status==='submitted');
+  return REQS.filter(r=>r.status==='submitted'||r.status==='mgr_approved');
+}
+function renderTodo(){
+  const rows=todoRows().sort((a,b)=>
+    (b.urgency==='urgent')-(a.urgency==='urgent')
+    ||String(a.due_date||'9999').localeCompare(String(b.due_date||'9999')));
+  $('todoBody').innerHTML=reqTable(rows);
+}
+
+/* สิทธิ์แก้ไข: เจ้าของแก้ได้เฉพาะร่าง/ตีกลับ · หัวหน้าแก้ได้ก่อนผู้บริหารอนุมัติ */
+function canEditReq(r){
+  if(r.status==='approved'||r.status==='paid')return false;
+  if(r.requester===ME&&(r.status==='draft'||r.status==='rejected'))return true;
+  if(IS_MGR&&r.status!=='approved'&&r.status!=='paid')return true;
+  return false;
+}
+
+/* ==================================================================
+   ฟอร์มคำขอ
+   ================================================================== */
+function openReq(id){
+  EDIT_ID=id||null;
+  const r=id?REQS.find(x=>String(x.id)===String(id)):null;
+  $('reqTitle').textContent=r?('แก้ไขคำขอ '+(r.req_no||'')):'สร้างคำขออนุมัติชำระเงิน';
+  $('r_date').value=(r&&r.req_date)||todayStr();
+  $('r_due').value=(r&&r.due_date)||'';
+  $('r_urg').value=(r&&r.urgency)||'normal';
+  $('r_type').value=(r&&r.pay_type)||'';
+  $('r_ch').value=(r&&r.channel)||'';
+  $('r_cur').value=(r&&r.currency)||'CNY';
+  $('r_reason').value=(r&&r.reason)||'';
+  $('r_note').value=(r&&r.note)||'';
+  ITEMS=(r&&Array.isArray(r.items))?JSON.parse(JSON.stringify(r.items)):[];
+  drawItems();
+  $('reqBg').style.display='flex';
+}
+function addManual(){
+  ITEMS.push({pay_id:'',po:'',sku:'',inst:'',amount:0,rate:0,thb:0,fee:0,payee:''});
+  drawItems();
+}
+function delItem(i){ITEMS.splice(i,1);drawItems();}
+function setItem(i,k,v){
+  ITEMS[i][k]=(k==='po'||k==='sku'||k==='inst'||k==='payee')?v:num(v);
+  const it=ITEMS[i];
+  if(k==='amount'||k==='rate')it.thb=+(it.amount*it.rate).toFixed(2);
+  drawItems();
+}
+function drawItems(){
+  if(!ITEMS.length){
+    $('r_items').innerHTML='<div class="empty">ยังไม่มีรายการ — กด “ดึงงวดจ่ายจากระบบวางแผน” หรือ “เพิ่มรายการเอง”</div>';
+    $('r_sum').textContent='';return;
+  }
+  const cs=curSym($('r_cur').value);
+  let h=`<table><thead><tr><th style="width:34px">#</th><th>PO</th><th>SKU</th><th>งวด</th>
+    <th class="num" style="width:120px">ยอด (${cs})</th><th class="num" style="width:100px">เรท</th>
+    <th class="num" style="width:120px">บาท</th><th class="num" style="width:100px">ค่าธรรมเนียม</th>
+    <th style="width:36px"></th></tr></thead><tbody>`;
+  ITEMS.forEach((it,i)=>{
+    const lock=!!it.pay_id;   // ดึงมาจากระบบ = ไม่ให้แก้ตัวเลข
+    h+=`<tr><td style="text-align:center">${i+1}</td>
+      <td>${lock?`<b>${esc(it.po||'-')}</b>`:`<input value="${esc(it.po||'')}" oninput="setItem(${i},'po',this.value)">`}</td>
+      <td style="font-size:11.5px">${lock?esc(it.sku||'-'):`<input value="${esc(it.sku||'')}" oninput="setItem(${i},'sku',this.value)">`}</td>
+      <td>${lock?esc(it.inst||'-'):`<input value="${esc(it.inst||'')}" oninput="setItem(${i},'inst',this.value)">`}</td>
+      <td class="num">${lock?money2(it.amount):`<input type="number" step="0.01" style="text-align:right" value="${it.amount||''}" oninput="setItem(${i},'amount',this.value)">`}</td>
+      <td class="num">${lock?(it.rate?money2(it.rate):'-'):`<input type="number" step="0.0001" style="text-align:right" value="${it.rate||''}" oninput="setItem(${i},'rate',this.value)">`}</td>
+      <td class="num"><b>${money2(it.thb)}</b></td>
+      <td class="num">${lock?money2(it.fee):`<input type="number" step="0.01" style="text-align:right" value="${it.fee||''}" oninput="setItem(${i},'fee',this.value)">`}</td>
+      <td><button class="btn mini red" onclick="delItem(${i})">✕</button></td></tr>`;});
+  const tAmt=ITEMS.reduce((s,x)=>s+num(x.amount),0);
+  const tThb=ITEMS.reduce((s,x)=>s+num(x.thb)+num(x.fee),0);
+  const tFee=ITEMS.reduce((s,x)=>s+num(x.fee),0);
+  h+=`<tr style="background:#EFEFEF;font-weight:800"><td colspan="4" style="text-align:center">รวม</td>
+    <td class="num">${money2(tAmt)}</td><td class="num">-</td>
+    <td class="num">${money2(tThb-tFee)}</td><td class="num">${money2(tFee)}</td><td></td></tr>`;
+  $('r_items').innerHTML=h+'</tbody></table>';
+  $('r_sum').innerHTML=`${ITEMS.length} รายการ · รวม <b>${money2(tAmt)} ${cs}</b> ≈ <b>${money2(tThb)} ฿</b>`;
+}
+
+/* ---------- เลือกงวดจ่ายจากระบบวางแผน ---------- */
+function usedPayIds(){
+  const s=new Set();
+  REQS.forEach(r=>{ if(String(r.id)===String(EDIT_ID))return;
+    if(r.status==='rejected')return;
+    (r.payment_ids||[]).forEach(i=>s.add(String(i))); });
+  return s;
+}
+function openPick(){
+  PICK_SEL=new Set();
+  if(!$('pkFrom').value){const d=new Date();d.setDate(d.getDate()-30);$('pkFrom').value=d.toISOString().slice(0,10);}
+  if(!$('pkTo').value){const d=new Date();d.setDate(d.getDate()+30);$('pkTo').value=d.toISOString().slice(0,10);}
+  renderPick();$('pickBg').style.display='flex';
+}
+function pickRows(){
+  const used=usedPayIds(), inUse=new Set(ITEMS.map(i=>String(i.pay_id)).filter(Boolean));
+  const f=$('pkFrom').value, t=$('pkTo').value, q=($('pkSearch').value||'').toLowerCase();
+  const ty=$('r_type').value, ch=$('r_ch').value, cu=$('r_cur').value;
+  return PAYS.filter(p=>p.status!=='rejected')
+    .filter(p=>!used.has(String(p.id))&&!inUse.has(String(p.id)))
+    .filter(p=>{const d=String(p.pay_date||'');return (!f||d>=f)&&(!t||d<=t);})
+    .filter(p=>!ty||(p.pay_type||'')===ty)
+    .filter(p=>!ch||(p.channel||'')===ch)
+    .filter(p=>{const b=billOf(p.bill_id);return !cu||(b.currency||'CNY')===cu;})
+    .filter(p=>{if(!q)return true;const b=billOf(p.bill_id);
+      return ((b.po_number||'')+' '+(b.sku||'')).toLowerCase().includes(q);})
+    .sort((a,b)=>String(a.pay_date||'').localeCompare(String(b.pay_date||'')));
+}
+function pickAll(on){pickRows().forEach(p=>on?PICK_SEL.add(String(p.id)):PICK_SEL.delete(String(p.id)));renderPick();}
+function pickOne(id,on){on?PICK_SEL.add(String(id)):PICK_SEL.delete(String(id));renderPick();}
+function renderPick(){
+  const rows=pickRows();
+  const sel=rows.filter(p=>PICK_SEL.has(String(p.id)));
+  $('pkStat').innerHTML=`เลือก <b>${sel.length}</b> จาก ${rows.length} งวด · รวม <b>${money(sel.reduce((s,p)=>s+thbOf(p)+(+p.fee||0),0))} ฿</b>`;
+  if(!rows.length){$('pkBody').innerHTML='<div class="empty">ไม่มีงวดจ่ายที่ตรงเงื่อนไข<br><span class="muted">ลองขยายช่วงวันที่ หรือเปลี่ยนประเภท/ช่องทาง/สกุลเงินในฟอร์ม</span></div>';return;}
+  let h=`<table><thead><tr><th style="width:34px"></th><th style="width:96px">วันที่จ่าย</th><th>PO</th><th>SKU</th>
+    <th>งวด</th><th class="num">ยอด</th><th class="num">บาท</th><th>ช่องทาง</th><th>จ่ายในนาม</th></tr></thead><tbody>`;
+  rows.forEach(p=>{const b=billOf(p.bill_id);
+    h+=`<tr><td><input type="checkbox" ${PICK_SEL.has(String(p.id))?'checked':''} onchange="pickOne('${p.id}',this.checked)"></td>
+      <td>${esc(p.pay_date||'-')}</td><td><b>${esc(b.po_number||'-')}</b></td>
+      <td style="font-size:11.5px">${esc(b.sku||'-')}</td><td>${esc(p.installment||'-')}</td>
+      <td class="num">${money(p.amount)} ${curSym(b.currency)}</td>
+      <td class="num"><b>${money(thbOf(p))}</b></td>
+      <td style="font-size:11.5px">${esc(p.channel||'-')}</td>
+      <td style="font-size:11.5px">${esc(p.pay_type||'-')}</td></tr>`;});
+  $('pkBody').innerHTML=h+'</tbody></table>';
+}
+function addPicked(){
+  const rows=pickRows().filter(p=>PICK_SEL.has(String(p.id)));
+  if(!rows.length)return toast('ยังไม่ได้เลือกงวด');
+  rows.forEach(p=>{const b=billOf(p.bill_id);
+    ITEMS.push({pay_id:String(p.id),po:b.po_number||'',sku:b.sku||'',inst:p.installment||'',
+      amount:Math.abs(+p.amount||0),rate:+p.rate||0,thb:thbOf(p),fee:+p.fee||0,
+      payee:p.payee||'',pay_date:p.pay_date||''});});
+  if(!$('r_type').value&&rows[0].pay_type)$('r_type').value=rows[0].pay_type;
+  if(!$('r_ch').value&&rows[0].channel)$('r_ch').value=rows[0].channel;
+  if(!$('r_due').value&&rows[0].pay_date)$('r_due').value=rows[0].pay_date;
+  $('pickBg').style.display='none';
+  drawItems();
+  toast('เพิ่ม '+rows.length+' งวดแล้ว');
+}
+
+/* ---------- บันทึก ---------- */
+async function nextReqNo(){
+  const d=todayStr().replace(/-/g,'').slice(2);        // 260908
+  const pre='PA-'+d.slice(0,2)+d.slice(2,4)+d.slice(4,6)+'-';
+  const same=REQS.filter(r=>String(r.req_no||'').startsWith(pre));
+  let n=1;
+  same.forEach(r=>{const m=String(r.req_no).match(/-(\d+)$/);if(m)n=Math.max(n,+m[1]+1);});
+  return pre+String(n).padStart(3,'0');
+}
+async function saveReq(mode){
+  if(!$('r_due').value)  return toast('เลือกกำหนดชำระก่อน');
+  if(!$('r_type').value) return toast('เลือกจ่ายในนามก่อน');
+  if(!$('r_ch').value)   return toast('เลือกช่องทางการโอนก่อน');
+  if(!ITEMS.length)      return toast('ยังไม่มีรายการ');
+  if(mode==='submitted'&&!$('r_reason').value.trim())return toast('ใส่เหตุผลการขออนุมัติก่อนส่ง');
+
+  const tAmt=ITEMS.reduce((s,x)=>s+num(x.amount),0);
+  const tFee=ITEMS.reduce((s,x)=>s+num(x.fee),0);
+  const tThb=ITEMS.reduce((s,x)=>s+num(x.thb),0)+tFee;
+  const rec={
+    req_date:$('r_date').value||todayStr(), due_date:$('r_due').value,
+    pay_type:$('r_type').value, channel:$('r_ch').value, currency:$('r_cur').value,
+    urgency:$('r_urg').value, reason:$('r_reason').value.trim()||null,
+    note:$('r_note').value.trim()||null,
+    items:ITEMS, payment_ids:ITEMS.map(i=>i.pay_id).filter(Boolean),
+    total_amount:+tAmt.toFixed(2), total_thb:+tThb.toFixed(2), total_fee:+tFee.toFixed(2),
+    status:mode, updated_at:new Date().toISOString()
+  };
+  let id=EDIT_ID;
+  if(EDIT_ID){
+    const old=REQS.find(x=>String(x.id)===String(EDIT_ID))||{};
+    if(old.status==='rejected'&&mode==='submitted'){ rec.reject_note=null;rec.reject_by=null;rec.reject_at=null; }
+    const {error}=await sb.from('pay_requests').update(rec).eq('id',EDIT_ID);
+    if(error)return alert('บันทึกไม่สำเร็จ: '+error.message);
+  }else{
+    rec.req_no=await nextReqNo();
+    rec.requester=ME; rec.requester_name=MY_NAME;
+    const {data,error}=await sb.from('pay_requests').insert(rec).select('id').single();
+    if(error)return alert('บันทึกไม่สำเร็จ: '+error.message
+      +(/does not exist/i.test(error.message)?'\n\nยังไม่ได้สร้างตาราง — รันไฟล์ payapprove.sql ก่อน':''));
+    id=data.id;
+  }
+  await addLog(id, EDIT_ID?(mode==='submitted'?'submitted':'updated'):'created',
+    mode==='submitted'?'ส่งอนุมัติ':'บันทึกร่าง');
+  $('reqBg').style.display='none';
+  await loadAll();
+  toast(mode==='submitted'?'ส่งอนุมัติแล้ว 📤':'บันทึกร่างแล้ว 💾');
+}
+async function addLog(reqId,action,note){
+  try{ await sb.from('pay_request_logs').insert({req_id:reqId,action,actor:ME,note:note||null}); }
+  catch(e){ console.warn('[log]',e.message); }
+}
+
+/* ==================================================================
+   ดู / อนุมัติ
+   ================================================================== */
+function flowBar(r){
+  const s=r.status;
+  const step=(label,state)=>`<div class="step ${state}">${label}</div>`;
+  const A=(cond,now)=>cond?'done':(now?'now':'');
+  if(s==='rejected'){
+    return step('📤 ยื่นคำขอ','done')+'<span class="arrow">→</span>'
+      +step('↩️ ตีกลับ — รอผู้ยื่นแก้ไข','bad');
+  }
+  return step('📤 ยื่นคำขอ', s==='draft'?'now':'done')
+    +'<span class="arrow">→</span>'
+    +step('🧑‍💼 หัวหน้าจัดซื้อ', A(['mgr_approved','approved','paid'].includes(s), s==='submitted'))
+    +'<span class="arrow">→</span>'
+    +step('👑 ผู้บริหาร', A(['approved','paid'].includes(s), s==='mgr_approved'))
+    +'<span class="arrow">→</span>'
+    +step('💸 จ่ายเงิน', A(s==='paid', s==='approved'));
+}
+
+function viewReq(id){
+  const r=REQS.find(x=>String(x.id)===String(id)); if(!r)return toast('ไม่พบคำขอนี้');
+  VIEW_ID=id;
+  $('vTitle').innerHTML=`${esc(r.req_no||'')} ${stPill(r.status)}`
+    +(r.urgency==='urgent'?' <span class="pill st-rejected">🔥 ด่วน</span>':'');
+  $('vFlow').innerHTML=flowBar(r);
+
+  const cs=curSym(r.currency);
+  let items=`<table><thead><tr><th style="width:34px">#</th><th>PO</th><th>SKU</th><th>งวด</th>
+    <th class="num">ยอด (${cs})</th><th class="num">เรท</th><th class="num">บาท</th><th class="num">ค่าธรรมเนียม</th></tr></thead><tbody>`;
+  (r.items||[]).forEach((it,i)=>{
+    items+=`<tr><td style="text-align:center">${i+1}</td><td><b>${esc(it.po||'-')}</b></td>
+      <td style="font-size:11.5px">${esc(it.sku||'-')}</td><td>${esc(it.inst||'-')}</td>
+      <td class="num">${money2(it.amount)}</td><td class="num">${it.rate?money2(it.rate):'-'}</td>
+      <td class="num"><b>${money2(it.thb)}</b></td><td class="num">${money2(it.fee)}</td></tr>`;});
+  items+=`<tr style="background:#EFEFEF;font-weight:800"><td colspan="4" style="text-align:center">รวม</td>
+    <td class="num">${money2(r.total_amount)}</td><td class="num">-</td>
+    <td class="num">${money2((+r.total_thb||0)-(+r.total_fee||0))}</td>
+    <td class="num">${money2(r.total_fee)}</td></tr></tbody></table>`;
+
+  const lg=LOGS.filter(l=>String(l.req_id)===String(id))
+    .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+  const LA={created:'สร้างคำขอ',updated:'แก้ไข',submitted:'ส่งอนุมัติ',checked:'หัวหน้าอนุมัติ',
+            approved:'ผู้บริหารอนุมัติ',rejected:'ตีกลับ',paid:'ยืนยันจ่ายแล้ว'};
+
+  $('vBody').innerHTML=`
+    <div style="display:flex;gap:26px;flex-wrap:wrap;background:#F7F9FC;border-radius:10px;padding:12px 15px;margin-bottom:12px;font-size:12.5px;line-height:1.9">
+      <div><div class="muted" style="font-size:11px">วันที่ยื่น</div><b>${thDate(r.req_date)}</b></div>
+      <div><div class="muted" style="font-size:11px">กำหนดชำระ</div><b>${thDate(r.due_date)}</b></div>
+      <div><div class="muted" style="font-size:11px">จ่ายในนาม</div><b>${esc(r.pay_type||'-')}</b></div>
+      <div><div class="muted" style="font-size:11px">ช่องทางการโอน</div><b>${esc(r.channel||'-')}</b></div>
+      <div><div class="muted" style="font-size:11px">ยอดรวม</div>
+        <b style="font-size:16px">${money2(r.total_amount)} ${cs}</b>
+        <div class="muted" style="font-size:11px">≈ ${money2(r.total_thb)} ฿</div></div>
+      <div><div class="muted" style="font-size:11px">ผู้ยื่น</div><b>${esc(r.requester_name||r.requester||'-')}</b></div>
+    </div>
+    ${r.status==='rejected'&&r.reject_note?`<div style="background:#FCE4E4;border-left:5px solid var(--red);border-radius:9px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;white-space:pre-wrap;line-height:1.7">
+      <b style="color:var(--red)">↩️ ถูกตีกลับโดย ${esc(r.reject_by||'')}</b><br>${esc(r.reject_note)}</div>`:''}
+    ${r.reason?`<div style="background:#E6F1FB;border-left:5px solid var(--blue);border-radius:9px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;white-space:pre-wrap;line-height:1.7">
+      <b>เหตุผลการขออนุมัติ</b><br>${esc(r.reason)}</div>`:''}
+    ${items}
+    ${r.note?`<div style="margin-top:10px;font-size:12.5px"><b>หมายเหตุ:</b> <span style="white-space:pre-wrap">${esc(r.note)}</span></div>`:''}
+    <div style="margin-top:14px">
+      <b style="font-size:13px">🕘 ประวัติการดำเนินการ</b>
+      ${lg.length?`<table style="margin-top:6px"><thead><tr><th style="width:150px">เวลา</th><th style="width:150px">การกระทำ</th><th>ผู้ทำ</th><th>หมายเหตุ</th></tr></thead><tbody>
+        ${lg.map(l=>`<tr><td style="font-size:11.5px">${new Date(l.created_at).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'})}</td>
+          <td>${esc(LA[l.action]||l.action)}</td><td style="font-size:11.5px">${esc(l.actor||'-')}</td>
+          <td style="font-size:11.5px">${esc(l.note||'-')}</td></tr>`).join('')}
+      </tbody></table>`:'<div class="muted" style="font-size:12px;margin-top:4px">— ยังไม่มีประวัติ —</div>'}
+    </div>`;
+
+  // ปุ่มตามสถานะ + บทบาท
+  let btns=`<button class="btn ghost" onclick="$('viewBg').style.display='none'">ปิด</button>
+    <button class="btn ghost" onclick="printReq('${r.id}')">🖨️ พิมพ์ใบขออนุมัติ</button>`;
+  if(canEditReq(r))btns+=`<button class="btn ghost" onclick="$('viewBg').style.display='none';openReq('${r.id}')">✏️ แก้ไข</button>`;
+  if(r.status==='draft'&&r.requester===ME)
+    btns+=`<button class="btn gold" onclick="act('${r.id}','submitted')">📤 ส่งอนุมัติ</button>`;
+  if(r.status==='submitted'&&IS_MGR)
+    btns+=`<button class="btn red" onclick="openReject('${r.id}')">↩️ ตีกลับ</button>
+           <button class="btn green" onclick="act('${r.id}','mgr_approved')">✔ หัวหน้าอนุมัติ</button>`;
+  if(r.status==='mgr_approved'&&IS_EXEC)
+    btns+=`<button class="btn red" onclick="openReject('${r.id}')">↩️ ตีกลับ</button>
+           <button class="btn green" onclick="act('${r.id}','approved')">👑 อนุมัติจ่าย</button>`;
+  if(r.status==='approved'&&(IS_MGR||IS_EXEC||IS_BUYER))
+    btns+=`<button class="btn" onclick="act('${r.id}','paid')">💸 ยืนยันจ่ายแล้ว</button>`;
+  $('vActions').innerHTML=btns;
+  $('viewBg').style.display='flex';
+}
+
+async function act(id,to){
+  const r=REQS.find(x=>String(x.id)===String(id)); if(!r)return;
+  const label={submitted:'ส่งอนุมัติ',mgr_approved:'หัวหน้าอนุมัติ',approved:'อนุมัติจ่าย',paid:'ยืนยันจ่ายแล้ว'}[to];
+  if(!confirm(label+' คำขอ '+(r.req_no||'')+' ?\n\nยอดรวม '+money2(r.total_thb)+' ฿'))return;
+  const up={status:to,updated_at:new Date().toISOString()};
+  const now=new Date().toISOString();
+  if(to==='mgr_approved'){up.checked_by=ME;up.checked_at=now;}
+  if(to==='approved'){up.approved_by=ME;up.approved_at=now;}
+  if(to==='paid'){up.paid_by=ME;up.paid_at=now;}
+  const {error}=await sb.from('pay_requests').update(up).eq('id',id);
+  if(error)return alert('ไม่สำเร็จ: '+error.message);
+  await addLog(id,{submitted:'submitted',mgr_approved:'checked',approved:'approved',paid:'paid'}[to],label);
+  $('viewBg').style.display='none';
+  await loadAll();
+  toast(label+'แล้ว ✅');
+}
+
+function openReject(id){
+  REJ_ID=id;
+  const r=REQS.find(x=>String(x.id)===String(id))||{};
+  $('rejInfo').innerHTML=`คำขอ <b>${esc(r.req_no||'')}</b> · ยอดรวม <b>${money2(r.total_thb)} ฿</b>
+    · ผู้ยื่น ${esc(r.requester_name||r.requester||'')}`;
+  $('rejNote').value=r.reject_note||'';
+  $('rejBg').style.display='flex';
+  setTimeout(()=>$('rejNote').focus(),60);
+}
+function rejAdd(t){
+  const el=$('rejNote');
+  el.value=(el.value.trim()?el.value.replace(/\s+$/,'')+'\n':'')+'• '+t+' ';
+  el.focus();el.selectionStart=el.selectionEnd=el.value.length;
+}
+async function doReject(){
+  const note=$('rejNote').value.trim();
+  if(!note)return toast('ใส่เหตุผลที่ตีกลับก่อน');
+  const {error}=await sb.from('pay_requests')
+    .update({status:'rejected',reject_note:note,reject_by:ME,reject_at:new Date().toISOString(),
+             updated_at:new Date().toISOString()}).eq('id',REJ_ID);
+  if(error)return alert('ไม่สำเร็จ: '+error.message);
+  await addLog(REJ_ID,'rejected',note);
+  $('rejBg').style.display='none';$('viewBg').style.display='none';
+  await loadAll();toast('ตีกลับแล้ว ↩️');
+}
+
+/* ==================================================================
+   พิมพ์ใบขออนุมัติ
+   ================================================================== */
+const CO_NAME={LIKESHOP:'บริษัท ไลค์ช็อป มอลล์ จำกัด',MASARU:'บริษัท มาซารุ มาร์เก็ตติ้ง จำกัด',
+  DAIKI:'บริษัท ไดกิ เทรดดิ้ง จำกัด','นามบุคคล':'นามบุคคล'};
+function printReq(id){
+  const r=REQS.find(x=>String(x.id)===String(id)); if(!r)return;
+  const cs=curSym(r.currency);
+  let rows='';
+  (r.items||[]).forEach((it,i)=>{
+    rows+=`<tr><td style="text-align:center">${i+1}</td><td>${esc(it.po||'')}</td>
+      <td>${esc(it.sku||'')}</td><td>${esc(it.inst||'')}</td>
+      <td class="num">${money2(it.amount)}</td><td class="num">${it.rate?money2(it.rate):''}</td>
+      <td class="num">${money2(it.thb)}</td><td class="num">${it.fee?money2(it.fee):''}</td>
+      <td class="num">${money2(num(it.thb)+num(it.fee))}</td></tr>`;});
+  $('docPaper').innerHTML=`<div class="doc" id="docSheet">
+    <h1>${esc(CO_NAME[r.pay_type]||r.pay_type||'')}</h1>
+    <div class="sub">ใบขออนุมัติการชำระเงิน<br>เลขที่ ${esc(r.req_no||'')} · วันที่ ${thDate(r.req_date)}</div>
+    <div class="meta">
+      <div><b>จ่ายในนาม:</b> ${esc(r.pay_type||'-')}</div>
+      <div><b>ช่องทางการโอน:</b> ${esc(r.channel||'-')}</div>
+      <div><b>กำหนดชำระ:</b> ${thDate(r.due_date)}</div>
+      ${r.urgency==='urgent'?'<div><b style="color:#B01722">🔥 ด่วน</b></div>':''}
+    </div>
+    <table><thead><tr><th style="width:34px">ที่</th><th>PO</th><th>SKU</th><th>งวด</th>
+      <th class="num">ยอด (${cs})</th><th class="num">เรท</th><th class="num">จำนวนเงินบาท</th>
+      <th class="num">ค่าธรรมเนียม</th><th class="num">รวมชำระ</th></tr></thead>
+      <tbody>${rows}
+      <tr style="background:#EFEFEF;font-weight:800"><td colspan="4" style="text-align:center">รวมทั้งสิ้น</td>
+        <td class="num">${money2(r.total_amount)}</td><td class="num">-</td>
+        <td class="num">${money2((+r.total_thb||0)-(+r.total_fee||0))}</td>
+        <td class="num">${money2(r.total_fee)}</td>
+        <td class="num">${money2(r.total_thb)}</td></tr></tbody></table>
+    ${r.reason?`<div style="margin-top:14px;font-size:12.5px;line-height:1.8">
+      <b>เหตุผลการขออนุมัติ</b><div style="white-space:pre-wrap">${esc(r.reason)}</div></div>`:''}
+    ${r.note?`<div style="margin-top:10px;font-size:12.5px;line-height:1.8">
+      <b>หมายเหตุ</b><div style="white-space:pre-wrap">${esc(r.note)}</div></div>`:''}
+    <div class="sign-row">
+      <div class="sign-box"><div class="sign-line"></div>ผู้ขออนุมัติ<div class="sign-sub">(ฝ่ายจัดซื้อ)</div>
+        <div style="color:#666;font-size:11px">${esc(r.requester_name||r.requester||'')}</div></div>
+      <div class="sign-box"><div class="sign-line"></div>ผู้ตรวจสอบ<div class="sign-sub">(หัวหน้าจัดซื้อ)</div>
+        <div style="color:#666;font-size:11px">${esc(r.checked_by||'')}</div></div>
+      <div class="sign-box"><div class="sign-line"></div>ผู้ตรวจสอบ<div class="sign-sub">(ฝ่ายบัญชี)</div></div>
+      <div class="sign-box"><div class="sign-line"></div>ผู้อนุมัติจ่าย<div class="sign-sub">(ผู้บริหาร)</div>
+        <div style="color:#666;font-size:11px">${esc(r.approved_by||'')}</div></div>
+    </div>
+  </div>`;
+  $('printBg').style.display='flex';
+}
+function doPrint(){
+  document.body.classList.add('printing');
+  const done=()=>{document.body.classList.remove('printing');window.removeEventListener('afterprint',done);};
+  window.addEventListener('afterprint',done);
+  setTimeout(()=>{window.print();setTimeout(done,1200);},60);
+}
+
+/* ==================================================================
+   สรุป
+   ================================================================== */
+function renderReport(){
+  if(!$('rpMonth').value)$('rpMonth').value=monthStr();
+  const mo=$('rpMonth').value;
+  const rows=REQS.filter(r=>String(r.req_date||'').slice(0,7)===mo);
+  if(!rows.length){$('rpBody').innerHTML='<div class="empty">เดือนนี้ยังไม่มีคำขอ</div>';return;}
+
+  const byStatus={},byType={},byUser={};
+  rows.forEach(r=>{
+    byStatus[r.status]=(byStatus[r.status]||0)+1;
+    const t=r.pay_type||'(ไม่ระบุ)';
+    (byType[t]=byType[t]||{n:0,thb:0}); byType[t].n++; byType[t].thb+=+r.total_thb||0;
+    const u=r.requester_name||r.requester||'(ไม่ระบุ)';
+    (byUser[u]=byUser[u]||{n:0,thb:0}); byUser[u].n++; byUser[u].thb+=+r.total_thb||0;
+  });
+  const done=rows.filter(r=>['approved','paid'].includes(r.status));
+  const avgDays=(()=>{
+    const ds=done.filter(r=>r.approved_at&&r.created_at)
+      .map(r=>(new Date(r.approved_at)-new Date(r.created_at))/86400000);
+    return ds.length?(ds.reduce((a,b)=>a+b,0)/ds.length).toFixed(1):'-';
+  })();
+
+  const bar=(o,fmt)=>{
+    const max=Math.max(...Object.values(o).map(v=>typeof v==='object'?v.thb:v),1);
+    return Object.keys(o).sort((a,b)=>{
+      const x=o[b],y=o[a];return (typeof x==='object'?x.thb:x)-(typeof y==='object'?y.thb:y);})
+      .map(k=>{const v=o[k],val=typeof v==='object'?v.thb:v;
+        return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
+          <div style="flex:0 0 175px;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(k)}</div>
+          <div style="flex:1;height:20px;background:#EEF2F7;border-radius:6px;overflow:hidden">
+            <div style="width:${val/max*100}%;height:100%;background:var(--blue)"></div></div>
+          <div style="flex:0 0 160px;text-align:right;font-size:12.5px">${fmt(v)}</div></div>`;}).join('');
+  };
+
+  $('rpBody').innerHTML=`
+    <div class="kpis">
+      <div class="kpi"><div class="lbl">คำขอทั้งเดือน</div><div class="val">${rows.length}</div></div>
+      <div class="kpi green"><div class="lbl">อนุมัติ/จ่ายแล้ว</div><div class="val">${done.length}</div></div>
+      <div class="kpi red"><div class="lbl">ถูกตีกลับ</div><div class="val">${byStatus.rejected||0}</div></div>
+      <div class="kpi gold"><div class="lbl">ยอดรวมที่อนุมัติ (บาท)</div>
+        <div class="val" style="font-size:19px">${money(done.reduce((s,r)=>s+(+r.total_thb||0),0))}</div></div>
+      <div class="kpi blue"><div class="lbl">เวลาอนุมัติเฉลี่ย</div><div class="val">${avgDays}<span style="font-size:.5em"> วัน</span></div></div>
+    </div>
+    <div class="card" style="box-shadow:none;border:1px solid var(--line)">
+      <h3>แยกตามประเภทการจ่าย</h3>
+      ${bar(byType,v=>`<b>${money(v.thb)} ฿</b> <span class="muted">· ${v.n} คำขอ</span>`)}
+    </div>
+    <div class="card" style="box-shadow:none;border:1px solid var(--line);margin-bottom:0">
+      <h3>แยกตามผู้ยื่น</h3>
+      ${bar(byUser,v=>`<b>${money(v.thb)} ฿</b> <span class="muted">· ${v.n} คำขอ</span>`)}
+    </div>`;
+}
+function exportReport(){
+  const mo=$('rpMonth').value||monthStr();
+  const rows=REQS.filter(r=>String(r.req_date||'').slice(0,7)===mo);
+  if(!rows.length)return toast('เดือนนี้ไม่มีข้อมูล');
+  const out=[['เลขคำขอ','วันที่ยื่น','กำหนดชำระ','จ่ายในนาม','ช่องทาง','สกุล','ยอด','ค่าธรรมเนียม','รวมบาท',
+              'สถานะ','ด่วน','ผู้ยื่น','หัวหน้าอนุมัติ','ผู้บริหารอนุมัติ','เหตุผล','หมายเหตุ','เหตุผลที่ตีกลับ']];
+  rows.forEach(r=>out.push([r.req_no||'',r.req_date||'',r.due_date||'',r.pay_type||'',r.channel||'',
+    r.currency||'',+r.total_amount||0,+r.total_fee||0,+r.total_thb||0,(ST[r.status]||{}).t||r.status,
+    r.urgency==='urgent'?'ด่วน':'',r.requester_name||r.requester||'',r.checked_by||'',r.approved_by||'',
+    r.reason||'',r.note||'',r.reject_note||'']));
+  const ws=XLSX.utils.aoa_to_sheet(out),wb=XLSX.utils.book_new();
+  ws['!cols']=[{wch:17},{wch:11},{wch:11},{wch:12},{wch:20},{wch:7},{wch:13},{wch:11},{wch:13},
+               {wch:18},{wch:7},{wch:18},{wch:22},{wch:22},{wch:32},{wch:26},{wch:32}];
+  XLSX.utils.book_append_sheet(wb,ws,'คำขออนุมัติ');
+  XLSX.writeFile(wb,'คำขออนุมัติชำระเงิน_'+mo+'.xlsx');
+}
+
+boot();
+</script>
+</body>
+</html>
