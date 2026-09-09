@@ -80,10 +80,12 @@ td.num,th.num{text-align:right;white-space:nowrap}
   #dcPaper{position:absolute;left:0;top:0;width:100%;box-shadow:none;border:0}
   body.printing-memo #dcPaper,body.printing-memo #dcPaper *{visibility:hidden}
   body.printing-memo #mdPaper,body.printing-memo #mdPaper *{visibility:visible}
-  body.printing-memo #mdPaper{position:absolute;left:0;top:0;width:100%;box-shadow:none;border:0;margin:0}
+  body.printing-memo #mdPaper{position:absolute;left:0;top:0;width:100%!important;max-width:none!important;
+    box-shadow:none!important;border:0!important;margin:0!important;padding:0!important}
+  body.printing-memo #mdPaper{visibility:visible}
   .no-print{display:none!important}@page{margin:12mm}}
 /* ===== ฟอร์มบันทึกข้อความภายใน ===== */
-#mdPaper{background:#fff;color:#000;padding:8mm 6mm;font-size:13px;line-height:1.75}
+#mdPaper{background:#fff;color:#000;font-size:13px;line-height:1.75}
 #mdPaper .md-title{text-align:center;font-weight:700;font-size:18px;margin-bottom:16px}
 #mdPaper table.md-head{width:100%;border-collapse:collapse;margin-bottom:16px}
 #mdPaper table.md-head td{border:1px solid #000;padding:9px 10px;vertical-align:top}
@@ -212,7 +214,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-74</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-75</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -945,17 +947,20 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
     <div class="row no-print" style="align-items:center;margin-bottom:4px">
       <h3 style="margin:0">📄 บันทึกข้อความภายใน</h3>
       <div style="flex:1"></div>
-      <div class="mdsw">
-        <div class="mds on" id="mdSwPrice" onclick="setMdForm('price')">💲 เปลี่ยนแปลงราคา</div>
-        <div class="mds"    id="mdSwPay"   onclick="setMdForm('pay')">💰 ชี้แจงการชำระค่าสินค้า</div>
-      </div>
+      <span class="muted" style="font-size:12px">เลือกแบบฟอร์มที่ช่อง “เรื่อง”</span>
     </div>
     <div class="row no-print" style="gap:10px;flex-wrap:wrap;margin:10px 0">
       <div class="fld" style="width:190px"><label>เลขที่</label><input id="md_no" oninput="renderMemoDoc()"></div>
       <div class="fld" style="width:165px"><label>วันที่</label><input id="md_date" type="date" onchange="renderMemoDoc()"></div>
       <div class="fld" style="width:190px"><label>เรียน</label><input id="md_to" oninput="renderMemoDoc()"></div>
       <div class="fld" style="width:190px"><label>จาก</label><input id="md_from" oninput="renderMemoDoc()"></div>
-      <div class="fld" style="flex:1;min-width:220px"><label>เรื่อง</label><input id="md_subject" oninput="renderMemoDoc()"></div>
+      <div class="fld" style="flex:1;min-width:300px"><label>เรื่อง</label>
+        <select id="md_topic" onchange="mdTopic()">
+          <option value="price">ชี้แจงการเปลี่ยนแปลงราคาต่อหน่วย</option>
+          <option value="pay">ชี้แจงการชำระค่าสินค้า</option>
+          <option value="custom">✏️ พิมพ์เอง…</option>
+        </select>
+        <input id="md_subject" oninput="renderMemoDoc()" style="margin-top:6px" placeholder="หัวเรื่องบนเอกสาร"></div>
     </div>
     <div class="fld no-print"><label>เนื้อความ</label>
       <textarea id="md_body" rows="3" oninput="renderMemoDoc()"></textarea>
@@ -969,7 +974,13 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
       </div>
       <div id="mdItems" class="no-print scroll" style="margin-bottom:14px"></div>
     </div>
-    <div id="mdPaper" style="border:1px solid var(--line);border-radius:8px"></div>
+    <div class="no-print" style="margin:14px 0 6px;font-weight:700;font-size:13px;color:var(--muted)">
+      ตัวอย่างเอกสาร</div>
+    <div class="scroll" style="background:#F4F6FA;border:1px solid var(--line);border-radius:10px;padding:14px;
+         max-height:calc(100vh - 430px);min-height:240px">
+      <div id="mdPaper" style="background:#fff;border:1px solid #d7dee9;border-radius:6px;
+           box-shadow:0 2px 10px rgba(16,42,80,.10);padding:26px 30px;width:780px;max-width:100%;margin:0 auto"></div>
+    </div>
     <div class="row no-print" style="margin-top:14px;justify-content:flex-end">
       <button class="btn ghost" onclick="$('memoDocBg').style.display='none'">ปิด</button>
       <button class="btn ghost" onclick="saveMemoDocNote()">💾 บันทึกลงเมโม</button>
@@ -1722,13 +1733,18 @@ function mdNextNo(dstr){
    price = ชี้แจงการเปลี่ยนแปลงราคาต่อหน่วย (ของเดิม)
    pay   = ชี้แจงการชำระค่าสินค้า / โยกยอดจากนามบุคคลเป็นนามบริษัท   */
 let MD_FORM='price';
+function mdTopic(){
+  const v=$('md_topic').value;
+  if(v==='custom'){ $('mdPriceBox').style.display='none'; MD_FORM='custom'; renderMemoDoc();
+    $('md_subject').focus(); return; }
+  setMdForm(v);
+}
 function setMdForm(v){
   MD_FORM=v;
-  $('mdSwPrice').classList.toggle('on',v==='price');
-  $('mdSwPay').classList.toggle('on',v==='pay');
+  if($('md_topic'))$('md_topic').value=v;
   $('mdPriceBox').style.display=(v==='price')?'':'none';
   try{localStorage.setItem('mdForm',v);}catch(e){}
-  mdFillDefault(); renderMemoDoc();
+  mdFillDefault(true); renderMemoDoc();
 }
 /* เนื้อความ + เรื่อง ตามแบบฟอร์มที่เลือก */
 function mdFillDefault(force){
@@ -1785,8 +1801,7 @@ function openMemoDoc(){
   $('md_to').value='แผนกบัญชี';
   $('md_from').value='แผนกจัดซื้อ';
   try{MD_FORM=localStorage.getItem('mdForm')||'price';}catch(e){MD_FORM='price';}
-  $('mdSwPrice').classList.toggle('on',MD_FORM==='price');
-  $('mdSwPay').classList.toggle('on',MD_FORM==='pay');
+  if($('md_topic'))$('md_topic').value=MD_FORM;
   $('mdPriceBox').style.display=(MD_FORM==='price')?'':'none';
   $('md_subject').value=''; $('md_body').value='';
   mdFillDefault(true);
