@@ -209,7 +209,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-65</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-66</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -2261,6 +2261,10 @@ let DOC_VIEW_IDS=null;   // เปิดดูเอกสารที่บั�
 function docToday(){$('dcDate').value=todayStr();renderDoc();}
 function docShift(k){const v=$('dcDate').value||todayStr();
   const dt=new Date(v+'T00:00:00');dt.setDate(dt.getDate()+k);$('dcDate').value=ymdLocal(dt);renderDoc();}
+function clearDocFilter(){
+  ['dcCompany','dcChannel','dcCur'].forEach(id=>{if($(id))$(id).value='';});
+  renderDoc();
+}
 function docRows(){
   const d=$('dcDate').value;
   const co=($('dcCompany')&&$('dcCompany').value)||'';
@@ -2326,10 +2330,24 @@ function renderDoc(){
   DOCSEL=new Set(rows.map(p=>String(p.id)));   // ติ๊กทั้งหมดไว้ก่อน (เทียบเป็น String เสมอ)
   if(!rows.length){
     const pend=docPending().length;
-    $('dcPick').innerHTML='<div class="empty">'+(pend
+    // มีงวดของวันนี้อยู่ แต่ตัวกรองตัดออกหมด → บอกให้ชัด อย่าให้เข้าใจผิดว่าไม่มีข้อมูล
+    const withPaid=$('dcPaid')&&$('dcPaid').checked;
+    const allDay=PAYS.filter(p=>p.pay_date===$('dcDate').value
+      &&(p.status==='submitted'||(withPaid&&p.status==='paid'))).length;
+    const fUsed=[
+      ($('dcCompany')&&$('dcCompany').value)?'จ่ายในนาม':'',
+      ($('dcChannel')&&$('dcChannel').value)?'ช่องทาง':'',
+      ($('dcCur')&&$('dcCur').value)?'สกุลเงิน':''
+    ].filter(Boolean);
+    $('dcPick').innerHTML='<div class="empty">'+(
+      (allDay&&fUsed.length)
+      ? `วันนี้มี <b>${allDay}</b> งวดที่ส่งยอดแล้ว แต่<b>ตัวกรองตัดออกหมด</b>
+         <div class="muted" style="margin-top:5px">ตัวกรองที่ใช้อยู่: ${fUsed.join(' · ')}</div>
+         <button class="btn mini" style="margin-top:9px" onclick="clearDocFilter()">ล้างตัวกรอง</button>`
+      : pend
       ? `วันนี้มี ${pend} งวดที่ยัง<b>ไม่ได้ส่งยอด</b> — ใบปะหน้าจะขึ้นเฉพาะงวดที่ส่งยอดแล้ว<br><span class="muted">ส่งยอดได้ที่แท็บ 🗓️ แผนจ่ายรายวัน</span>`
       : 'วันนี้ยังไม่มีงวดที่ส่งยอด — เพิ่มจากแท็บ Tracking บิล')+'</div>';
-    $('dcPaper').style.display='none';renderDocHist();docSub('hist');return;}
+    $('dcPaper').style.display='none';renderDocHist();return;}   // ⚠️ อย่าเด้งไปแท็บประวัติ ไม่งั้นกรองแล้วเหมือนตัวกรองพัง
   let h='<table><thead><tr><th style="width:38px"></th><th>PO</th><th>Vendor / SKU</th><th>งวด</th><th class="num">ยอด</th><th class="num">เรท</th><th class="num">บาท</th><th class="num">ค่าธรรมเนียม</th><th>สถานะ</th></tr></thead><tbody>';
   rows.forEach(p=>{const b=billOf(p.bill_id);
     h+=`<tr><td style="text-align:center"><input type="checkbox" class="dc-ck" data-id="${p.id}" checked style="width:16px;height:16px;cursor:pointer" onchange="pickDoc(this)"></td>
