@@ -191,7 +191,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="brand">MA<span>S</span>ARU</div><div class="sub">| วางแผนจ่ายเงิน & เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-58</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-59</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -243,6 +243,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <!-- ============ TAB 2: แผนจ่ายรายวัน ============ -->
   <div id="tab-plan" style="display:none">
     <div class="kpis" id="planKpi"></div>
+    <div id="plChSum"></div>
     <div class="card">
       <h2>🗓️ แผนจ่ายเงิน</h2>
       <div class="row">
@@ -1812,9 +1813,9 @@ function renderPlan(){
     <div class="kpi gold"><div class="lbl">ยอดรอจ่าย (บาท)</div><div class="val">${money(sumThb(planned.concat(sent)))}</div></div>
     <div class="kpi green"><div class="lbl">จ่ายแล้ววันนี้</div><div class="val">${paid.length}</div></div>
     <div class="kpi"><div class="lbl">ยอดจ่ายแล้ว (บาท)</div><div class="val">${money(sumThb(paid))}</div></div>`;
+  renderChSum(rows);
   renderPlanAlert();
   if(!rows.length){$('planBody').innerHTML='<div class="empty">วันนี้ยังไม่มีงวดจ่าย — เพิ่มจากแท็บ Tracking บิล (+ งวดจ่าย โดยเลือกวันที่นี้)</div>';return;}
-  // 🔑 จัดกลุ่มตาม "ช่องทางการโอน + ประเภทการจ่าย" — ตรงกับวิธีโอนเงินจริง
   // 🔑 จัดกลุ่มตาม "ประเภทการจ่ายเงิน" (จ่ายในนามใคร) — ช่องทางโอนแสดงเป็นป้ายในกลุ่ม
   const keyOf=p=>(p.pay_type||'— ยังไม่ระบุประเภท —');
   const order=['LIKESHOP','MASARU','DAIKI','นามบุคคล'];
@@ -2195,6 +2196,51 @@ async function approveDoc(st){
 }
 
 /* แถบเตือน: งวดที่ถึง/เลยกำหนดจ่ายแล้วแต่ยังไม่ส่งยอด (แท็บแผนจ่ายรายวัน) */
+/* สรุปยอดที่ต้องโอนแยกตามช่องทาง — Ksher เท่าไหร่ ธนาคารเท่าไหร่ JMF เท่าไหร่ */
+function renderChSum(rows){
+  const box=$('plChSum'); if(!box)return;
+  const due=rows.filter(p=>p.status!=='rejected');
+  if(!due.length){box.innerHTML='';return;}
+  const CH_COLOR={'JMF CARGO':'#1E7145','Ksher Payment Co.Ltd.':'#2E75B6','ธนาคาร (SWIFT Code)':'#B45309'};
+  const by={};
+  due.forEach(p=>{
+    const k=p.channel||'— ยังไม่ระบุช่องทาง —';
+    const g=by[k]=by[k]||{n:0,thb:0,fee:0,paid:0,wait:0,cur:{}};
+    const b=billOf(p.bill_id), c=b.currency||'CNY';
+    g.n++; g.thb+=thbOf(p)+(+p.fee||0); g.fee+=(+p.fee||0);
+    g.cur[c]=(g.cur[c]||0)+Math.abs(+p.amount||0);
+    if(p.status==='paid')g.paid+=thbOf(p)+(+p.fee||0); else g.wait+=thbOf(p)+(+p.fee||0);
+  });
+  const keys=Object.keys(by).sort((a,b)=>by[b].thb-by[a].thb);
+  const tot=keys.reduce((s,k)=>s+by[k].thb,0);
+  const cards=keys.map(k=>{
+    const g=by[k], cc=CH_COLOR[k]||'#64748B';
+    const pct=tot?Math.round(g.thb/tot*100):0;
+    const chips=Object.keys(g.cur).map(c=>money(g.cur[c])+' '+curSym(c)).join(' + ');
+    return `<div style="flex:1 1 250px;min-width:235px;background:#fff;border:1px solid var(--line);
+        border-left:5px solid ${cc};border-radius:11px;padding:11px 14px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <b style="font-size:13.5px;color:${cc}">🏦 ${esc(k)}</b>
+        <span class="pill" style="background:${cc}1a;color:${cc}">${g.n} งวด</span>
+        <div style="flex:1"></div><span class="muted" style="font-size:11.5px">${pct}%</span>
+      </div>
+      <div style="font-size:21px;font-weight:800;margin-top:4px">${money(g.thb)} <span style="font-size:.55em">฿</span></div>
+      <div class="muted" style="font-size:11.5px">${esc(chips)}${g.fee?(' · ค่าธรรมเนียม '+money(g.fee)+' ฿'):''}</div>
+      <div style="height:6px;background:#EEF2F7;border-radius:4px;overflow:hidden;margin-top:7px;display:flex">
+        ${g.paid?`<div style="width:${g.paid/g.thb*100}%;background:#1E7145"></div>`:''}
+        ${g.wait?`<div style="width:${g.wait/g.thb*100}%;background:${cc}"></div>`:''}
+      </div>
+      <div class="muted" style="font-size:11px;margin-top:4px">
+        ${g.paid?`จ่ายแล้ว ${money(g.paid)} ฿ · `:''}รอจ่าย <b>${money(g.wait)} ฿</b></div>
+    </div>`;}).join('');
+  box.innerHTML=`<div style="background:#F7F9FC;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+      <b style="font-size:14.5px">🏦 แยกตามช่องทางการโอน</b>
+      <span class="pill" style="background:#EEF2F7;color:#1F3864">รวมทั้งวัน ${money(tot)} ฿</span>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">${cards}</div></div>`;
+}
+
 function renderPlanAlert(){
   if(!$('plAlert'))return;
   const over=overduePlans();
