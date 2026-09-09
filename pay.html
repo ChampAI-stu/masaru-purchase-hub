@@ -209,7 +209,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-68</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-69</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -3660,20 +3660,43 @@ function drawQuot(){
     +'</div>';
 }
 
+let QT_SAVING=false;
 async function saveQuot(){
+  if(QT_SAVING)return;                       // 🔒 กันกดซ้ำระหว่างกำลังบันทึก
   if(!$('q_po').value.trim())return alert('ใส่ PO number ก่อน');
+  QT_SAVING=true;
+  const btns=[...document.querySelectorAll('#qtEditor .qt-bar .btn')];
+  const saveBtn=btns.find(b=>/บันทึก/.test(b.textContent));
+  const oldTxt=saveBtn?saveBtn.textContent:'';
+  btns.forEach(b=>b.disabled=true);
+  if(saveBtn)saveBtn.textContent='⏳ กำลังบันทึก…';
+  try{
+    await saveQuotInner();
+  }finally{
+    QT_SAVING=false;
+    btns.forEach(b=>b.disabled=false);
+    if(saveBtn)saveBtn.textContent=oldTxt;
+  }
+}
+async function saveQuotInner(){
   // อัปรูปที่ยังไม่ขึ้น Drive ตอนนี้ทีเดียว
+  // อัปรูปขึ้น Drive พร้อมกันทีเดียว (เดิมทีละใบ ทำให้ช้ามากถ้ามีหลายรูป)
   const pend=QT_PICS.filter(p=>p._new&&p._file);
-  for(let i=0;i<pend.length;i++){
-    const p=pend[i];
-    $('q_stat').innerHTML='⏳ กำลังอัปรูป '+(i+1)+'/'+pend.length+' ขึ้น Drive…';
-    try{
-      const j=await gasCall({action:'upload',
-        filename:(($('q_po').value||'PO')+'_'+Date.now()+'_'+p.name),
-        folder:'ใบเสนอราคา/'+String($('q_po').value||'ไม่ระบุ PO').replace(/[\\/:*?"<>|]/g,'-'),
-        mime:p._file.type,data:await fileToB64(p._file),po:$('q_po').value||'',actor:ME||''});
-      p.url=j.openUrl||j.viewUrl||''; p.id=j.fileId||''; p._new=false; delete p._file;
-    }catch(e){ console.warn('[quot] drive:',e.message); p._new=false; delete p._file; }
+  if(pend.length){
+    let done=0;
+    $('q_stat').innerHTML='⏳ กำลังอัปรูป 0/'+pend.length+' ขึ้น Drive…';
+    const folder='ใบเสนอราคา/'+String($('q_po').value||'ไม่ระบุ PO').replace(/[\\/:*?"<>|]/g,'-');
+    await Promise.all(pend.map(async p=>{
+      try{
+        const j=await gasCall({action:'upload',
+          filename:(($('q_po').value||'PO')+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)+'_'+p.name),
+          folder, mime:p._file.type, data:await fileToB64(p._file),
+          po:$('q_po').value||'', actor:ME||''});
+        p.url=j.openUrl||j.viewUrl||''; p.id=j.fileId||'';
+      }catch(e){ console.warn('[quot] drive:',e.message); }
+      p._new=false; delete p._file;
+      $('q_stat').innerHTML='⏳ กำลังอัปรูป '+(++done)+'/'+pend.length+' ขึ้น Drive…';
+    }));
   }
   $('q_stat').textContent='';
   drawQuotPics();
@@ -3687,10 +3710,20 @@ async function saveQuot(){
     responsible:$('q_resp').value.trim()||null,
     pics:QT_PICS.map(p=>({thumb:p.thumb,url:p.url||'',id:p.id||'',name:p.name||''})),
     created_by:ME||'', updated_at:new Date().toISOString()};
+  if(!QT_ID){
+    // กันบันทึกซ้ำ: มีใบ PO เดียวกัน ยอดเท่ากัน สร้างภายใน 2 นาทีที่ผ่านมา
+    const dup=QUOTS.find(x=>String(x.po_number||'').trim()===rec.po_number
+      && Math.abs((+x.total||0)-rec.total)<0.01
+      && (Date.now()-new Date(x.created_at).getTime())<120000);
+    if(dup&&!confirm('มีใบเสนอราคา PO '+rec.po_number+' ยอดเท่ากันถูกบันทึกไปเมื่อครู่แล้ว\n\nสร้างใบใหม่ซ้ำอีกใบไหม?')){
+      QT_ID=dup.id;                          // ไม่สร้างซ้ำ → แก้ใบเดิมแทน
+    }
+  }
   const q=QT_ID? sb.from('quotations').update(rec).eq('id',QT_ID)
-                : sb.from('quotations').insert(rec);
-  const {error}=await q;
+                : sb.from('quotations').insert(rec).select('id').single();
+  const {data,error}=await q;
   if(error)return alert('บันทึกไม่สำเร็จ: '+error.message);
+  if(!QT_ID&&data&&data.id)QT_ID=data.id;    // กดบันทึกซ้ำหลังจากนี้ = แก้ใบเดิม ไม่สร้างใหม่
   await loadQuot(); $('qtEditBg').style.display='none'; toast('บันทึกใบเสนอราคาแล้ว ✅');
 }
 async function delQuot(id){
