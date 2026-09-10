@@ -1222,7 +1222,7 @@ async function reloadTables(names){
     pay_bills:   async()=>{ BILLS=await pageAll('pay_bills','*','created_at'); },
     pay_payments:async()=>{ PAYS =await pageAll('pay_payments','*','created_at'); },
     pay_memos:   async()=>{ MEMOS=await pageAll('pay_memos','*','created_at'); },
-    pay_logs:    async()=>{ if(LOGS_LOADED)LOGS=await pageAll('pay_logs',COL_LOGS,'created_at'); }
+    pay_logs:    async()=>{ if(MEMO_BID)LOGS=await loadBillLogs(MEMO_BID); }
   };
   await Promise.all([...names].map(n=>job[n]?job[n]():null).filter(Boolean));
   await loadWallet();
@@ -1268,13 +1268,26 @@ async function doLogout(){
 
 /* ===== DATA ===== */
 let LOAD_ERR={};
+/* โหลดทั้งตารางแบบแบ่งหน้า
+   ⚠️ ต้องมีตัวเรียงสำรองที่ไม่ซ้ำ (id) เสมอ — ถ้าเรียงด้วยคอลัมน์ที่มีค่าซ้ำได้
+      (created_at ที่บันทึกพร้อมกันหลายแถว) แถวที่คร่อมรอยต่อหน้าจะ "ซ้ำ" หรือ "หาย"
+      → ได้ข้อมูลผิด และดึงเกินจำเป็น (เปลือง Egress)
+   ⚠️ ต้องมีตัวกันวนไม่รู้จบ — เดิมเป็น while(true) ถ้า API คืน 1000 แถวรัว ๆ
+      จะดึงไม่หยุด (ตารางอื่นในระบบมี guard อยู่แล้ว หน้านี้ไม่มี) */
 async function pageAll(table,sel,order){
-  let out=[],from=0;const step=1000;
+  let out=[],from=0;const step=1000;let guard=0;
   delete LOAD_ERR[table];
-  while(true){
-    let q=sb.from(table).select(sel).range(from,from+step-1);
+  while(guard++ < 60){                       // เพดาน 60,000 แถว/ตาราง
+    let q=sb.from(table).select(sel);
     if(order)q=q.order(order,{ascending:false});
-    const {data,error}=await q;
+    q=q.order('id').range(from,from+step-1);  // id = ตัวเรียงสำรอง กันแถวซ้ำ/หาย
+    let {data,error}=await q;
+    if(error&&/column .*id|does not exist/i.test(error.message||'')){
+      // ตารางไม่มีคอลัมน์ id → ถอยไปเรียงแบบเดิม
+      let q2=sb.from(table).select(sel);
+      if(order)q2=q2.order(order,{ascending:false});
+      ({data,error}=await q2.range(from,from+step-1));
+    }
     if(error){console.error(table,error.message);LOAD_ERR[table]=error.message;break;}
     out=out.concat(data||[]);
     if(!data||data.length<step)break;
@@ -1309,7 +1322,7 @@ const COL_LOGS ='id,bill_id,action,detail,actor,created_at';
      · sku_master       ใช้ตอน: ทำใบปะหน้า · ตรวจสอบ
      · pay_logs         ใช้ตอน: เปิดหน้าต่างเมโม/ประวัติ
    จึงย้ายไปโหลด "ตอนที่ต้องใช้จริง" แล้ว cache ไว้ในหน้า ไม่โหลดซ้ำ */
-let PO_LOADED=false, MASTER_LOADED=false, LOGS_LOADED=false, LAZY_BUSY=null;
+let PO_LOADED=false, MASTER_LOADED=false, LAZY_BUSY=null;
 async function ensurePoRows(){
   if(PO_LOADED)return POROWS;
   if(!LAZY_BUSY){ LAZY_BUSY=(async()=>{
@@ -1324,10 +1337,17 @@ async function ensureMaster(){
   MASTER=await pageAll('sku_master','sku,supplier,standard_price,currency',null);
   MASTER_LOADED=true; return MASTER;
 }
-async function ensureLogs(){
-  if(LOGS_LOADED)return LOGS;
-  LOGS=await pageAll('pay_logs',COL_LOGS,'created_at');
-  LOGS_LOADED=true; return LOGS;
+/* ⚠️ pay_logs เป็นตาราง "ประวัติการแก้ไข" ที่โตขึ้นทุกครั้งที่มีคนกดบันทึก และไม่มีวันลด
+      เดิมโหลดทั้งตารางมาแล้วค่อย filter หาบิลเดียว → Egress โตขึ้นทุกวันเอง
+      ทั้งที่หน้าจอใช้แค่ประวัติของบิลที่เปิดอยู่ใบเดียว
+   ✅ เปลี่ยนเป็นถามเฉพาะ bill_id นั้น (ให้ฐานข้อมูลกรองให้ ไม่ใช่ดึงมากรองเอง) */
+async function loadBillLogs(bid){
+  if(!bid)return [];
+  delete LOAD_ERR['pay_logs'];
+  const {data,error}=await sb.from('pay_logs').select(COL_LOGS)
+    .eq('bill_id',bid).order('created_at',{ascending:false}).limit(500);
+  if(error){ LOAD_ERR['pay_logs']=error.message; return []; }
+  return data||[];
 }
 async function loadAll(){
   [BILLS,PAYS,MEMOS]=await Promise.all([
@@ -1339,7 +1359,7 @@ async function loadAll(){
   ]);
   if(PO_LOADED)    POROWS=await pageAll('purchase_orders',COL_PO,null);   // เคยโหลดแล้ว = ตามให้ทัน
   if(MASTER_LOADED)MASTER=await pageAll('sku_master','sku,supplier,standard_price,currency',null);
-  if(LOGS_LOADED)  LOGS  =await pageAll('pay_logs',COL_LOGS,'created_at');
+  // pay_logs ไม่โหลดทั้งตารางแล้ว — ดึงรายบิลตอนเปิดหน้าต่างประวัติ (loadBillLogs)
   await loadWallet();     // ต้องมีก่อน renderDoc เพื่อคำนวณยอด Ksher ที่ต้องเติม
   showLoadErrors();       // ตารางไหนโหลดไม่ได้ ต้องเห็นทันที ไม่ใช่เงียบแล้วได้ 0 แถว
   try{                    // ตรวจความผิดปกติทุกครั้งที่โหลด → ป้าย ⚠️ ในตาราง
@@ -1953,7 +1973,7 @@ function openMemo(bid){
   $('memoText').value=''; renderMemo(); $('memoBg').style.display='flex';
 }
 async function renderMemo(){
-  await ensureLogs();
+  LOGS=await loadBillLogs(MEMO_BID);     // ดึงเฉพาะประวัติของบิลนี้
   renderMemoInner();
 }
 function renderMemoInner(){
