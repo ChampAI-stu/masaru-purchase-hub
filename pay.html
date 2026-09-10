@@ -3971,18 +3971,27 @@ let QT_PAGE=1;
 function qtGo(n){ QT_PAGE=n; renderQuotList(); const b=$('qtList'); if(b)b.scrollIntoView({block:'start'}); }
 
 async function loadQuot(){
-  // ⚡ ไม่ดึงคอลัมน์ pics (ภาพย่อ base64 หนักมาก) — ดึงเฉพาะตอนเปิดใบนั้น
-  const COLS='id,po_number,po_date,ref_pr,vendor,deliver_by,currency,ship_fee,total,'
-    +'title_note,note,responsible,items,pic_count,item_count,created_by,created_at,updated_at';
-  let {data,error}=await sb.from('quotations').select(COLS).order('created_at',{ascending:false}).limit(500);
-  if(error&&/column|does not exist/i.test(error.message)){
-    /* ⚠️ ห้ามถอยไป select('*') — คอลัมน์ pics เก็บรูป base64 ใบละ 0.5–2 MB
-          ดึง 300 ใบ = หลายร้อย MB ต่อการเปิดหน้าเดียว (สาเหตุหลักที่ Egress ทะลุโควตา)
-          ถอยแบบตัดคอลัมน์ที่ยังไม่มีออกทีละตัวแทน */
-    const BASE='id,po_number,po_date,vendor,deliver_by,currency,ship_fee,total,'
-      +'title_note,note,responsible,items,created_by,created_at,updated_at';
-    const r2=await sb.from('quotations').select(BASE).order('created_at',{ascending:false}).limit(500);
-    data=r2.data; error=r2.error;
+  /* ⚠️⚠️ ห้ามใช้ select('*') กับตาราง quotations เด็ดขาด
+        คอลัมน์ pics เก็บรูป base64 — วัดของจริงแล้วเฉลี่ย 168 KB/ใบ (ทั้งตาราง 8 MB จาก 48 ใบ)
+        ใหญ่กว่าตาราง purchase_orders ทั้งตาราง 11 เท่า
+        ถ้าโค้ดถอยไป select('*') = ยิง 8 MB ทุกครั้งที่เปิดแท็บใบเสนอราคา/กดบันทึก
+     ✅ ถ้าคอลัมน์ไหนยังไม่มีในฐานข้อมูล ให้ "ตัดคอลัมน์นั้นออกแล้วลองใหม่"
+        โดย pics ไม่เคยอยู่ในลิสต์ตั้งแต่ต้น จึงไม่มีทางหลุดมา */
+  let cols=['id','po_number','po_date','ref_pr','vendor','deliver_by','currency','ship_fee','total',
+            'title_note','note','responsible','items','pic_count','item_count',
+            'created_by','created_at','updated_at'];
+  let data=null,error=null;
+  for(let tries=0;tries<6;tries++){
+    const r=await sb.from('quotations').select(cols.join(','))
+      .order('created_at',{ascending:false}).limit(500);
+    data=r.data; error=r.error;
+    if(!error)break;
+    // "column quotations.xxx does not exist" → เอา xxx ออกแล้วลองใหม่
+    const m=/column\s+(?:\w+\.)?"?([a-z_]+)"?\s+does not exist/i.exec(error.message||'');
+    const bad=m&&m[1];
+    if(!bad||!cols.includes(bad))break;
+    console.warn('[quot] ตาราง quotations ไม่มีคอลัมน์',bad,'— ตัดออกแล้วโหลดใหม่ (ควรรัน quotation_speed.sql)');
+    cols=cols.filter(c=>c!==bad);
   }
   if(error){
     $('qtList').innerHTML='<div class="empty">โหลดไม่ได้: '+esc(error.message)
