@@ -73,18 +73,11 @@ td.num,th.num{text-align:right;white-space:nowrap}
   .doc-sheet th,.doc-sheet td{border:1px solid #000!important;color:#000}
   .doc-sheet tbody tr[style*="EFEFEF"] td,
   .doc-sheet tbody tr[style*="background"] td{background:#EFEFEF!important;color:#000!important}
-  .doc-sheet,#dcPaper,#mdPaper{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  /* ⚠️ ห้ามใส่ #dcPaper ที่นี่ — #dcPaper คือ .modal-bg พื้นหลังดำโปร่ง
+        ถ้าบังคับ print-color-adjust:exact จะพิมพ์พื้นดำติดมาด้วย แม้ปิด "กราฟิกพื้นหลัง" */
+  .doc-sheet,#mdPaper{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 }
-@media print{body *{visibility:hidden}
-  #dcPaper,#dcPaper *{visibility:visible}
-  #dcPaper{position:absolute;left:0;top:0;width:100%;box-shadow:none;border:0}
-  body.printing-memo #dcPaper,body.printing-memo #dcPaper *{visibility:hidden}
-  body.printing-memo #mdPaper,body.printing-memo #mdPaper *{visibility:visible}
-  body.printing-memo #mdPaper{position:absolute;left:0;top:0;width:100%!important;max-width:none!important;
-    box-shadow:none!important;border:0!important;margin:0!important;padding:0!important;visibility:visible}
-  body.printing-memo #mdPrev{background:none!important;border:0!important;padding:0!important;
-    max-height:none!important;overflow:visible!important}
-  .no-print{display:none!important}@page{margin:12mm}}
+@media print{ .no-print{display:none!important} @page{margin:12mm} }
 /* ===== ฟอร์มบันทึกข้อความภายใน ===== */
 /* กรอบพรีวิว — เลื่อนแนวตั้งอย่างเดียว ไม่ให้กระดาษล้นออกด้านข้าง */
 #mdPrev{background:#F4F6FA;border:1px solid var(--line);border-radius:10px;padding:14px;
@@ -120,15 +113,7 @@ td.num,th.num{text-align:right;white-space:nowrap}
 /* หัวข้อรูปแนบ ห้ามค้างท้ายหน้าเดี่ยว ๆ (แต่ตัวบล็อกต้องไหลข้ามหน้าได้ ถ้ามีหลายรูป) */
 .qt-picblock{break-inside:auto;page-break-inside:auto}
 .qt-picblock>div:first-child{break-after:avoid;page-break-after:avoid}
-/* พิมพ์เฉพาะใบปะหน้าในโมดัล */
-@media print{
-  body.printing-dc *{visibility:hidden}
-  body.printing-dc #dcSheet,body.printing-dc #dcSheet *{visibility:visible}
-  body.printing-dc #dcSheet{position:absolute;left:0;top:0;width:100%}
-  body.printing-dc,body.printing-dc *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  body.printing-dc #dcModal{max-width:none!important;width:100%!important;padding:0!important;max-height:none!important}
-  @page{size:A4 portrait;margin:12mm}
-}
+/* (การพิมพ์ใบปะหน้า ย้ายไปใช้กลไกกลาง #printRoot / body.printing-sheet ด้านล่างแล้ว) */
 /* ===== ใบเสนอราคา: ฟอร์มซ้าย · ตัวอย่างใบขวา (ตรึงไว้ ไม่ต้องเลื่อนไปมา) ===== */
 .qt-bar{background:#fff;padding:0 0 10px;margin-bottom:8px;border-bottom:1px solid var(--line)}
 .qt-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,700px);gap:18px;align-items:start}
@@ -162,43 +147,65 @@ table.qt-tb thead th{background:#EDEDED!important;color:#000!important;font-weig
 table.qt-tb td.num,table.qt-tb th.num{text-align:right}
 table.qt-tb td.c{text-align:center}
 table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
-/* ===== พิมพ์ใบเสนอราคา =====
-   ⚠️ เดิมใช้ visibility:hidden + position:absolute → เนื้อหาที่ยาวเกิน 1 หน้า
-      "ถูกตัดหายที่หน้าแรก" เพราะกล่อง absolute ไม่แบ่งหน้าให้ (และโมดัลแม่ยัง
-      max-height/overflow ครอบอยู่) ตอนนี้เปลี่ยนเป็น "โคลนกระดาษออกมาไว้
-      #qtPrintRoot ซึ่งเป็นลูกตรงของ body" แล้วซ่อนพี่น้องด้วย display:none
-      → เนื้อหาไหลข้ามหน้าเองอัตโนมัติ ครบทุกหน้า */
-#qtPrintRoot{display:none}
+/* ================= กลไกพิมพ์กลาง (ใช้ร่วมทุกเอกสาร) =================
+   ⚠️ ปัญหาของวิธีเดิม (visibility:hidden + position:absolute):
+      1) กล่อง position:absolute เบราว์เซอร์ไม่แบ่งหน้าให้ → เนื้อหาเกิน 1 หน้าถูกตัดหาย
+      2) โมดัลแม่มี max-height/overflow ครอบ → ถูกตัดซ้ำอีกชั้น
+      3) #dcPaper คือ .modal-bg (พื้นดำโปร่ง) แต่ถูกสั่ง visibility:visible +
+         print-color-adjust:exact → "พื้นหลังดำติดไปในกระดาษ" แม้ผู้ใช้ปิด
+         ตัวเลือก "กราฟิกพื้นหลัง" ในหน้าต่างพิมพ์แล้ว
+   ✅ วิธีใหม่: โคลนเฉพาะ "กระดาษ" ออกมาไว้ #printRoot ซึ่งเป็นลูกตรงของ body
+      แล้วซ่อนพี่น้องทั้งหมดด้วย display:none → ไม่มีพื้นหลังโมดัลติดมา
+      และเนื้อหาไหลข้ามหน้าเองครบทุกหน้า                              */
+#printRoot{display:none}
 @media print{
-  body.printing-qt>*{display:none!important}
-  body.printing-qt>#qtPrintRoot{display:block!important}
-  /* ล้างผลของกฎรวม @media print ด้านบน (body *{visibility:hidden}) ที่จะซ่อนกระดาษเราไปด้วย */
-  body.printing-qt,body.printing-qt #qtPrintRoot,body.printing-qt #qtPrintRoot *{visibility:visible!important}
-  body.printing-qt #qtPrintRoot .qt-sheet{
-    width:100%!important;max-width:none!important;padding:0!important;border:0!important;border-radius:0!important;
-    box-shadow:none!important;margin:0!important;background:#fff!important;overflow:visible!important}
-  body.printing-qt #qtPrintRoot table.qt-tb th,
-  body.printing-qt #qtPrintRoot table.qt-tb td{height:auto;min-height:30px;font-size:13px;padding:7px 9px;
-    /* ตอนพิมพ์ให้ข้อความยาวขึ้นบรรทัดใหม่ ไม่ตัดด้วย … */
-    white-space:normal!important;overflow:visible!important;text-overflow:clip!important;word-break:break-word}
-  /* ยกเว้นช่องลำดับ/ตัวเลข — ห้ามหักบรรทัด จะได้ไม่กลายเป็น "1 1" หรือ "N o." */
-  body.printing-qt #qtPrintRoot table.qt-tb th:first-child,
-  body.printing-qt #qtPrintRoot table.qt-tb td.c,
-  body.printing-qt #qtPrintRoot table.qt-tb th.num,
-  body.printing-qt #qtPrintRoot table.qt-tb td.num{white-space:nowrap!important;word-break:keep-all!important}
-  body.printing-qt #qtPrintRoot .qt-h1{font-size:23px}
-  /* แบ่งหน้าอัตโนมัติ: หัวตารางซ้ำทุกหน้า · ไม่ตัดกลางแถว · ไม่ตัดกลางรูป */
-  body.printing-qt #qtPrintRoot table.qt-tb{page-break-inside:auto;break-inside:auto}
-  body.printing-qt #qtPrintRoot table.qt-tb thead{display:table-header-group}
-  body.printing-qt #qtPrintRoot table.qt-tb tfoot{display:table-footer-group}
-  body.printing-qt #qtPrintRoot table.qt-tb tr,
-  body.printing-qt #qtPrintRoot table.qt-tb td{break-inside:avoid;page-break-inside:avoid}
-  body.printing-qt #qtPrintRoot .qt-pic{break-inside:avoid;page-break-inside:avoid;margin:8px 0}
+  body.printing-sheet>*{display:none!important}
+  body.printing-sheet>#printRoot{display:block!important}
+  body.printing-sheet,body.printing-sheet #printRoot,
+  body.printing-sheet #printRoot *{visibility:visible!important}
+  /* กระดาษพิมพ์ต้องขาวล้วน — ไม่เอาพื้นแอป/พื้นโมดัลติดไปด้วย */
+  html,body.printing-sheet,body.printing-sheet>#printRoot{background:#fff!important}
+  body.printing-sheet #printRoot{padding:0!important;margin:0!important;border:0!important;box-shadow:none!important}
+  /* ---- กระดาษทุกชนิด: ถอดกรอบ/เงา/ความกว้างจำกัด/พื้นหลังของพรีวิวออก ---- */
+  body.printing-sheet #printRoot>*{
+    width:100%!important;max-width:none!important;margin:0!important;padding:0!important;
+    border:0!important;border-radius:0!important;box-shadow:none!important;
+    background:#fff!important;overflow:visible!important;max-height:none!important}
+  /* ---- แบ่งหน้าอัตโนมัติ (ใช้กับทุกตารางในกระดาษ) ---- */
+  body.printing-sheet #printRoot table{page-break-inside:auto;break-inside:auto}
+  body.printing-sheet #printRoot thead{display:table-header-group}
+  body.printing-sheet #printRoot tfoot{display:table-footer-group}
+  body.printing-sheet #printRoot tr,
+  body.printing-sheet #printRoot td,
+  body.printing-sheet #printRoot th{break-inside:avoid;page-break-inside:avoid}
+  /* ห้ามให้ช่องตารางซ่อนเนื้อหา (เดิม overflow:hidden + ellipsis ทำให้ข้อมูลหาย) */
+  body.printing-sheet #printRoot th,
+  body.printing-sheet #printRoot td{overflow:visible!important;text-overflow:clip!important;height:auto!important}
+  /* เฉพาะตารางใบเสนอราคา — คอลัมน์กำหนดเป็น % อยู่แล้ว ให้ข้อความยาวขึ้นบรรทัดใหม่ได้ */
+  body.printing-sheet #printRoot table.qt-tb th,
+  body.printing-sheet #printRoot table.qt-tb td{white-space:normal!important;word-break:break-word}
+  body.printing-sheet #printRoot table.qt-tb th:first-child,
+  body.printing-sheet #printRoot table.qt-tb td.c,
+  body.printing-sheet #printRoot table.qt-tb th.num,
+  body.printing-sheet #printRoot table.qt-tb td.num{white-space:nowrap!important;word-break:keep-all!important}
+  /* ⚠️ ตารางกว้าง ๆ (ใบปะหน้า) ห้ามยุ่งกับ white-space/word-break/table-layout
+        — เคยลองแล้วได้ตัวหนังสือเรียงตั้งทีละตัวอักษร แถวสูงจนได้ 1 แถว/หน้า
+        แก้ความกว้างด้วยการย่อทั้งใบ (zoom) ใน printSheet() แทน */
+  body.printing-sheet #printRoot .scroll{overflow:visible!important;max-height:none!important;
+    background:none!important;padding:0!important;border-radius:0!important}
+  /* ---- เฉพาะใบเสนอราคา ---- */
+  body.printing-sheet #printRoot table.qt-tb th,
+  body.printing-sheet #printRoot table.qt-tb td{min-height:30px;font-size:13px;padding:7px 9px}
+  body.printing-sheet #printRoot .qt-h1{font-size:23px}
+  body.printing-sheet #printRoot .qt-pic{break-inside:avoid;page-break-inside:avoid;margin:8px 0}
   /* รูปสูงสุดไม่เกินพื้นที่พิมพ์จริงของ A4 (297 − ขอบ 12×2 ≈ 270mm) จะได้ไม่ถูกตัดครึ่ง */
-  body.printing-qt #qtPrintRoot .qt-pic img{max-width:100%!important;
+  body.printing-sheet #printRoot .qt-pic img{max-width:100%!important;
     max-height:min(var(--qtPicH,200mm),262mm)!important;width:auto!important;height:auto!important}
-  body.printing-qt #qtPrintRoot .qt-note{break-inside:auto;page-break-inside:auto}
-  body.printing-qt,body.printing-qt *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  /* หัวตารางในกระดาษพิมพ์ = เทาอ่อน ตัวดำ (เดิมบางใบเป็นพื้นน้ำเงินเข้ม กินหมึก/ดูเป็นแถบดำ) */
+  body.printing-sheet #printRoot th{background:#E8E8E8!important;color:#000!important}
+  /* ---- สีพื้น/ตัวอักษร: บังคับเฉพาะในกระดาษ ห้ามลามไป body ---- */
+  body.printing-sheet #printRoot,body.printing-sheet #printRoot *{
+    -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   @page{size:A4 portrait;margin:12mm}
 }
 .slip-th{width:120px;height:80px;object-fit:cover;border-radius:7px;border:1px solid var(--line);
@@ -1933,11 +1940,9 @@ function renderMemoDoc(){
       <span>☐ พิจารณาใหม่</span><span>☐ อื่นๆ (โปรดระบุ) ..............................................</span>
     </div>`;
 }
+/* พิมพ์บันทึกข้อความภายใน — ผ่านกลไกกลางเช่นกัน */
 function printMemoDoc(){
-  document.body.classList.add('printing-memo');
-  const done=()=>{document.body.classList.remove('printing-memo');window.removeEventListener('afterprint',done);};
-  window.addEventListener('afterprint',done);
-  setTimeout(()=>{window.print();setTimeout(done,1200);},60);
+  printSheet($('mdPaper'),{empty:'ยังไม่มีบันทึกข้อความให้พิมพ์'});
 }
 async function saveMemoDocNote(){
   const lines=MD_ROWS.filter(r=>r.sku||r.neu!=='')
@@ -2882,12 +2887,9 @@ function docNoteBlock(){
     <div style="white-space:pre-wrap;font-size:12.5px;line-height:1.75;margin-top:4px">${esc(t)}</div>
   </div>`;
 }
-/* พิมพ์เฉพาะใบปะหน้า ไม่ติดพื้นหลังโมดัล */
+/* พิมพ์ใบปะหน้า — ผ่านกลไกกลาง จึงไม่ติดพื้นหลังดำของโมดัล และแบ่งหน้าเองได้ */
 function printDcSheet(){
-  document.body.classList.add('printing-dc');
-  const done=()=>{document.body.classList.remove('printing-dc');window.removeEventListener('afterprint',done);};
-  window.addEventListener('afterprint',done);
-  setTimeout(()=>{window.print();setTimeout(done,1200);},60);
+  printSheet($('dcSheet'),{empty:'ยังไม่มีใบปะหน้าให้พิมพ์'});
 }
 function buildDocDomestic(rows,coName,thDate){
   const detail=$('dcDetail')&&$('dcDetail').checked;
@@ -4060,42 +4062,63 @@ async function delQuot(id){
   if(error)return toast('ลบไม่สำเร็จ: '+error.message);
   await loadQuot();
 }
-/* พิมพ์ใบเสนอราคา — โคลนกระดาษออกมาไว้ #qtPrintRoot (ลูกตรงของ body) ก่อนสั่งพิมพ์
-   เพื่อให้หลุดจากโมดัลที่มี max-height/overflow ครอบ และไหลข้ามหน้าได้ครบทุกหน้า
-   (เดิมพิมพ์จากในโมดัลด้วย position:absolute → ได้แค่หน้าแรก เนื้อหาที่เหลือหาย) */
-function printQuot(srcEl){
-  const src=srcEl||$('qtSheet')||($('qtPaper')&&$('qtPaper').querySelector('.qt-sheet'));
-  let root=$('qtPrintRoot');
-  if(!root){ root=document.createElement('div'); root.id='qtPrintRoot'; document.body.appendChild(root); }
-  if(!src){ alert('ยังไม่มีใบให้พิมพ์'); return; }
+/* ============ พิมพ์กระดาษใด ๆ ผ่านกลไกกลาง ============
+   โคลน element กระดาษไปไว้ #printRoot (ลูกตรงของ body) แล้วสั่งพิมพ์
+   → ไม่ติดพื้นหลังโมดัล และเนื้อหาแบ่งหน้าเองครบทุกหน้า            */
+function printSheet(src,opt){
+  opt=opt||{};
+  if(!src){ alert(opt.empty||'ยังไม่มีเอกสารให้พิมพ์'); return; }
+  let root=$('printRoot');
+  if(!root){ root=document.createElement('div'); root.id='printRoot'; document.body.appendChild(root); }
   root.innerHTML='';
   const clone=src.cloneNode(true);
-  clone.removeAttribute('id');                       // กัน id ซ้ำกับต้นฉบับในโมดัล
+  // คง id ไว้ เพราะสไตล์บางชุดอ้างอิงด้วย id (เช่น #mdPaper) — #printRoot อยู่ท้าย body
+  // จึงไม่กระทบ getElementById ที่ยังคืนต้นฉบับในโมดัลเสมอ
+  clone.querySelectorAll('.no-print').forEach(function(n){n.remove();});
   root.appendChild(clone);
-  document.body.classList.add('printing-qt');
+
+  /* ---- ย่อทั้งใบให้พอดีความกว้าง A4 อัตโนมัติ ----
+     A4 กว้าง 210mm − ขอบ 12mm×2 = 186mm ≈ 703px @96dpi
+     ใช้ zoom (ไม่ใช่ transform) เพราะ zoom มีผลกับ layout จริง → แบ่งหน้ายังทำงานถูก */
+  const PW=703;
+  root.style.cssText='display:block;position:fixed;left:-100000px;top:0;width:'+PW+'px;zoom:1';
+  let need=PW;
+  [].slice.call(clone.querySelectorAll('table')).forEach(function(t){
+    need=Math.max(need, t.scrollWidth||0, t.offsetWidth||0);
+  });
+  need=Math.max(need, clone.scrollWidth||0);
+  const z=need>PW ? Math.max(.5, Math.floor(PW/need*100)/100) : 1;   // ย่อได้ไม่เกิน 50%
+  root.style.cssText='';                       // คืนค่า ให้ @media print คุมเอง
+  if(z<1)root.style.zoom=z;
+  document.body.classList.add('printing-sheet');
 
   let finished=false;
   const done=function(){
     if(finished)return; finished=true;
-    document.body.classList.remove('printing-qt');
+    document.body.classList.remove('printing-sheet');
+    root.style.zoom='';
     root.innerHTML='';
     window.removeEventListener('afterprint',done);
   };
   window.addEventListener('afterprint',done);
 
-  // รอให้รูปแนบโหลดเสร็จก่อน ไม่งั้นเบราว์เซอร์คิดความสูงผิด → แบ่งหน้าเพี้ยน/รูปหาย
-  const imgs=[...clone.querySelectorAll('img')];
-  const waitImgs=Promise.all(imgs.map(function(im){
+  // รอให้รูปโหลดเสร็จก่อน ไม่งั้นเบราว์เซอร์คิดความสูงผิด → แบ่งหน้าเพี้ยน/รูปหาย
+  const imgs=[].slice.call(clone.querySelectorAll('img'));
+  Promise.all(imgs.map(function(im){
     if(im.complete&&im.naturalHeight)return Promise.resolve();
     return new Promise(function(res){
       const t=setTimeout(res,3000);
       im.addEventListener('load',function(){clearTimeout(t);res();},{once:true});
       im.addEventListener('error',function(){clearTimeout(t);res();},{once:true});
     });
-  }));
-  waitImgs.then(function(){
+  })).then(function(){
     setTimeout(function(){ window.print(); setTimeout(done,1500); },80);
   });
+}
+/* ใบเสนอราคา */
+function printQuot(srcEl){
+  printSheet(srcEl||$('qtSheet')||($('qtPaper')&&$('qtPaper').querySelector('.qt-sheet')),
+             {empty:'ยังไม่มีใบให้พิมพ์'});
 }
 
 /* ==================================================================
@@ -4793,6 +4816,6 @@ function exportRemit(){
 boot();
 </script>
 <!-- ที่วางกระดาษตอนพิมพ์ (ต้องเป็นลูกตรงของ body เนื้อหาจึงแบ่งหน้าเองได้) -->
-<div id="qtPrintRoot"></div>
+<div id="printRoot"></div>
 </body>
 </html>
