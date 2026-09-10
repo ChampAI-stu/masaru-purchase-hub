@@ -760,7 +760,7 @@ body.price-on .sl-price{display:block}
     <div style="background:var(--blue-bg);border:1px solid #378ADD33;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.7">
       <b>วิธีใช้:</b><br>
       1. ดาวน์โหลดเทมเพลต → กรอกข้อมูล<br>
-      2. คอลัมน์: <b>เลขที่ PO · SKU · จำนวน · วันที่เข้าคลัง · สถานะ · หมายเหตุ · ราคาจัดซื้อ/หน่วย (AF)</b><br>
+      2. คอลัมน์: <b>เลขที่ PO · SKU · จำนวน · วันที่เข้าคลัง · สถานะ · หมายเหตุ · ราคาจัดซื้อ/หน่วย (AF) · ชื่อซัพพลายเออร์</b><br>
       3. เลือกไฟล์ → ตรวจตัวอย่าง → ยืนยันนำเข้า
     </div>
 
@@ -775,7 +775,7 @@ body.price-on .sl-price{display:block}
 
     <label style="display:flex;gap:8px;align-items:flex-start;background:var(--blue-bg);border:1px solid #378ADD33;border-radius:10px;padding:11px 13px;margin-bottom:12px;cursor:pointer;font-size:13px;line-height:1.6">
       <input type="checkbox" id="priceOnlyMode" checked style="margin-top:3px;width:16px;height:16px;cursor:pointer">
-      <span><b>อัปเดตเฉพาะราคา (¥) เท่านั้น</b> — เขียนแค่ช่องราคาให้แถวที่มีอยู่แล้ว <b>ไม่แตะสถานะ / จำนวน / วันที่ / ขนส่ง</b><br>
+      <span><b>อัปเดตเฉพาะราคา (¥) + Vendor</b> — เขียนแค่ช่องราคาและชื่อซัพพลายเออร์ให้แถวที่มีอยู่แล้ว <b>ไม่แตะสถานะ / จำนวน / วันที่ / ขนส่ง</b><br>
       <span style="color:var(--muted)">เอาเครื่องหมายออก = ซิงก์ครบทุกช่องจากไฟล์ (สถานะ/จำนวน/วันที่เข้าคลัง)</span></span>
     </label>
 
@@ -785,7 +785,7 @@ body.price-on .sl-price{display:block}
         <table style="font-size:12px"><thead><tr>
           <th style="padding:8px 10px">เลขที่ PO</th><th style="padding:8px 10px">SKU</th>
           <th style="padding:8px 10px">จำนวน</th><th style="padding:8px 10px">เข้าแล้ว</th><th style="padding:8px 10px">ราคา/หน่วย</th><th style="padding:8px 10px">วันที่เข้าคลัง</th>
-          <th style="padding:8px 10px">สถานะ</th>
+          <th style="padding:8px 10px">สถานะ</th><th style="padding:8px 10px" id="importVendorTh">Vendor</th>
         </tr></thead><tbody id="importPreviewBody"></tbody></table>
       </div>
     </div>
@@ -1628,11 +1628,11 @@ $('importConfirm').addEventListener('click', confirmImport);
 
 function downloadTemplate(){
   const ws = XLSX.utils.aoa_to_sheet([
-    ['รหัสใบจัดซื้อสินค้า','รหัสสินค้า','จำนวนการจัดซื้อสินค้า','จำนวนเข้าคลังสำเร็จ','เวลาที่คาดว่าจะส่งถึง','สถานะใบจัดซื้อสินค้า'],
-    ['1001','MCG-450N',200,0,'2026-07-15','รออนุมัติ'],
-    ['1001','SCG-630N',150,150,'2026-07-15','สำเร็จ'],
+    ['รหัสใบจัดซื้อสินค้า','รหัสสินค้า','จำนวนการจัดซื้อสินค้า','จำนวนเข้าคลังสำเร็จ','เวลาที่คาดว่าจะส่งถึง','สถานะใบจัดซื้อสินค้า','ชื่อซัพพลายเออร์','ราคาจัดซื้อ / หน่วย'],
+    ['1001','MCG-450N',200,0,'2026-07-15','รออนุมัติ','SICHEN',160],
+    ['1001','SCG-630N',150,150,'2026-07-15','สำเร็จ','SICHEN',206],
   ]);
-  ws['!cols'] = [{wch:20},{wch:16},{wch:20},{wch:18},{wch:20},{wch:20}];
+  ws['!cols'] = [{wch:20},{wch:16},{wch:20},{wch:18},{wch:20},{wch:20},{wch:22},{wch:18}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'PO');
   XLSX.writeFile(wb, 'template_po_masaru.xlsx');
@@ -1675,9 +1675,15 @@ function handleImportFile(e){
       // จับคู่แบบ exact ก่อน (กันชนกับคอลัมน์ที่ชื่อคล้ายกัน เช่น รหัสสินค้า vs รหัสใบจัดซื้อสินค้า)
       const exact = name => headers.findIndex(h => h === name);
       const has = (...keys) => headers.findIndex(h => keys.some(k => h.includes(k)));
-      const pick = (exacts, contains=[]) => {
+      // เหมือน has() แต่ข้ามคอลัมน์ที่เป็น "รหัส/ID/code" — เอาชื่อ ไม่เอารหัส
+      const hasName = (...keys) => {
+        const ok = h => keys.some(k => h.includes(k)) && !/รหัส|เลขที่|\bID\b|code/i.test(h);
+        const i = headers.findIndex(ok);
+        return i>=0 ? i : headers.findIndex(h => keys.some(k => h.includes(k)));
+      };
+      const pick = (exacts, contains=[], nameOnly=false) => {
         for(const e of exacts){ const i = exact(e); if(i>=0) return i; }
-        for(const c of contains){ const i = has(c); if(i>=0) return i; }
+        for(const c of contains){ const i = nameOnly ? hasName(c) : has(c); if(i>=0) return i; }
         return -1;
       };
       const ci = {
@@ -1688,8 +1694,15 @@ function handleImportFile(e){
         eta:    pick(['เวลาที่คาดว่าจะส่งถึง'], []),
         status: pick(['สถานะใบจัดซื้อสินค้า'], []),
         note:   pick(['หมายเหตุ'], []),
-        price:  pick(['ราคาจัดซื้อ / หน่วย'], ['ราคาซื้อต่อหน่วย'])   // คอลัมน์ AF (สำรอง: AO)
+        price:  pick(['ราคาจัดซื้อ / หน่วย'], ['ราคาซื้อต่อหน่วย']),  // คอลัมน์ AF (สำรอง: AO)
+        // ชื่อซัพพลายเออร์ — ชื่อหัวคอลัมน์ต่างกันไปตามไฟล์ที่ export มา จึงลองหลายชื่อ
+        vendor: pick(['ชื่อซัพพลายเออร์','ซัพพลายเออร์','ชื่อผู้จำหน่าย','ผู้จำหน่าย',
+                      'ชื่อผู้ขาย','ผู้ขาย','บริษัทผู้ขาย','Vendor','Supplier',
+                      '供应商名称','供应商'],
+                     ['ซัพพลาย','จำหน่าย','ผู้ขาย','endor','upplier','供应商'], true)
       };
+      window._vendorCol = ci.vendor>=0 ? headers[ci.vendor] : '';
+      window._allHeaders = headers;
       if(ci.sku < 0){ toast('ไม่พบคอลัมน์ SKU — โหลดเทมเพลตไปใช้นะคะ'); return; }
       importRecords = [];
       let skippedVoid = 0;
@@ -1710,6 +1723,7 @@ function handleImportFile(e){
           received_qty: (recvRaw==='' || recvRaw==null) ? null : (parseInt(recvRaw)||0),
           price: (priceRaw==='' || priceRaw==null) ? null : (parseFloat(priceRaw)||null),
           eta: ci.eta>=0 ? toISODate(r[ci.eta]) : null,
+          vendor: ci.vendor>=0 ? (String(r[ci.vendor]||'').trim()||null) : null,
           note: null,   // ไม่อ่านหมายเหตุจากไฟล์ — คงค่าเดิมในเว็บไว้
           _erp: ci.status>=0 ? mapStatus(r[ci.status]) : 'อยู่ระหว่างสั่งซื้อ'   // สถานะ ERP (ไว้คำนวณ)
         });
@@ -1741,7 +1755,17 @@ function showImportPreview(){
     <td style="padding:7px 10px">${r.price!=null?Number(r.price).toLocaleString():'—'}</td>
     <td style="padding:7px 10px">${r.eta?fmtDate(r.eta):'—'}</td>
     <td style="padding:7px 10px">${esc(provisional(r))}</td>
-  </tr>`).join('') + (importRecords.length>50 ? `<tr><td colspan="7" style="padding:8px;text-align:center;color:var(--muted)">…และอีก ${importRecords.length-50} รายการ</td></tr>` : '');
+    <td style="padding:7px 10px">${r.vendor?esc(r.vendor):'<span style="color:var(--muted)">—</span>'}</td>
+  </tr>`).join('') + (importRecords.length>50 ? `<tr><td colspan="8" style="padding:8px;text-align:center;color:var(--muted)">…และอีก ${importRecords.length-50} รายการ</td></tr>` : '');
+  // บอกให้ชัดว่าอ่าน Vendor จากคอลัมน์ไหน / หรือหาไม่เจอ
+  const vc=window._vendorCol||'';
+  const vth=$('importVendorTh');
+  if(vth)vth.innerHTML = vc ? 'Vendor <span style="font-weight:400;color:var(--muted)">('+esc(vc)+')</span>'
+                            : 'Vendor <span style="font-weight:400;color:#B45309">(ไม่พบคอลัมน์)</span>';
+  if(!vc){
+    console.warn('[import] ไม่พบคอลัมน์ Vendor — หัวคอลัมน์ในไฟล์:', window._allHeaders);
+    toast('ไฟล์นี้ไม่มีคอลัมน์ Vendor — ชื่อซัพพลายเออร์จะไม่ถูกอัปเดต');
+  }
   $('importPreview').style.display = 'block';
   $('importConfirm').disabled = false; $('importConfirm').style.opacity = '1';
 }
@@ -1766,23 +1790,31 @@ async function confirmImport(){
     let noMatch = 0, noPrice = 0;
     const updates = [];
     importRecords.forEach(r => {
-      if(r.price == null){ noPrice++; return; }
+      // มีราคา หรือ มี Vendor อย่างน้อยหนึ่งอย่าง ถึงจะอัปเดต
+      if(r.price == null && !r.vendor){ noPrice++; return; }
       const id = idMap[(r.po_number||'')+'||'+r.sku];
       if(id == null){ noMatch++; return; }
-      updates.push({ id, price: r.price });
+      const u = { id };
+      if(r.price != null) u.price = r.price;
+      if(r.vendor)       u.vendor = r.vendor;    // ชื่อซัพพลายเออร์จากไฟล์
+      updates.push(u);
     });
     if(updates.length === 0){
       $('importConfirm').disabled = false; $('importConfirm').textContent = 'ยืนยันนำเข้า';
-      toast(noMatch>0 ? `ไม่พบรายการที่ตรงกันในระบบ (${noMatch} รายการ)` : 'ไฟล์ไม่มีราคาให้อัปเดต');
+      toast(noMatch>0 ? `ไม่พบรายการที่ตรงกันในระบบ (${noMatch} รายการ)` : 'ไฟล์ไม่มีราคา/Vendor ให้อัปเดต');
       return;
     }
     // อัปเดตทีละแถว เฉพาะช่อง price — ฟิลด์อื่น (สถานะ/จำนวน/วันที่/ขนส่ง/trip) คงเดิมทั้งหมด
     let failed = 0;
     for(let i=0;i<updates.length;i+=25){
       const chunk = updates.slice(i, i+25);
-      const res = await Promise.all(chunk.map(u =>
-        sb.from('purchase_orders').update({ price: u.price }).eq('id', u.id)));
+      const res = await Promise.all(chunk.map(u => {
+        const {id, ...fields} = u;
+        return sb.from('purchase_orders').update(fields).eq('id', id);
+      }));
       failed += res.filter(x => x.error).length;
+      const ve = res.find(x => x.error && /vendor/i.test(x.error.message||''));
+      if(ve){ toast('ยังไม่ได้เพิ่มคอลัมน์ vendor — รันไฟล์ purchase_orders_vendor.sql ก่อน'); }
     }
     $('importConfirm').disabled = false; $('importConfirm').textContent = 'ยืนยันนำเข้า';
     if(failed > 0){ toast(`อัปเดตราคาไม่สำเร็จ ${failed} รายการ`); return; }
@@ -1797,7 +1829,7 @@ async function confirmImport(){
   const now = new Date().toISOString();
   // ดึงข้อมูลเดิมทุกแถว ไว้ "รวม" กับไฟล์ (ช่องว่างในไฟล์ = คงค่าเดิม)
   const { data: existing } = await sb.from('purchase_orders')
-    .select('po_number,sku,quantity,received_qty,eta,status,note,price');
+    .select('po_number,sku,quantity,received_qty,eta,status,note,price,vendor');
   const existMap = {};
   (existing || []).forEach(o => { existMap[(o.po_number||'')+'||'+o.sku] = o; });
 
@@ -1811,6 +1843,7 @@ async function confirmImport(){
       quantity: ordered,
       received_qty: received,
       price: r.price != null ? r.price : (ex ? ex.price : null),   // ราคาจากไฟล์ (AF) / ไม่มี = คงเดิม
+      vendor: r.vendor || (ex ? ex.vendor : null),                 // Vendor จากไฟล์ / ไม่มี = คงเดิม
       eta:  r.eta  != null ? r.eta  : (ex ? ex.eta  : null),
       note: r.note != null ? r.note : (ex ? ex.note : null),
       status: computeStatusMerged(r._erp, ordered, received, ex ? ex.status : null),
@@ -1822,7 +1855,11 @@ async function confirmImport(){
   const { error } = await sb.from('purchase_orders')
     .upsert(payload, { onConflict: 'po_number,sku' });
   $('importConfirm').disabled = false; $('importConfirm').textContent = 'ยืนยันนำเข้า';
-  if(error){ toast('นำเข้าไม่สำเร็จ: '+error.message); return; }
+  if(error){
+    toast(/vendor/i.test(error.message||'')
+      ? 'ยังไม่ได้เพิ่มคอลัมน์ vendor — รันไฟล์ purchase_orders_vendor.sql บน Supabase ก่อน'
+      : 'นำเข้าไม่สำเร็จ: '+error.message);
+    return; }
   $('importBg').style.display = 'none';
   await logUpload(payload.length);
   toast(`นำเข้า/อัพเดท ${payload.length} รายการเรียบร้อย`);
