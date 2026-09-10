@@ -500,7 +500,9 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
           <input id="q_po" list="qtPoList" placeholder="18735" onchange="pullQuotPo()" oninput="drawQuot()"></div>
         <div class="fld"><label>PO date</label><input type="date" id="q_date" onchange="drawQuot()"></div>
         <div class="fld"><label>Reference PR No</label><input id="q_pr" placeholder="-" oninput="drawQuot()"></div>
-        <div class="fld"><label>Vendor</label><input id="q_vendor" placeholder="VATON-CT" oninput="drawQuot()"></div>
+        <div class="fld"><label>Vendor</label>
+          <input id="q_vendor" placeholder="VATON-CT" oninput="drawQuot();$('q_venHint').innerHTML=''">
+          <div id="q_venHint" class="muted" style="font-size:11px;margin-top:3px"></div></div>
         <div class="fld"><label>Deliver By</label>
           <select id="q_deliver" onchange="drawQuot()"><option>SEA</option><option>AIR</option><option>LAND</option></select></div>
         <div class="fld"><label>สกุลเงิน</label>
@@ -3884,6 +3886,7 @@ async function openQuot(id){
   $('qtTitle').textContent=x?('แก้ไขใบเสนอราคา PO '+(x.po_number||'')):'สร้างใบเสนอราคา';
   $('q_po').value=(x&&x.po_number)||''; $('q_date').value=(x&&x.po_date)||'';
   $('q_pr').value=(x&&x.ref_pr)||'';    $('q_vendor').value=(x&&x.vendor)||'';
+  if($('q_venHint'))$('q_venHint').innerHTML='';
   $('q_deliver').value=(x&&x.deliver_by)||'SEA'; $('q_cur').value=(x&&x.currency)||'CNY';
   $('q_ship').value=(x&&x.ship_fee)||0; $('q_title').value=(x&&x.title_note)||'';
   $('q_resp').value=(x&&x.responsible)||'';
@@ -3917,34 +3920,27 @@ async function pullQuotPo(force){
 
   QT_ROWS=rows.map(function(r){return {sku:r.sku||'',colors:r.sku||'',qty:num(r.quantity)||0,price:num(r.price)||0};});
 
-  /* ===== Vendor =====
-     ① ใช้ค่าจาก Purchase Board (purchase_orders.vendor) = ชื่อที่มาจากไฟล์ที่อัปเข้าจริง
-        ถ้าในใบนั้นมีหลายชื่อ ใช้ชื่อที่พบบ่อยที่สุด
-     ② ถ้าบอร์ดยังไม่มีค่า (ไฟล์เก่าที่อัปก่อนเพิ่มคอลัมน์) จึงถอยไปเดาจาก sku_master
-        ⚠️ วิธี ② เดาผิดได้ เพราะ 1 SKU มีได้หลาย supplier — จึงใช้เป็นทางสำรองเท่านั้น */
+  /* ===== Vendor — มาจาก Purchase Board เท่านั้น =====
+     ใช้ purchase_orders.vendor คือชื่อที่อ่านตรงจากไฟล์ที่อัปเข้าบอร์ด
+     ถ้าใบนั้นมีหลายชื่อ ใช้ชื่อที่พบบ่อยที่สุด
+     ⚠️ ไม่เดาจาก sku_master อีกแล้ว — 1 SKU มีได้หลาย supplier จึงเดาผิดบ่อย
+        และใบเสนอราคาส่งให้โรงงาน ชื่อผิดเสียหายกว่าเว้นว่าง */
   if(!$('q_vendor').value){
-    const top=function(map){
-      const ks=Object.keys(map); if(!ks.length)return '';
-      return ks.sort(function(a,b){return map[b]-map[a];})[0];
-    };
-    // ① จากบอร์ด
     const vc={};
     rows.forEach(function(r){
       const v=String(r.vendor||'').trim();
       if(v)vc[v]=(vc[v]||0)+1;
     });
-    let v=top(vc);
-    // ② สำรอง: supplier ใน sku_master
-    if(!v){
-      const cnt={};
-      rows.forEach(function(r){
-        const m=MASTER.find(function(x){return nzq(x.sku)===nzq(r.sku);});
-        if(m&&m.supplier)cnt[m.supplier]=(cnt[m.supplier]||0)+1;
-      });
-      v=top(cnt);
-      if(v)console.info('[quot] Vendor ของ PO '+po+' ไม่มีในบอร์ด — เดาจาก sku_master:',v);
+    const ks=Object.keys(vc);
+    const v=ks.length? ks.sort(function(a,b){return vc[b]-vc[a];})[0] : '';
+    if(v){
+      $('q_vendor').value=v;
+      if($('q_venHint'))$('q_venHint').innerHTML='✅ จาก Purchase Board'
+        +(ks.length>1?' <span style="color:#B45309">(ใบนี้มี '+ks.length+' ชื่อ: '+esc(ks.join(' · '))+' — ตรวจก่อนส่ง)</span>':'');
+    }else if($('q_venHint')){
+      $('q_venHint').innerHTML='<span style="color:#B45309">⚠️ PO นี้ยังไม่มีชื่อ Vendor ในบอร์ด — '
+        +'อัปโหลดไฟล์ PO เข้า Purchase Board อีกครั้ง (โหมด “อัปเดตเฉพาะราคา + Vendor”) หรือพิมพ์เองในช่องนี้</span>';
     }
-    if(v)$('q_vendor').value=v;
   }
 
   /* PO date — ใช้วันที่แถวแรกถูกสร้างในบอร์ด (created_at) */
@@ -3976,7 +3972,7 @@ async function pullQuotPo(force){
   drawQuotRows(); drawQuot();
   if(force){
     const miss=[];
-    if(!$('q_vendor').value)miss.push('Vendor (ไฟล์ที่อัปเข้า Purchase Board ยังไม่มีคอลัมน์ชื่อซัพพลายเออร์ และไม่พบ supplier ใน sku_master)');
+    if(!$('q_vendor').value)miss.push('Vendor (PO นี้ยังไม่มีชื่อซัพพลายเออร์ในบอร์ด — อัปไฟล์ PO เข้า Purchase Board อีกครั้ง)');
     if(!$('q_date').value)  miss.push('PO date (บอร์ดไม่มีวันที่สร้าง)');
     if(!$('q_pr').value||$('q_pr').value==='-')miss.push('Reference PR No (ยังไม่มีใบ PR ที่กรอกเลข PO นี้)');
     alert('ดึงข้อมูล PO '+po+' แล้ว — '+rows.length+' รายการ'
