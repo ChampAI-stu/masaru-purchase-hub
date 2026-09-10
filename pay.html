@@ -58,18 +58,27 @@ th.sortable:hover{color:var(--gold)}
 th.sort-active{color:var(--gold)}
 .sort-ind{font-size:10px;margin-left:4px;color:var(--gold);font-weight:700}
 .billhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#F1F5F9;border-radius:9px;padding:9px 13px;margin:14px 0 8px}
-.doc-sheet{background:#fff;color:#111;padding:8px 4px}
-.doc-h{text-align:center;font-size:19px;font-weight:800;color:var(--navy);margin-bottom:2px}
-.doc-sub{text-align:center;font-size:13px;color:#555;margin-bottom:12px}
-.doc-meta{display:flex;gap:24px;flex-wrap:wrap;font-size:13px;margin-bottom:10px}
-.doc-sheet table{width:100%;border-collapse:collapse;font-size:12.5px}
-.doc-sheet th,.doc-sheet td{border:1px solid #333;padding:6px 8px}
+/* ===== ขนาดตัวอักษรใบปะหน้า =====
+   --dcF = ขนาดพื้นฐาน ปรับได้จาก dropdown "ขนาดตัวอักษร" ในแท็บเอกสารประจำวัน
+   ทุกขนาดอิงจากตัวนี้ด้วย calc() → ปรับที่เดียว เล็ก/ใหญ่ไปพร้อมกันทั้งใบ
+   ค่าเริ่มต้น 11px (เดิม 12.5px) — ตารางยาว ๆ จะลงกระดาษได้มากขึ้น */
+.doc-sheet{--dcF:11px;background:#fff;color:#111;padding:8px 4px}
+.doc-h{text-align:center;font-size:calc(var(--dcF) + 5px);font-weight:800;color:var(--navy);margin-bottom:2px}
+.doc-sub{text-align:center;font-size:calc(var(--dcF) + 0.5px);color:#555;margin-bottom:10px}
+.doc-meta{display:flex;gap:22px;flex-wrap:wrap;font-size:calc(var(--dcF) + 0.5px);margin-bottom:9px}
+.doc-sheet table{width:100%;border-collapse:collapse;font-size:var(--dcF)}
+.doc-sheet th,.doc-sheet td{border:1px solid #333;padding:4px 6px}
 .doc-sheet thead th{background:var(--navy);color:#fff}
-.sign-row{display:flex;gap:18px;margin-top:34px;font-size:12px}
+.sign-row{display:flex;gap:18px;margin-top:30px;font-size:calc(var(--dcF) - 0.5px)}
 .sign-box{flex:1;text-align:center}
-.sign-sub{color:#555;font-size:11px}
-.sign-line{border-top:1px dotted #333;margin:38px 12px 6px}
-.chk{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;margin:10px 0}
+.sign-sub{color:#555;font-size:calc(var(--dcF) - 1.5px)}
+.sign-line{border-top:1px dotted #333;margin:34px 12px 6px}
+.chk{display:flex;gap:14px;flex-wrap:wrap;font-size:var(--dcF);margin:9px 0}
+/* ข้อความที่ฝังสไตล์ px มาในเนื้อเอกสาร (สรุป/หมายเหตุ/รายละเอียดงวด) ให้ย่อตามด้วย */
+.doc-sheet [style*="font-size:12.5px"],
+.doc-sheet [style*="font-size:12px"],
+.doc-sheet [style*="font-size:13px"]{font-size:var(--dcF)!important}
+.doc-sheet [style*="font-size:11px"]{font-size:calc(var(--dcF) - 1px)!important}
 /* ===== ตอนพิมพ์ =====
    เบราว์เซอร์ตัดสีพื้นหลังทิ้งโดยปริยาย → หัวตารางที่เป็นตัวหนังสือขาว
    จะกลายเป็น "ขาวบนขาว" มองไม่เห็น จึงต้องบังคับเป็นตัวดำพื้นเทาอ่อน */
@@ -418,6 +427,12 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
         <label style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;margin:0;cursor:pointer" title="แตกรายการ SKU + ราคา/หน่วย จาก Purchase Board">
           <input type="checkbox" id="dcDetail" checked onchange="buildDoc()" style="width:16px;height:16px">แยกรายการ SKU
         </label>
+        <select id="dcFont" onchange="applyDocFont()" style="max-width:165px" title="ขนาดตัวอักษรบนใบปะหน้า">
+          <option value="11">ตัวอักษร: เล็ก</option>
+          <option value="10">เล็กมาก (รายการเยอะ)</option>
+          <option value="9.5">เล็กสุด</option>
+          <option value="12.5">ปกติ (ขนาดเดิม)</option>
+        </select>
         <select id="dcForm" onchange="buildDoc()" style="max-width:200px" title="เลือกรูปแบบใบปะหน้า">
           <option value="auto">รูปแบบ: อัตโนมัติ</option>
           <option value="intl">ต่างประเทศ (หยวน/USD)</option>
@@ -2730,8 +2745,22 @@ function initDocSub(){
   if($('dcHelp'))$('dcHelp').style.display=(h==='1')?'':'none';
   docSub(v);
 }
+/* ปรับขนาดตัวอักษรใบปะหน้า — จำค่าไว้ในเครื่อง ไม่ต้องเลือกใหม่ทุกครั้ง */
+function applyDocFont(){
+  const v=($('dcFont')&&$('dcFont').value)||'11';
+  try{ localStorage.setItem('dcFont',v); }catch(e){}
+  document.querySelectorAll('#dcSheet .doc-sheet, #printRoot .doc-sheet')
+    .forEach(function(el){ el.style.setProperty('--dcF', v+'px'); });
+}
+function initDocFont(){
+  if(!$('dcFont'))return;
+  let v=''; try{ v=localStorage.getItem('dcFont')||''; }catch(e){}
+  if(v&&[...$('dcFont').options].some(o=>o.value===v))$('dcFont').value=v;
+  applyDocFont();
+}
 function renderDoc(){
   if(!$('dcDate'))return;
+  initDocFont();
   if(!$('dcDate').value)$('dcDate').value=todayStr();
   fillDocCompany();
   DOC_VIEW_IDS=null;                   // เปลี่ยนวัน/บริษัท/ช่องทาง = เริ่มใหม่
@@ -3323,6 +3352,7 @@ function buildDoc(show){
     <div class="muted" style="margin-top:12px;font-size:11px">พิมพ์เมื่อ ${new Date().toLocaleString('th-TH')} · เอกสารภายใน (ความลับ)</div>
   </div>`;
   $('dcSheet').innerHTML=h;
+  applyDocFont();               // ใบที่สร้างใหม่ต้องได้ขนาดตัวอักษรที่เลือกไว้
   const eb=$('dcExecBtns'); if(eb)eb.style.display=(!APPROVAL_MODE||IS_EXEC)?'':'none';
 }
 
