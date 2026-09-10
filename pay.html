@@ -1031,7 +1031,13 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
     <div class="row no-print" style="align-items:center;margin-bottom:4px">
       <h3 style="margin:0">📄 บันทึกข้อความภายใน</h3>
       <div style="flex:1"></div>
+      <button class="btn mini ghost" id="mdHistBtn" onclick="toggleMdHist()">📚 เอกสารที่บันทึกไว้</button>
       <span class="muted" style="font-size:12px">เลือกแบบฟอร์มที่ช่อง “เรื่อง”</span>
+    </div>
+    <!-- รายการเอกสารที่ออกไปแล้ว — เปิดกลับมาพิมพ์ซ้ำได้ -->
+    <div id="mdHist" class="no-print" style="display:none;background:#F4F6FA;border:1px solid var(--line);
+         border-radius:10px;padding:10px 12px;margin-bottom:10px">
+      <div id="mdHistBody" class="muted" style="font-size:12.5px">กำลังโหลด…</div>
     </div>
     <div class="row no-print" style="gap:10px;flex-wrap:wrap;margin:10px 0">
       <div class="fld" style="width:190px"><label>เลขที่</label><input id="md_no" oninput="renderMemoDoc()"></div>
@@ -1065,7 +1071,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
     </div>
     <div class="row no-print" style="margin-top:14px;justify-content:flex-end">
       <button class="btn ghost" onclick="$('memoDocBg').style.display='none'">ปิด</button>
-      <button class="btn ghost" onclick="saveMemoDocNote()">💾 บันทึกลงเมโม</button>
+      <button class="btn ghost" onclick="saveMemoDocNote()">💾 บันทึกเอกสาร (เปิดพิมพ์ซ้ำได้)</button>
       <button class="btn" onclick="printMemoDoc()">🖨️ พิมพ์ / บันทึก PDF</button>
     </div>
   </div>
@@ -2110,6 +2116,9 @@ function openMemoDocInner(){
     ? its.map(r=>({po,sku:r.sku||'',qty:num(r.quantity)||'',old:num(r.price)||'',neu:''}))
     : [{po,sku:b.sku||'',qty:'',old:'',neu:''}];
   renderMdItems(); renderMemoDoc();
+  MD_DOC_ID=null;                       // เปิดใหม่ = ร่างใบใหม่ ไม่ทับใบที่บันทึกไว้
+  if($('mdHist'))$('mdHist').style.display='none';
+  loadMdDocs();                          // อัปเดตจำนวนบนปุ่ม 📚
   $('memoDocBg').style.display='flex';
 }
 function mdAddRow(){
@@ -2182,15 +2191,107 @@ function renderMemoDoc(){
 function printMemoDoc(){
   printSheet($('mdPaper'),{empty:'ยังไม่มีบันทึกข้อความให้พิมพ์'});
 }
+/* ===== บันทึกข้อความภายใน: เก็บทั้งฟอร์มลง pay_memo_docs =====
+   เดิมเก็บแค่ "ข้อความสรุป" ลง pay_memos → เปิดกลับมาพิมพ์ซ้ำไม่ได้ ต้องกรอกใหม่
+   ตอนนี้เก็บทุกช่อง + ตารางรายการ → กด 👁 เปิด แล้วสั่งพิมพ์ได้เลย */
+let MD_DOCS=[], MD_DOC_ID=null;
+
+function mdFormPayload(){
+  const b=BILLS.find(x=>String(x.id)===String(MEMO_BID))||{};
+  return {
+    bill_id:String(MEMO_BID||''), po_number:String(b.po_number||''),
+    doc_no:$('md_no').value.trim()||null, doc_date:$('md_date').value||null,
+    to_dept:$('md_to').value.trim()||null, from_dept:$('md_from').value.trim()||null,
+    form:($('md_topic')&&$('md_topic').value)||MD_FORM||'price',
+    subject:$('md_subject').value.trim()||null, body:$('md_body').value||null,
+    items:MD_ROWS, created_by:ME||''
+  };
+}
 async function saveMemoDocNote(){
+  if(!$('md_subject').value.trim()&&!$('md_body').value.trim())
+    return alert('ใส่ "เรื่อง" หรือ "เนื้อความ" ก่อนบันทึก');
+  const rec=mdFormPayload();
+  // ① เก็บฟอร์มเต็ม (เปิดพิมพ์ซ้ำได้)
+  const q = MD_DOC_ID
+    ? sb.from('pay_memo_docs').update(rec).eq('id',MD_DOC_ID)
+    : sb.from('pay_memo_docs').insert(rec).select('id').single();
+  const {data,error}=await q;
+  if(error){
+    const miss=/does not exist|schema cache/i.test(error.message||'');
+    alert(miss
+      ? 'ยังไม่ได้สร้างตาราง pay_memo_docs\n\nกรุณารันไฟล์ pay_memo_docs.sql บน Supabase ก่อน\n\nรายละเอียด: '+error.message
+      : 'บันทึกไม่สำเร็จ: '+error.message);
+    return;
+  }
+  if(!MD_DOC_ID&&data&&data.id)MD_DOC_ID=data.id;
+  // ② บันทึกบรรทัดสรุปลงเมโมของบิล (ไว้ไล่ประวัติ)
   const lines=MD_ROWS.filter(r=>r.sku||r.neu!=='')
     .map(r=>`${r.sku||'-'} จำนวน ${r.qty||'-'} · ราคา ${r.old||'-'} → ${r.neu||'-'}`);
   const t='📄 บันทึกข้อความภายใน '+($('md_no').value||'')+' — '+($('md_subject').value||'')
     +(lines.length?('\n'+lines.join('\n')):'');
-  const {error}=await sb.from('pay_memos').insert({bill_id:MEMO_BID,memo:t,actor:ME});
-  if(error){alert('บันทึกไม่สำเร็จ: '+error.message);return;}
-  await loadAll(); renderMemo(); $('md_no').value=mdNextNo($('md_date').value); renderMemoDoc();
-  toast('บันทึกลงเมโมแล้ว ✅');
+  try{ await sb.from('pay_memos').insert({bill_id:MEMO_BID,memo:t,actor:ME}); }catch(e){}
+  await loadMdDocs();
+  toast('บันทึกเอกสารแล้ว ✅ เปิดพิมพ์ซ้ำได้จาก 📚 เอกสารที่บันทึกไว้');
+}
+
+/* โหลดรายการเอกสารของบิลนี้ */
+async function loadMdDocs(){
+  const {data,error}=await sb.from('pay_memo_docs')
+    .select('id,doc_no,doc_date,subject,form,created_by,created_at')
+    .eq('bill_id',String(MEMO_BID||''))
+    .order('created_at',{ascending:false}).limit(100);
+  MD_DOCS = error?[]:(data||[]);
+  if($('mdHistBtn'))$('mdHistBtn').textContent='📚 เอกสารที่บันทึกไว้'+(MD_DOCS.length?(' ('+MD_DOCS.length+')'):'');
+  if(error){
+    $('mdHistBody').innerHTML=/does not exist|schema cache/i.test(error.message||'')
+      ? '<span style="color:#B45309">ยังไม่ได้สร้างตาราง — รันไฟล์ <code>pay_memo_docs.sql</code> บน Supabase ก่อน</span>'
+      : '<span style="color:#D0212B">โหลดไม่ได้: '+esc(error.message)+'</span>';
+    return;
+  }
+  if(!MD_DOCS.length){ $('mdHistBody').innerHTML='ยังไม่มีเอกสารที่บันทึกไว้ของบิลนี้'; return; }
+  $('mdHistBody').innerHTML='<table style="font-size:12.5px"><thead><tr>'
+    +'<th style="width:150px">เลขที่</th><th style="width:105px">วันที่</th><th>เรื่อง</th>'
+    +'<th style="width:150px">ผู้จัดทำ</th><th style="width:150px"></th></tr></thead><tbody>'
+    +MD_DOCS.map(function(d){
+      return '<tr'+(String(d.id)===String(MD_DOC_ID)?' style="background:#FFF7DF"':'')+'>'
+        +'<td><b>'+esc(d.doc_no||'-')+'</b></td>'
+        +'<td>'+esc(d.doc_date||'-')+'</td>'
+        +'<td>'+esc(d.subject||'-')+'</td>'
+        +'<td class="muted" style="font-size:11.5px">'+esc(d.created_by||'')+'</td>'
+        +'<td style="white-space:nowrap">'
+          +'<button class="btn mini" onclick="openMdDoc(\''+d.id+'\')">👁 เปิด</button> '
+          +(canEdit?'<button class="btn mini red" onclick="delMdDoc(\''+d.id+'\')">ลบ</button>':'')
+        +'</td></tr>';}).join('')
+    +'</tbody></table>';
+}
+function toggleMdHist(){
+  const el=$('mdHist'); if(!el)return;
+  const show=el.style.display==='none';
+  el.style.display=show?'':'none';
+  if(show)loadMdDocs();
+}
+/* เปิดเอกสารที่บันทึกไว้กลับมาในฟอร์ม → กดพิมพ์ได้เลย */
+async function openMdDoc(id){
+  const {data,error}=await sb.from('pay_memo_docs').select('*').eq('id',id).single();
+  if(error||!data)return alert('เปิดเอกสารไม่สำเร็จ: '+((error&&error.message)||'ไม่พบ'));
+  MD_DOC_ID=data.id;
+  $('md_no').value=data.doc_no||''; $('md_date').value=data.doc_date||'';
+  $('md_to').value=data.to_dept||''; $('md_from').value=data.from_dept||'';
+  MD_FORM=data.form||'price';
+  if($('md_topic'))$('md_topic').value=MD_FORM;
+  $('mdPriceBox').style.display=(MD_FORM==='price')?'':'none';
+  $('md_subject').value=data.subject||''; $('md_body').value=data.body||'';
+  MD_ROWS=Array.isArray(data.items)?JSON.parse(JSON.stringify(data.items)):[];
+  renderMdItems(); renderMemoDoc(); loadMdDocs();
+  $('mdPrev').scrollIntoView({block:'start',behavior:'smooth'});
+  toast('เปิดเอกสาร '+(data.doc_no||'')+' แล้ว — กด 🖨️ เพื่อพิมพ์');
+}
+async function delMdDoc(id){
+  if(!confirm('ลบเอกสารนี้ออกจากรายการที่บันทึกไว้?'))return;
+  const {error}=await sb.from('pay_memo_docs').delete().eq('id',id);
+  if(error)return alert('ลบไม่สำเร็จ: '+error.message);
+  if(String(MD_DOC_ID)===String(id))MD_DOC_ID=null;
+  await loadMdDocs(); toast('ลบแล้ว');
 }
 
 async function saveMemo(){
