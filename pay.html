@@ -274,7 +274,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-81</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-82</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -1126,7 +1126,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v09-81';
+const PAY_VERSION='v09-82';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -1995,6 +1995,63 @@ function lgGo(n){ LG_PAGE=n; renderLedger(); $('lgBody').scrollIntoView({block:'
 function rmGo(n){ RM_PAGE=n; renderRemit(); $('rmBody').scrollIntoView({block:'start'}); }
 function billGo(p){BILL_PAGE=p;renderBills();window.scrollTo({top:0,behavior:'smooth'});}
 let MEMO_BID=null;
+/* ═══ บรรทัดเมโมที่เป็น "บันทึกข้อความภายใน" → กดเปิดฟอร์มพิมพ์ซ้ำ ═══
+   ใบใหม่: มีป้ายซ่อน ⟦doc:<id>⟧ → เปิดจากตาราง pay_memo_docs ได้ตรง ๆ
+   ใบเก่า (บันทึกไว้ก่อนมีระบบนี้): ไม่มีป้าย → ค้นด้วยเลขที่เอกสาร
+                                    ถ้ายังไม่เจอ → ประกอบฟอร์มคืนจากข้อความในเมโม */
+const MD_TAG=/\n?⟦doc:([^⟧]+)⟧/;
+function memoShow(txt){ return String(txt==null?'':txt).replace(MD_TAG,''); }
+function memoDocRef(txt){
+  const s=String(txt==null?'':txt);
+  const m=s.match(MD_TAG);
+  if(m)return {id:String(m[1]).trim()};
+  if(!/บันทึกข้อความภายใน/.test(s))return null;      // เมโมธรรมดา ไม่ใช่เอกสาร
+  return {no:mdParseMemo(s).no||null};
+}
+/* ถอดข้อความเมโมกลับเป็นข้อมูลฟอร์ม (เท่าที่ข้อความเก็บไว้) */
+function mdParseMemo(txt){
+  const lines=String(txt==null?'':txt).replace(MD_TAG,'').split('\n');
+  const head=lines.shift()||'';
+  const rest=head.replace(/^[\s\S]*?บันทึกข้อความภายใน\s*/,'');
+  const cut=rest.indexOf(' — ');
+  const no      = (cut<0?rest:rest.slice(0,cut)).trim();
+  const subject = (cut<0?'':rest.slice(cut+3)).trim();
+  const rows=lines.map(function(L){
+    const m=String(L).match(/^\s*(\S+)\s+จำนวน\s+(\S+)\s*·\s*ราคา\s+(\S+)\s*→\s*(\S*)\s*$/);
+    if(!m)return null;
+    const cl=v=>(v==null||v==='-')?'':String(v).replace(/,/g,'');
+    return {po:'',sku:cl(m[1]),qty:cl(m[2]),old:cl(m[3]),neu:cl(m[4])};
+  }).filter(Boolean);
+  return {no:no,subject:subject,rows:rows};
+}
+async function openMemoDocFrom(mid){
+  const m=MEMOS.find(x=>String(x.id)===String(mid));
+  if(!m)return;
+  const ref=memoDocRef(m.memo);
+  if(!ref)return;
+  await openMemoDoc();                       // เปิดฟอร์ม (ร่างใหม่) ก่อน แล้วค่อยทับด้วยของเดิม
+  MD_MEMO_ID=m.id;                           // บันทึกซ้ำ = แก้บรรทัดเมโมเดิม ไม่เพิ่มบรรทัดใหม่
+  let id=ref.id||null;
+  if(!id&&ref.no){                           // ใบเก่า: ค้นด้วยเลขที่เอกสาร
+    try{
+      const {data}=await sb.from('pay_memo_docs').select('id')
+        .eq('bill_id',String(MEMO_BID||'')).eq('doc_no',ref.no)
+        .order('created_at',{ascending:false}).limit(1);
+      if(data&&data.length)id=data[0].id;
+    }catch(e){}
+  }
+  if(id){ await openMdDoc(id,m.id); return; }
+  // ไม่มีฟอร์มที่บันทึกไว้ → ประกอบคืนจากข้อความ (เลขที่ / เรื่อง / ตารางรายการ)
+  const p=mdParseMemo(m.memo);
+  const b=BILLS.find(x=>String(x.id)===String(MEMO_BID))||{};
+  if(p.no)$('md_no').value=p.no;
+  if(p.subject)$('md_subject').value=p.subject;
+  if(m.created_at)$('md_date').value=String(m.created_at).slice(0,10);
+  if(p.rows.length){ MD_ROWS=p.rows.map(r=>Object.assign({},r,{po:String(b.po_number||'')})); renderMdItems(); }
+  renderMemoDoc();
+  MD_DOC_ID=null;                            // ยังไม่มีในตาราง → กดบันทึกจะสร้างใบใหม่ให้
+  toast('เปิดจากข้อความเมโม — ตรวจ "เรียน / จาก / เนื้อความ" ก่อนพิมพ์');
+}
 function fmtWhen(t){ if(!t)return '-'; const dt=new Date(t);
   return dt.toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'2-digit'})+' '+dt.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}); }
 function openMemo(bid){
@@ -2011,11 +2068,16 @@ function renderMemoInner(){
   const ms=MEMOS.filter(m=>String(m.bill_id)===String(MEMO_BID))
     .slice().sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
   $('memoList').innerHTML = ms.length
-    ? ms.map(m=>`<div style="border-left:3px solid var(--gold);background:#FFFBEB;border-radius:6px;padding:8px 11px;margin-bottom:7px">
-        <div style="font-size:13px;white-space:pre-wrap">${esc(m.memo)}</div>
+    ? ms.map(function(m){
+        const isDoc=!!memoDocRef(m.memo);           // เป็นบรรทัดของ "บันทึกข้อความภายใน" → เปิดพิมพ์ซ้ำได้
+        return `<div style="border-left:3px solid var(--gold);background:#FFFBEB;border-radius:6px;padding:8px 11px;margin-bottom:7px">
+        <div style="font-size:13px;white-space:pre-wrap${isDoc?';cursor:pointer':''}"${
+          isDoc?` onclick="openMemoDocFrom('${m.id}')" title="คลิกเพื่อเปิดฟอร์มนี้ขึ้นมาพิมพ์ซ้ำ"`:''
+        }>${esc(memoShow(m.memo))}</div>
         <div class="muted" style="font-size:11px;margin-top:3px">${esc(m.actor||'')} · ${esc(fmtWhen(m.created_at))}
+        ${isDoc?`<a href="#" onclick="openMemoDocFrom('${m.id}');return false" style="margin-left:8px;font-weight:700">🖨 เปิด / พิมพ์ซ้ำ</a>`:''}
         ${canEdit?`<a href="#" onclick="delMemo('${m.id}');return false" style="color:var(--red);margin-left:8px">ลบ</a>`:''}</div>
-      </div>`).join('')
+      </div>`;}).join('')
     : '<div class="empty" style="padding:14px">ยังไม่มีเมโม</div>';
   const ls=LOGS.filter(l=>String(l.bill_id)===String(MEMO_BID))
     .slice().sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
@@ -2139,6 +2201,7 @@ function openMemoDocInner(){
     : [{po,sku:b.sku||'',qty:'',old:'',neu:''}];
   renderMdItems(); renderMemoDoc();
   MD_DOC_ID=null;                       // เปิดใหม่ = ร่างใบใหม่ ไม่ทับใบที่บันทึกไว้
+  MD_MEMO_ID=null;                      // และเป็นบรรทัดเมโมใหม่ด้วย
   if($('mdHist'))$('mdHist').style.display='none';
   loadMdDocs();                          // อัปเดตจำนวนบนปุ่ม 📚
   $('memoDocBg').style.display='flex';
@@ -2216,7 +2279,7 @@ function printMemoDoc(){
 /* ===== บันทึกข้อความภายใน: เก็บทั้งฟอร์มลง pay_memo_docs =====
    เดิมเก็บแค่ "ข้อความสรุป" ลง pay_memos → เปิดกลับมาพิมพ์ซ้ำไม่ได้ ต้องกรอกใหม่
    ตอนนี้เก็บทุกช่อง + ตารางรายการ → กด 👁 เปิด แล้วสั่งพิมพ์ได้เลย */
-let MD_DOCS=[], MD_DOC_ID=null;
+let MD_DOCS=[], MD_DOC_ID=null, MD_MEMO_ID=null;
 
 function mdFormPayload(){
   const b=BILLS.find(x=>String(x.id)===String(MEMO_BID))||{};
@@ -2250,10 +2313,24 @@ async function saveMemoDocNote(){
   const lines=MD_ROWS.filter(r=>r.sku||r.neu!=='')
     .map(r=>`${r.sku||'-'} จำนวน ${r.qty||'-'} · ราคา ${r.old||'-'} → ${r.neu||'-'}`);
   const t='📄 บันทึกข้อความภายใน '+($('md_no').value||'')+' — '+($('md_subject').value||'')
-    +(lines.length?('\n'+lines.join('\n')):'');
-  try{ await sb.from('pay_memos').insert({bill_id:MEMO_BID,memo:t,actor:ME}); }catch(e){}
+    +(lines.length?('\n'+lines.join('\n')):'')
+    /* ผูกบรรทัดเมโมกับเอกสารที่บันทึกไว้ → กดจากในเมโมแล้วเปิดพิมพ์ซ้ำได้เลย
+       ใช้ป้ายซ่อน ⟦doc:id⟧ ท้ายข้อความ (renderMemoInner ตัดออกก่อนแสดง) */
+    +(MD_DOC_ID?('\n⟦doc:'+MD_DOC_ID+'⟧'):'');
+  try{
+    if(MD_MEMO_ID){
+      await sb.from('pay_memos').update({memo:t}).eq('id',MD_MEMO_ID);
+      const k=MEMOS.findIndex(x=>String(x.id)===String(MD_MEMO_ID));
+      if(k>=0)MEMOS[k].memo=t;                      // อัปเดตในหน้าเลย ไม่ต้องโหลดใหม่
+    }else{
+      const r=await sb.from('pay_memos').insert({bill_id:MEMO_BID,memo:t,actor:ME})
+        .select('id,bill_id,memo,actor,created_at').single();
+      if(r&&r.data){ MD_MEMO_ID=r.data.id; MEMOS.push(r.data); }
+    }
+    renderMemoInner();
+  }catch(e){}
   await loadMdDocs();
-  toast('บันทึกเอกสารแล้ว ✅ เปิดพิมพ์ซ้ำได้จาก 📚 เอกสารที่บันทึกไว้');
+  toast('บันทึกเอกสารแล้ว ✅ กดที่บรรทัดเมโม หรือ 📚 เอกสารที่บันทึกไว้ เพื่อพิมพ์ซ้ำ');
 }
 
 /* โหลดรายการเอกสารของบิลนี้ */
@@ -2293,10 +2370,14 @@ function toggleMdHist(){
   if(show)loadMdDocs();
 }
 /* เปิดเอกสารที่บันทึกไว้กลับมาในฟอร์ม → กดพิมพ์ได้เลย */
-async function openMdDoc(id){
+async function openMdDoc(id,memoId){
   const {data,error}=await sb.from('pay_memo_docs').select('*').eq('id',id).single();
   if(error||!data)return alert('เปิดเอกสารไม่สำเร็จ: '+((error&&error.message)||'ไม่พบ'));
   MD_DOC_ID=data.id;
+  /* หาบรรทัดเมโมที่ผูกกับเอกสารใบนี้ → บันทึกซ้ำจะแก้บรรทัดเดิม ไม่เพิ่มบรรทัดใหม่ */
+  const lk=MEMOS.find(x=>String(x.bill_id)===String(MEMO_BID)&&MD_TAG.test(String(x.memo||''))
+    &&String((String(x.memo).match(MD_TAG)||[])[1]||'').trim()===String(data.id));
+  MD_MEMO_ID=lk?lk.id:(memoId||null);
   $('md_no').value=data.doc_no||''; $('md_date').value=data.doc_date||'';
   $('md_to').value=data.to_dept||''; $('md_from').value=data.from_dept||'';
   MD_FORM=data.form||'price';
