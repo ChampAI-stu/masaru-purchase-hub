@@ -117,8 +117,9 @@ td.num,th.num{text-align:right;white-space:nowrap}
 .qt-pic{break-inside:avoid;page-break-inside:avoid;text-align:center;margin:10px 0}
 .qt-sheet .qt-pic img{max-width:100%!important;max-height:var(--qtPicH);width:auto;height:auto;
   object-fit:contain;display:inline-block;border:1px solid #bbb;box-sizing:border-box}
-/* หัวข้อ + รูปแรก = ส่วนเดียวกัน ห้ามตัดคนละหน้า */
-.qt-picblock{break-inside:avoid;page-break-inside:avoid}
+/* หัวข้อรูปแนบ ห้ามค้างท้ายหน้าเดี่ยว ๆ (แต่ตัวบล็อกต้องไหลข้ามหน้าได้ ถ้ามีหลายรูป) */
+.qt-picblock{break-inside:auto;page-break-inside:auto}
+.qt-picblock>div:first-child{break-after:avoid;page-break-after:avoid}
 /* พิมพ์เฉพาะใบปะหน้าในโมดัล */
 @media print{
   body.printing-dc *{visibility:hidden}
@@ -161,20 +162,42 @@ table.qt-tb thead th{background:#EDEDED!important;color:#000!important;font-weig
 table.qt-tb td.num,table.qt-tb th.num{text-align:right}
 table.qt-tb td.c{text-align:center}
 table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
+/* ===== พิมพ์ใบเสนอราคา =====
+   ⚠️ เดิมใช้ visibility:hidden + position:absolute → เนื้อหาที่ยาวเกิน 1 หน้า
+      "ถูกตัดหายที่หน้าแรก" เพราะกล่อง absolute ไม่แบ่งหน้าให้ (และโมดัลแม่ยัง
+      max-height/overflow ครอบอยู่) ตอนนี้เปลี่ยนเป็น "โคลนกระดาษออกมาไว้
+      #qtPrintRoot ซึ่งเป็นลูกตรงของ body" แล้วซ่อนพี่น้องด้วย display:none
+      → เนื้อหาไหลข้ามหน้าเองอัตโนมัติ ครบทุกหน้า */
+#qtPrintRoot{display:none}
 @media print{
-  body.printing-qt *{visibility:hidden}
-  body.printing-qt #qtSheet,body.printing-qt #qtSheet *{visibility:visible}
-  /* ⚠️ ห้ามล็อกความกว้างเป็น px ตอนพิมพ์ — เกินพื้นที่ A4 แล้วเบราว์เซอร์จะย่อทั้งหน้า
-        ทำให้ตัวหนังสือเล็กและแถวดูบางผิดสัดส่วน */
-  body.printing-qt #qtSheet{position:absolute;left:0;top:0;
-    width:100%!important;max-width:none!important;padding:0!important;border:0!important;border-radius:0;
-    box-shadow:none!important;margin:0!important}
-  body.printing-qt #qvBody{background:none!important;padding:0!important;max-height:none!important;overflow:visible!important}
-  body.printing-qt #qtSheet table.qt-tb th,
-  body.printing-qt #qtSheet table.qt-tb td{height:30px;font-size:13px;padding:7px 9px}
-  body.printing-qt #qtSheet .qt-h1{font-size:23px}
-  body.printing-qt #qtSheet .qt-pic img{max-width:100%!important;max-height:var(--qtPicH)!important;
-    width:auto!important;height:auto!important}
+  body.printing-qt>*{display:none!important}
+  body.printing-qt>#qtPrintRoot{display:block!important}
+  /* ล้างผลของกฎรวม @media print ด้านบน (body *{visibility:hidden}) ที่จะซ่อนกระดาษเราไปด้วย */
+  body.printing-qt,body.printing-qt #qtPrintRoot,body.printing-qt #qtPrintRoot *{visibility:visible!important}
+  body.printing-qt #qtPrintRoot .qt-sheet{
+    width:100%!important;max-width:none!important;padding:0!important;border:0!important;border-radius:0!important;
+    box-shadow:none!important;margin:0!important;background:#fff!important;overflow:visible!important}
+  body.printing-qt #qtPrintRoot table.qt-tb th,
+  body.printing-qt #qtPrintRoot table.qt-tb td{height:auto;min-height:30px;font-size:13px;padding:7px 9px;
+    /* ตอนพิมพ์ให้ข้อความยาวขึ้นบรรทัดใหม่ ไม่ตัดด้วย … */
+    white-space:normal!important;overflow:visible!important;text-overflow:clip!important;word-break:break-word}
+  /* ยกเว้นช่องลำดับ/ตัวเลข — ห้ามหักบรรทัด จะได้ไม่กลายเป็น "1 1" หรือ "N o." */
+  body.printing-qt #qtPrintRoot table.qt-tb th:first-child,
+  body.printing-qt #qtPrintRoot table.qt-tb td.c,
+  body.printing-qt #qtPrintRoot table.qt-tb th.num,
+  body.printing-qt #qtPrintRoot table.qt-tb td.num{white-space:nowrap!important;word-break:keep-all!important}
+  body.printing-qt #qtPrintRoot .qt-h1{font-size:23px}
+  /* แบ่งหน้าอัตโนมัติ: หัวตารางซ้ำทุกหน้า · ไม่ตัดกลางแถว · ไม่ตัดกลางรูป */
+  body.printing-qt #qtPrintRoot table.qt-tb{page-break-inside:auto;break-inside:auto}
+  body.printing-qt #qtPrintRoot table.qt-tb thead{display:table-header-group}
+  body.printing-qt #qtPrintRoot table.qt-tb tfoot{display:table-footer-group}
+  body.printing-qt #qtPrintRoot table.qt-tb tr,
+  body.printing-qt #qtPrintRoot table.qt-tb td{break-inside:avoid;page-break-inside:avoid}
+  body.printing-qt #qtPrintRoot .qt-pic{break-inside:avoid;page-break-inside:avoid;margin:8px 0}
+  /* รูปสูงสุดไม่เกินพื้นที่พิมพ์จริงของ A4 (297 − ขอบ 12×2 ≈ 270mm) จะได้ไม่ถูกตัดครึ่ง */
+  body.printing-qt #qtPrintRoot .qt-pic img{max-width:100%!important;
+    max-height:min(var(--qtPicH,200mm),262mm)!important;width:auto!important;height:auto!important}
+  body.printing-qt #qtPrintRoot .qt-note{break-inside:auto;page-break-inside:auto}
   body.printing-qt,body.printing-qt *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   @page{size:A4 portrait;margin:12mm}
 }
@@ -3744,9 +3767,8 @@ async function viewQuot(id){
   $('quotViewBg').style.display='flex';
 }
 function printQuotView(){
-  $('qtPaper').innerHTML=$('qvBody').innerHTML;
-  $('quotViewBg').style.display='none';
-  printQuot();
+  // พิมพ์จากกระดาษในหน้า "เปิดดู" ได้ตรง ๆ ไม่ต้องยัดกลับเข้าฟอร์มแก้ไข (กัน id ซ้ำ/ข้อมูลเพี้ยน)
+  printQuot(($('qvBody')||{}).querySelector?$('qvBody').querySelector('.qt-sheet'):null);
 }
 /* ดึง pics ของใบนั้นมาเมื่อจำเป็น (รายการไม่โหลดมาด้วยเพื่อความเร็ว) */
 async function ensurePics(x){
@@ -3951,12 +3973,13 @@ function drawQuot(){
     +'<tr><td colspan="4"></td><td class="num b">SHIP</td><td class="num b">'+money2(ship)+'</td></tr>'
     +'<tr><td colspan="4"></td><td class="num b">TOTAL</td><td class="num b">'+money2(sub+ship)+'</td></tr>'
     +'</tbody></table>'
+    /* หมายเหตุย้ายขึ้นมาก่อนรูปแนบ — ข้อความสำคัญจะได้อยู่หน้าแรกเสมอ ไม่ถูกดันไปท้ายเล่ม */
+    +($('q_note').value?'<div class="qt-note" style="white-space:pre-wrap;font-size:12.5px;margin-top:10px">'+esc($('q_note').value)+'</div>':'')
     +'<div class="qt-picblock">'
       +'<div style="margin-top:12px;font-size:13px">ใบเสนอราคา (Quotation) /โรงงานจีน</div>'
       +($('q_title').value?'<div style="text-align:center;font-weight:800;margin:12px 0">'+esc($('q_title').value)+'</div>':'')
       +(pics?'<div style="text-align:center">'+pics+'</div>':'')
     +'</div>'
-    +($('q_note').value?'<div style="white-space:pre-wrap;font-size:12.5px;margin-top:10px">'+esc($('q_note').value)+'</div>':'')
     +'</div>';
 }
 
@@ -4033,11 +4056,42 @@ async function delQuot(id){
   if(error)return toast('ลบไม่สำเร็จ: '+error.message);
   await loadQuot();
 }
-function printQuot(){
+/* พิมพ์ใบเสนอราคา — โคลนกระดาษออกมาไว้ #qtPrintRoot (ลูกตรงของ body) ก่อนสั่งพิมพ์
+   เพื่อให้หลุดจากโมดัลที่มี max-height/overflow ครอบ และไหลข้ามหน้าได้ครบทุกหน้า
+   (เดิมพิมพ์จากในโมดัลด้วย position:absolute → ได้แค่หน้าแรก เนื้อหาที่เหลือหาย) */
+function printQuot(srcEl){
+  const src=srcEl||$('qtSheet')||($('qtPaper')&&$('qtPaper').querySelector('.qt-sheet'));
+  let root=$('qtPrintRoot');
+  if(!root){ root=document.createElement('div'); root.id='qtPrintRoot'; document.body.appendChild(root); }
+  if(!src){ alert('ยังไม่มีใบให้พิมพ์'); return; }
+  root.innerHTML='';
+  const clone=src.cloneNode(true);
+  clone.removeAttribute('id');                       // กัน id ซ้ำกับต้นฉบับในโมดัล
+  root.appendChild(clone);
   document.body.classList.add('printing-qt');
-  const done=function(){document.body.classList.remove('printing-qt');window.removeEventListener('afterprint',done);};
+
+  let finished=false;
+  const done=function(){
+    if(finished)return; finished=true;
+    document.body.classList.remove('printing-qt');
+    root.innerHTML='';
+    window.removeEventListener('afterprint',done);
+  };
   window.addEventListener('afterprint',done);
-  setTimeout(function(){window.print();setTimeout(done,1200);},60);
+
+  // รอให้รูปแนบโหลดเสร็จก่อน ไม่งั้นเบราว์เซอร์คิดความสูงผิด → แบ่งหน้าเพี้ยน/รูปหาย
+  const imgs=[...clone.querySelectorAll('img')];
+  const waitImgs=Promise.all(imgs.map(function(im){
+    if(im.complete&&im.naturalHeight)return Promise.resolve();
+    return new Promise(function(res){
+      const t=setTimeout(res,3000);
+      im.addEventListener('load',function(){clearTimeout(t);res();},{once:true});
+      im.addEventListener('error',function(){clearTimeout(t);res();},{once:true});
+    });
+  }));
+  waitImgs.then(function(){
+    setTimeout(function(){ window.print(); setTimeout(done,1500); },80);
+  });
 }
 
 /* ==================================================================
@@ -4728,5 +4782,7 @@ function exportRemit(){
 
 boot();
 </script>
+<!-- ที่วางกระดาษตอนพิมพ์ (ต้องเป็นลูกตรงของ body เนื้อหาจึงแบ่งหน้าเองได้) -->
+<div id="qtPrintRoot"></div>
 </body>
 </html>
