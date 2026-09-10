@@ -1222,7 +1222,7 @@ async function reloadTables(names){
     pay_bills:   async()=>{ BILLS=await pageAll('pay_bills','*','created_at'); },
     pay_payments:async()=>{ PAYS =await pageAll('pay_payments','*','created_at'); },
     pay_memos:   async()=>{ MEMOS=await pageAll('pay_memos','*','created_at'); },
-    pay_logs:    async()=>{ LOGS =await pageAll('pay_logs',COL_LOGS,'created_at'); }
+    pay_logs:    async()=>{ if(LOGS_LOADED)LOGS=await pageAll('pay_logs',COL_LOGS,'created_at'); }
   };
   await Promise.all([...names].map(n=>job[n]?job[n]():null).filter(Boolean));
   await loadWallet();
@@ -1302,16 +1302,44 @@ function showLoadErrors(){
       purchase_orders มี 44 คอลัมน์ แต่หน้านี้ใช้แค่ 7 → ดึง '*' คือเปลืองฟรี ๆ ~6 เท่า */
 const COL_PO   ='po_number,sku,quantity,received_qty,price,vendor,created_at';
 const COL_LOGS ='id,bill_id,action,detail,actor,created_at';
+/* ═══ โหลดแบบขี้เกียจ (lazy) ═══
+   3 ตารางนี้ใหญ่ที่สุดแต่ "แท็บแรกที่เปิด (Tracking บิล) ไม่ได้ใช้เลย"
+   เดิมโหลดทุกครั้งที่เปิดหน้า → 68 คน × วันละหลายครั้ง = Egress หลักร้อย MB–GB/วัน
+     · purchase_orders  ใช้ตอน: ซิงก์บิล · ใบเสนอราคา · ทำใบปะหน้า · ตรวจสอบ · 🔄 รายบิล
+     · sku_master       ใช้ตอน: ทำใบปะหน้า · ตรวจสอบ
+     · pay_logs         ใช้ตอน: เปิดหน้าต่างเมโม/ประวัติ
+   จึงย้ายไปโหลด "ตอนที่ต้องใช้จริง" แล้ว cache ไว้ในหน้า ไม่โหลดซ้ำ */
+let PO_LOADED=false, MASTER_LOADED=false, LOGS_LOADED=false, LAZY_BUSY=null;
+async function ensurePoRows(){
+  if(PO_LOADED)return POROWS;
+  if(!LAZY_BUSY){ LAZY_BUSY=(async()=>{
+    POROWS=await pageAll('purchase_orders',COL_PO,null);
+    PO_LOADED=true; LAZY_BUSY=null;
+    try{ computeRisk(PRLIST); renderBills(); }catch(e){}   // ป้าย ⚠️ ที่ต้องใช้บอร์ดจะขึ้นตอนนี้
+  })(); }
+  await LAZY_BUSY; return POROWS;
+}
+async function ensureMaster(){
+  if(MASTER_LOADED)return MASTER;
+  MASTER=await pageAll('sku_master','sku,supplier,standard_price,currency',null);
+  MASTER_LOADED=true; return MASTER;
+}
+async function ensureLogs(){
+  if(LOGS_LOADED)return LOGS;
+  LOGS=await pageAll('pay_logs',COL_LOGS,'created_at');
+  LOGS_LOADED=true; return LOGS;
+}
 async function loadAll(){
-  [BILLS,PAYS,LOGS,MEMOS,MASTER,POROWS]=await Promise.all([
+  [BILLS,PAYS,MEMOS]=await Promise.all([
     pageAll('pay_bills','*','created_at'),
     pageAll('pay_payments','*','created_at'),
-    pageAll('pay_logs',COL_LOGS,'created_at'),
-    pageAll('pay_memos','*','created_at'),
-    pageAll('sku_master','sku,supplier,standard_price,currency',null),
-    pageAll('purchase_orders',COL_PO,null)
-    // tax_summaries / shipment_tracking ตัดออก — โหลดมาแล้วไม่ได้ใช้ที่ไหนเลยในหน้านี้
+    pageAll('pay_memos','*','created_at')
+    // purchase_orders / sku_master / pay_logs → โหลดตอนใช้ (ensure* ด้านบน)
+    // tax_summaries / shipment_tracking → ตัดออก ไม่ได้ใช้ที่ไหนเลยในหน้านี้
   ]);
+  if(PO_LOADED)    POROWS=await pageAll('purchase_orders',COL_PO,null);   // เคยโหลดแล้ว = ตามให้ทัน
+  if(MASTER_LOADED)MASTER=await pageAll('sku_master','sku,supplier,standard_price,currency',null);
+  if(LOGS_LOADED)  LOGS  =await pageAll('pay_logs',COL_LOGS,'created_at');
   await loadWallet();     // ต้องมีก่อน renderDoc เพื่อคำนวณยอด Ksher ที่ต้องเติม
   showLoadErrors();       // ตารางไหนโหลดไม่ได้ ต้องเห็นทันที ไม่ใช่เงียบแล้วได้ 0 แถว
   try{                    // ตรวจความผิดปกติทุกครั้งที่โหลด → ป้าย ⚠️ ในตาราง
@@ -1612,6 +1640,7 @@ async function saveBill(){
    ใช้เมื่อมีการเพิ่ม SKU ในบอร์ดหลังจากสร้างบิลไปแล้ว */
 async function refreshBill(id){
   const b=BILLS.find(x=>String(x.id)===String(id)); if(!b)return toast('ไม่พบบิลนี้');
+  toast('กำลังดึงข้อมูล Purchase Board…'); await ensurePoRows();
   const nz=x=>String(x||'').trim().toUpperCase().replace(/[\s_]+/g,'');
   const po=String(b.po_number||'').trim();
   if(!po)return toast('บิลนี้ไม่มีเลข PO');
@@ -1923,7 +1952,11 @@ function openMemo(bid){
   $('memoTitle').textContent='📝 เมโม & ประวัติ — '+(b.po_number||'')+' ('+(b.company||'-')+')';
   $('memoText').value=''; renderMemo(); $('memoBg').style.display='flex';
 }
-function renderMemo(){
+async function renderMemo(){
+  await ensureLogs();
+  renderMemoInner();
+}
+function renderMemoInner(){
   const ms=MEMOS.filter(m=>String(m.bill_id)===String(MEMO_BID))
     .slice().sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
   $('memoList').innerHTML = ms.length
@@ -2029,7 +2062,11 @@ function mdPayDraft(b){
     +'จึงขออนุมัติดำเนินการชำระเงินในนาม '+co+' ตามรายละเอียดข้างต้น';
 }
 
-function openMemoDoc(){
+async function openMemoDoc(){
+  await ensurePoRows();
+  openMemoDocInner();
+}
+function openMemoDocInner(){
   const b=BILLS.find(x=>String(x.id)===String(MEMO_BID));
   if(!b){alert('ยังไม่ได้เลือกบิล');return;}
   const today=todayStr();
@@ -2492,7 +2529,11 @@ function renderMonth(){
 }
 
 /* Export สรุปเดือน — 4 ชีท: รายวัน / รายบริษัท / จ่ายในนาม / รายละเอียดทุกงวด */
-function exportMonth(){
+async function exportMonth(){
+  await ensurePoRows();
+  exportMonthInner();
+}
+function exportMonthInner(){
   const m=$('moMonth').value||monthStr();
   const rows=PAYS.filter(p=>(p.pay_date||'').startsWith(m)&&p.status!=='rejected');
   if(!rows.length)return toast('เดือนนี้ยังไม่มีข้อมูล');
@@ -2558,6 +2599,7 @@ function poGroups(noPrice){
   return Object.values(by).sort((a,b)=>String(b.po).localeCompare(String(a.po)));
 }
 async function openSync(){
+  await ensurePoRows();
   if(!POROWS.length)POROWS=await pageAll('purchase_orders','*',null);
   renderSync(); $('syncBg').style.display='flex';
 }
@@ -3161,7 +3203,7 @@ function buildDocDomestic(rows,coName,thDate){
 }
 
 /* ตรวจว่ารายการไหนดึงจำนวน/ราคาไม่ได้ และเพราะอะไร */
-function checkDocData(){
+function checkDocData(){   /* เรียกจาก buildDocInner ซึ่ง ensure ให้แล้ว */
   let rows=docSelected();
   if(!rows.length)rows=docRows();          // ยังไม่ได้ติ๊ก → ตรวจทุกรายการของวันนั้น
   if(!rows.length){
@@ -3199,9 +3241,16 @@ function checkDocData(){
     +'\n\nจำนวนสินค้า/ราคาต่อหน่วยมาจาก Purchase Board เท่านั้น\nถ้า PO ยังไม่ได้นำเข้าไฟล์ ช่องพวกนี้จะว่าง');
 }
 
-function buildDoc(show){
+async function buildDoc(show){
+  /* ⚠️ เช็คก่อนว่า "จะสร้างใบจริงไหม" แล้วค่อยดึงข้อมูล
+        buildDoc() ถูกเรียกทุกครั้งที่ loadAll/renderDoc — ถ้า ensure ก่อนเช็ค
+        จะดึง purchase_orders ทั้งตารางทิ้งเปล่า ๆ ทุกครั้งที่โหลดหน้า */
   if(show===true)$('dcPaper').style.display='flex';
   if($('dcPaper').style.display!=='flex')return;
+  await ensurePoRows(); await ensureMaster();
+  buildDocInner(show);
+}
+function buildDocInner(show){
   const rows=docSelected();
   if(!rows.length){$('dcSheet').innerHTML='<div class="empty">ยังไม่ได้เลือกรายการ</div>';return;}
   const d=$('dcDate').value;
@@ -3791,6 +3840,7 @@ async function unokRisk(id){
 
 /* รายงานตรวจสอบเต็ม */
 async function runAudit(){
+  toast('กำลังดึงข้อมูลเปรียบเทียบ…'); await ensurePoRows(); await ensureMaster();
   let prs=[];
   try{
     const {data}=await sb.from('pr').select('pr_number,po_number,pr_date,status,requester,total_thb');
@@ -3920,8 +3970,12 @@ async function loadQuot(){
     return;
   }
   QUOTS=data||[];
-  const pos=[...new Set(POROWS.map(r=>r.po_number).filter(Boolean))].sort();
-  $('qtPoList').innerHTML=pos.slice(0,800).map(function(x){return '<option value="'+esc(x)+'">';}).join('');
+  /* รายการ PO แนะนำในช่องพิมพ์ — เติมเฉพาะเมื่อโหลดบอร์ดมาแล้ว
+     ไม่ต้องดึงบอร์ดทั้งตารางแค่เพื่อทำ dropdown (พิมพ์เลข PO เองแล้วกด tab ก็ดึงได้) */
+  if(PO_LOADED){
+    const pos=[...new Set(POROWS.map(r=>r.po_number).filter(Boolean))].sort();
+    $('qtPoList').innerHTML=pos.slice(0,800).map(function(x){return '<option value="'+esc(x)+'">';}).join('');
+  }
   const rs=[...new Set(QUOTS.map(function(x){return x.responsible;}).filter(Boolean))].sort();
   $('respList').innerHTML=rs.map(function(x){return '<option value="'+esc(x)+'">';}).join('');
   renderQuotList();
@@ -4007,6 +4061,7 @@ async function openQuot(id){
 /* ดึง SKU / จำนวน / ราคา จาก Purchase Board ตามเลข PO */
 async function pullQuotPo(force){
   const po=String($('q_po').value||'').trim(); if(!po)return;
+  await ensurePoRows();
   const nzq=x=>String(x||'').trim().toUpperCase().replace(/[\s_]+/g,'');
   const rows=POROWS.filter(function(r){return nzq(r.po_number)===nzq(po);});
   if(!rows.length){
