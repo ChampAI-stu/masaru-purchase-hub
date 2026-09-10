@@ -274,7 +274,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-79</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-81</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -1126,7 +1126,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v09-80';
+const PAY_VERSION='v09-81';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -1333,6 +1333,26 @@ const COL_LOGS ='id,bill_id,action,detail,actor,created_at';
      · pay_logs         ใช้ตอน: เปิดหน้าต่างเมโม/ประวัติ
    จึงย้ายไปโหลด "ตอนที่ต้องใช้จริง" แล้ว cache ไว้ในหน้า ไม่โหลดซ้ำ */
 let PO_LOADED=false, MASTER_LOADED=false, LAZY_BUSY=null;
+/* ═══ ดึง purchase_orders แบบ "เจาะจงเฉพาะ PO ที่ต้องใช้" ═══
+   ทั้งตาราง = 1,663 แถว ≈ 692 kB (ตัวใหญ่สุดที่เหลืออยู่)
+   แต่งานส่วนใหญ่ต้องการแค่ PO เดียว → ให้ฐานข้อมูลกรองมาให้ เหลือ ~1 kB
+   ใช้ทั้งตารางเฉพาะงานที่ต้อง "หา PO ที่ยังไม่มีบิล" (ซิงก์ / ตรวจสอบ) */
+const PO_HAVE=new Set();                 // จำว่าดึง PO ไหนมาแล้ว ไม่ยิงซ้ำ
+async function ensurePoFor(pos){
+  if(PO_LOADED)return POROWS;            // โหลดทั้งตารางแล้ว ไม่ต้องยิงอะไรอีก
+  const want=[...new Set((Array.isArray(pos)?pos:[pos])
+    .map(x=>String(x==null?'':x).trim()).filter(Boolean))];
+  const miss=want.filter(x=>!PO_HAVE.has(x));
+  if(!miss.length)return POROWS;
+  const {data,error}=await sb.from('purchase_orders').select(COL_PO).in('po_number',miss);
+  if(error){ console.warn('[po] เจาะจงไม่ได้ ถอยไปดึงทั้งตาราง:',error.message); return ensurePoRows(); }
+  miss.forEach(x=>PO_HAVE.add(x));
+  // ผสมเข้า cache แบบไม่ให้ซ้ำ (คีย์ = PO + SKU)
+  const key=r=>String(r.po_number||'')+'||'+String(r.sku||'');
+  const have=new Set(POROWS.map(key));
+  (data||[]).forEach(r=>{ if(!have.has(key(r)))POROWS.push(r); });
+  return POROWS;
+}
 async function ensurePoRows(){
   if(PO_LOADED)return POROWS;
   if(!LAZY_BUSY){ LAZY_BUSY=(async()=>{
@@ -1670,7 +1690,8 @@ async function saveBill(){
    ใช้เมื่อมีการเพิ่ม SKU ในบอร์ดหลังจากสร้างบิลไปแล้ว */
 async function refreshBill(id){
   const b=BILLS.find(x=>String(x.id)===String(id)); if(!b)return toast('ไม่พบบิลนี้');
-  toast('กำลังดึงข้อมูล Purchase Board…'); await ensurePoRows();
+  toast('กำลังดึงข้อมูล Purchase Board…');
+  await ensurePoFor(b.po_number);        // ดึงแค่ PO ของบิลนี้
   const nz=x=>String(x||'').trim().toUpperCase().replace(/[\s_]+/g,'');
   const po=String(b.po_number||'').trim();
   if(!po)return toast('บิลนี้ไม่มีเลข PO');
@@ -2093,7 +2114,8 @@ function mdPayDraft(b){
 }
 
 async function openMemoDoc(){
-  await ensurePoRows();
+  const b=BILLS.find(x=>String(x.id)===String(MEMO_BID));
+  await ensurePoFor(b&&b.po_number);     // ดึงแค่ PO ของบิลนี้
   openMemoDocInner();
 }
 function openMemoDocInner(){
@@ -2655,7 +2677,9 @@ function renderMonth(){
 
 /* Export สรุปเดือน — 4 ชีท: รายวัน / รายบริษัท / จ่ายในนาม / รายละเอียดทุกงวด */
 async function exportMonth(){
-  await ensurePoRows();
+  const m=$('moMonth').value||monthStr();
+  await ensurePoFor(PAYS.filter(p=>(p.pay_date||'').startsWith(m))
+                        .map(p=>billOf(p.bill_id).po_number));
   exportMonthInner();
 }
 function exportMonthInner(){
@@ -2724,8 +2748,8 @@ function poGroups(noPrice){
   return Object.values(by).sort((a,b)=>String(b.po).localeCompare(String(a.po)));
 }
 async function openSync(){
-  await ensurePoRows();
-  if(!POROWS.length)POROWS=await pageAll('purchase_orders','*',null);
+  await ensurePoRows();                  // งานนี้ต้องเห็นทั้งบอร์ด (หา PO ที่ยังไม่มีบิล)
+  // ⚠️ เดิมมีบรรทัดดึงซ้ำด้วย select('*') 44 คอลัมน์ — ensurePoRows() ทำให้แล้ว และดึงแค่ 7 คอลัมน์
   renderSync(); $('syncBg').style.display='flex';
 }
 function renderSync(){
@@ -3372,7 +3396,9 @@ async function buildDoc(show){
         จะดึง purchase_orders ทั้งตารางทิ้งเปล่า ๆ ทุกครั้งที่โหลดหน้า */
   if(show===true)$('dcPaper').style.display='flex';
   if($('dcPaper').style.display!=='flex')return;
-  await ensurePoRows(); await ensureMaster();
+  // ดึงแค่ PO ของงวดที่เลือกไว้ในใบนี้ ไม่ต้องทั้งบอร์ด
+  await ensurePoFor(docSelected().map(p=>billOf(p.bill_id).po_number));
+  await ensureMaster();
   buildDocInner(show);
 }
 function buildDocInner(show){
@@ -4214,9 +4240,14 @@ async function openQuot(id){
 /* ดึง SKU / จำนวน / ราคา จาก Purchase Board ตามเลข PO */
 async function pullQuotPo(force){
   const po=String($('q_po').value||'').trim(); if(!po)return;
-  await ensurePoRows();
+  await ensurePoFor(po);                 // ดึงแค่ PO นี้ (~1 kB แทน 692 kB)
   const nzq=x=>String(x||'').trim().toUpperCase().replace(/[\s_]+/g,'');
-  const rows=POROWS.filter(function(r){return nzq(r.po_number)===nzq(po);});
+  let rows=POROWS.filter(function(r){return nzq(r.po_number)===nzq(po);});
+  if(!rows.length&&!PO_LOADED){
+    // เจาะจงไม่เจอ — อาจเพราะเลข PO ในบอร์ดเขียนต่างกัน (เว้นวรรค/ขีดล่าง)
+    await ensurePoRows();
+    rows=POROWS.filter(function(r){return nzq(r.po_number)===nzq(po);});
+  }
   if(!rows.length){
     if(force){
       const near=[...new Set(POROWS.map(r=>String(r.po_number||'')))]
