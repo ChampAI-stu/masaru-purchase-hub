@@ -230,7 +230,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-77</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-78</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -837,6 +837,18 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
       <button class="btn ghost" onclick="$('quotViewBg').style.display='none'">ปิด</button>
       <button class="btn ghost edit-only" onclick="$('quotViewBg').style.display='none';openQuot(QT_ID)">✏️ แก้ไข</button>
       <button class="btn" onclick="printQuotView()">🖨️ พิมพ์ / บันทึก PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: งวดค้างตามแผน (สรุปเดือน) ============ -->
+<div class="modal-bg" id="pendBg">
+  <div class="modal" id="pendModal" style="max-width:1080px">
+    <button class="expand-btn" onclick="toggleWide('pendModal',this)">⛶ ขยายเต็มจอ</button>
+    <h3 id="pdTitle">🗓️ งวดค้างตามแผน</h3>
+    <div id="pdBody" class="scroll"></div>
+    <div class="row" style="margin-top:12px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('pendBg').style.display='none'">ปิด</button>
     </div>
   </div>
 </div>
@@ -2177,6 +2189,55 @@ async function planDel(pid){
 }
 
 /* ===== TAB 4: สรุปเดือน ===== */
+/* รายการงวดที่ยังค้างตามแผนของเดือนนั้น (หรือเจาะวันเดียว) */
+function showPending(day){
+  const m=$('moMonth').value||monthStr();
+  let rows=PAYS.filter(p=>(p.pay_date||'').startsWith(m)
+    &&(p.status==='planned'||p.status==='submitted'));
+  if(day)rows=rows.filter(p=>p.pay_date===day);
+  if(!rows.length)return toast('ไม่มีงวดค้างแผน');
+  rows.sort((a,b)=>String(a.pay_date||'').localeCompare(String(b.pay_date||'')));
+  const today=todayStr();
+  const sum=rows.reduce((s,p)=>s+thbOf(p)+(+p.fee||0),0);
+  const late=rows.filter(p=>String(p.pay_date||'')<=today);
+  const wait=rows.filter(p=>p.status==='submitted');
+
+  $('pdTitle').innerHTML='🗓️ งวดค้างตามแผน'+(day?(' — วันที่ '+esc(day)):(' — เดือน '+esc(m)));
+  let h=`<div style="display:flex;gap:20px;flex-wrap:wrap;background:#F7F9FC;border-radius:10px;
+      padding:11px 14px;margin-bottom:12px;font-size:12.5px">
+    <div><div class="muted" style="font-size:11px">จำนวนงวด</div><b style="font-size:16px">${rows.length}</b></div>
+    <div><div class="muted" style="font-size:11px">ยอดรวม</div><b style="font-size:16px">${money(sum)} ฿</b></div>
+    <div><div class="muted" style="font-size:11px">📤 ส่งยอดแล้ว รออนุมัติ</div>
+      <b style="font-size:16px;color:#B45309">${wait.length}</b></div>
+    <div><div class="muted" style="font-size:11px">⛔ ถึง/เลยกำหนด</div>
+      <b style="font-size:16px;color:${late.length?'#B01722':'#94A3B8'}">${late.length}</b></div>
+  </div>
+  <table><thead><tr><th style="width:96px">วันที่</th><th class="right" style="width:66px">เลยมา</th>
+    <th>PO</th><th>SKU</th><th>งวด</th><th class="right">ยอด</th><th class="right">บาท</th>
+    <th>ช่องทาง</th><th>จ่ายในนาม</th><th>สถานะ</th>${canEdit?'<th style="width:150px"></th>':''}</tr></thead><tbody>`;
+  rows.forEach(p=>{
+    const b=billOf(p.bill_id);
+    const lt=Math.round((new Date(today)-new Date(p.pay_date))/86400000);
+    h+=`<tr>
+      <td><b>${esc(p.pay_date||'-')}</b></td>
+      <td class="right">${lt>0?`<b style="color:#B01722">+${lt}</b>`:(lt===0?'<b style="color:#B45309">วันนี้</b>':'<span class="muted">-</span>')}</td>
+      <td><b>${esc(b.po_number||'-')}</b></td>
+      <td style="font-size:11.5px">${esc(b.sku||'-')}</td>
+      <td>${esc(p.installment||'-')}</td>
+      <td class="right">${money(p.amount)} ${curSym(b.currency)}</td>
+      <td class="right"><b>${money(thbOf(p)+(+p.fee||0))}</b></td>
+      <td style="font-size:11.5px">${esc(p.channel||'-')}</td>
+      <td style="font-size:11.5px">${esc(p.pay_type||'-')}</td>
+      <td>${stPill(p.status)}</td>
+      ${canEdit?`<td style="white-space:nowrap">
+        <button class="btn mini ghost" onclick="openLineMsg('${p.id}')" title="ข้อความแจ้งจ่าย">💬</button>
+        ${p.status==='planned'?`<button class="btn mini" onclick="$('pendBg').style.display='none';setPayStatus('${p.id}','submitted')">📤 ส่งยอด</button>`:''}
+        <button class="btn mini ghost" onclick="$('pendBg').style.display='none';editPay('${p.id}','${p.bill_id}')">✏️</button></td>`:''}
+    </tr>`;});
+  $('pdBody').innerHTML=h+'</tbody></table>';
+  $('pendBg').style.display='flex';
+}
+
 function renderMonth(){
   if(!$('moMonth'))return;
   if(!$('moMonth').value)$('moMonth').value=monthStr();
@@ -2187,14 +2248,20 @@ function renderMonth(){
   $('moKpi').innerHTML=`
     <div class="kpi green"><div class="lbl">จ่ายแล้วทั้งเดือน (บาท)</div><div class="val">${money(sumThb(paid))}</div></div>
     <div class="kpi"><div class="lbl">จำนวนงวดที่จ่าย</div><div class="val">${paid.length}</div></div>
-    <div class="kpi gold"><div class="lbl">ค้างตามแผน (บาท)</div><div class="val">${money(sumThb(planned))}</div></div>
-    <div class="kpi"><div class="lbl">งวดค้างแผน</div><div class="val">${planned.length}</div></div>`;
+    <div class="kpi gold" ${planned.length?`onclick="showPending()" style="cursor:pointer" title="กดดูรายการ"`:''}>
+      <div class="lbl">ค้างตามแผน (บาท)</div><div class="val">${money(sumThb(planned))}</div></div>
+    <div class="kpi" ${planned.length?`onclick="showPending()" style="cursor:pointer" title="กดดูรายการ"`:''}>
+      <div class="lbl">งวดค้างแผน ${planned.length?'<span style="opacity:.75">🔎</span>':''}</div>
+      <div class="val">${planned.length}</div></div>`;
   if(!rows.length){$('moBody').innerHTML='<div class="empty">เดือนนี้ยังไม่มีข้อมูล</div>';return;}
   const days=[...new Set(rows.map(p=>p.pay_date))].sort();
   let h='<h2>รายวัน</h2><table><thead><tr><th>วันที่</th><th class="right">งวดจ่ายแล้ว</th><th class="right">บาท (จ่ายแล้ว)</th><th class="right">งวดค้างแผน</th><th class="right">บาท (แผน)</th></tr></thead><tbody>';
   days.forEach(d=>{const dp=paid.filter(p=>p.pay_date===d),dl=planned.filter(p=>p.pay_date===d);
-    h+=`<tr><td><b>${esc(d)}</b></td><td class="right">${dp.length||'-'}</td><td class="right">${dp.length?money(sumThb(dp)):'-'}</td><td class="right">${dl.length||'-'}</td><td class="right">${dl.length?money(sumThb(dl)):'-'}</td></tr>`;});
-  h+=`<tr style="background:#FFF7DF;font-weight:800"><td>รวมทั้งเดือน</td><td class="right">${paid.length}</td><td class="right">${money(sumThb(paid))}</td><td class="right">${planned.length}</td><td class="right">${money(sumThb(planned))}</td></tr></tbody></table>`;
+    h+=`<tr><td><b>${esc(d)}</b></td><td class="right">${dp.length||'-'}</td><td class="right">${dp.length?money(sumThb(dp)):'-'}</td>
+      <td class="right">${dl.length?`<button class="btn mini ghost" onclick="showPending('${esc(d)}')" title="ดูรายการงวดค้างของวันนี้">${dl.length} 🔎</button>`:'-'}</td>
+      <td class="right">${dl.length?money(sumThb(dl)):'-'}</td></tr>`;});
+  h+=`<tr style="background:#FFF7DF;font-weight:800"><td>รวมทั้งเดือน</td><td class="right">${paid.length}</td><td class="right">${money(sumThb(paid))}</td>
+    <td class="right">${planned.length?`<button class="btn mini" onclick="showPending()" title="ดูงวดค้างทั้งเดือน">${planned.length} 🔎</button>`:'0'}</td><td class="right">${money(sumThb(planned))}</td></tr></tbody></table>`;
   const cos=[...new Set(rows.map(p=>billOf(p.bill_id).company||'-'))];
   h+='<h2 style="margin-top:16px">รายบริษัท</h2><table><thead><tr><th>บริษัท</th><th class="right">จ่ายแล้ว (บาท)</th><th class="right">ค้างแผน (บาท)</th><th class="right">รวม (บาท)</th></tr></thead><tbody>';
   cos.forEach(co=>{const g=p=>((billOf(p.bill_id).company||'-')===co);
