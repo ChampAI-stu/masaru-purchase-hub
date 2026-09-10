@@ -1386,7 +1386,7 @@ function renderBills(){
     const s=curSym(b.currency);
     h+=`<tr>
       <td style="color:var(--muted);font-size:12px">${String(_from+i+1).padStart(3,'0')}</td>
-      <td><b>${esc(b.po_number)}</b>${b.ref_pr?`<div class="muted" style="font-size:11px;font-weight:400">PR ${esc(b.ref_pr)}</div>`:''}</td>
+      <td${b.ref_pr?` title="Reference PR No: ${esc(b.ref_pr)}"`:''}><b>${esc(b.po_number)}</b></td>
       <td>${b.company?`<span class="tag-co">${esc(b.company)}</span>`:'<span class="muted" style="font-size:11.5px">— ยังไม่ระบุ —</span>'}</td>
       <td>${esc(b.sku||'')||'<span class="muted">-</span>'}</td>
       <td class="right"><b>${money(total)}</b> <span class="cur-tag ${(b.currency||'CNY')==='THB'?'thb':''}">${s}</span>${b2(total,b)}</td>
