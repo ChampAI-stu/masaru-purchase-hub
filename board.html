@@ -1230,6 +1230,7 @@ async function loadOrders(){
     from += SIZE;
   }
   allOrders = all;
+  newsClear();                 // โหลดล่าสุดแล้ว → เก็บแถบแจ้งเตือน
   render();
   stampUpdate();
 }
@@ -1239,14 +1240,43 @@ async function loadOrders(){
       (นี่คือสาเหตุหลักที่ Egress ทะลุ 5 GB)
    ✅ ใหม่: รวมเหตุการณ์ 2.5 วิเป็นครั้งเดียว · แท็บพื้นหลังไม่โหลด (รอกลับมาดู)
       · ระหว่างที่เราเองกำลังนำเข้า/บันทึก ไม่ต้องโหลดตาม (โหลดครั้งเดียวตอนจบ) */
-let rtTimer=null, rtStale=false;
 window.SELF_WRITING=false;              // ตั้งเป็น true ระหว่างที่หน้านี้เขียนข้อมูลเป็นชุด
-function scheduleReloadOrders(){
-  if(window.SELF_WRITING) return;
-  if(document.visibilityState==='hidden'){ rtStale=true; return; }
-  clearTimeout(rtTimer);
-  rtTimer=setTimeout(loadOrders, 2500);
+/* ===== แถบ "มีข้อมูลใหม่ — กดเพื่อโหลด" =====
+   ⚠️ Egress 99.1% มาจาก PostgREST คือการ "อ่านตารางกลับมา"
+      ทุกครั้งที่มีคนแก้ ไม่ใช่ตัว realtime เอง (realtime แค่ 0.9%)
+   ✅ จึงคง realtime ไว้เป็น "สัญญาณเตือน" แต่ไม่ดึงข้อมูลเอง
+      → ขึ้นปุ่มให้ผู้ใช้กดโหลดเมื่อต้องการ = ไม่มีการอ่านตารางที่ไม่มีคนดู
+   งานที่ตัวเองบันทึก ยังโหลดใหม่ให้ทันทีเหมือนเดิม (ไม่กระทบการทำงาน) */
+let NEWS_N=0, NEWS_TBL=new Set();
+function newsEl(){
+  let el=document.getElementById('newsBar');
+  if(!el){
+    el=document.createElement('div'); el.id='newsBar';
+    el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9999;'
+      +'display:none;align-items:center;gap:9px;background:#1A2942;color:#fff;border-radius:24px;'
+      +'padding:10px 15px;font-family:Sarabun,sans-serif;font-size:13px;font-weight:600;'
+      +'box-shadow:0 6px 22px rgba(0,0,0,.28);cursor:pointer;user-select:none';
+    el.onclick=function(){ const t=new Set(NEWS_TBL); newsClear(); newsReload(t); };
+    el.title='มีคนแก้ข้อมูล — กดเพื่อดึงข้อมูลล่าสุด';
+    document.body.appendChild(el);
+  }
+  return el;
 }
+function newsPing(tbl){
+  if(window.SELF_WRITING)return;             // ที่ตัวเองกำลังเขียน ไม่ต้องเตือนตัวเอง
+  NEWS_N++; if(tbl)NEWS_TBL.add(tbl);
+  const el=newsEl();
+  el.innerHTML='🔔 มีข้อมูลใหม่ '+NEWS_N+' รายการ'
+    +' <span style="background:#fff;color:#1A2942;border-radius:14px;padding:3px 11px;font-weight:800">กดเพื่อโหลด</span>';
+  el.style.display='flex';
+}
+function newsClear(){
+  NEWS_N=0; NEWS_TBL=new Set();
+  const el=document.getElementById('newsBar'); if(el)el.style.display='none';
+}
+
+function newsReload(){ loadOrders(); }
+function scheduleReloadOrders(){ newsPing('purchase_orders'); }
 function subscribeRealtime(){
   sb.channel('po-changes')
     .on('postgres_changes',{event:'*',schema:'public',table:'purchase_orders'},
@@ -1256,9 +1286,7 @@ function subscribeRealtime(){
         scheduleReloadOrders();
       })
     .subscribe();
-  document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible' && rtStale){ rtStale=false; loadOrders(); }
-  });
+  // ไม่โหลดเองตอนกลับมาดูแท็บ — แถบ "มีข้อมูลใหม่" ค้างอยู่ให้กดเองแล้ว
   // ประกาศ — พอจัดซื้อแก้ การตลาดเด้งป๊อบอัพใหม่ทันที
   sb.channel('announce-changes')
     .on('postgres_changes',{event:'*',schema:'public',table:'announcement'},
