@@ -1397,10 +1397,12 @@ function renderBills(){
       <td><span class="pill ${b.status==='closed'?'p-closed':'p-open'}">${b.status==='closed'?'ปิดบิลแล้ว':'ยังไม่ปิด'}</span></td>
       <td style="white-space:nowrap">
         ${canEdit?`<button class="btn mini green" onclick="openPay('${b.id}')">+ งวดจ่าย</button> `:''}
-        <button class="btn mini ghost" onclick="openHist('${b.id}')">ประวัติ (${billPays(b.id).length})</button> ${riskBadge(b)}<button class="btn mini ghost" onclick="refreshBill('${b.id}')" title="ดึง SKU / ยอด ของ PO นี้จาก Purchase Board ใหม่">🔄</button>
+        <button class="btn mini ghost" onclick="openHist('${b.id}')">ประวัติ (${billPays(b.id).length})</button>
+        <button class="btn mini ghost" onclick="refreshBill('${b.id}')" title="ดึง SKU / ยอด ของ PO นี้จาก Purchase Board ใหม่">🔄</button>
         <button class="btn mini ghost" onclick="openMemo('${b.id}')" title="เมโม + ประวัติการแก้ไข">📝${MEMOS.filter(m=>String(m.bill_id)===String(b.id)).length?' '+MEMOS.filter(m=>String(m.bill_id)===String(b.id)).length:''}</button>
         ${canEdit?` <button class="btn mini ghost" onclick="openBill('${b.id}')">แก้</button>
         <button class="btn mini red" onclick="delBill('${b.id}')">ลบ</button>`:''}
+        ${riskBadge(b)}
       </td></tr>`;
   });
   let pg='';
@@ -3557,11 +3559,11 @@ function computeRisk(prs){
 
 /* ป้ายเตือนในแถวบิล */
 function riskBadge(b){
-  if(b.risk_ok)return `<span class="pill" style="background:#EAF3DE;color:#1E7145;cursor:pointer"
+  if(b.risk_ok)return `<span class="pill" style="background:#EAF3DE;color:#1E7145;cursor:pointer;margin-left:8px"
     onclick="showRiskOk('${b.id}')" title="ตรวจแล้วไม่ผิดปกติ — กดดูรายละเอียด">✅ ตรวจแล้ว</span>`;
   const r=RISK[b.id];
   if(!r||!r.length)return '';
-  return `<button class="btn mini" style="background:#D0212B;padding:2px 8px"
+  return `<button class="btn mini" style="background:#D0212B;padding:2px 8px;margin-left:8px"
     onclick="showRisk('${b.id}')" title="พบความผิดปกติ — กดดูรายละเอียด">⚠️ ${r.length}</button>`;
 }
 /* กล่องแจ้งความผิดปกติรายบิล */
