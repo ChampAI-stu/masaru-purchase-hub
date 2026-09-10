@@ -1372,18 +1372,20 @@ function renderBills(){
       <div class="val" ${odCnt?'style="cursor:pointer" onclick="goTab(\'doc\')" title="ไปที่เอกสารประจำวัน"':''}>${odCnt||planCnt}</div></div>
     <div class="kpi green"><div class="lbl">จ่ายแล้วเดือนนี้ (฿)</div><div class="val">${money(paidMonth)}</div></div>`;
   if(!list.length){$('billTable').innerHTML='<div class="empty">ยังไม่มีบิล'+(canEdit?' — กด "+ เพิ่มบิล"':'')+'</div>';return;}
-  let h=`<table><thead><tr><th>PO</th><th>บริษัท</th><th>SKU</th>
+  let h=`<table><thead><tr><th style="width:46px">#</th><th>PO</th><th>บริษัท</th><th>SKU</th>
     <th class="right">ยอดเต็ม</th><th class="right">จ่ายแล้ว</th><th class="right">วางแผน</th><th class="right">ค้างจ่าย</th>
     <th style="min-width:110px">ความคืบหน้า</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
   const _tot=list.length, _pages=Math.max(1,Math.ceil(_tot/BILL_PER));
   if(BILL_PAGE>_pages)BILL_PAGE=_pages; if(BILL_PAGE<1)BILL_PAGE=1;
   const pageList=list.slice((BILL_PAGE-1)*BILL_PER, BILL_PAGE*BILL_PER);
-  pageList.forEach(b=>{
+  const _from=(BILL_PAGE-1)*BILL_PER;          // ลำดับเริ่มต้นของหน้านี้
+  pageList.forEach((b,i)=>{
     const total=+b.total_amount||0, paid=paidSum(b.id), plan=planSum(b.id);
     const remain=Math.max(0,total-paid);
     const pct=total>0?Math.min(100,Math.round(paid/total*100)):0;
     const s=curSym(b.currency);
     h+=`<tr>
+      <td style="color:var(--muted);font-size:12px">${String(_from+i+1).padStart(3,'0')}</td>
       <td><b>${esc(b.po_number)}</b>${b.ref_pr?`<div class="muted" style="font-size:11px;font-weight:400">PR ${esc(b.ref_pr)}</div>`:''}</td>
       <td>${b.company?`<span class="tag-co">${esc(b.company)}</span>`:'<span class="muted" style="font-size:11.5px">— ยังไม่ระบุ —</span>'}</td>
       <td>${esc(b.sku||'')||'<span class="muted">-</span>'}</td>
