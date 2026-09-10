@@ -1205,12 +1205,16 @@ async function fetchAll(table, tune){
   return out;
 }
 
+/* คอลัมน์ที่หน้านี้ใช้จริง — ตาราง purchase_orders มี 44 คอลัมน์จาก ERP
+   แต่บอร์ดใช้แค่ 15 · Egress คิดตามไบต์ที่ส่งออก จึงห้ามใช้ select('*') */
+const PO_COLS='id,po_number,sku,quantity,received_qty,eta,status,note,price,vendor,'
+  +'carrier,delivered_at,created_by,updated_at,created_at';
 async function loadOrders(){
   const SIZE=1000, all=[];
   let from=0, guard=0;
   while(guard++ < 60){
     const { data, error } = await sb.from('purchase_orders')
-      .select('*')
+      .select(PO_COLS)
       .order('updated_at',{ascending:false,nullsFirst:false})
       .order('created_at',{ascending:false})
       .order('id')
@@ -1230,15 +1234,31 @@ async function loadOrders(){
   stampUpdate();
 }
 
+/* ⚠️ เดิม: ทุกแถวที่เปลี่ยน = โหลด purchase_orders ใหม่ทั้งตาราง ทันที ไม่มีหน่วง
+      นำเข้าไฟล์ 123 แถว → ยิงโหลดทั้งตาราง 123 ครั้ง × ทุกเบราว์เซอร์ที่เปิดอยู่
+      (นี่คือสาเหตุหลักที่ Egress ทะลุ 5 GB)
+   ✅ ใหม่: รวมเหตุการณ์ 2.5 วิเป็นครั้งเดียว · แท็บพื้นหลังไม่โหลด (รอกลับมาดู)
+      · ระหว่างที่เราเองกำลังนำเข้า/บันทึก ไม่ต้องโหลดตาม (โหลดครั้งเดียวตอนจบ) */
+let rtTimer=null, rtStale=false;
+window.SELF_WRITING=false;              // ตั้งเป็น true ระหว่างที่หน้านี้เขียนข้อมูลเป็นชุด
+function scheduleReloadOrders(){
+  if(window.SELF_WRITING) return;
+  if(document.visibilityState==='hidden'){ rtStale=true; return; }
+  clearTimeout(rtTimer);
+  rtTimer=setTimeout(loadOrders, 2500);
+}
 function subscribeRealtime(){
   sb.channel('po-changes')
     .on('postgres_changes',{event:'*',schema:'public',table:'purchase_orders'},
       payload => {
         const changedId = payload.new?.id || payload.old?.id;
         if(changedId && payload.eventType !== 'DELETE') pendingFlash.add(changedId);
-        loadOrders();
+        scheduleReloadOrders();
       })
     .subscribe();
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible' && rtStale){ rtStale=false; loadOrders(); }
+  });
   // ประกาศ — พอจัดซื้อแก้ การตลาดเด้งป๊อบอัพใหม่ทันที
   sb.channel('announce-changes')
     .on('postgres_changes',{event:'*',schema:'public',table:'announcement'},
@@ -1788,6 +1808,11 @@ function computeStatusMerged(erp, ordered, received, existingStatus){
 
 async function confirmImport(){
   if(importRecords.length === 0) return;
+  window.SELF_WRITING = true;      // กัน realtime โหลดทั้งตารางตามทุกแถวที่เขียน
+  try{ await confirmImportInner(); }
+  finally{ window.SELF_WRITING = false; }
+}
+async function confirmImportInner(){
   $('importConfirm').disabled = true; $('importConfirm').textContent = 'กำลังนำเข้า...';
 
   // ── โหมดอัปเดตเฉพาะราคา: เขียนแค่ช่อง price ให้แถวที่มีอยู่ ไม่แตะฟิลด์อื่นเลย ──
