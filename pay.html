@@ -1161,16 +1161,58 @@ async function boot(){
   subscribeRealtime();
 }
 
-/* ===== REALTIME — เห็นรายการที่คนอื่นทำทันที ไม่ต้องรีเฟรช ===== */
-let rtTimer=null;
+/* ===== REALTIME — เห็นรายการที่คนอื่นทำทันที ไม่ต้องรีเฟรช =====
+   ⚠️ เดิม: มีใครแก้อะไรก็ตาม → ทุกเบราว์เซอร์ที่เปิดอยู่ "โหลดทุกตารางใหม่ทั้งหมด"
+      เปิดค้างไว้ 20 แท็บ × วันละ 100 ครั้ง = Egress หลาย GB/วัน (ทะลุโควตา Free 5 GB)
+   ✅ ใหม่: โหลดเฉพาะตารางที่เปลี่ยน · รวมเหตุการณ์ 2.5 วิ · แท็บที่ไม่ได้ดูอยู่ไม่โหลด
+      (จำไว้ก่อน แล้วโหลดตอนกลับมาดู) */
+let rtTimer=null, RT_PENDING=new Set(), RT_STALE=false;
+async function reloadTables(names){
+  const job={
+    pay_bills:   async()=>{ BILLS=await pageAll('pay_bills','*','created_at'); },
+    pay_payments:async()=>{ PAYS =await pageAll('pay_payments','*','created_at'); },
+    pay_memos:   async()=>{ MEMOS=await pageAll('pay_memos','*','created_at'); },
+    pay_logs:    async()=>{ LOGS =await pageAll('pay_logs',COL_LOGS,'created_at'); }
+  };
+  await Promise.all([...names].map(n=>job[n]?job[n]():null).filter(Boolean));
+  await loadWallet();
+  redrawAll();
+}
+/* วาดหน้าจอใหม่ตามแท็บที่เปิดอยู่ — แยกออกมาจาก loadAll เพื่อเรียกซ้ำได้ */
+function redrawAll(){
+  try{
+    if($('tab-doc')&&$('tab-doc').style.display!=='none')renderDoc();
+    renderBills();
+    if($('tab-plan')&&$('tab-plan').style.display!=='none'){ PLANVIEW==='month'?renderPlanMonth():renderPlan(); }
+    if($('tab-month')&&$('tab-month').style.display!=='none')renderMonth();
+    if($('tab-wallet')&&$('tab-wallet').style.display!=='none')renderWallet();
+    if(HIST_BID && $('histBg').style.display==='flex') openHist(HIST_BID);
+    if(MEMO_BID && $('memoBg').style.display==='flex') renderMemo();
+  }catch(e){ console.warn('[rt] redraw:',e.message); }
+}
 function subscribeRealtime(){
-  const bump=()=>{ clearTimeout(rtTimer); rtTimer=setTimeout(async()=>{ await loadAll(); flashLive(); },400); };
+  const bump=(tbl)=>()=>{
+    RT_PENDING.add(tbl);
+    if(document.visibilityState==='hidden'){ RT_STALE=true; return; }   // แท็บพื้นหลัง = ไม่ยิง request
+    clearTimeout(rtTimer);
+    rtTimer=setTimeout(async()=>{
+      const names=RT_PENDING; RT_PENDING=new Set();
+      await reloadTables(names); flashLive();
+    },2500);
+  };
   sb.channel('pay-live')
-    .on('postgres_changes',{event:'*',schema:'public',table:'pay_bills'},bump)
-    .on('postgres_changes',{event:'*',schema:'public',table:'pay_payments'},bump)
-    .on('postgres_changes',{event:'*',schema:'public',table:'pay_memos'},bump)
-    .on('postgres_changes',{event:'*',schema:'public',table:'pay_logs'},bump)
+    .on('postgres_changes',{event:'*',schema:'public',table:'pay_bills'},bump('pay_bills'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'pay_payments'},bump('pay_payments'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'pay_memos'},bump('pay_memos'))
     .subscribe();
+  // กลับมาดูแท็บนี้อีกครั้ง → ค่อยตามข้อมูลให้ทัน
+  document.addEventListener('visibilitychange',async()=>{
+    if(document.visibilityState!=='visible'||!RT_STALE)return;
+    RT_STALE=false;
+    const names=RT_PENDING.size?RT_PENDING:new Set(['pay_bills','pay_payments']);
+    RT_PENDING=new Set();
+    await reloadTables(names); flashLive();
+  });
 }
 function flashLive(){
   const d=$('liveDot'); if(!d)return;
@@ -1220,16 +1262,20 @@ function showLoadErrors(){
     +keys.map(k=>'<span style="font-size:11.5px">· <b>'+esc(k)+'</b> — '+esc(LOAD_ERR[k])+'</span>').join('<br>');
 }
 
+/* ===== คอลัมน์ที่หน้านี้ใช้จริง =====
+   ⚠️ ห้ามใช้ select('*') กับตารางใหญ่ — Egress ของ Supabase คิดตามไบต์ที่ส่งออก
+      purchase_orders มี 44 คอลัมน์ แต่หน้านี้ใช้แค่ 7 → ดึง '*' คือเปลืองฟรี ๆ ~6 เท่า */
+const COL_PO   ='po_number,sku,quantity,received_qty,price,vendor,created_at';
+const COL_LOGS ='id,bill_id,action,detail,actor,created_at';
 async function loadAll(){
-  [BILLS,PAYS,LOGS,MEMOS,MASTER,POROWS,TAXES,TRACKS]=await Promise.all([
+  [BILLS,PAYS,LOGS,MEMOS,MASTER,POROWS]=await Promise.all([
     pageAll('pay_bills','*','created_at'),
     pageAll('pay_payments','*','created_at'),
-    pageAll('pay_logs','*','created_at'),
+    pageAll('pay_logs',COL_LOGS,'created_at'),
     pageAll('pay_memos','*','created_at'),
     pageAll('sku_master','sku,supplier,standard_price,currency',null),
-    pageAll('purchase_orders','*',null),
-    pageAll('tax_summaries','*',null),
-    pageAll('shipment_tracking','*',null)
+    pageAll('purchase_orders',COL_PO,null)
+    // tax_summaries / shipment_tracking ตัดออก — โหลดมาแล้วไม่ได้ใช้ที่ไหนเลยในหน้านี้
   ]);
   await loadWallet();     // ต้องมีก่อน renderDoc เพื่อคำนวณยอด Ksher ที่ต้องเติม
   showLoadErrors();       // ตารางไหนโหลดไม่ได้ ต้องเห็นทันที ไม่ใช่เงียบแล้วได้ 0 แถว
@@ -3809,8 +3855,12 @@ async function loadQuot(){
     +'title_note,note,responsible,items,pic_count,item_count,created_by,created_at,updated_at';
   let {data,error}=await sb.from('quotations').select(COLS).order('created_at',{ascending:false}).limit(500);
   if(error&&/column|does not exist/i.test(error.message)){
-    // ยังไม่ได้รัน quotation_speed.sql → ถอยไปดึงแบบเดิม
-    const r2=await sb.from('quotations').select('*').order('created_at',{ascending:false}).limit(300);
+    /* ⚠️ ห้ามถอยไป select('*') — คอลัมน์ pics เก็บรูป base64 ใบละ 0.5–2 MB
+          ดึง 300 ใบ = หลายร้อย MB ต่อการเปิดหน้าเดียว (สาเหตุหลักที่ Egress ทะลุโควตา)
+          ถอยแบบตัดคอลัมน์ที่ยังไม่มีออกทีละตัวแทน */
+    const BASE='id,po_number,po_date,vendor,deliver_by,currency,ship_fee,total,'
+      +'title_note,note,responsible,items,created_by,created_at,updated_at';
+    const r2=await sb.from('quotations').select(BASE).order('created_at',{ascending:false}).limit(500);
     data=r2.data; error=r2.error;
   }
   if(error){
