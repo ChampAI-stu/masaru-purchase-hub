@@ -52,6 +52,11 @@ tr:nth-child(even) td{background:#F8FAFD}
 .yes{background:#EAF3DE;color:var(--green)}.no{background:#FFF3CC;color:var(--amber)}
 .diff-ok{color:var(--green);font-weight:700}.diff-bad{color:var(--red);font-weight:700}
 td.num,th.num{text-align:right;white-space:nowrap}
+/* หัวตารางที่คลิกเรียงได้ */
+th.sortable{cursor:pointer;user-select:none;transition:color .12s}
+th.sortable:hover{color:var(--gold)}
+th.sort-active{color:var(--gold)}
+.sort-ind{font-size:10px;margin-left:4px;color:var(--gold);font-weight:700}
 .billhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#F1F5F9;border-radius:9px;padding:9px 13px;margin:14px 0 8px}
 .doc-sheet{background:#fff;color:#111;padding:8px 4px}
 .doc-h{text-align:center;font-size:19px;font-weight:800;color:var(--navy);margin-bottom:2px}
@@ -1329,7 +1334,7 @@ function renderBills(){
     if(tot>0&&paid>=tot-0.004)return 'full';
     return 'part';
   };
-  const list=BILLS.filter(b=>
+  let list=BILLS.filter(b=>
     (!co||b.company===co)&&(!st||b.status===st)&&
     (!cf||((b.currency||'CNY')===cf))&&
     (!rp||billPays(b.id).some(p=>(p.responsible||'')===rp))&&
@@ -1346,6 +1351,13 @@ function renderBills(){
       ).toLowerCase().includes(q)))
     // บิลที่เพิ่งสร้างต้องอยู่บนสุด — เดิมเรียงเก่า→ใหม่ ของใหม่เลยตกไปหน้าท้าย
     .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+  // เรียงตามคอลัมน์ที่ผู้ใช้คลิก (ถ้ามี)
+  if(BSORT.key){
+    const _d=BSORT.dir==='asc'?1:-1;
+    list=list.slice().sort((a,b)=>{
+      const va=billSortVal(a,BSORT.key), vb=billSortVal(b,BSORT.key);
+      if(va<vb)return -_d; if(va>vb)return _d; return 0;});
+  }
   // KPI
   const open=BILLS.filter(b=>b.status!=='closed'&&(!cf||((b.currency||'CNY')===cf)));
   // ⚠️ ห้ามบวกข้ามสกุลเงิน — แยกยอดค้างตามสกุลของแต่ละบิล
@@ -1372,21 +1384,27 @@ function renderBills(){
       <div class="val" ${odCnt?'style="cursor:pointer" onclick="goTab(\'doc\')" title="ไปที่เอกสารประจำวัน"':''}>${odCnt||planCnt}</div></div>
     <div class="kpi green"><div class="lbl">จ่ายแล้วเดือนนี้ (฿)</div><div class="val">${money(paidMonth)}</div></div>`;
   if(!list.length){$('billTable').innerHTML='<div class="empty">ยังไม่มีบิล'+(canEdit?' — กด "+ เพิ่มบิล"':'')+'</div>';return;}
-  let h=`<table><thead><tr><th style="width:46px">#</th><th>PO</th><th>บริษัท</th><th>SKU</th>
-    <th class="right">ยอดเต็ม</th><th class="right">จ่ายแล้ว</th><th class="right">วางแผน</th><th class="right">ค้างจ่าย</th>
-    <th style="min-width:110px">ความคืบหน้า</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
+  let h='<table><thead><tr>'
+    +bTh('po_number','PO')
+    +bTh('company','บริษัท')
+    +bTh('sku','SKU')
+    +bTh('total_amount','ยอดเต็ม','right')
+    +bTh('paid','จ่ายแล้ว','right')
+    +bTh('plan','วางแผน','right')
+    +bTh('remain','ค้างจ่าย','right')
+    +bTh('pct','ความคืบหน้า','','min-width:110px')
+    +bTh('status','สถานะ')
+    +'<th></th></tr></thead><tbody>';
   const _tot=list.length, _pages=Math.max(1,Math.ceil(_tot/BILL_PER));
   if(BILL_PAGE>_pages)BILL_PAGE=_pages; if(BILL_PAGE<1)BILL_PAGE=1;
   const pageList=list.slice((BILL_PAGE-1)*BILL_PER, BILL_PAGE*BILL_PER);
-  const _from=(BILL_PAGE-1)*BILL_PER;          // ลำดับเริ่มต้นของหน้านี้
-  pageList.forEach((b,i)=>{
+  pageList.forEach(b=>{
     const total=+b.total_amount||0, paid=paidSum(b.id), plan=planSum(b.id);
     const remain=Math.max(0,total-paid);
     const pct=total>0?Math.min(100,Math.round(paid/total*100)):0;
     const s=curSym(b.currency);
     h+=`<tr>
-      <td style="color:var(--muted);font-size:12px">${String(_from+i+1).padStart(3,'0')}</td>
-      <td${b.ref_pr?` title="Reference PR No: ${esc(b.ref_pr)}"`:''}><b>${esc(b.po_number)}</b></td>
+      <td><b>${esc(b.po_number)}</b>${b.ref_pr?`<div class="muted" style="font-size:11px;font-weight:400" title="Reference PR No">${esc(b.ref_pr)}</div>`:''}</td>
       <td>${b.company?`<span class="tag-co">${esc(b.company)}</span>`:'<span class="muted" style="font-size:11.5px">— ยังไม่ระบุ —</span>'}</td>
       <td>${esc(b.sku||'')||'<span class="muted">-</span>'}</td>
       <td class="right"><b>${money(total)}</b> <span class="cur-tag ${(b.currency||'CNY')==='THB'?'thb':''}">${s}</span>${b2(total,b)}</td>
@@ -1752,6 +1770,40 @@ async function savePayment(){
 /* ===== HISTORY ===== */
 let BILL_PAGE=1; const BILL_PER=20;      // หน้าละ 20 PO
 let PRLIST=[];                            // รายการใบ PR (pr_number, po_number) ใช้เติม Reference PR No
+/* ===== เรียงตารางด้วยการคลิกหัวคอลัมน์ =====
+   คลิก 1 = น้อย→มาก · คลิก 2 = มาก→น้อย · คลิก 3 = กลับเป็นค่าเริ่มต้น (ล่าสุดอยู่บน) */
+let BSORT={key:null,dir:'asc'};
+function billSort(k){
+  if(BSORT.key===k){
+    if(BSORT.dir==='asc')BSORT.dir='desc';
+    else BSORT={key:null,dir:'asc'};        // ครั้งที่ 3 → เอาการเรียงออก
+  }else BSORT={key:k,dir:'asc'};
+  BILL_PAGE=1; renderBills();
+}
+function billSortVal(b,k){
+  switch(k){
+    case 'total_amount': return +b.total_amount||0;
+    case 'paid':   return paidSum(b.id);
+    case 'plan':   return planSum(b.id);
+    case 'remain': return Math.max(0,(+b.total_amount||0)-paidSum(b.id));
+    case 'pct':    {const t=+b.total_amount||0; return t>0?paidSum(b.id)/t:-1;}
+    case 'status': return b.status==='closed'?1:0;
+    case 'created_at': return String(b.created_at||'');
+    case 'po_number': {const n=parseFloat(String(b.po_number||'').replace(/[^\d.]/g,''));
+                       return isNaN(n)?String(b.po_number||'').toLowerCase():n;}
+    default: return String(b[k]||'').toLowerCase();
+  }
+}
+/* หัวคอลัมน์ที่คลิกเรียงได้
+   cls   = คลาสเพิ่ม (เช่น 'right') — ต้องรวมเข้า class เดียว ห้ามใส่ class ซ้ำสองอัน
+   style = สไตล์เพิ่ม (เช่น ความกว้าง) */
+function bTh(k,label,cls,style){
+  const on=BSORT.key===k;
+  const c=['sortable',cls||'',on?'sort-active':''].filter(Boolean).join(' ');
+  return '<th class="'+c+'"'+(style?' style="'+style+'"':'')
+    +' onclick="billSort(\''+k+'\')" title="คลิกเพื่อเรียง (คลิกซ้ำ = สลับ / คลิกที่ 3 = กลับเป็นล่าสุด)">'
+    +label+'<span class="sort-ind">'+(on?(BSORT.dir==='asc'?'▲':'▼'):'')+'</span></th>';
+}
 /* แถบแบ่งหน้าใช้ร่วมกันทุกตาราง */
 const PER=20;
 /* per = จำนวนรายการต่อหน้า (ไม่ส่งมา = 20 ตามค่าเดิม) */
