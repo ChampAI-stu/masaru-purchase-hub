@@ -341,7 +341,6 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
         <button class="btn" id="syncBtn" onclick="openSync()" style="background:#1E7145">🔄 ซิงก์จาก Purchase Board</button>
         <button class="btn ghost" onclick="runAudit()" style="border-color:#D0212B;color:#D0212B"
           title="ตรวจจับ PR ที่ถูกใช้ซ้ำหลาย PO · บิลซ้ำ · ยอดไม่ตรง Purchase Board">🔍 ตรวจสอบ</button>
-        <button class="btn" id="addBillBtn" onclick="openBill('')">+ เพิ่มบิล</button>
       </div>
       <div class="scroll"><div id="billTable"></div></div>
     </div>
@@ -1163,7 +1162,7 @@ async function boot(){
   ME=session.user.email||'';
   $('rolePill').textContent = roles.includes('purchase') ? '📦 จัดซื้อ (แก้ไขได้)'
                             : (isMgr ? '🧑‍💼 หัวหน้า (แก้ไขได้)' : '👑 ผู้บริหาร (แก้ไขได้)');
-  if(!canEdit){$('addBillBtn').style.display='none';$('syncBtn').style.display='none';}
+  if(!canEdit&&$('syncBtn'))$('syncBtn').style.display='none';
   if(!APPROVAL_MODE&&$('testBadge'))$('testBadge').style.display='';
   sb.auth.onAuthStateChange(async(_e,s)=>{
     if(LOGGING_OUT)return;
@@ -1468,7 +1467,7 @@ function renderBills(){
     <div class="kpi ${odCnt?'red':''}"><div class="lbl">${odCnt?'⛔ เลยกำหนด ยังไม่ส่งยอด':'งวดที่วางแผนไว้'}</div>
       <div class="val" ${odCnt?'style="cursor:pointer" onclick="goTab(\'doc\')" title="ไปที่เอกสารประจำวัน"':''}>${odCnt||planCnt}</div></div>
     <div class="kpi green"><div class="lbl">จ่ายแล้วเดือนนี้ (฿)</div><div class="val">${money(paidMonth)}</div></div>`;
-  if(!list.length){$('billTable').innerHTML='<div class="empty">ยังไม่มีบิล'+(canEdit?' — กด "+ เพิ่มบิล"':'')+'</div>';return;}
+  if(!list.length){$('billTable').innerHTML='<div class="empty">ยังไม่มีบิล'+(canEdit?' — กด "🔄 ซิงก์จาก Purchase Board"':'')+'</div>';return;}
   let h='<table><thead><tr>'
     +bTh('po_number','PO')
     +bTh('company','บริษัท')
