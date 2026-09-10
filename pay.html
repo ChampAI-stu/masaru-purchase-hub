@@ -274,7 +274,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-79</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-79</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -1117,7 +1117,10 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
 const SUPABASE_KEY='sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-const PAY_VERSION='v2026-08-27a';
+/* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
+      ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
+      แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
+const PAY_VERSION='v09-80';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -1127,6 +1130,7 @@ const ymdLocal=dt=>dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+
 const todayStr=()=>ymdLocal(new Date());
 const monthStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');};
 console.log('%c pay.html '+PAY_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
+try{ const _v=document.getElementById('verBadge'); if(_v)_v.textContent=PAY_VERSION; }catch(e){}
 window.addEventListener('error',e=>{console.error('[pay] JS ERROR:',e.message,'@',e.filename+':'+e.lineno);});
 const $=id=>document.getElementById(id);
 const money=n=>Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2});
