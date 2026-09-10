@@ -437,24 +437,52 @@ async function loadAll(){
   DOCS=(dc||[]).sort((a,b)=>String(b.doc_date||'').localeCompare(String(a.doc_date||'')));
   REQS=(rq||[]).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
   LOGS=lg||[]; PAYS=py||[]; BILLS=bl||[];
+  newsClear();
   fillTypeFilter();
   renderAll();
 }
 /* ⚠️ เดิม: ทุก event = โหลดใหม่ทั้ง 5 ตาราง ทันที
       อนุมัติทีเดียวหลายรายการ → โหลดซ้ำหลายสิบครั้ง × ทุกเบราว์เซอร์
    ✅ ใหม่: รวมเหตุการณ์ 2.5 วิ · แท็บพื้นหลังไม่โหลด (รอกลับมาดู) */
-let PA_TIMER=null, PA_STALE=false;
+/* ===== แถบ "มีข้อมูลใหม่ — กดเพื่อโหลด" =====
+   ⚠️ Egress 99.1% มาจาก PostgREST คือการ "อ่านตารางกลับมา"
+      ทุกครั้งที่มีคนแก้ ไม่ใช่ตัว realtime เอง (realtime แค่ 0.9%)
+   ✅ จึงคง realtime ไว้เป็น "สัญญาณเตือน" แต่ไม่ดึงข้อมูลเอง
+      → ขึ้นปุ่มให้ผู้ใช้กดโหลดเมื่อต้องการ = ไม่มีการอ่านตารางที่ไม่มีคนดู
+   งานที่ตัวเองบันทึก ยังโหลดใหม่ให้ทันทีเหมือนเดิม (ไม่กระทบการทำงาน) */
+let NEWS_N=0, NEWS_TBL=new Set();
+function newsEl(){
+  let el=document.getElementById('newsBar');
+  if(!el){
+    el=document.createElement('div'); el.id='newsBar';
+    el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9999;'
+      +'display:none;align-items:center;gap:9px;background:#1A2942;color:#fff;border-radius:24px;'
+      +'padding:10px 15px;font-family:Sarabun,sans-serif;font-size:13px;font-weight:600;'
+      +'box-shadow:0 6px 22px rgba(0,0,0,.28);cursor:pointer;user-select:none';
+    el.onclick=function(){ const t=new Set(NEWS_TBL); newsClear(); newsReload(t); };
+    el.title='มีคนแก้ข้อมูล — กดเพื่อดึงข้อมูลล่าสุด';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function newsPing(tbl){
+  if(window.SELF_WRITING)return;             // ที่ตัวเองกำลังเขียน ไม่ต้องเตือนตัวเอง
+  NEWS_N++; if(tbl)NEWS_TBL.add(tbl);
+  const el=newsEl();
+  el.innerHTML='🔔 มีข้อมูลใหม่ '+NEWS_N+' รายการ'
+    +' <span style="background:#fff;color:#1A2942;border-radius:14px;padding:3px 11px;font-weight:800">กดเพื่อโหลด</span>';
+  el.style.display='flex';
+}
+function newsClear(){
+  NEWS_N=0; NEWS_TBL=new Set();
+  const el=document.getElementById('newsBar'); if(el)el.style.display='none';
+}
+
+function newsReload(){ loadAll(); }
 function subscribe(){
-  const bump=()=>{
-    if(document.visibilityState==='hidden'){ PA_STALE=true; return; }
-    clearTimeout(PA_TIMER); PA_TIMER=setTimeout(loadAll,2500);
-  };
   sb.channel('pa-live')
-    .on('postgres_changes',{event:'*',schema:'public',table:'pay_requests'},bump)
+    .on('postgres_changes',{event:'*',schema:'public',table:'pay_requests'},()=>newsPing('pay_requests'))
     .subscribe();
-  document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible' && PA_STALE){ PA_STALE=false; loadAll(); }
-  });
 }
 const billOf=id=>BILLS.find(b=>String(b.id)===String(id))||{};
 const payOf=id=>PAYS.find(p=>String(p.id)===String(id))||null;
