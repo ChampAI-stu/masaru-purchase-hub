@@ -3917,16 +3917,34 @@ async function pullQuotPo(force){
 
   QT_ROWS=rows.map(function(r){return {sku:r.sku||'',colors:r.sku||'',qty:num(r.quantity)||0,price:num(r.price)||0};});
 
-  /* Vendor — ตาราง purchase_orders ไม่มีคอลัมน์นี้ จึงดึงจาก sku_master ตาม SKU
-     ใช้ supplier ที่พบบ่อยที่สุดในใบนั้น */
+  /* ===== Vendor =====
+     ① ใช้ค่าจาก Purchase Board (purchase_orders.vendor) = ชื่อที่มาจากไฟล์ที่อัปเข้าจริง
+        ถ้าในใบนั้นมีหลายชื่อ ใช้ชื่อที่พบบ่อยที่สุด
+     ② ถ้าบอร์ดยังไม่มีค่า (ไฟล์เก่าที่อัปก่อนเพิ่มคอลัมน์) จึงถอยไปเดาจาก sku_master
+        ⚠️ วิธี ② เดาผิดได้ เพราะ 1 SKU มีได้หลาย supplier — จึงใช้เป็นทางสำรองเท่านั้น */
   if(!$('q_vendor').value){
-    const cnt={};
+    const top=function(map){
+      const ks=Object.keys(map); if(!ks.length)return '';
+      return ks.sort(function(a,b){return map[b]-map[a];})[0];
+    };
+    // ① จากบอร์ด
+    const vc={};
     rows.forEach(function(r){
-      const m=MASTER.find(function(x){return nzq(x.sku)===nzq(r.sku);});
-      if(m&&m.supplier)cnt[m.supplier]=(cnt[m.supplier]||0)+1;
+      const v=String(r.vendor||'').trim();
+      if(v)vc[v]=(vc[v]||0)+1;
     });
-    const top=Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a];})[0];
-    if(top)$('q_vendor').value=top;
+    let v=top(vc);
+    // ② สำรอง: supplier ใน sku_master
+    if(!v){
+      const cnt={};
+      rows.forEach(function(r){
+        const m=MASTER.find(function(x){return nzq(x.sku)===nzq(r.sku);});
+        if(m&&m.supplier)cnt[m.supplier]=(cnt[m.supplier]||0)+1;
+      });
+      v=top(cnt);
+      if(v)console.info('[quot] Vendor ของ PO '+po+' ไม่มีในบอร์ด — เดาจาก sku_master:',v);
+    }
+    if(v)$('q_vendor').value=v;
   }
 
   /* PO date — ใช้วันที่แถวแรกถูกสร้างในบอร์ด (created_at) */
@@ -3958,7 +3976,7 @@ async function pullQuotPo(force){
   drawQuotRows(); drawQuot();
   if(force){
     const miss=[];
-    if(!$('q_vendor').value)miss.push('Vendor (ไม่พบ supplier ของ SKU ใน sku_master)');
+    if(!$('q_vendor').value)miss.push('Vendor (ไฟล์ที่อัปเข้า Purchase Board ยังไม่มีคอลัมน์ชื่อซัพพลายเออร์ และไม่พบ supplier ใน sku_master)');
     if(!$('q_date').value)  miss.push('PO date (บอร์ดไม่มีวันที่สร้าง)');
     if(!$('q_pr').value||$('q_pr').value==='-')miss.push('Reference PR No (ยังไม่มีใบ PR ที่กรอกเลข PO นี้)');
     alert('ดึงข้อมูล PO '+po+' แล้ว — '+rows.length+' รายการ'
