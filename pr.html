@@ -625,7 +625,15 @@ async function enterApp(user){
     if(!$('item-rows').children.length) addRow();
   }
   if(!RT_DONE){
-    sb.channel('pr-rt').on('postgres_changes',{event:'*',schema:'public',table:'pr'},loadPRs).subscribe();
+    /* ⚠️ เดิม: ทุก event = ยิง loadPRs ทันที (ดึงตาราง pr ทั้งหมด + pr_items join)
+          อนุมัติ/แก้ PR รวดเดียวหลายใบ → โหลดใหม่หลายสิบครั้ง × ทุกเบราว์เซอร์
+       ✅ ใหม่: รวมเหตุการณ์ 2.5 วิ · แท็บพื้นหลังไม่โหลด (รอกลับมาดู) */
+    sb.channel('pr-rt')
+      .on('postgres_changes',{event:'*',schema:'public',table:'pr'},schedulePRReload)
+      .subscribe();
+    document.addEventListener('visibilitychange',()=>{
+      if(document.visibilityState==='visible' && PR_STALE){ PR_STALE=false; loadPRs(); }
+    });
     RT_DONE=true;
   }
 }
@@ -1144,6 +1152,12 @@ async function delPR(id, num){
 }
 let PR_ALL=[], PR_PAGE=1; const PR_PER=15;
 let PR_SEARCH='', PR_STATUS='';
+let PR_RT_TIMER=null, PR_STALE=false;
+function schedulePRReload(){
+  if(document.visibilityState==='hidden'){ PR_STALE=true; return; }
+  clearTimeout(PR_RT_TIMER);
+  PR_RT_TIMER=setTimeout(loadPRs,2500);
+}
 async function loadPRs(){
   const {data,error}=await sb.from('pr').select('*, pr_items(sku,product_name)').order('created_at',{ascending:false});
   if(error){toast(error.message,true);return;}
