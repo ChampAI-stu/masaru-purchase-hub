@@ -1672,14 +1672,22 @@ function handleImportFile(e){
       const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
       if(rows.length < 2){ toast('ไฟล์ไม่มีข้อมูล'); return; }
       const headers = rows[0].map(h => String(h).trim());
+      /* ⚠️ ไฟล์จาก ERP เขียนสระ "ำ" เป็น 2 ตัวอักษรแยก (U+0E4D + U+0E32) ในบางคอลัมน์
+            เช่น "ชื่อผู้จําหน่าย" ซึ่งหน้าตาเหมือน "ชื่อผู้จำหน่าย" แต่เทียบสตริงแล้วไม่ตรง
+            (NFC ก็ไม่รวมให้) จึงต้องแปลงให้เป็นแบบเดียวกันก่อนเทียบทุกครั้ง */
+      const thNorm = v => String(v==null?'':v)
+        .replace(/\u0E4D\u0E32/g,'\u0E33')   // ํ + า  →  ำ
+        .replace(/\s+/g,' ').trim();
+      const H = headers.map(thNorm);           // หัวคอลัมน์แบบปรับมาตรฐานแล้ว
+      window._thNorm = thNorm;
       // จับคู่แบบ exact ก่อน (กันชนกับคอลัมน์ที่ชื่อคล้ายกัน เช่น รหัสสินค้า vs รหัสใบจัดซื้อสินค้า)
-      const exact = name => headers.findIndex(h => h === name);
-      const has = (...keys) => headers.findIndex(h => keys.some(k => h.includes(k)));
+      const exact = name => H.indexOf(thNorm(name));
+      const has = (...keys) => H.findIndex(h => keys.some(k => h.includes(thNorm(k))));
       // เหมือน has() แต่ข้ามคอลัมน์ที่เป็น "รหัส/ID/code" — เอาชื่อ ไม่เอารหัส
       const hasName = (...keys) => {
-        const ok = h => keys.some(k => h.includes(k)) && !/รหัส|เลขที่|\bID\b|code/i.test(h);
-        const i = headers.findIndex(ok);
-        return i>=0 ? i : headers.findIndex(h => keys.some(k => h.includes(k)));
+        const ok = h => keys.some(k => h.includes(thNorm(k))) && !/รหัส|เลขที่|\bID\b|code/i.test(h);
+        const i = H.findIndex(ok);
+        return i>=0 ? i : has(...keys);
       };
       const pick = (exacts, contains=[], nameOnly=false) => {
         for(const e of exacts){ const i = exact(e); if(i>=0) return i; }
@@ -1723,7 +1731,7 @@ function handleImportFile(e){
           received_qty: (recvRaw==='' || recvRaw==null) ? null : (parseInt(recvRaw)||0),
           price: (priceRaw==='' || priceRaw==null) ? null : (parseFloat(priceRaw)||null),
           eta: ci.eta>=0 ? toISODate(r[ci.eta]) : null,
-          vendor: ci.vendor>=0 ? (String(r[ci.vendor]||'').trim()||null) : null,
+          vendor: ci.vendor>=0 ? (thNorm(r[ci.vendor])||null) : null,
           note: null,   // ไม่อ่านหมายเหตุจากไฟล์ — คงค่าเดิมในเว็บไว้
           _erp: ci.status>=0 ? mapStatus(r[ci.status]) : 'อยู่ระหว่างสั่งซื้อ'   // สถานะ ERP (ไว้คำนวณ)
         });
