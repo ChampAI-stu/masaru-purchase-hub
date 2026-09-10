@@ -3963,6 +3963,25 @@ async function copyLineMsg(){
    ส่วนล่าง = รูปแนบ เก็บใน Google Drive โฟลเดอร์ "ใบเสนอราคา"
    ================================================================== */
 let QUOTS=[], QT_ROWS=[], QT_PICS=[], QT_ID=null;
+/* ===== รูปแนบใบเสนอราคา =====
+   เดิม: เก็บ base64 ในคอลัมน์ pics → วัดจริง 168 KB/ใบ (48 ใบ = 8 MB)
+         ทุกครั้งที่เปิดแท็บ/กดบันทึก ยิงก้อนนี้ออกไป = Egress บาน
+   ใหม่: อัปเข้า Supabase Storage เก็บแค่ URL → เหลือ < 1 KB/ใบ
+         (Storage egress ของเรายังว่าง 0.001/1 GB)
+   ⚠️ ต้องอ่านได้ทั้ง 2 แบบ เพราะใบเก่าที่ยังไม่ย้ายมี thumb อยู่ */
+/* ลำดับที่มาของรูป (สำคัญ — เรียงตามต้นทุน Egress จากถูกไปแพง)
+   ① _local     blob ในเครื่อง — รูปที่เพิ่งแนบ ยังไม่ได้อัป (ฟรี)
+   ② drive_id   Google Drive thumbnail — ทดสอบแล้วเปิดสาธารณะได้ (Supabase egress = 0) ⭐
+   ③ img        Supabase Storage URL — เผื่อ Drive ใช้ไม่ได้
+   ④ thumb      base64 ในตาราง — ใบเก่าที่ยังไม่ย้าย (แพงสุด 168 KB/ใบ)
+   w = ความกว้างที่ขอจาก Drive · รายการย่อขอ 400 · ใบพิมพ์ขอ 1600 */
+function picSrc(p,w){
+  if(!p)return '';
+  if(p._local)return p._local;
+  const did=p.drive_id||p.id||'';
+  if(did)return 'https://drive.google.com/thumbnail?id='+encodeURIComponent(did)+'&sz=w'+(w||1600);
+  return p.img||p.url2||p.thumb||'';
+}
 /* รูปแนบเก็บเป็น base64 ในคอลัมน์ pics → 1 รูป ≈ 300–600 KB
    ถ้าส่งขึ้นทุกครั้งที่กดบันทึก แค่แก้หมายเหตุก็ยิงหลายเมกฯ → บันทึกช้ามาก
    จึงส่งคอลัมน์ pics เฉพาะเมื่อรูป "เปลี่ยนจริง" */
@@ -4193,17 +4212,20 @@ function drawQuotPics(){
   if(!QT_PICS.length){$('qtPics').innerHTML='<span class="muted" style="font-size:12px">ยังไม่มีรูป</span>';return;}
   $('qtPics').innerHTML=QT_PICS.map(function(p,i){
     return '<div style="position:relative">'
-      +'<img src="'+esc(p.thumb||p.url)+'" style="width:118px;height:118px;object-fit:cover;border:1px solid var(--line);border-radius:8px">'
+      +'<img src="'+esc(picSrc(p,400))+'" style="width:118px;height:118px;object-fit:cover;border:1px solid var(--line);border-radius:8px" '
+      +'onerror="this.style.opacity=.25;this.title=\'โหลดรูปจาก Drive ไม่ได้\'">'
       +'<button class="btn mini red" style="position:absolute;top:3px;right:3px;padding:1px 6px" onclick="delQuotPic('+i+')">✕</button>'
-      +(p.url?'<div style="text-align:center"><a href="'+esc(p.url)+'" target="_blank" rel="noopener" style="font-size:10px">☁️ Drive</a></div>'
-             :'<div style="text-align:center;font-size:10px;color:#B45309">รอบันทึก</div>')
+      +((p.drive||p.url)?'<div style="text-align:center"><a href="'+esc(p.drive||p.url)+'" target="_blank" rel="noopener" style="font-size:10px">☁️ Drive</a></div>'
+             :(p.img?'<div style="text-align:center;font-size:10px;color:#1E7145">✔ Storage</div>'
+                    :'<div style="text-align:center;font-size:10px;color:#B45309">รอบันทึก</div>'))
       +'</div>';}).join('');
 }
 async function delQuotPic(i){
   const p=QT_PICS[i];
   QT_PICS.splice(i,1); QT_PICS_DIRTY=true; drawQuotPics(); drawQuot();
-  if(p&&p.id){                                   // เคยขึ้น Drive แล้ว → ลบไฟล์ทิ้งด้วย
-    try{ await gasCall({action:'delete',fileId:p.id}); $('q_stat').textContent='ลบรูปใน Drive แล้ว'; }
+  const did=p&&(p.drive_id||p.id);
+  if(did){                                       // เคยขึ้น Drive แล้ว → ลบไฟล์ทิ้งด้วย
+    try{ await gasCall({action:'delete',fileId:did}); $('q_stat').textContent='ลบรูปใน Drive แล้ว'; }
     catch(e){ console.warn('[quot] ลบใน Drive ไม่ได้:',e.message); }
   }
 }
@@ -4219,12 +4241,34 @@ async function onQuotFiles(inp){
    อัปจริงตอนกด 💾 บันทึก เท่านั้น — ปิดฟอร์มทิ้งจะไม่มีไฟล์ค้างใน Drive */
 async function addQuotPic(file){
   if(!file||!/^image\//.test(file.type))return;
-  // 1200px @ q0.76 ≈ 130 DPI บนกระดาษ A4 — อ่านออกชัด แต่ไฟล์เล็กลง ~40%
-  const thumb=await shrinkImg(file,1200,0.76);
-  QT_PICS.push({thumb:thumb,url:'',id:'',name:file.name,_file:file,_new:true});
+  // ย่อ 1200px @ q0.76 ≈ 130 DPI บนกระดาษ A4 — อ่านออกชัด ไฟล์ไม่ใหญ่
+  const small=await shrinkImg(file,1200,0.76);
+  const blob=dataUrlToBlob(small)||file;
+  // _local = blob URL ใช้ดูในหน้าจอชั่วคราว ไม่ถูกบันทึกลงฐานข้อมูล
+  QT_PICS.push({img:'',path:'',drive:'',drive_id:'',name:file.name,
+                _file:file, _blob:blob, _local:URL.createObjectURL(blob), _new:true});
   QT_PICS_DIRTY=true;
   drawQuotPics(); drawQuot();
-  $('q_stat').innerHTML='<span style="color:#B45309">📎 รอบันทึก — รูปจะขึ้น Drive เมื่อกด 💾 บันทึก</span>';
+  $('q_stat').innerHTML='<span style="color:#B45309">📎 รอบันทึก — รูปจะขึ้น Google Drive เมื่อกด 💾 บันทึก</span>';
+}
+/* dataURL → Blob (ไม่ผ่าน fetch) */
+/* blob → data URL (ใช้ตอนไม่มีไฟล์ต้นฉบับ เช่นรูปที่วางจากคลิปบอร์ด) */
+function blobToDataUrl(b){
+  return new Promise(function(res,rej){
+    if(!b)return res('');
+    const r=new FileReader();
+    r.onload=function(){res(String(r.result||''));};
+    r.onerror=function(){rej(new Error('อ่านรูปไม่ได้'));};
+    r.readAsDataURL(b);
+  });
+}
+function dataUrlToBlob(d){
+  const i=String(d||'').indexOf(','); if(i<0)return null;
+  const mime=(/data:([^;,]+)/.exec(d.slice(0,i))||[])[1]||'image/jpeg';
+  let bin; try{ bin=atob(d.slice(i+1)); }catch(e){ return null; }
+  const u=new Uint8Array(bin.length);
+  for(let k=0;k<bin.length;k++)u[k]=bin.charCodeAt(k);
+  return new Blob([u],{type:mime});
 }
 function shrinkImg(file,max,q){return new Promise(function(res){
   const r=new FileReader();
@@ -4264,7 +4308,7 @@ function drawQuot(){
   const dd=d?(function(){const x=new Date(d+'T00:00:00');
     return x.getDate()+'/'+(x.getMonth()+1)+'/'+x.getFullYear();})():'-';
   const pics=QT_PICS.map(function(p){
-    return '<div class="qt-pic"><img src="'+esc(p.thumb||p.url)+'"></div>';}).join('');
+    return '<div class="qt-pic"><img src="'+esc(picSrc(p,1600))+'" loading="eager"></div>';}).join('');
 
   const ph=($('q_picsize')&&$('q_picsize').value)||'200';
   $('qtPaper').innerHTML='<div class="qt-sheet" id="qtSheet" style="--qtPicH:'+ph+'mm">'
@@ -4315,7 +4359,10 @@ async function saveQuot(){
 async function saveQuotInner(){
   // อัปรูปที่ยังไม่ขึ้น Drive ตอนนี้ทีเดียว
   // อัปรูปขึ้น Drive พร้อมกันทีเดียว (เดิมทีละใบ ทำให้ช้ามากถ้ามีหลายรูป)
-  const pend=QT_PICS.filter(p=>p._new&&p._file);
+  /* ⚠️ เดิมเงื่อนไขเป็น p._new && p._file แต่ addQuotPic ไม่ได้เก็บ _file ไว้
+        → pend ว่างเสมอ → รูปไม่ถูกอัปที่ไหนเลย และถูกบันทึกเป็นค่าว่าง = รูปหาย
+        แก้: รับทั้ง _file (ต้นฉบับ) และ _blob (ที่ย่อแล้ว) */
+  const pend=QT_PICS.filter(p=>p._new&&(p._file||p._blob));
   if(pend.length){
     let done=0;
     $('q_stat').innerHTML='⏳ กำลังอัปรูป 0/'+pend.length+' ขึ้น Drive…';
@@ -4324,15 +4371,29 @@ async function saveQuotInner(){
       try{
         /* ย่อก่อนส่งขึ้น Drive — รูปมือถือ 3024px ส่งดิบ ≈ 2.4 MB/ใบ (ผ่าน Apps Script ช้ามาก)
            ย่อเป็น 2000px q0.85 ≈ 1.1 MB ยังชัดพอสำหรับเก็บอ้างอิง */
-        const big=await shrinkImg(p._file,2000,0.85);
+        /* ย่อก่อนส่งขึ้น Drive — รูปมือถือ 3024px ส่งดิบ ≈ 2.4 MB/ใบ (ผ่าน Apps Script ช้ามาก)
+           ย่อ 2000px q0.85 ≈ 1.1 MB ยังชัดพอสำหรับเก็บอ้างอิงและพิมพ์ */
+        const big=p._file? await shrinkImg(p._file,2000,0.85)
+                         : await blobToDataUrl(p._blob);
+        // ตั้งชื่อให้สื่อความ — หาใน Drive ง่าย (เดิมเป็น hash อ่านไม่รู้เรื่อง)
+        const seq=QT_PICS.indexOf(p)+1;
         const j=await gasCall({action:'upload',
-          filename:(($('q_po').value||'PO')+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)+'_'
-                    +String(p.name||'pic').replace(/\.[^.]+$/,'')+'.jpg'),
-          folder, mime:'image/jpeg', data:big.split(',')[1]||'',
+          filename:'PO'+($('q_po').value||'ไม่ระบุ')+'_'+seq+'_'
+                   +new Date().toISOString().slice(0,10)+'.jpg',
+          folder, mime:'image/jpeg', data:String(big).split(',')[1]||'',
           po:$('q_po').value||'', actor:ME||''});
-        p.url=j.openUrl||j.viewUrl||''; p.id=j.fileId||'';
-      }catch(e){ console.warn('[quot] drive:',e.message); }
-      p._new=false; delete p._file; QT_PICS_DIRTY=true;
+        p.drive=j.openUrl||j.viewUrl||''; p.drive_id=j.fileId||'';
+        p.url=p.drive; p.id=p.drive_id;          // คงชื่อเดิมไว้ให้โค้ดส่วนอื่นอ่านได้
+      }catch(e){
+        console.warn('[quot] drive:',e.message);
+        alert('อัปรูปขึ้น Google Drive ไม่สำเร็จ — รูปนี้จะยังไม่ถูกบันทึก\n\n'+e.message
+              +'\n\nลองกดบันทึกอีกครั้ง หรือเช็คลิงก์ Apps Script ที่ ⚙️ ตั้งค่า');
+        return;                                   // ไม่ล้าง _blob → กดบันทึกซ้ำแล้วลองอัปใหม่ได้
+      }
+      p._new=false;
+      if(p._local){ try{URL.revokeObjectURL(p._local);}catch(e){} }
+      delete p._file; delete p._blob; delete p._local;
+      QT_PICS_DIRTY=true;
       $('q_stat').innerHTML='⏳ กำลังอัปรูป '+(++done)+'/'+pend.length+' ขึ้น Drive…';
     }));
   }
@@ -4351,8 +4412,16 @@ async function saveQuotInner(){
   /* ส่งรูปขึ้นเฉพาะตอนสร้างใบใหม่ หรือรูปเปลี่ยนจริง (เพิ่ม/ลบ/เพิ่งอัป Drive)
      แก้แค่ข้อความ → payload เหลือไม่กี่ KB บันทึกเสร็จแทบทันที */
   if(!QT_ID || QT_PICS_DIRTY || pend.length){
-    rec.pics=QT_PICS.map(p=>({thumb:p.thumb,url:p.url||'',id:p.id||'',name:p.name||''}));
-    rec.pic_count=QT_PICS.length;
+    /* เก็บแค่ id/URL — ไม่มี base64 ลงฐานข้อมูลอีกแล้ว (ใบละ < 1 KB)
+       ⚠️ ตัดรูปที่ยังไม่มีปลายทาง (อัปไม่สำเร็จ) ออก ไม่บันทึกกล่องเปล่า
+          ไม่งั้นเปิดใบมาอีกทีจะเห็นรูปหาย โดยไม่รู้ว่าหายตอนไหน */
+    const ok=QT_PICS.filter(p=>p.drive_id||p.id||p.img||p.thumb);
+    if(ok.length!==QT_PICS.length)
+      alert('มีรูป '+(QT_PICS.length-ok.length)+' ใบที่ยังอัปขึ้น Drive ไม่สำเร็จ — จะไม่ถูกบันทึก');
+    rec.pics=ok.map(p=>({name:p.name||'',
+                         drive:p.drive||p.url||'', drive_id:p.drive_id||p.id||'',
+                         img:p.img||'', path:p.path||'', thumb:p.thumb||''}));
+    rec.pic_count=ok.length;
   }
   if(!QT_ID){
     // กันบันทึกซ้ำ: มีใบ PO เดียวกัน ยอดเท่ากัน สร้างภายใน 2 นาทีที่ผ่านมา
@@ -4429,7 +4498,7 @@ function printSheet(src,opt){
   Promise.all(imgs.map(function(im){
     if(im.complete&&im.naturalHeight)return Promise.resolve();
     return new Promise(function(res){
-      const t=setTimeout(res,3000);
+      const t=setTimeout(res,9000);   // รูปจาก Google Drive เป็นรีโมต ต้องเผื่อเวลาโหลด
       im.addEventListener('load',function(){clearTimeout(t);res();},{once:true});
       im.addEventListener('error',function(){clearTimeout(t);res();},{once:true});
     });
