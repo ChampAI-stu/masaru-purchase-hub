@@ -685,11 +685,11 @@ function syncLabel(){
   livePill('on','ข้อมูลสด · '+LAST_SYNC.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
 }
 /* โหลดใหม่แล้ววาดแท็บที่เปิดอยู่ซ้ำ — ไม่รบกวนหน้าออกบิลที่กำลังพิมพ์ค้างไว้ */
-async function refreshData(manual){
+async function refreshData(manual,only){
   if(RELOADING)return;
   RELOADING=true; livePill('','กำลังโหลดข้อมูล…');
   try{
-    await loadAll();
+    await loadAll(only);
     LAST_SYNC=new Date();
     if(CUR_TAB==='invpl'){ fillSkuSelects(); fillPartySelects(); }   // อย่าล้างฟอร์มที่พิมพ์ค้าง
     else go(CUR_TAB);
@@ -701,26 +701,45 @@ async function refreshData(manual){
   }
   RELOADING=false;
 }
-function scheduleReload(){ clearTimeout(RT_TIMER); RT_TIMER=setTimeout(()=>refreshData(false),1200); }
+/* ⚠️ เดิม: ตารางไหนเปลี่ยนก็โหลดใหม่ทั้ง 10 ตารางด้วย select('*')
+      + ตั้งเวลาโหลดซ้ำทุก 3 นาทีแม้ไม่มีอะไรเปลี่ยน (กิน Egress ตายตัวทุกวัน)
+   ✅ ใหม่: จำว่าตารางไหนเปลี่ยน → โหลดแค่ตารางนั้น · หน่วง 3 วิ
+      · แท็บพื้นหลังไม่ยิง request (รอกลับมาดู) */
+let RT_PENDING=new Set(), RT_STALE=false;
+function scheduleReload(tbl){
+  if(tbl)RT_PENDING.add(tbl);
+  if(document.hidden){ RT_STALE=true; return; }
+  clearTimeout(RT_TIMER);
+  RT_TIMER=setTimeout(()=>{
+    const only=RT_PENDING.size?new Set(RT_PENDING):null;
+    RT_PENDING.clear();
+    refreshData(false,only);
+  },3000);
+}
 
 function startRealtime(){
   try{
     const ch=sb.channel('cost-live');
-    RT_TABLES.forEach(t=>ch.on('postgres_changes',{event:'*',schema:'public',table:t},scheduleReload));
+    RT_TABLES.forEach(t=>ch.on('postgres_changes',{event:'*',schema:'public',table:t},()=>scheduleReload(t)));
     ch.subscribe(st=>{
       if(st==='SUBSCRIBED'){ LAST_SYNC=LAST_SYNC||new Date(); syncLabel(); }
       else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'){ livePill('off','ข้อมูลสดขัดข้อง — กด 🔄 รีเฟรช'); }
     });
   }catch(e){ livePill('off','ข้อมูลสดใช้ไม่ได้ — กด 🔄 รีเฟรช'); }
 
-  // สำรอง: กลับมาที่แท็บนี้ / โฟกัสหน้าต่าง แล้วข้อมูลเก่าเกิน 30 วิ → โหลดใหม่
+  /* กลับมาดูแท็บนี้ → ตามข้อมูลให้ทัน เฉพาะเมื่อมีของค้างจริง
+     (เดิมเช็คแค่ "เก่าเกิน 30 วิ" → สลับแท็บไปมาก็โหลดใหม่ทุกครั้ง) */
   document.addEventListener('visibilitychange',()=>{
-    if(!document.hidden && LAST_SYNC && (Date.now()-LAST_SYNC) > 30000) refreshData(false);
+    if(document.hidden||!RT_STALE)return;
+    RT_STALE=false;
+    const only=RT_PENDING.size?new Set(RT_PENDING):null;
+    RT_PENDING.clear();
+    refreshData(false,only);
   });
-  window.addEventListener('focus',()=>{
-    if(LAST_SYNC && (Date.now()-LAST_SYNC) > 60000) refreshData(false);
-  });
-  setInterval(()=>{ if(!document.hidden)refreshData(false); }, 180000);   // กันเหนียวทุก 3 นาที
+  /* ⛔ เลิกตั้งเวลาโหลดซ้ำทุก 3 นาที — realtime แจ้งให้แล้ว การโหลดวนคือ Egress
+        ที่เสียเปล่าตายตัว (เปิดค้าง 8 ชม. = โหลดทั้งฐาน 160 ครั้ง/แท็บ/วัน)
+        เหลือกันเหนียวชั่วโมงละครั้ง และเฉพาะแท็บที่เปิดดูอยู่ */
+  setInterval(()=>{ if(!document.hidden)refreshData(false); }, 3600000);
 }
 
 /* ผูกช่องหัวเอกสาร/ผู้ส่ง/ผู้รับ ให้ตัวอย่างเอกสารอัปเดตสดเมื่อพิมพ์ */
@@ -736,12 +755,12 @@ function bindDoc(){ if(docBound)return; const c=$('tab-invpl'); if(!c)return; do
       แถวที่คร่อมรอยต่อหน้าจะถูก "ข้าม" หรือ "ซ้ำ" → ข้อมูลหายไปเงียบๆ
    ⚠️ ถ้าตารางไหนไม่มีคอลัมน์ id ให้ลองใหม่โดยไม่ใส่ ห้ามคืนค่าว่าง */
 const FETCH_ERR = {};
-async function fetchTable(name,order){
+async function fetchTable(name,order,cols){
   delete FETCH_ERR[name];
   for(const tie of ['id', null]){          // ลองแบบมีตัวเรียงสำรองก่อน แล้วค่อยถอย
     const all=[]; const size=1000; let from=0; let failed=false;
     while(true){
-      let q=sb.from(name).select('*');
+      let q=sb.from(name).select(cols||'*');
       if(order)q=q.order(order);
       if(tie)q=q.order(tie);
       q=q.range(from,from+size-1);
@@ -762,15 +781,24 @@ async function fetchTable(name,order){
   }
   return [];
 }
-async function loadAll(){
-  const jobs=[['master','sku_master','sku'],['hist','sku_price_history','changed_at'],
-    ['exp','sku_export_info','sku'],['shipcosts','shipcosts','date'],['shipments','shipments','date'],
-    ['tracking','shipment_tracking','start_date'],['parties','inv_parties','name'],['budget','acct_budget','period'],['po','purchase_orders','po_number'],['taxsum','tax_summaries','created_at']];
-  const res=await Promise.all(jobs.map(async j=>{try{return await fetchTable(j[1],j[2]);}catch(e){console.warn('load fail '+j[1],e);return [];}}));
+/* ตาราง purchase_orders มี 44 คอลัมน์จาก ERP แต่หน้านี้ใช้ 7
+   Egress คิดตามไบต์ที่ส่งออก → ห้ามดึง '*' กับตารางใหญ่ */
+const PO_COLS_COST='po_number,sku,quantity,received_qty,eta,carrier';
+const JOBS=[['master','sku_master','sku',null],['hist','sku_price_history','changed_at',null],
+  ['exp','sku_export_info','sku',null],['shipcosts','shipcosts','date',null],['shipments','shipments','date',null],
+  ['tracking','shipment_tracking','start_date',null],['parties','inv_parties','name',null],
+  ['budget','acct_budget','period',null],['po','purchase_orders','po_number',PO_COLS_COST],
+  ['taxsum','tax_summaries','created_at',null]];
+/* only = ชื่อตารางที่ต้องโหลดใหม่ (ไม่ส่งมา = โหลดทั้งหมด ใช้ตอนเปิดหน้าครั้งแรก) */
+async function loadAll(only){
+  const jobs=only? JOBS.filter(j=>only.has(j[1])) : JOBS;
+  if(!jobs.length)return;
+  const res=await Promise.all(jobs.map(async j=>{try{return await fetchTable(j[1],j[2],j[3]);}catch(e){console.warn('load fail '+j[1],e);return [];}}));
   const m={}; jobs.forEach((j,i)=>m[j[0]]=res[i]||[]);
-  db.master=m.master; db.hist=m.hist; db.shipcosts=m.shipcosts; db.shipments=m.shipments;
-  db.tracking=m.tracking; db.parties=m.parties; db.budget=m.budget; db.po=m.po; db.taxsum=m.taxsum;
-  db.expMap={}; m.exp.forEach(e=>db.expMap[e.sku]=e);
+  const set=(k,prop)=>{ if(m[k])db[prop]=m[k]; };
+  set('master','master'); set('hist','hist'); set('shipcosts','shipcosts'); set('shipments','shipments');
+  set('tracking','tracking'); set('parties','parties'); set('budget','budget'); set('po','po'); set('taxsum','taxsum');
+  if(m.exp){ db.expMap={}; m.exp.forEach(e=>db.expMap[e.sku]=e); }
   buildProducts();
   if($('seedBtn'))$('seedBtn').style.display=db.products.length?'none':'';
 }
