@@ -690,7 +690,7 @@ async function refreshData(manual,only){
   RELOADING=true; livePill('','กำลังโหลดข้อมูล…');
   try{
     await loadAll(only);
-    LAST_SYNC=new Date();
+    LAST_SYNC=new Date(); newsClear();
     if(CUR_TAB==='invpl'){ fillSkuSelects(); fillPartySelects(); }   // อย่าล้างฟอร์มที่พิมพ์ค้าง
     else go(CUR_TAB);
     syncLabel();
@@ -705,17 +705,42 @@ async function refreshData(manual,only){
       + ตั้งเวลาโหลดซ้ำทุก 3 นาทีแม้ไม่มีอะไรเปลี่ยน (กิน Egress ตายตัวทุกวัน)
    ✅ ใหม่: จำว่าตารางไหนเปลี่ยน → โหลดแค่ตารางนั้น · หน่วง 3 วิ
       · แท็บพื้นหลังไม่ยิง request (รอกลับมาดู) */
-let RT_PENDING=new Set(), RT_STALE=false;
-function scheduleReload(tbl){
-  if(tbl)RT_PENDING.add(tbl);
-  if(document.hidden){ RT_STALE=true; return; }
-  clearTimeout(RT_TIMER);
-  RT_TIMER=setTimeout(()=>{
-    const only=RT_PENDING.size?new Set(RT_PENDING):null;
-    RT_PENDING.clear();
-    refreshData(false,only);
-  },3000);
+/* ===== แถบ "มีข้อมูลใหม่ — กดเพื่อโหลด" =====
+   ⚠️ Egress 99.1% มาจาก PostgREST คือการ "อ่านตารางกลับมา"
+      ทุกครั้งที่มีคนแก้ ไม่ใช่ตัว realtime เอง (realtime แค่ 0.9%)
+   ✅ จึงคง realtime ไว้เป็น "สัญญาณเตือน" แต่ไม่ดึงข้อมูลเอง
+      → ขึ้นปุ่มให้ผู้ใช้กดโหลดเมื่อต้องการ = ไม่มีการอ่านตารางที่ไม่มีคนดู
+   งานที่ตัวเองบันทึก ยังโหลดใหม่ให้ทันทีเหมือนเดิม (ไม่กระทบการทำงาน) */
+let NEWS_N=0, NEWS_TBL=new Set();
+function newsEl(){
+  let el=document.getElementById('newsBar');
+  if(!el){
+    el=document.createElement('div'); el.id='newsBar';
+    el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9999;'
+      +'display:none;align-items:center;gap:9px;background:#1A2942;color:#fff;border-radius:24px;'
+      +'padding:10px 15px;font-family:Sarabun,sans-serif;font-size:13px;font-weight:600;'
+      +'box-shadow:0 6px 22px rgba(0,0,0,.28);cursor:pointer;user-select:none';
+    el.onclick=function(){ const t=new Set(NEWS_TBL); newsClear(); newsReload(t); };
+    el.title='มีคนแก้ข้อมูล — กดเพื่อดึงข้อมูลล่าสุด';
+    document.body.appendChild(el);
+  }
+  return el;
 }
+function newsPing(tbl){
+  if(window.SELF_WRITING)return;             // ที่ตัวเองกำลังเขียน ไม่ต้องเตือนตัวเอง
+  NEWS_N++; if(tbl)NEWS_TBL.add(tbl);
+  const el=newsEl();
+  el.innerHTML='🔔 มีข้อมูลใหม่ '+NEWS_N+' รายการ'
+    +' <span style="background:#fff;color:#1A2942;border-radius:14px;padding:3px 11px;font-weight:800">กดเพื่อโหลด</span>';
+  el.style.display='flex';
+}
+function newsClear(){
+  NEWS_N=0; NEWS_TBL=new Set();
+  const el=document.getElementById('newsBar'); if(el)el.style.display='none';
+}
+
+function newsReload(tbls){ refreshData(false, (tbls&&tbls.size)?tbls:null); }
+function scheduleReload(tbl){ newsPing(tbl); }
 
 function startRealtime(){
   try{
@@ -727,19 +752,9 @@ function startRealtime(){
     });
   }catch(e){ livePill('off','ข้อมูลสดใช้ไม่ได้ — กด 🔄 รีเฟรช'); }
 
-  /* กลับมาดูแท็บนี้ → ตามข้อมูลให้ทัน เฉพาะเมื่อมีของค้างจริง
-     (เดิมเช็คแค่ "เก่าเกิน 30 วิ" → สลับแท็บไปมาก็โหลดใหม่ทุกครั้ง) */
-  document.addEventListener('visibilitychange',()=>{
-    if(document.hidden||!RT_STALE)return;
-    RT_STALE=false;
-    const only=RT_PENDING.size?new Set(RT_PENDING):null;
-    RT_PENDING.clear();
-    refreshData(false,only);
-  });
-  /* ⛔ เลิกตั้งเวลาโหลดซ้ำทุก 3 นาที — realtime แจ้งให้แล้ว การโหลดวนคือ Egress
-        ที่เสียเปล่าตายตัว (เปิดค้าง 8 ชม. = โหลดทั้งฐาน 160 ครั้ง/แท็บ/วัน)
-        เหลือกันเหนียวชั่วโมงละครั้ง และเฉพาะแท็บที่เปิดดูอยู่ */
-  setInterval(()=>{ if(!document.hidden)refreshData(false); }, 3600000);
+  /* ⛔ ไม่โหลดเองทั้งตอนกลับมาดูแท็บ และไม่ตั้งเวลาโหลดวน
+        (เดิมโหลดทั้งฐานทุก 3 นาที = เปิดค้าง 8 ชม. → 160 ครั้ง/แท็บ/วัน)
+        มีคนแก้ → ขึ้นแถบ "มีข้อมูลใหม่" ให้กดเอง หรือกดปุ่ม 🔄 ที่มีอยู่แล้ว */
 }
 
 /* ผูกช่องหัวเอกสาร/ผู้ส่ง/ผู้รับ ให้ตัวอย่างเอกสารอัปเดตสดเมื่อพิมพ์ */
