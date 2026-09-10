@@ -3979,13 +3979,13 @@ function drawQuot(){
     +'<tr><td colspan="4"></td><td class="num b">SHIP</td><td class="num b">'+money2(ship)+'</td></tr>'
     +'<tr><td colspan="4"></td><td class="num b">TOTAL</td><td class="num b">'+money2(sub+ship)+'</td></tr>'
     +'</tbody></table>'
-    /* หมายเหตุย้ายขึ้นมาก่อนรูปแนบ — ข้อความสำคัญจะได้อยู่หน้าแรกเสมอ ไม่ถูกดันไปท้ายเล่ม */
-    +($('q_note').value?'<div class="qt-note" style="white-space:pre-wrap;font-size:12.5px;margin-top:10px">'+esc($('q_note').value)+'</div>':'')
     +'<div class="qt-picblock">'
       +'<div style="margin-top:12px;font-size:13px">ใบเสนอราคา (Quotation) /โรงงานจีน</div>'
       +($('q_title').value?'<div style="text-align:center;font-weight:800;margin:12px 0">'+esc($('q_title').value)+'</div>':'')
       +(pics?'<div style="text-align:center">'+pics+'</div>':'')
     +'</div>'
+    /* หมายเหตุท้ายใบ — ต้องอยู่ล่างสุด ต่อจากรูปแนบ (ตำแหน่งเดิมของฟอร์ม) */
+    +($('q_note').value?'<div class="qt-note" style="white-space:pre-wrap;font-size:12.5px;margin-top:10px">'+esc($('q_note').value)+'</div>':'')
     +'</div>';
 }
 
