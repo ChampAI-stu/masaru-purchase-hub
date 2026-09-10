@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MASARU — สำรองข้อมูลทุกตาราง</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--navy:#1A2942;--red:#D0212B;--green:#1E7145;--line:#E3E8F0;--muted:#64748B;--bg:#F1F4F9}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Sarabun,sans-serif;background:var(--bg);color:#1E293B;font-size:14px;padding:22px}
+.wrap{max-width:980px;margin:0 auto}
+h1{font-size:21px;color:var(--navy);margin-bottom:4px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:16px;line-height:1.7}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:14px}
+.btn{background:var(--navy);color:#fff;border:0;border-radius:9px;padding:11px 20px;font:inherit;
+  font-weight:700;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.g{background:var(--green)}
+.btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}
+.note{background:#E6F1FB;border-left:4px solid #2E75B6;border-radius:8px;padding:11px 13px;
+  font-size:12.5px;line-height:1.75;margin-bottom:14px}
+.warn{background:#FFF3CC;border-left-color:#854F0B}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:12px}
+th{background:var(--navy);color:#fff;padding:8px 10px;text-align:left;font-weight:600}
+td{padding:7px 10px;border-bottom:1px solid var(--line)}
+.right{text-align:right}
+.ok{color:var(--green);font-weight:700}
+.err{color:var(--red);font-weight:700}
+.bar{background:#E9EEF5;border-radius:20px;height:10px;overflow:hidden;margin:12px 0 4px}
+.bar>i{display:block;height:100%;background:var(--green);width:0;transition:width .2s}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+code{background:#F1F5F9;padding:1px 5px;border-radius:4px;font-size:12px}
+</style></head><body>
+<!-- ตรวจสิทธิ์ก่อน — เนื้อหาถูกซ่อนไว้จนกว่าจะยืนยันว่าเป็นจัดซื้อ -->
+<div id="gate" style="max-width:520px;margin:70px auto;text-align:center;font-family:Sarabun,sans-serif">
+  <div style="font-size:34px">🔒</div>
+  <div id="gateMsg" style="margin-top:10px;font-size:15px;color:#64748B">กำลังตรวจสอบสิทธิ์…</div>
+  <div id="gateAct" style="margin-top:16px"></div>
+</div>
+<div class="wrap" id="app" style="display:none">
+
+<div class="row" style="justify-content:space-between;margin-bottom:6px">
+  <h1 style="margin:0">💾 สำรองข้อมูลทุกตาราง — MASARU Purchase Hub</h1>
+  <div style="text-align:right;font-size:12px;color:var(--muted)">
+    <div id="whoami"></div>
+    <a href="index.html" style="color:var(--navy)">← หน้ารวม</a>
+  </div>
+</div>
+<div class="sub">ดึงข้อมูลทุกตารางออกมาเก็บไว้ในเครื่อง ใช้กู้คืน หรือย้ายไปฐานข้อมูลใหม่ได้</div>
+
+<div class="note">
+  <b>ได้ไฟล์อะไร</b><br>
+  · <b>JSON</b> — ข้อมูลครบทุกคอลัมน์ ใช้กู้คืน/ย้ายฐานข้อมูล (ไฟล์หลัก เก็บไว้ให้ดี)<br>
+  · <b>Excel</b> — อ่าน/ทำงานต่อด้วยมือได้ (ตัดคอลัมน์รูป base64 ออกเพื่อให้เปิดไหว)
+</div>
+<div class="note warn">
+  ⚠️ การสำรองข้อมูลก็นับเป็น <b>Egress</b> เหมือนกัน (ประมาณเท่ากับขนาดฐานข้อมูล ~50–100 MB)
+  เทียบกับโควตา 5 GB ถือว่าน้อยมาก แต่ <b>ไม่ต้องกดซ้ำหลายรอบ</b> กดครั้งเดียวพอ
+</div>
+
+<div class="card">
+  <div class="row">
+    <button class="btn g" id="go">▶ เริ่มสำรองข้อมูล</button>
+    <button class="btn ghost" id="dlJson" disabled>⬇ ดาวน์โหลด JSON</button>
+    <button class="btn ghost" id="dlXlsx" disabled>⬇ ดาวน์โหลด Excel</button>
+    <span id="stat" style="color:var(--muted);font-size:13px"></span>
+  </div>
+  <div class="bar"><i id="pbar"></i></div>
+  <div id="sum" style="font-size:12.5px;color:var(--muted)"></div>
+  <div id="tbl"></div>
+</div>
+
+<div class="card">
+  <b style="color:var(--navy)">ถ้าต้องย้ายไปฐานข้อมูลใหม่</b>
+  <div class="sub" style="margin:8px 0 0">
+    1. สร้าง Supabase project ใหม่ <b>ในองค์กร (Organization) ใหม่</b> — โควตานับต่อองค์กร
+       สร้างในองค์กรเดิมจะใช้โควตาก้อนเดียวกัน ไม่ช่วยอะไร<br>
+    2. รันไฟล์ <code>.sql</code> ที่มีอยู่ใน repo เพื่อสร้างตารางให้ครบ<br>
+    3. เอาไฟล์ JSON นี้ import กลับเข้าไป (Table Editor → Import data)<br>
+    4. แก้ <code>SUPABASE_URL</code> + <code>SUPABASE_KEY</code> ในทุกไฟล์ .html ให้ชี้ที่ project ใหม่
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
+const SUPABASE_KEY='sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=i=>document.getElementById(i);
+const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ═══ ตรวจสิทธิ์ — เข้าได้เฉพาะ "จัดซื้อ" ═══
+   ใช้รูปแบบเดียวกับหน้าอื่นในระบบ (อ่านบทบาทจาก app_metadata ของ Supabase Auth)
+   ⚠️ นี่เป็นการกันที่หน้าจอ — ข้อมูลจริงยังถูกคุมด้วย RLS ของฐานข้อมูลอีกชั้น
+      ใครไม่มีสิทธิ์อ่านตาราง กดปุ่มก็จะได้ error รายตารางอยู่ดี */
+const ROLE_LABEL={purchase:'จัดซื้อ',pr_manager:'หัวหน้าจัดซื้อ',pr_exec:'ผู้บริหาร',
+                  executive:'ผู้บริหาร',marketing:'การตลาด',shipping:'ขนส่ง'};
+function getRoles(session){
+  const m=(session&&session.user&&session.user.app_metadata)||{};
+  if(Array.isArray(m.user_roles)&&m.user_roles.length)return m.user_roles;
+  if(m.user_role)return [m.user_role];
+  return [];
+}
+function denied(msg,showLogin){
+  $('gateMsg').innerHTML=msg;
+  $('gateAct').innerHTML = showLogin
+    ? '<a href="index.html" style="display:inline-block;background:#1A2942;color:#fff;text-decoration:none;'
+      +'padding:10px 20px;border-radius:9px;font-weight:700">เข้าสู่ระบบ</a>'
+    : '<a href="index.html" style="display:inline-block;background:#fff;color:#1A2942;text-decoration:none;'
+      +'border:1px solid #E3E8F0;padding:10px 20px;border-radius:9px;font-weight:700">← กลับหน้ารวม</a>';
+}
+async function gate(){
+  let session=null;
+  try{ session=(await sb.auth.getSession()).data.session; }
+  catch(e){ denied('ตรวจสอบสิทธิ์ไม่ได้: '+esc(e.message),true); return false; }
+  if(!session){ denied('ต้องเข้าสู่ระบบก่อนใช้หน้านี้',true); return false; }
+  const roles=getRoles(session);
+  if(!roles.includes('purchase')){
+    denied('หน้านี้ใช้ได้เฉพาะ <b>ฝ่ายจัดซื้อ</b><br>'
+      +'<span style="font-size:13px">บัญชีของคุณ: '+esc(session.user.email||'')+'<br>บทบาท: '
+      +esc(roles.map(r=>ROLE_LABEL[r]||r).join(' · ')||'ไม่ระบุ')+'</span>');
+    return false;
+  }
+  $('whoami').innerHTML='📦 จัดซื้อ · '+esc(session.user.email||'');
+  $('gate').style.display='none';
+  $('app').style.display='';
+  return true;
+}
+
+/* ทุกตารางที่ระบบใช้ (ไล่จากโค้ดทุกหน้าใน repo) */
+const TABLES=['pay_bills','pay_payments','pay_logs','pay_memos','pay_docs',
+  'pay_requests','pay_request_logs','quotations','ksher_wallet',
+  'purchase_orders','po_uploads','announcement','receipt_trips','receipt_items',
+  'pr','pr_items','sku_master','sku_price_history','sku_export_info','sku_cost',
+  'shipments','shipment_tracking','shipcosts','inv_parties','acct_budget',
+  'tax_summaries','freight_invoices','cost_settings','cost_kpi',
+  'portal_apps','profiles'];
+
+/* คอลัมน์ที่เป็นรูป base64 — ตัดออกจากไฟล์ Excel ไม่ให้เปิดไม่ขึ้น (JSON ยังเก็บครบ) */
+const HEAVY={quotations:['pics']};
+
+const OUT={}; const REPORT=[];
+let running=false;
+
+async function dumpTable(name){
+  const all=[]; const step=1000; let from=0;
+  while(true){
+    const {data,error}=await sb.from(name).select('*').range(from,from+step-1);
+    if(error) return {rows:null,error:error.message};
+    all.push(...(data||[]));
+    if(!data||data.length<step) break;
+    from+=step;
+    if(from>500000) break;
+  }
+  return {rows:all,error:null};
+}
+
+function drawReport(){
+  let h='<table><thead><tr><th>ตาราง</th><th class="right">แถว</th><th class="right">ขนาด</th><th>ผล</th></tr></thead><tbody>';
+  REPORT.forEach(r=>{
+    h+=`<tr><td><code>${r.name}</code></td>
+      <td class="right">${r.rows==null?'—':r.rows.toLocaleString()}</td>
+      <td class="right">${r.kb==null?'—':(r.kb>1024?(r.kb/1024).toFixed(1)+' MB':r.kb+' KB')}</td>
+      <td>${r.error?('<span class="err">✕ '+r.error+'</span>'):'<span class="ok">✔ สำเร็จ</span>'}</td></tr>`;
+  });
+  $('tbl').innerHTML=h+'</tbody></table>';
+}
+
+async function startBackup(){
+  if(running)return; running=true;
+  $('go').disabled=true; $('dlJson').disabled=true; $('dlXlsx').disabled=true;
+  REPORT.length=0; Object.keys(OUT).forEach(k=>delete OUT[k]);
+  let totKb=0, okN=0, failN=0;
+  for(let i=0;i<TABLES.length;i++){
+    const t=TABLES[i];
+    $('stat').textContent='กำลังดึง '+t+' … ('+(i+1)+'/'+TABLES.length+')';
+    $('pbar').style.width=Math.round((i)/TABLES.length*100)+'%';
+    const r=await dumpTable(t);
+    if(r.error){
+      REPORT.push({name:t,rows:null,kb:null,error:r.error}); failN++;
+    }else{
+      OUT[t]=r.rows;
+      const kb=Math.round(JSON.stringify(r.rows).length/1024);
+      totKb+=kb; okN++;
+      REPORT.push({name:t,rows:r.rows.length,kb:kb,error:null});
+    }
+    drawReport();
+  }
+  $('pbar').style.width='100%';
+  $('stat').textContent='เสร็จแล้ว';
+  $('sum').innerHTML=`สำเร็จ <b>${okN}</b> ตาราง${failN?(' · ไม่สำเร็จ <b class="err">'+failN+'</b> ตาราง (อาจไม่มีตารางนั้น หรือสิทธิ์อ่านไม่ถึง)'):''}`
+    +` · รวม <b>${(totKb/1024).toFixed(1)} MB</b> — กดดาวน์โหลดด้านบนได้เลย`;
+  $('go').disabled=false; $('dlJson').disabled=false; $('dlXlsx').disabled=false;
+  running=false;
+}
+
+function stamp(){
+  const d=new Date(), p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes());
+}
+function save(blob,name){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+
+function dlJson(){
+  const pack={_backup:{project:SUPABASE_URL,at:new Date().toISOString(),
+    tables:Object.keys(OUT),counts:Object.fromEntries(Object.entries(OUT).map(([k,v])=>[k,v.length]))},data:OUT};
+  save(new Blob([JSON.stringify(pack)],{type:'application/json'}),
+       'masaru-backup-'+stamp()+'.json');
+}
+
+function dlXlsx(){
+  const wb=XLSX.utils.book_new();
+  Object.keys(OUT).forEach(t=>{
+    const drop=HEAVY[t]||[];
+    const rows=OUT[t].map(r=>{
+      const o={};
+      Object.keys(r).forEach(k=>{
+        if(drop.includes(k)){ o[k]='(ตัดออกจาก Excel — อยู่ในไฟล์ JSON)'; return; }
+        const v=r[k];
+        o[k]=(v&&typeof v==='object')?JSON.stringify(v):v;
+      });
+      return o;
+    });
+    const ws=XLSX.utils.json_to_sheet(rows.length?rows:[{'(ไม่มีข้อมูล)':''}]);
+    XLSX.utils.book_append_sheet(wb,ws,t.slice(0,31));   // ชื่อชีทยาวได้ 31 ตัว
+  });
+  XLSX.writeFile(wb,'masaru-backup-'+stamp()+'.xlsx');
+}
+/* ผูกปุ่มเมื่อผ่านการตรวจสิทธิ์แล้วเท่านั้น */
+gate().then(ok=>{
+  if(!ok)return;
+  $('go').onclick=startBackup;
+  $('dlJson').onclick=dlJson;
+  $('dlXlsx').onclick=dlXlsx;
+});
+</script></div></body></html>
