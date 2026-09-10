@@ -285,7 +285,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
     <div class="card">
       <h2>📋 Tracking บิลค่าสินค้า — จ่ายแล้ว / ค้างจ่าย</h2>
       <div class="row">
-        <input id="bSearch" placeholder="ค้นหา PO / SKU / Vendor / ผู้รับผิดชอบ" style="max-width:230px" oninput="BILL_PAGE=1;renderBills()">
+        <input id="bSearch" placeholder="ค้นหา PO / PR / SKU / Vendor / ผู้รับผิดชอบ" style="max-width:230px" oninput="BILL_PAGE=1;renderBills()">
         <select id="bCo" onchange="BILL_PAGE=1;renderBills()"><option value="">— ทุกบริษัท —</option></select>
         <select id="bResp" onchange="BILL_PAGE=1;renderBills()" style="max-width:170px"><option value="">— ทุกผู้รับผิดชอบ —</option></select>
         <select id="bCur" onchange="BILL_PAGE=1;renderBills()" style="max-width:150px">
@@ -653,7 +653,8 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="modal">
     <h3 id="billTitle">เพิ่มบิล</h3>
     <div class="grid2">
-      <div class="fld"><label>รหัสใบจัดซื้อ (PO) ★</label><input id="f_po"></div>
+      <div class="fld"><label>รหัสใบจัดซื้อ (PO) ★</label>
+        <input id="f_po" onchange="fillBillPr()"></div>
       <div class="fld"><label>บริษัท ★</label>
         <select id="f_co"><option>LIKESHOP</option><option>MASARU</option><option>DAIKI</option><option>นามบุคคล</option></select></div>
       <input type="hidden" id="f_vendor">   <!-- ไม่ให้กรอกแล้ว แต่เก็บค่าเดิมไว้ ไม่ให้ข้อมูลหาย -->
@@ -667,6 +668,10 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
       <div class="fld"><label>ยอดเต็มของบิล ★</label>
         <input id="f_total" type="number" step="0.01">
         <div id="f_calcHint" class="muted" style="font-size:11.5px;margin-top:3px"></div></div>
+      <div class="fld"><label>Reference PR No</label>
+        <input id="f_pr" list="billPrList" placeholder="PR-2026-0831-004">
+        <div class="muted" style="font-size:11.5px;margin-top:3px">ใส่เลข PO แล้วระบบจะหาเลข PR ให้เอง (แก้ทับได้) · ใบเสนอราคาจะดึงเลขนี้ไปใช้</div>
+        <datalist id="billPrList"></datalist></div>
     </div>
     <div class="fld"><label>หมายเหตุ</label><textarea id="f_note" rows="2"></textarea></div>
     <div class="row" style="margin-top:16px;justify-content:flex-end">
@@ -1223,8 +1228,9 @@ async function loadAll(){
   showLoadErrors();       // ตารางไหนโหลดไม่ได้ ต้องเห็นทันที ไม่ใช่เงียบแล้วได้ 0 แถว
   try{                    // ตรวจความผิดปกติทุกครั้งที่โหลด → ป้าย ⚠️ ในตาราง
     const {data}=await sb.from('pr').select('pr_number,po_number');
-    computeRisk(data||[]);
-  }catch(e){ computeRisk([]); }
+    PRLIST=data||[];      // เก็บไว้ใช้เติม Reference PR No อัตโนมัติ
+    computeRisk(PRLIST);
+  }catch(e){ PRLIST=[]; computeRisk([]); }
   if($('tab-doc').style.display!=='none')renderDoc();
   renderBills();
   if($('tab-plan').style.display!=='none'){ PLANVIEW==='month'?renderPlanMonth():renderPlan(); }
@@ -1335,7 +1341,7 @@ function renderBills(){
          :bPlanF==='wait'  ?billPays(b.id).some(p=>p.status==='submitted')
          :billPays(b.id).some(p=>p.status!=='paid'&&p.status!=='rejected'&&String(p.pay_date||'')<=_today)))&&
     (!rk||(rk==='yes'?!!(RISK[b.id]&&RISK[b.id].length):!(RISK[b.id]&&RISK[b.id].length)))&&
-    (!q||((b.po_number||'')+' '+(b.sku||'')+' '+(b.vendor||'')+' '
+    (!q||((b.po_number||'')+' '+(b.sku||'')+' '+(b.vendor||'')+' '+(b.ref_pr||'')+' '
         +billPays(b.id).map(p=>(p.responsible||'')+' '+(p.channel||'')+' '+(p.installment||'')).join(' ')
       ).toLowerCase().includes(q)))
     // บิลที่เพิ่งสร้างต้องอยู่บนสุด — เดิมเรียงเก่า→ใหม่ ของใหม่เลยตกไปหน้าท้าย
@@ -1378,7 +1384,7 @@ function renderBills(){
     const pct=total>0?Math.min(100,Math.round(paid/total*100)):0;
     const s=curSym(b.currency);
     h+=`<tr>
-      <td><b>${esc(b.po_number)}</b></td>
+      <td><b>${esc(b.po_number)}</b>${b.ref_pr?`<div class="muted" style="font-size:11px;font-weight:400">PR ${esc(b.ref_pr)}</div>`:''}</td>
       <td>${b.company?`<span class="tag-co">${esc(b.company)}</span>`:'<span class="muted" style="font-size:11.5px">— ยังไม่ระบุ —</span>'}</td>
       <td>${esc(b.sku||'')||'<span class="muted">-</span>'}</td>
       <td class="right"><b>${money(total)}</b> <span class="cur-tag ${(b.currency||'CNY')==='THB'?'thb':''}">${s}</span>${b2(total,b)}</td>
@@ -1429,13 +1435,36 @@ function openBill(id){
   $('f_cur').value=b?.currency||'CNY'; $('f_total').value=b?.total_amount||'';
   $('f_qty').value=(b&&b.qty!=null)?b.qty:''; $('f_unit').value=(b&&b.unit_price!=null)?b.unit_price:'';
   calcBillTotal();
+  $('f_pr').value=b?.ref_pr||'';
   $('f_note').value=b?.note||'';
+  fillPrDatalist();
+  if(!$('f_pr').value)fillBillPr();      // บิลเก่าที่ยังไม่มี PR → ลองหาให้
   $('billBg').style.display='flex';
+}
+/* Reference PR No — หาเลข PR ที่ผูกกับ PO นี้จากตาราง pr (เว้นว่างถ้าไม่เจอ) */
+function prForPo(po){
+  const nz=x=>String(x||'').trim().toUpperCase().replace(/[\s_]+/g,'');
+  if(!po)return '';
+  const hit=(PRLIST||[]).filter(x=>nz(x.po_number)===nz(po));
+  return [...new Set(hit.map(x=>x.pr_number).filter(Boolean))].join(', ');
+}
+function fillBillPr(){
+  if(!$('f_pr'))return;
+  fillPrDatalist();
+  if($('f_pr').value.trim())return;      // ผู้ใช้กรอกเองแล้ว ห้ามทับ
+  const v=prForPo($('f_po').value);
+  if(v)$('f_pr').value=v;
+}
+function fillPrDatalist(){
+  const dl=$('billPrList'); if(!dl)return;
+  const ns=[...new Set((PRLIST||[]).map(x=>x.pr_number).filter(Boolean))].sort().reverse().slice(0,300);
+  dl.innerHTML=ns.map(n=>'<option>'+esc(n)+'</option>').join('');
 }
 async function saveBill(){
   const row={po_number:$('f_po').value.trim(),company:$('f_co').value,vendor:$('f_vendor').value.trim()||null,
     sku:$('f_sku').value.trim()||null,currency:$('f_cur').value,total_amount:parseFloat($('f_total').value)||0,
     qty:parseFloat($('f_qty').value)||null, unit_price:parseFloat($('f_unit').value)||null,
+    ref_pr:$('f_pr').value.trim()||null,
     note:$('f_note').value.trim()||null,updated_at:new Date().toISOString()};
   if(!row.po_number)return toast('ใส่รหัส PO ก่อน');
   if(!(row.total_amount>0))return toast('ใส่ยอดเต็มของบิลก่อน');
@@ -1444,12 +1473,19 @@ async function saveBill(){
   else{row.created_by=ME;
     const r=await sb.from('pay_bills').insert(row).select('id').single();
     error=r.error; newId=r.data&&r.data.id;}
-  if(error)return toast('บันทึกไม่สำเร็จ: '+error.message);
+  if(error){
+    if(/ref_pr/.test(error.message)||/column.*does not exist/i.test(error.message))
+      return alert('ยังไม่ได้เพิ่มคอลัมน์ ref_pr ในตาราง pay_bills\n\n'
+        +'กรุณารันไฟล์ pay_bills_ref_pr.sql บน Supabase ก่อน แล้วลองบันทึกอีกครั้ง\n\n'
+        +'รายละเอียด: '+error.message);
+    return toast('บันทึกไม่สำเร็จ: '+error.message);
+  }
   // บันทึกประวัติการแก้ไข
   {const before=BILLS.find(x=>String(x.id)===String(editBillId));
    if(editBillId&&before){
      const LB={po_number:'เลข PO',company:'บริษัท',vendor:'Vendor',sku:'SKU',
-       total_amount:'ยอดเต็ม',qty:'จำนวนชิ้น',unit_price:'ราคาต่อหน่วย',currency:'สกุลเงิน',note:'หมายเหตุ'};
+       total_amount:'ยอดเต็ม',qty:'จำนวนชิ้น',unit_price:'ราคาต่อหน่วย',currency:'สกุลเงิน',
+       ref_pr:'Reference PR No',note:'หมายเหตุ'};
      const ch=[];
      Object.keys(LB).forEach(k=>{
        let a=before[k]??'', b=row[k]??'';
@@ -1711,6 +1747,7 @@ async function savePayment(){
 
 /* ===== HISTORY ===== */
 let BILL_PAGE=1; const BILL_PER=20;      // หน้าละ 20 PO
+let PRLIST=[];                            // รายการใบ PR (pr_number, po_number) ใช้เติม Reference PR No
 /* แถบแบ่งหน้าใช้ร่วมกันทุกตาราง */
 const PER=20;
 /* per = จำนวนรายการต่อหน้า (ไม่ส่งมา = 20 ตามค่าเดิม) */
@@ -3842,7 +3879,13 @@ async function pullQuotPo(force){
     if(ds.length)$('q_date').value=String(ds[0]).slice(0,10);
   }
 
-  /* Reference PR No — หาใบ PR ที่ผูกกับ PO นี้ */
+  /* Reference PR No — ลำดับความสำคัญ
+     1) ที่กรอกไว้ในบิล (แท็บ Tracking บิล) — ถือเป็นค่าที่คนยืนยันแล้ว
+     2) ตาราง pr ที่ผูกเลข PO นี้ */
+  if(!$('q_pr').value||$('q_pr').value==='-'){
+    const bill=(BILLS||[]).find(function(b){return nzq(b.po_number)===nzq(po)&&b.ref_pr;});
+    if(bill)$('q_pr').value=bill.ref_pr;
+  }
   if(!$('q_pr').value||$('q_pr').value==='-'){
     try{
       const {data}=await sb.from('pr').select('pr_number,pr_date,po_number');
