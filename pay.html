@@ -584,13 +584,13 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
       <h2>💰 Ksher Wallet — บัญชีเดินสะพัด</h2>
       <div class="sub-note">เติมเงินเผื่อไว้ ยอดที่เหลือยกไปวันถัดไปอัตโนมัติ · คิดต้นทุนแบบเรทเฉลี่ยถ่วงน้ำหนัก</div>
       <div class="row" style="flex-wrap:wrap">
-        <select id="wlUser" onchange="renderWallet()" style="max-width:175px">
+        <select id="wlUser" onchange="WL_PAGE=1;renderWallet()" style="max-width:175px">
           <option value="">— ทุก User —</option>
           <optgroup label="นามบริษัท"><option>LIKESHOP</option><option>MASARU</option><option>DAIKI</option></optgroup>
           <optgroup label="นามบุคคล"><option>คุณวุฒิ</option><option>คุณแนน</option></optgroup>
         </select>
-        <input type="month" id="wlMonth" onchange="renderWallet()" style="max-width:160px">
-        <select id="wlType" onchange="renderWallet()" style="max-width:170px">
+        <input type="month" id="wlMonth" onchange="WL_PAGE=1;renderWallet()" style="max-width:160px">
+        <select id="wlType" onchange="WL_PAGE=1;renderWallet()" style="max-width:170px">
           <option value="">— ทุกประเภทรายการ —</option>
           <option value="topup">💵 เติมเงิน</option>
           <option value="spend">📤 ตัดจ่าย</option>
@@ -1706,10 +1706,12 @@ async function savePayment(){
 let BILL_PAGE=1; const BILL_PER=20;      // หน้าละ 20 PO
 /* แถบแบ่งหน้าใช้ร่วมกันทุกตาราง */
 const PER=20;
-function pagerBar(total,page,fn){
-  const pages=Math.max(1,Math.ceil(total/PER));
-  if(total<=PER)return '';
-  const from=(page-1)*PER+1, to=Math.min(page*PER,total);
+/* per = จำนวนรายการต่อหน้า (ไม่ส่งมา = 20 ตามค่าเดิม) */
+function pagerBar(total,page,fn,per){
+  per=+per||PER;
+  const pages=Math.max(1,Math.ceil(total/per));
+  if(total<=per)return '';
+  const from=(page-1)*per+1, to=Math.min(page*per,total);
   let nums='';
   const st=Math.max(1,Math.min(page-2,pages-4)), en=Math.min(pages,st+4);
   for(let i=st;i<=en;i++)
@@ -1723,6 +1725,8 @@ function pagerBar(total,page,fn){
   </div>`;
 }
 let LG_PAGE=1, RM_PAGE=1;
+let WL_PAGE=1; const WL_PER=25;          // Ksher Wallet — หน้าละ 25 รายการ
+function wlGo(n){ WL_PAGE=n; renderWallet(); if($('wlBody'))$('wlBody').scrollIntoView({block:'start',behavior:'smooth'}); }
 function lgGo(n){ LG_PAGE=n; renderLedger(); $('lgBody').scrollIntoView({block:'start'}); }
 function rmGo(n){ RM_PAGE=n; renderRemit(); $('rmBody').scrollIntoView({block:'start'}); }
 function billGo(p){BILL_PAGE=p;renderBills();window.scrollTo({top:0,behavior:'smooth'});}
@@ -4152,7 +4156,7 @@ function renderWallet(){
   const all=walletAll();
   $('wlKpi').innerHTML = all.map(a=>`
     <div class="kpi ${a._bal<0?'red':(a._bal>0?'green':'')}" style="cursor:pointer;${u===a.user?'outline:3px solid #FFD966':''}"
-         onclick="$('wlUser').value='${esc(a.user)}';renderWallet()">
+         onclick="$('wlUser').value='${esc(a.user)}';WL_PAGE=1;renderWallet()">
       <div class="lbl">${KSHER_PERSONS.includes(a.user)?'👤':'🏢'} ${esc(a.user)}</div>
       <div class="val">${money(a._bal)}<span style="font-size:.45em"> ฿</span></div>
       <div class="lbl" style="opacity:.75">${rNow?('≈ '+money(balToCny(a._bal,rNow))+' ¥ @'+rNow):'ใส่เรทในแท็บแผนจ่าย'}</div>
@@ -4166,12 +4170,18 @@ function renderWallet(){
   list=list.slice().reverse();
   if(!list.length){$('wlBody').innerHTML='<div class="empty">เดือนนี้ยังไม่มีรายการ — กด 💵 เติมเงิน เพื่อเริ่ม</div>';return;}
 
+  /* แบ่งหน้า — หน้าละ WL_PER (25) รายการ
+     หมายเหตุ: คอลัมน์ "คงเหลือ" คิดจาก walletRun() ทั้งชุดแล้ว ตัดหน้าไม่ทำให้ยอดเพี้ยน */
+  const _tot=list.length, _pages=Math.max(1,Math.ceil(_tot/WL_PER));
+  if(WL_PAGE>_pages)WL_PAGE=_pages; if(WL_PAGE<1)WL_PAGE=1;
+  const pageList=list.slice((WL_PAGE-1)*WL_PER, WL_PAGE*WL_PER);
+
   const T={topup:['💵 เติมเงิน','#1E7145'],spend:['📤 ตัดจ่าย','#2E75B6'],adjust:['⚙️ ปรับยอด','#B45309']};
   let h=`<table><thead><tr><th style="width:98px">วันที่</th><th style="width:110px">User</th><th style="width:110px">ประเภท</th>
     <th>รายละเอียด</th><th class="right">บาท (฿)</th><th class="right">เรทวันนั้น</th>
     <th class="right">หยวน (¥)</th><th class="right">คงเหลือ (฿)</th>
     ${canEdit?'<th style="width:52px"></th>':''}</tr></thead><tbody>`;
-  list.forEach(w=>{
+  pageList.forEach(w=>{
     const thb=+w.amount_thb||0, cny=+w.amount_cny||0, t=T[w.txn_type]||['—','#64748B'];
     h+=`<tr>
       <td>${esc(w.txn_date||'-')}</td>
@@ -4184,7 +4194,7 @@ function renderWallet(){
       <td class="right"><b>${money(w._bal)}</b></td>
       ${canEdit?`<td><button class="btn mini red" onclick="delWl('${w.id}')">✕</button></td>`:''}
     </tr>`;});
-  $('wlBody').innerHTML=h+'</tbody></table>';
+  $('wlBody').innerHTML=h+'</tbody></table>'+pagerBar(_tot,WL_PAGE,'wlGo',WL_PER);
 }
 
 /* ---------- ฟอร์มเติมเงิน / ปรับยอด ---------- */
