@@ -1166,7 +1166,43 @@ async function boot(){
       เปิดค้างไว้ 20 แท็บ × วันละ 100 ครั้ง = Egress หลาย GB/วัน (ทะลุโควตา Free 5 GB)
    ✅ ใหม่: โหลดเฉพาะตารางที่เปลี่ยน · รวมเหตุการณ์ 2.5 วิ · แท็บที่ไม่ได้ดูอยู่ไม่โหลด
       (จำไว้ก่อน แล้วโหลดตอนกลับมาดู) */
-let rtTimer=null, RT_PENDING=new Set(), RT_STALE=false;
+/* ===== แถบ "มีข้อมูลใหม่ — กดเพื่อโหลด" =====
+   ⚠️ Egress 99.1% มาจาก PostgREST คือการ "อ่านตารางกลับมา"
+      ทุกครั้งที่มีคนแก้ ไม่ใช่ตัว realtime เอง (realtime แค่ 0.9%)
+   ✅ จึงคง realtime ไว้เป็น "สัญญาณเตือน" แต่ไม่ดึงข้อมูลเอง
+      → ขึ้นปุ่มให้ผู้ใช้กดโหลดเมื่อต้องการ = ไม่มีการอ่านตารางที่ไม่มีคนดู
+   งานที่ตัวเองบันทึก ยังโหลดใหม่ให้ทันทีเหมือนเดิม (ไม่กระทบการทำงาน) */
+let NEWS_N=0, NEWS_TBL=new Set();
+function newsEl(){
+  let el=document.getElementById('newsBar');
+  if(!el){
+    el=document.createElement('div'); el.id='newsBar';
+    el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9999;'
+      +'display:none;align-items:center;gap:9px;background:#1A2942;color:#fff;border-radius:24px;'
+      +'padding:10px 15px;font-family:Sarabun,sans-serif;font-size:13px;font-weight:600;'
+      +'box-shadow:0 6px 22px rgba(0,0,0,.28);cursor:pointer;user-select:none';
+    el.onclick=function(){ const t=new Set(NEWS_TBL); newsClear(); newsReload(t); };
+    el.title='มีคนแก้ข้อมูล — กดเพื่อดึงข้อมูลล่าสุด';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function newsPing(tbl){
+  if(window.SELF_WRITING)return;             // ที่ตัวเองกำลังเขียน ไม่ต้องเตือนตัวเอง
+  NEWS_N++; if(tbl)NEWS_TBL.add(tbl);
+  const el=newsEl();
+  el.innerHTML='🔔 มีข้อมูลใหม่ '+NEWS_N+' รายการ'
+    +' <span style="background:#fff;color:#1A2942;border-radius:14px;padding:3px 11px;font-weight:800">กดเพื่อโหลด</span>';
+  el.style.display='flex';
+}
+function newsClear(){
+  NEWS_N=0; NEWS_TBL=new Set();
+  const el=document.getElementById('newsBar'); if(el)el.style.display='none';
+}
+
+function newsReload(tbls){
+  reloadTables(tbls&&tbls.size?tbls:new Set(['pay_bills','pay_payments','pay_memos']));
+}
 async function reloadTables(names){
   const job={
     pay_bills:   async()=>{ BILLS=await pageAll('pay_bills','*','created_at'); },
@@ -1176,7 +1212,8 @@ async function reloadTables(names){
   };
   await Promise.all([...names].map(n=>job[n]?job[n]():null).filter(Boolean));
   await loadWallet();
-  redrawAll();
+  newsClear();                 // โหลดล่าสุดแล้ว → เก็บแถบแจ้งเตือน
+  redrawAll(); flashLive();
 }
 /* วาดหน้าจอใหม่ตามแท็บที่เปิดอยู่ — แยกออกมาจาก loadAll เพื่อเรียกซ้ำได้ */
 function redrawAll(){
@@ -1191,28 +1228,12 @@ function redrawAll(){
   }catch(e){ console.warn('[rt] redraw:',e.message); }
 }
 function subscribeRealtime(){
-  const bump=(tbl)=>()=>{
-    RT_PENDING.add(tbl);
-    if(document.visibilityState==='hidden'){ RT_STALE=true; return; }   // แท็บพื้นหลัง = ไม่ยิง request
-    clearTimeout(rtTimer);
-    rtTimer=setTimeout(async()=>{
-      const names=RT_PENDING; RT_PENDING=new Set();
-      await reloadTables(names); flashLive();
-    },2500);
-  };
+  const bump=(tbl)=>()=>newsPing(tbl);
   sb.channel('pay-live')
     .on('postgres_changes',{event:'*',schema:'public',table:'pay_bills'},bump('pay_bills'))
     .on('postgres_changes',{event:'*',schema:'public',table:'pay_payments'},bump('pay_payments'))
     .on('postgres_changes',{event:'*',schema:'public',table:'pay_memos'},bump('pay_memos'))
     .subscribe();
-  // กลับมาดูแท็บนี้อีกครั้ง → ค่อยตามข้อมูลให้ทัน
-  document.addEventListener('visibilitychange',async()=>{
-    if(document.visibilityState!=='visible'||!RT_STALE)return;
-    RT_STALE=false;
-    const names=RT_PENDING.size?RT_PENDING:new Set(['pay_bills','pay_payments']);
-    RT_PENDING=new Set();
-    await reloadTables(names); flashLive();
-  });
 }
 function flashLive(){
   const d=$('liveDot'); if(!d)return;
@@ -1284,6 +1305,7 @@ async function loadAll(){
     PRLIST=data||[];      // เก็บไว้ใช้เติม Reference PR No อัตโนมัติ
     computeRisk(PRLIST);
   }catch(e){ PRLIST=[]; computeRisk([]); }
+  newsClear();                 // loadAll = ข้อมูลล่าสุดแล้ว
   if($('tab-doc').style.display!=='none')renderDoc();
   renderBills();
   if($('tab-plan').style.display!=='none'){ PLANVIEW==='month'?renderPlanMonth():renderPlan(); }
