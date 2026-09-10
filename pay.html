@@ -3796,6 +3796,10 @@ async function copyLineMsg(){
    ส่วนล่าง = รูปแนบ เก็บใน Google Drive โฟลเดอร์ "ใบเสนอราคา"
    ================================================================== */
 let QUOTS=[], QT_ROWS=[], QT_PICS=[], QT_ID=null;
+/* รูปแนบเก็บเป็น base64 ในคอลัมน์ pics → 1 รูป ≈ 300–600 KB
+   ถ้าส่งขึ้นทุกครั้งที่กดบันทึก แค่แก้หมายเหตุก็ยิงหลายเมกฯ → บันทึกช้ามาก
+   จึงส่งคอลัมน์ pics เฉพาะเมื่อรูป "เปลี่ยนจริง" */
+let QT_PICS_DIRTY=false;
 let QT_PAGE=1;
 function qtGo(n){ QT_PAGE=n; renderQuotList(); const b=$('qtList'); if(b)b.scrollIntoView({block:'start'}); }
 
@@ -3893,6 +3897,7 @@ async function openQuot(id){
   $('q_note').value=(x&&x.note)||'';
   QT_ROWS=(x&&Array.isArray(x.items))?JSON.parse(JSON.stringify(x.items)):[];
   QT_PICS=(x&&Array.isArray(x.pics))?JSON.parse(JSON.stringify(x.pics)):[];
+  QT_PICS_DIRTY=false;                       // เพิ่งเปิดใบ = รูปยังไม่เปลี่ยน
   if(!QT_ROWS.length&&$('q_po').value)pullQuotPo();
   $('qtEditBg').style.display='flex'; bindQuotPaste();
   drawQuotRows(); drawQuotPics(); drawQuot();
@@ -4011,7 +4016,7 @@ function drawQuotPics(){
 }
 async function delQuotPic(i){
   const p=QT_PICS[i];
-  QT_PICS.splice(i,1); drawQuotPics(); drawQuot();
+  QT_PICS.splice(i,1); QT_PICS_DIRTY=true; drawQuotPics(); drawQuot();
   if(p&&p.id){                                   // เคยขึ้น Drive แล้ว → ลบไฟล์ทิ้งด้วย
     try{ await gasCall({action:'delete',fileId:p.id}); $('q_stat').textContent='ลบรูปใน Drive แล้ว'; }
     catch(e){ console.warn('[quot] ลบใน Drive ไม่ได้:',e.message); }
@@ -4029,8 +4034,10 @@ async function onQuotFiles(inp){
    อัปจริงตอนกด 💾 บันทึก เท่านั้น — ปิดฟอร์มทิ้งจะไม่มีไฟล์ค้างใน Drive */
 async function addQuotPic(file){
   if(!file||!/^image\//.test(file.type))return;
-  const thumb=await shrinkImg(file,1400,0.82);
+  // 1200px @ q0.76 ≈ 130 DPI บนกระดาษ A4 — อ่านออกชัด แต่ไฟล์เล็กลง ~40%
+  const thumb=await shrinkImg(file,1200,0.76);
   QT_PICS.push({thumb:thumb,url:'',id:'',name:file.name,_file:file,_new:true});
+  QT_PICS_DIRTY=true;
   drawQuotPics(); drawQuot();
   $('q_stat').innerHTML='<span style="color:#B45309">📎 รอบันทึก — รูปจะขึ้น Drive เมื่อกด 💾 บันทึก</span>';
 }
@@ -4130,13 +4137,17 @@ async function saveQuotInner(){
     const folder='ใบเสนอราคา/'+String($('q_po').value||'ไม่ระบุ PO').replace(/[\\/:*?"<>|]/g,'-');
     await Promise.all(pend.map(async p=>{
       try{
+        /* ย่อก่อนส่งขึ้น Drive — รูปมือถือ 3024px ส่งดิบ ≈ 2.4 MB/ใบ (ผ่าน Apps Script ช้ามาก)
+           ย่อเป็น 2000px q0.85 ≈ 1.1 MB ยังชัดพอสำหรับเก็บอ้างอิง */
+        const big=await shrinkImg(p._file,2000,0.85);
         const j=await gasCall({action:'upload',
-          filename:(($('q_po').value||'PO')+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)+'_'+p.name),
-          folder, mime:p._file.type, data:await fileToB64(p._file),
+          filename:(($('q_po').value||'PO')+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)+'_'
+                    +String(p.name||'pic').replace(/\.[^.]+$/,'')+'.jpg'),
+          folder, mime:'image/jpeg', data:big.split(',')[1]||'',
           po:$('q_po').value||'', actor:ME||''});
         p.url=j.openUrl||j.viewUrl||''; p.id=j.fileId||'';
       }catch(e){ console.warn('[quot] drive:',e.message); }
-      p._new=false; delete p._file;
+      p._new=false; delete p._file; QT_PICS_DIRTY=true;
       $('q_stat').innerHTML='⏳ กำลังอัปรูป '+(++done)+'/'+pend.length+' ขึ้น Drive…';
     }));
   }
@@ -4150,9 +4161,14 @@ async function saveQuotInner(){
     items:QT_ROWS, ship_fee:ship, total:+(sub+ship).toFixed(2),
     title_note:$('q_title').value.trim()||null, note:$('q_note').value.trim()||null,
     responsible:$('q_resp').value.trim()||null,
-    pics:QT_PICS.map(p=>({thumb:p.thumb,url:p.url||'',id:p.id||'',name:p.name||''})),
-    pic_count:QT_PICS.length, item_count:QT_ROWS.length,
+    item_count:QT_ROWS.length,
     created_by:ME||'', updated_at:new Date().toISOString()};
+  /* ส่งรูปขึ้นเฉพาะตอนสร้างใบใหม่ หรือรูปเปลี่ยนจริง (เพิ่ม/ลบ/เพิ่งอัป Drive)
+     แก้แค่ข้อความ → payload เหลือไม่กี่ KB บันทึกเสร็จแทบทันที */
+  if(!QT_ID || QT_PICS_DIRTY || pend.length){
+    rec.pics=QT_PICS.map(p=>({thumb:p.thumb,url:p.url||'',id:p.id||'',name:p.name||''}));
+    rec.pic_count=QT_PICS.length;
+  }
   if(!QT_ID){
     // กันบันทึกซ้ำ: มีใบ PO เดียวกัน ยอดเท่ากัน สร้างภายใน 2 นาทีที่ผ่านมา
     const dup=QUOTS.find(x=>String(x.po_number||'').trim()===rec.po_number
@@ -4162,12 +4178,20 @@ async function saveQuotInner(){
       QT_ID=dup.id;                          // ไม่สร้างซ้ำ → แก้ใบเดิมแทน
     }
   }
+  if(rec.pics){
+    const kb=Math.round(JSON.stringify(rec.pics).length/1024);
+    $('q_stat').innerHTML='⏳ กำลังบันทึก (รูป '+QT_PICS.length+' ใบ ~'+kb+' KB)…';
+  }else $('q_stat').innerHTML='⏳ กำลังบันทึก…';
   const q=QT_ID? sb.from('quotations').update(rec).eq('id',QT_ID)
                 : sb.from('quotations').insert(rec).select('id').single();
   const {data,error}=await q;
+  $('q_stat').textContent='';
   if(error)return alert('บันทึกไม่สำเร็จ: '+error.message);
   if(!QT_ID&&data&&data.id)QT_ID=data.id;    // กดบันทึกซ้ำหลังจากนี้ = แก้ใบเดิม ไม่สร้างใหม่
-  await loadQuot(); $('qtEditBg').style.display='none'; toast('บันทึกใบเสนอราคาแล้ว ✅');
+  QT_PICS_DIRTY=false;
+  // ปิดหน้าต่าง + แจ้งผลทันที แล้วค่อยรีเฟรชรายการเบื้องหลัง (เดิมรอโหลด 500 แถวก่อนปิด)
+  $('qtEditBg').style.display='none'; toast('บันทึกใบเสนอราคาแล้ว ✅');
+  loadQuot();
 }
 async function delQuot(id){
   if(!confirm('ลบใบเสนอราคานี้?'))return;
