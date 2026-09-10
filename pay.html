@@ -230,7 +230,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-78</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">v09-79</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -2211,10 +2211,14 @@ function showPending(day){
       <b style="font-size:16px;color:#B45309">${wait.length}</b></div>
     <div><div class="muted" style="font-size:11px">⛔ ถึง/เลยกำหนด</div>
       <b style="font-size:16px;color:${late.length?'#B01722':'#94A3B8'}">${late.length}</b></div>
+    ${(()=>{const by={};rows.forEach(p=>{const k=p.responsible||'(ไม่ระบุ)';by[k]=(by[k]||0)+1;});
+      const ks=Object.keys(by).sort((a,b)=>by[b]-by[a]);
+      return ks.length?`<div><div class="muted" style="font-size:11px">ผู้รับผิดชอบ</div>
+        <div style="font-size:12px;line-height:1.6">${ks.map(k=>esc(k)+' <b>'+by[k]+'</b>').join(' · ')}</div></div>`:'';})()}
   </div>
   <table><thead><tr><th style="width:96px">วันที่</th><th class="right" style="width:66px">เลยมา</th>
     <th>PO</th><th>SKU</th><th>งวด</th><th class="right">ยอด</th><th class="right">บาท</th>
-    <th>ช่องทาง</th><th>จ่ายในนาม</th><th>สถานะ</th>${canEdit?'<th style="width:150px"></th>':''}</tr></thead><tbody>`;
+    <th>ช่องทาง</th><th>จ่ายในนาม</th><th>ผู้รับผิดชอบ</th><th>สถานะ</th>${canEdit?'<th style="width:150px"></th>':''}</tr></thead><tbody>`;
   rows.forEach(p=>{
     const b=billOf(p.bill_id);
     const lt=Math.round((new Date(today)-new Date(p.pay_date))/86400000);
@@ -2228,6 +2232,7 @@ function showPending(day){
       <td class="right"><b>${money(thbOf(p)+(+p.fee||0))}</b></td>
       <td style="font-size:11.5px">${esc(p.channel||'-')}</td>
       <td style="font-size:11.5px">${esc(p.pay_type||'-')}</td>
+      <td style="font-size:11.5px">${p.responsible?esc(p.responsible):'<span class="muted">-</span>'}</td>
       <td>${stPill(p.status)}</td>
       ${canEdit?`<td style="white-space:nowrap">
         <button class="btn mini ghost" onclick="openLineMsg('${p.id}')" title="ข้อความแจ้งจ่าย">💬</button>
@@ -2666,7 +2671,7 @@ function showOverdue(){
     </div>
     <table><thead><tr><th style="width:96px">วันครบกำหนด</th><th class="right" style="width:70px">เลยมา</th>
       <th>PO</th><th>SKU</th><th>งวด</th><th class="right">ยอด</th><th class="right">บาท</th>
-      <th>ช่องทาง</th>${canEdit?'<th style="width:150px"></th>':''}</tr></thead><tbody>`;
+      <th>ช่องทาง</th><th>ผู้รับผิดชอบ</th>${canEdit?'<th style="width:150px"></th>':''}</tr></thead><tbody>`;
   over.forEach(p=>{
     const b=billOf(p.bill_id);
     const late=Math.round((new Date(today)-new Date(p.pay_date))/86400000);
@@ -2679,6 +2684,7 @@ function showOverdue(){
       <td class="right">${money(p.amount)} ${curSym(b.currency)}</td>
       <td class="right"><b>${money(thbOf(p))}</b></td>
       <td style="font-size:11.5px">${esc(p.channel||'-')}</td>
+      <td style="font-size:11.5px">${p.responsible?esc(p.responsible):'<span class="muted">-</span>'}</td>
       ${canEdit?`<td style="white-space:nowrap">
         <button class="btn mini" onclick="$('overdueBg').style.display='none';setPayStatus('${p.id}','submitted')">📤 ส่งยอด</button>
         <button class="btn mini ghost" onclick="$('overdueBg').style.display='none';editPay('${p.id}','${p.bill_id}')">✏️ แก้</button></td>`:''}
