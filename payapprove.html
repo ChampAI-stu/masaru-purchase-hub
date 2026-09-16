@@ -100,7 +100,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-10</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-11</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -318,6 +318,54 @@ tr:nth-child(even) td{background:#F8FAFD}
     <div class="row" style="margin-top:12px;justify-content:flex-end">
       <button class="btn ghost" onclick="$('printBg').style.display='none'">ปิด</button>
       <button class="btn" onclick="doPrint()">🖨️ พิมพ์ / บันทึก PDF</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============ MODAL: แจ้งโอนเงิน ============ -->
+<div class="modal-bg" id="xferBg" style="z-index:75">
+  <div class="modal" id="xferModal" style="max-width:1180px">
+    <button class="expand-btn" onclick="toggleWide('xferModal',this)">⛶ ขยายเต็มจอ</button>
+    <h3 id="xfTitle">📢 แจ้งโอนเงิน</h3>
+    <div class="sub-note">
+      สร้างข้อความแจ้งโอนจากคำขอที่<b>อนุมัติแล้ว</b> — กด 📋 คัดลอกข้อความ ไปวางในกลุ่มแชท
+      หรือ 🖼️ ดาวน์โหลดรูป ถ้าต้องการส่งเป็นการ์ด<br>
+      <span style="color:#854F0B">⚠️ เลขบัญชี JMF / Ksher ที่ตั้งไว้ให้ <b>ตรวจสอบครั้งแรกก่อนใช้งานจริง</b> — แก้ได้ที่ ⚙️ ตั้งค่าบัญชี แล้วระบบจะจำไว้</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:minmax(340px,430px) 1fr;gap:14px;align-items:start" id="xfGrid">
+      <!-- ซ้าย: ฟอร์ม -->
+      <div class="scroll" style="max-height:66vh;padding-right:4px">
+        <div class="row" style="margin-bottom:8px">
+          <button class="btn mini ghost" onclick="xfToggleCfg()">⚙️ ตั้งค่าบัญชี</button>
+          <button class="btn mini ghost" onclick="xfReset()">↺ รีเซ็ตฟอร์ม</button>
+        </div>
+        <div id="xfCfg" style="display:none;background:#F4F6FA;border:1px solid var(--line);border-radius:9px;padding:11px 13px;margin-bottom:12px"></div>
+        <div id="xfForm"></div>
+      </div>
+
+      <!-- ขวา: พรีวิว -->
+      <div>
+        <div class="row" style="margin-bottom:8px">
+          <button class="btn" onclick="xfCopy()">📋 คัดลอกข้อความ</button>
+          <button class="btn ghost" onclick="xfDownload()">🖼️ ดาวน์โหลดรูป</button>
+          <div style="flex:1"></div>
+          <span class="muted" style="font-size:11.5px" id="xfHint"></span>
+        </div>
+        <div class="scroll" style="max-height:66vh;background:#F4F6FA;border-radius:9px;padding:12px">
+          <div style="font-size:11.5px;color:var(--muted);margin-bottom:5px">ข้อความ (สำหรับ copy)</div>
+          <pre id="xfText" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:12px 14px;
+            font-family:'Segoe UI',Tahoma,sans-serif;font-size:13px;line-height:1.85;white-space:pre-wrap;margin:0 0 14px"></pre>
+          <div style="font-size:11.5px;color:var(--muted);margin-bottom:5px">การ์ดรูป (สำหรับส่งเป็นภาพ)</div>
+          <div id="xfCard" style="text-align:center"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('xferBg').style.display='none'">ปิด</button>
+      <button class="btn gold" onclick="xfSave()">💾 บันทึกข้อมูลแจ้งโอน</button>
     </div>
   </div>
 </div>
@@ -945,7 +993,7 @@ function viewReq(id){
   const lg=LOGS.filter(l=>String(l.req_id)===String(id))
     .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
   const LA={created:'สร้างคำขอ',updated:'แก้ไข',submitted:'ส่งอนุมัติ',checked:'หัวหน้าอนุมัติ',
-            approved:'ผู้บริหารอนุมัติ',rejected:'ตีกลับ',paid:'ยืนยันจ่ายแล้ว'};
+            approved:'ผู้บริหารอนุมัติ',rejected:'ตีกลับ',paid:'ยืนยันจ่ายแล้ว',xfer:'📢 แจ้งโอนเงิน'};
 
   $('vBody').innerHTML=`
     <div style="display:flex;gap:26px;flex-wrap:wrap;background:#F7F9FC;border-radius:10px;padding:12px 15px;margin-bottom:12px;font-size:12.5px;line-height:1.9">
@@ -985,6 +1033,8 @@ function viewReq(id){
   if(r.status==='mgr_approved'&&IS_EXEC)
     btns+=`<button class="btn red" onclick="openReject('${r.id}')">↩️ ตีกลับ</button>
            <button class="btn green" onclick="act('${r.id}','approved')">👑 อนุมัติจ่าย</button>`;
+  if(['approved','paid'].includes(r.status))
+    btns+=`<button class="btn gold" onclick="$('viewBg').style.display='none';openXfer('${r.id}')">📢 แจ้งโอนเงิน</button>`;
   if(r.status==='approved'&&(IS_MGR||IS_EXEC||IS_BUYER))
     btns+=`<button class="btn" onclick="act('${r.id}','paid')">💸 ยืนยันจ่ายแล้ว</button>`;
   $('vActions').innerHTML=btns;
@@ -1088,6 +1138,422 @@ function doPrint(){
   const done=()=>{document.body.classList.remove('printing');window.removeEventListener('afterprint',done);};
   window.addEventListener('afterprint',done);
   setTimeout(()=>{window.print();setTimeout(done,1200);},60);
+}
+
+
+/* ==================================================================
+   แจ้งโอนเงิน — สร้างข้อความ + การ์ดรูป 3 แบบ
+     · JMF CARGO              → โอนในประเทศ (SCB)
+     · Ksher Payment Co.Ltd.  → เติมเงินเข้าระบบ Ksher
+     · ธนาคาร (SWIFT Code)    → โอนต่างประเทศ
+   ขึ้นได้เฉพาะคำขอที่อนุมัติแล้ว (approved / paid) เพื่อไม่ให้แจ้งโอนก่อนอนุมัติ
+   ================================================================== */
+const XFER_DEF={
+  mention:'@WUT',
+  jmf  :{bank:'SCB', acc:'5064011132', name:'ทิพามนต์ ศรีธรรมพินิจ'},
+  ksher:{bank:'Standard Chartered Bank (Thailand) PCL', acc:'60641237593', name:'Ksher Payment Co., Ltd.'},
+  inter:{bank:'CITIBANK N.A.', swift:'CITIUS33', addr:'CITIBANK N.A.111 WALL STREET,NEW YORK,NY 10043'},
+  co:{
+    LIKESHOP:{en:'LIKESHOP MALL CO., LTD.',
+              addr:'475/4-5 Thahan Bok Rd, Bo Phlap Subdistrict, Mueang NakhonPathom District , Nakhon Pathom Province 73000, THAILAND'},
+    MASARU  :{en:'', addr:''},
+    DAIKI   :{en:'', addr:''}
+  }
+};
+let XCFG=JSON.parse(JSON.stringify(XFER_DEF)), XF=null, XF_REQ=null;
+function xcfgLoad(){
+  try{
+    const s=localStorage.getItem('xferCfg'); if(!s)return;
+    const o=JSON.parse(s);
+    ['mention'].forEach(k=>{ if(o[k]!=null)XCFG[k]=o[k]; });
+    ['jmf','ksher','inter'].forEach(k=>{ if(o[k])XCFG[k]=Object.assign({},XCFG[k],o[k]); });
+    if(o.co)Object.keys(o.co).forEach(k=>{ XCFG.co[k]=Object.assign({},XCFG.co[k]||{},o.co[k]); });
+  }catch(e){}
+}
+function xcfgSave(){ try{ localStorage.setItem('xferCfg',JSON.stringify(XCFG)); }catch(e){} }
+xcfgLoad();
+
+const xferKind=ch=>/JMF/i.test(String(ch||''))?'jmf':(/Ksher/i.test(String(ch||''))?'ksher':'swift');
+const XK_NAME={jmf:'JMF CARGO',ksher:'Ksher Payment',swift:'โอนต่างประเทศ (SWIFT)'};
+const dDot=d=>{ if(!d)return '-'; const x=new Date(d+'T00:00:00'); if(isNaN(x))return String(d);
+  return String(x.getDate()).padStart(2,'0')+'.'+String(x.getMonth()+1).padStart(2,'0')+'.'+x.getFullYear(); };
+const dSlash=d=>{ if(!d)return '-'; const x=new Date(d+'T00:00:00'); if(isNaN(x))return String(d);
+  return String(x.getDate()).padStart(2,'0')+' / '+String(x.getMonth()+1).padStart(2,'0')+' /'+x.getFullYear(); };
+
+function xferDefaults(r){
+  const uniq=k=>[...new Set((r.items||[]).map(i=>String(i[k]==null?'':i[k]).trim()).filter(Boolean))];
+  const pos=uniq('po'), skus=uniq('sku'), insts=uniq('inst');
+  const rates=(r.items||[]).map(i=>num(i.rate)).filter(x=>x>0);
+  const co=XCFG.co[r.pay_type]||{en:'',addr:''};
+  return {
+    kind:xferKind(r.channel),
+    date:r.due_date||r.req_date||todayStr(),
+    mention:XCFG.mention, po:pos.join(', '), sku:skus.join(', '),
+    thb:+(+r.total_thb||0).toFixed(2),
+    /* JMF */
+    jmf_bank:XCFG.jmf.bank, jmf_acc:XCFG.jmf.acc, jmf_name:XCFG.jmf.name,
+    jmf_po:false, jmf_note:'',
+    /* Ksher */
+    ks_bank:XCFG.ksher.bank, ks_acc:XCFG.ksher.acc, ks_name:XCFG.ksher.name,
+    ks_newacc:true, ks_prev:0, ks_rate:rates.length?rates[0]:0,
+    ks_user:'', ks_note:'',
+    /* SWIFT */
+    sw_co:co.en||'', sw_co_addr:co.addr||'',
+    sw_vendor:'', sw_vacc:'', sw_vaddr:'',
+    sw_ibank:XCFG.inter.bank, sw_iswift:XCFG.inter.swift, sw_iaddr:XCFG.inter.addr,
+    sw_bbank:'', sw_bswift:'', sw_baddr:'',
+    sw_cur:r.currency||'USD', sw_amt:+(+r.total_amount||0).toFixed(2),
+    sw_inv:pos.length?('PO'+pos[0]):'', sw_seq:insts.join(', '), sw_paydate:r.due_date||''
+  };
+}
+
+/* ---------- บล็อกกลาง: ข้อความและการ์ดใช้ชุดเดียวกัน จึงตรงกันเสมอ ---------- */
+function xferBlocks(r,f){
+  const B=[], M=v=>money2(v);
+  const kv=(a,b)=>{ if(String(b==null?'':b).trim()==='')return; B.push({k:'kv',a:a,b:String(b)}); };
+  if(f.kind==='jmf'){
+    B.push({k:'bar',t:dDot(f.date)+' : JMF CARGO'});
+    B.push({k:'box',c:'red',t:'ยอดชำระ : '+M(f.thb)+' บาท'});
+    if(f.jmf_po&&f.po)kv('ชำระค่าสินค้า PO',f.po);
+    kv('ธนาคาร',f.jmf_bank); kv('เลขที่บัญชี',f.jmf_acc); kv('ชื่อบัญชี',f.jmf_name);
+    if(f.jmf_note){ B.push({k:'gap'}); B.push({k:'p',t:f.jmf_note}); }
+    B.push({k:'gap'}); B.push({k:'p',t:'สามารถโอนได้เลยค่ะ '+(f.mention||'')});
+  }
+  else if(f.kind==='ksher'){
+    B.push({k:'bar',t:'รายการสั่งซื้อสินค้า Ksher Payment วันที่ '+thDate(f.date)});
+    if(f.po)B.push({k:'p',t:'ชำระค่าสินค้า PO '+f.po});
+    B.push({k:'box',c:'red',t:'ยอดเติมเงินเข้าระบบ : '+M(f.thb)+' บาท'});
+    if(f.ks_user)B.push({k:'box',c:'amber',t:'หมายเหตุ : '+f.ks_user});
+    B.push({k:'gap'});
+    if(f.ks_newacc)B.push({k:'p',t:'บัญชีใหม่นะคะ'});
+    kv('เลขที่บัญชี',f.ks_acc); kv('ชื่อบัญชี',f.ks_name); kv('ธนาคาร',f.ks_bank);
+    B.push({k:'gap'}); B.push({k:'p',t:'สามารถโอนได้เลยค่ะ '+(f.mention||'')});
+    const ex=[];
+    if(num(f.ks_prev)>0)ex.push('มียอดเดิมในระบบ : '+M(f.ks_prev)+' บาท');
+    if(num(f.ks_rate)>0)ex.push('ยอดเติมเงินเข้าระบบ ซึ่งระบบคำนวณจากยอด '+(r.currency||'CNY')
+      +' ของแต่ละ PO × เรท '+M(f.ks_rate));
+    if(f.ks_note)ex.push(f.ks_note);
+    if(ex.length){ B.push({k:'gap'}); B.push({k:'note',t:'หมายเหตุเพิ่มเติม : '+ex.join('\n')}); }
+  }
+  else{
+    if(f.po)B.push({k:'bar',t:'เพื่อชำระค่าสินค้า PO '+f.po});
+    B.push({k:'box',c:'amber',t:'⭐ ชำระด้วยบัญชี'+(CO_NAME[r.pay_type]||r.pay_type||'')+' ⭐'});
+    if(f.sw_vendor)B.push({k:'h',t:f.sw_vendor});
+    kv('Invoice No',f.sw_inv); kv('SKU',f.sku);
+    B.push({k:'gap'});
+    kv('ผู้ขอโอน',f.sw_co); kv('ที่อยู่ผู้ขอโอน',f.sw_co_addr);
+    B.push({k:'gap'}); B.push({k:'h',t:'BANK ACCOUNT INFORMATION'});
+    kv('ชื่อบัญชีผู้รับเงิน',f.sw_vendor); kv('เลขบัญชีผู้รับเงิน',f.sw_vacc); kv('ที่อยู่ผู้รับเงิน',f.sw_vaddr);
+    B.push({k:'gap'});
+    kv('ธนาคารกลาง',f.sw_ibank); kv('SWIFT Code',f.sw_iswift); kv('ที่อยู่ธนาคาร',f.sw_iaddr);
+    B.push({k:'gap'});
+    kv('ธนาคารปลายทาง',f.sw_bbank); kv('SWIFT Code',f.sw_bswift); kv('ที่อยู่ธนาคาร',f.sw_baddr);
+    B.push({k:'gap'});
+    kv('สกุลเงิน',f.sw_cur);
+    B.push({k:'box',c:'red',t:'จำนวนเงิน : '+M(f.sw_amt)+' '+(f.sw_cur||'')});
+    const rn=[];
+    if(f.sw_seq)rn.push('ชำระครั้งที่ '+f.sw_seq+' ยอด '+M(f.sw_amt)+' '+(f.sw_cur||''));
+    if(f.sw_paydate)rn.push('ชำระ วันที่ '+dSlash(f.sw_paydate));
+    if(rn.length){ B.push({k:'gap'}); B.push({k:'note',t:'*** Reminder Note ***\n'+rn.join('\n')}); }
+    B.push({k:'gap'}); B.push({k:'p',t:'สามารถโอนได้เลยค่ะ '+(f.mention||'')});
+  }
+  return B;
+}
+function xferText(r,f){
+  const out=[];
+  xferBlocks(r,f).forEach(b=>{
+    if(b.k==='gap'){ out.push(''); return; }
+    if(b.k==='kv'){ out.push(b.a+' : '+b.b); return; }
+    out.push(b.t);
+    if(b.k==='bar'||b.k==='box')out.push('');   // เว้นบรรทัดให้อ่านง่ายเหมือนที่พิมพ์ในแชท
+  });
+  return out.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+
+/* ---------- การ์ดรูป: วาดบน canvas ไม่พึ่ง library ภายนอก ---------- */
+const XF_FONT="'Segoe UI',Tahoma,'Noto Sans Thai',sans-serif";
+function xfWrap(ctx,txt,maxW){
+  const out=[];
+  String(txt==null?'':txt).split('\n').forEach(function(para){
+    const w=para.split(' '); let line='';
+    w.forEach(function(word){
+      // คำไทยไม่มีช่องว่าง — ถ้าคำเดียวยังเกิน ให้ตัดเป็นตัวอักษร
+      let cand=line?(line+' '+word):word;
+      if(ctx.measureText(cand).width<=maxW){ line=cand; return; }
+      if(line){ out.push(line); line=''; }
+      if(ctx.measureText(word).width<=maxW){ line=word; return; }
+      let buf='';
+      for(const ch of word){
+        if(ctx.measureText(buf+ch).width>maxW){ out.push(buf); buf=ch; } else buf+=ch;
+      }
+      line=buf;
+    });
+    out.push(line);
+  });
+  return out;
+}
+function xfCanvas(r,f){
+  const S=2, W=780, PAD=30, BOXPAD=12;
+  const BOXC={red:{bg:'#FCE4E4',bd:'#D0212B',fg:'#B01722'},
+              amber:{bg:'#FDF3DC',bd:'#C9A84C',fg:'#7A5A10'},
+              blue:{bg:'#E6F1FB',bd:'#2E75B6',fg:'#1D4F7C'}};
+  const cv=document.createElement('canvas');
+  const ctx=cv.getContext('2d');
+  const blocks=xferBlocks(r,f);
+  const innerW=W-PAD*2;
+
+  /* รอบที่ 1 — วัดความสูง */
+  const plan=[]; let h=0;
+  const setF=(sz,wt)=>{ ctx.font=(wt||400)+' '+sz+'px '+XF_FONT; };
+  setF(15); const barH=58; h+=barH;
+  h+=18;
+  blocks.forEach(function(b){
+    if(b.k==='bar'){ plan.push({b:b,lines:[],hh:0}); return; }   // bar วาดเป็นหัวแถบแล้ว
+    if(b.k==='gap'){ plan.push({b:b,hh:10}); h+=10; return; }
+    if(b.k==='box'){
+      setF(17,700);
+      const L=xfWrap(ctx,b.t,innerW-BOXPAD*2-4);
+      const hh=L.length*25+BOXPAD*2+10;
+      plan.push({b:b,lines:L,hh:hh}); h+=hh; return;
+    }
+    if(b.k==='h'){
+      setF(15,700); const L=xfWrap(ctx,b.t,innerW);
+      const hh=L.length*23+8; plan.push({b:b,lines:L,hh:hh}); h+=hh; return;
+    }
+    if(b.k==='note'){
+      setF(13); const L=xfWrap(ctx,b.t,innerW-BOXPAD*2);
+      const hh=L.length*21+BOXPAD*2+8; plan.push({b:b,lines:L,hh:hh}); h+=hh; return;
+    }
+    if(b.k==='kv'){
+      setF(14,700); const lw=Math.min(ctx.measureText(b.a+' :').width+10, innerW*0.45);
+      setF(14); const L=xfWrap(ctx,b.b,innerW-lw);
+      const hh=Math.max(L.length,1)*22+4; plan.push({b:b,lines:L,hh:hh,lw:lw}); h+=hh; return;
+    }
+    setF(14); const L=xfWrap(ctx,b.t,innerW);
+    const hh=L.length*22+4; plan.push({b:b,lines:L,hh:hh}); h+=hh;
+  });
+  h+=PAD;
+
+  cv.width=W*S; cv.height=Math.ceil(h)*S; cv.style.width=W+'px'; cv.style.maxWidth='100%';
+  ctx.scale(S,S);
+  ctx.textBaseline='top';
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,h);
+
+  /* หัวแถบ */
+  const bar=blocks.find(b=>b.k==='bar');
+  ctx.fillStyle='#1A2942'; ctx.fillRect(0,0,W,barH);
+  setF(17,700); ctx.fillStyle='#fff';
+  const bl=xfWrap(ctx,(bar&&bar.t)||(XK_NAME[f.kind]||'แจ้งโอนเงิน'),innerW);
+  bl.slice(0,2).forEach((t,i)=>ctx.fillText(t,PAD,(bl.length>1?10:19)+i*22));
+  setF(12); ctx.fillStyle='#C9A84C';
+  ctx.fillText((r.req_no||'')+(r.pay_type?(' · '+r.pay_type):''),PAD,barH-19);
+
+  let y=barH+18;
+  plan.forEach(function(p){
+    const b=p.b;
+    if(b.k==='bar')return;
+    if(b.k==='gap'){ y+=p.hh; return; }
+    if(b.k==='box'){
+      const c=BOXC[b.c]||BOXC.blue, bh=p.hh-10;
+      ctx.fillStyle=c.bg; ctx.strokeStyle=c.bd; ctx.lineWidth=1.4;
+      ctx.beginPath(); ctx.roundRect?ctx.roundRect(PAD,y,innerW,bh,8):ctx.rect(PAD,y,innerW,bh);
+      ctx.fill(); ctx.stroke();
+      setF(17,700); ctx.fillStyle=c.fg;
+      p.lines.forEach((t,i)=>ctx.fillText(t,PAD+BOXPAD,y+BOXPAD+i*25));
+      y+=p.hh; return;
+    }
+    if(b.k==='h'){
+      setF(15,700); ctx.fillStyle='#1A2942';
+      p.lines.forEach((t,i)=>ctx.fillText(t,PAD,y+i*23));
+      y+=p.hh; return;
+    }
+    if(b.k==='note'){
+      ctx.fillStyle='#F4F6FA'; ctx.strokeStyle='#E3E8F0'; ctx.lineWidth=1;
+      const bh=p.hh-8;
+      ctx.beginPath(); ctx.roundRect?ctx.roundRect(PAD,y,innerW,bh,8):ctx.rect(PAD,y,innerW,bh);
+      ctx.fill(); ctx.stroke();
+      setF(13); ctx.fillStyle='#475569';
+      p.lines.forEach((t,i)=>ctx.fillText(t,PAD+BOXPAD,y+BOXPAD+i*21));
+      y+=p.hh; return;
+    }
+    if(b.k==='kv'){
+      setF(14,700); ctx.fillStyle='#64748B'; ctx.fillText(b.a+' :',PAD,y);
+      setF(14); ctx.fillStyle='#1A2942';
+      p.lines.forEach((t,i)=>ctx.fillText(t,PAD+p.lw,y+i*22));
+      y+=p.hh; return;
+    }
+    setF(14); ctx.fillStyle='#1A2942';
+    p.lines.forEach((t,i)=>ctx.fillText(t,PAD,y+i*22));
+    y+=p.hh;
+  });
+  return cv;
+}
+
+/* ---------- ฟอร์ม ---------- */
+function xfIn(k,label,opt){
+  opt=opt||{};
+  const v=XF[k]==null?'':XF[k];
+  if(opt.type==='check')
+    return `<label style="display:flex;gap:7px;align-items:center;font-size:12.5px;margin-bottom:9px;cursor:pointer">
+      <input type="checkbox" style="width:auto" ${v?'checked':''} onchange="xfSet('${k}',this.checked)"> ${esc(label)}</label>`;
+  if(opt.type==='area')
+    return `<div class="fld"><label>${esc(label)}</label><textarea rows="${opt.rows||2}"
+      onchange="xfSet('${k}',this.value)" oninput="xfSet('${k}',this.value)">${esc(v)}</textarea></div>`;
+  return `<div class="fld"><label>${esc(label)}</label><input ${opt.type==='num'?'type="number" step="0.01"':''}
+    ${opt.type==='date'?'type="date"':''} value="${esc(v)}" placeholder="${esc(opt.ph||'')}"
+    oninput="xfSet('${k}',this.value)"></div>`;
+}
+function xfSet(k,v){ XF[k]=v; xfRender(); }
+function xfSec(t){ return `<div style="font-weight:800;font-size:12.5px;color:var(--navy);margin:14px 0 7px;
+  border-bottom:1px solid var(--line);padding-bottom:4px">${esc(t)}</div>`; }
+
+function xfRender(){
+  const r=XF_REQ, f=XF;
+  let h='';
+  h+=xfIn('date','วันที่แจ้งโอน',{type:'date'})+xfIn('mention','แท็กผู้โอน',{ph:'@WUT'});
+  if(f.kind==='jmf'){
+    h+=xfSec('JMF CARGO')
+      +xfIn('thb','ยอดชำระ (บาท)',{type:'num'})
+      +xfIn('jmf_bank','ธนาคาร')+xfIn('jmf_acc','เลขที่บัญชี')+xfIn('jmf_name','ชื่อบัญชี')
+      +xfIn('jmf_po','ใส่เลข PO ในข้อความด้วย',{type:'check'})
+      +xfIn('jmf_note','ข้อความเพิ่มเติม',{type:'area'});
+  }else if(f.kind==='ksher'){
+    h+=xfSec('Ksher Payment')
+      +xfIn('po','PO ที่ชำระ')
+      +xfIn('thb','ยอดเติมเงินเข้าระบบ (บาท)',{type:'num'})
+      +`<div class="row" style="margin:-4px 0 10px"><button class="btn mini ghost" onclick="xfKsDeduct()"
+          title="ยอดรวม − ยอดเดิมในระบบ">− หักยอดเดิมในระบบ</button>
+          <span class="muted" style="font-size:11.5px">ยอดรวมคำขอ ${money2(r.total_thb)} ฿</span></div>`
+      +xfIn('ks_prev','มียอดเดิมในระบบ (บาท)',{type:'num'})
+      +xfIn('ks_rate','เรทแลกเปลี่ยน',{type:'num'})
+      +xfIn('ks_user','หมายเหตุ / ชื่อผู้ใช้ Ksher',{type:'area'})
+      +xfSec('บัญชีรับเงิน')
+      +xfIn('ks_newacc','ขึ้นข้อความ "บัญชีใหม่นะคะ"',{type:'check'})
+      +xfIn('ks_acc','เลขที่บัญชี')+xfIn('ks_name','ชื่อบัญชี')+xfIn('ks_bank','ธนาคาร')
+      +xfIn('ks_note','หมายเหตุเพิ่มเติม',{type:'area'});
+  }else{
+    h+=xfSec('ข้อมูลสินค้า')
+      +xfIn('po','PO ที่ชำระ')+xfIn('sw_inv','Invoice No')+xfIn('sku','SKU')
+      +xfIn('sw_seq','ชำระครั้งที่')+xfIn('sw_paydate','ชำระวันที่',{type:'date'})
+      +xfSec('ผู้ขอโอน (บริษัทเรา)')
+      +xfIn('sw_co','ชื่อบริษัท (อังกฤษ)',{ph:'LIKESHOP MALL CO., LTD.'})
+      +xfIn('sw_co_addr','ที่อยู่',{type:'area',rows:3})
+      +xfSec('ผู้รับเงิน (ซัพพลายเออร์)')
+      +xfIn('sw_vendor','ชื่อบัญชีผู้รับเงิน',{ph:'NANTONG MAIDUN MECHATRONICS TOOL CO.,LTD'})
+      +xfIn('sw_vacc','เลขบัญชีผู้รับเงิน')+xfIn('sw_vaddr','ที่อยู่ผู้รับเงิน',{ph:'QIDONG CITY JIANGSU CHINA'})
+      +xfSec('ธนาคารกลาง (Intermediary)')
+      +xfIn('sw_ibank','ธนาคาร')+xfIn('sw_iswift','SWIFT Code')+xfIn('sw_iaddr','ที่อยู่ธนาคาร',{type:'area'})
+      +xfSec('ธนาคารปลายทาง (Beneficiary)')
+      +xfIn('sw_bbank','ธนาคาร',{ph:'Bank of Jiangsu'})+xfIn('sw_bswift','SWIFT Code',{ph:'BOJSCNBN'})
+      +xfIn('sw_baddr','ที่อยู่ธนาคาร',{type:'area'})
+      +xfSec('จำนวนเงิน')
+      +xfIn('sw_cur','สกุลเงิน')+xfIn('sw_amt','จำนวนเงิน',{type:'num'});
+  }
+  $('xfForm').innerHTML=h;
+
+  const txt=xferText(r,f);
+  $('xfText').textContent=txt;
+  $('xfHint').textContent=txt.length+' ตัวอักษร';
+  const box=$('xfCard'); box.innerHTML='';
+  try{ box.appendChild(xfCanvas(r,f)); }
+  catch(e){ box.innerHTML='<div class="muted" style="font-size:12px">วาดการ์ดไม่ได้: '+esc(e.message)+' — ใช้ข้อความด้านบนได้ปกติ</div>'; }
+}
+function xfKsDeduct(){
+  const t=(+XF_REQ.total_thb||0)-num(XF.ks_prev);
+  XF.thb=+(t>0?t:0).toFixed(2); xfRender();
+}
+function xfReset(){ if(!confirm('ล้างค่าที่กรอกไว้ กลับเป็นค่าตั้งต้น?'))return; XF=xferDefaults(XF_REQ); xfRender(); }
+
+/* ---------- ตั้งค่าบัญชีประจำ (จำไว้ในเครื่อง) ---------- */
+function xfToggleCfg(){
+  const el=$('xfCfg'); const show=el.style.display==='none';
+  el.style.display=show?'':'none';
+  if(!show)return;
+  const I=(p,k,label)=>`<div class="fld"><label>${esc(label)}</label>
+    <input value="${esc(p==='_'?XCFG[k]:((XCFG[p]||{})[k]||''))}" oninput="xfCfgSet('${p}','${k}',this.value)"></div>`;
+  const C=(t,k)=>`<div class="fld"><label>${esc(t)}</label>
+    <input value="${esc((XCFG.co[k]||{}).en||'')}" placeholder="ชื่ออังกฤษ" oninput="xfCfgCo('${k}','en',this.value)">
+    <textarea rows="2" placeholder="ที่อยู่" style="margin-top:6px"
+      oninput="xfCfgCo('${k}','addr',this.value)">${esc((XCFG.co[k]||{}).addr||'')}</textarea></div>`;
+  el.innerHTML=`<div style="font-weight:800;font-size:12.5px;margin-bottom:8px">⚙️ บัญชีประจำ — จำไว้ในเบราว์เซอร์เครื่องนี้</div>
+    ${I('_','mention','แท็กผู้โอน (ค่าตั้งต้น)')}
+    <div style="font-weight:700;font-size:12px;color:var(--muted);margin:10px 0 4px">JMF CARGO</div>
+    <div class="grid3">${I('jmf','bank','ธนาคาร')}${I('jmf','acc','เลขที่บัญชี')}${I('jmf','name','ชื่อบัญชี')}</div>
+    <div style="font-weight:700;font-size:12px;color:var(--muted);margin:10px 0 4px">Ksher Payment</div>
+    <div class="grid3">${I('ksher','bank','ธนาคาร')}${I('ksher','acc','เลขที่บัญชี')}${I('ksher','name','ชื่อบัญชี')}</div>
+    <div style="font-weight:700;font-size:12px;color:var(--muted);margin:10px 0 4px">ธนาคารกลาง (SWIFT)</div>
+    <div class="grid3">${I('inter','bank','ธนาคาร')}${I('inter','swift','SWIFT Code')}${I('inter','addr','ที่อยู่')}</div>
+    <div style="font-weight:700;font-size:12px;color:var(--muted);margin:10px 0 4px">ชื่อ/ที่อยู่บริษัท (ใช้กับ SWIFT)</div>
+    ${C('LIKESHOP','LIKESHOP')}${C('MASARU','MASARU')}${C('DAIKI','DAIKI')}
+    <div class="row" style="justify-content:flex-end;margin-top:6px">
+      <button class="btn mini ghost" onclick="xfCfgReset()">↺ ค่าโรงงาน</button>
+      <button class="btn mini" onclick="xfCfgApply()">✔ บันทึก &amp; ใช้กับใบนี้</button></div>`;
+}
+function xfCfgSet(p,k,v){ if(p==='_')XCFG[k]=v; else { XCFG[p]=XCFG[p]||{}; XCFG[p][k]=v; } }
+function xfCfgCo(k,f,v){ XCFG.co[k]=XCFG.co[k]||{}; XCFG.co[k][f]=v; }
+function xfCfgApply(){
+  xcfgSave();
+  const keep={date:XF.date,po:XF.po,sku:XF.sku,thb:XF.thb};
+  XF=Object.assign(xferDefaults(XF_REQ),keep);
+  $('xfCfg').style.display='none';
+  xfRender(); toast('บันทึกค่าบัญชีแล้ว ✅');
+}
+function xfCfgReset(){
+  if(!confirm('กลับไปใช้ค่าตั้งต้นของระบบ?'))return;
+  XCFG=JSON.parse(JSON.stringify(XFER_DEF)); xcfgSave(); xfToggleCfg(); xfToggleCfg();
+}
+
+/* ---------- เปิด / คัดลอก / ดาวน์โหลด / บันทึก ---------- */
+function openXfer(id){
+  const r=REQS.find(x=>String(x.id)===String(id)); if(!r)return toast('ไม่พบคำขอนี้');
+  if(!['approved','paid'].includes(r.status))
+    return alert('แจ้งโอนได้เฉพาะคำขอที่อนุมัติจ่ายแล้ว\n\nสถานะปัจจุบัน: '+((ST[r.status]||{}).t||r.status));
+  XF_REQ=r;
+  const base=xferDefaults(r);
+  XF = (r.xfer&&typeof r.xfer==='object') ? Object.assign(base,r.xfer) : base;
+  XF.kind=xferKind(r.channel);                       // ช่องทางมาจากคำขอเสมอ
+  $('xfTitle').innerHTML='📢 แจ้งโอนเงิน — '+esc(r.req_no||'')
+    +' <span class="pill st-approved">'+esc(XK_NAME[XF.kind])+'</span>';
+  $('xfCfg').style.display='none';
+  xfRender();
+  $('xferBg').style.display='flex';
+}
+async function xfCopy(){
+  const t=$('xfText').textContent||'';
+  try{ await navigator.clipboard.writeText(t); toast('คัดลอกข้อความแล้ว 📋'); }
+  catch(e){
+    const ta=document.createElement('textarea'); ta.value=t;
+    ta.style.cssText='position:fixed;left:-9999px'; document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand('copy'); toast('คัดลอกข้อความแล้ว 📋'); }
+    catch(e2){ alert('คัดลอกอัตโนมัติไม่ได้ — กดเลือกข้อความในกรอบแล้ว Ctrl+C'); }
+    ta.remove();
+  }
+}
+function xfDownload(){
+  const cv=$('xfCard').querySelector('canvas');
+  if(!cv)return toast('ยังไม่มีการ์ดให้บันทึก');
+  const nm='แจ้งโอน_'+(XK_NAME[XF.kind]||'')+'_'+((XF_REQ.req_no||'').replace(/[^\w-]/g,''))+'.png';
+  cv.toBlob(function(bl){
+    if(!bl)return toast('สร้างรูปไม่สำเร็จ');
+    const u=URL.createObjectURL(bl), a=document.createElement('a');
+    a.href=u; a.download=nm; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u),4000);
+    toast('ดาวน์โหลดรูปแล้ว 🖼️');
+  },'image/png');
+}
+async function xfSave(){
+  const {error}=await sb.from('pay_requests')
+    .update({xfer:XF, updated_at:new Date().toISOString()}).eq('id',XF_REQ.id);
+  if(error){
+    return alert(/xfer|column/i.test(error.message)
+      ? 'ยังไม่ได้เพิ่มคอลัมน์ xfer\n\nกรุณารันไฟล์ payapprove_xfer.sql บน Supabase ก่อน\n\nรายละเอียด: '+error.message
+      : 'บันทึกไม่สำเร็จ: '+error.message);
+  }
+  const k=REQS.findIndex(x=>String(x.id)===String(XF_REQ.id));
+  if(k>=0)REQS[k].xfer=JSON.parse(JSON.stringify(XF));   // อัปเดตในหน้า ไม่ต้องโหลดใหม่
+  await addLog(XF_REQ.id,'xfer','สร้างข้อความแจ้งโอน ('+(XK_NAME[XF.kind]||'')+')');
+  toast('บันทึกข้อมูลแจ้งโอนแล้ว 💾 เปิดใช้ซ้ำได้');
 }
 
 /* ==================================================================
