@@ -142,7 +142,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-18</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-19</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -236,7 +236,7 @@ tr:nth-child(even) td{background:#F8FAFD}
           <div class="wh">จัดซื้อ / บัญชี</div>
           <div class="do">คัดลอกข้อความ → วางในกลุ่มแชท</div></div>
         <div class="hp-arw">▸</div>
-        <div class="hp-node c5"><div class="ic">📎</div><div class="ti">4. แนบหลักฐาน</div>
+        <div class="hp-node c5"><div class="ic">📎</div><div class="ti">4. แนบสลิป</div>
           <div class="wh">ผู้โอนเงิน</div>
           <div class="do">แนบสลิป → <b>ยืนยันจ่ายแล้ว</b></div></div>
       </div>
@@ -366,15 +366,23 @@ tr:nth-child(even) td{background:#F8FAFD}
       <div class="hp-step">
         <div class="bub">7</div>
         <div>
-          <h4>แนบสลิป แล้วปิดงาน <span class="hp-who">ผู้โอนเงิน</span></h4>
-          <p><b>📎 แนบหลักฐานการโอน</b> — ใส่ได้ทั้งรูปและ PDF หลายไฟล์ในครั้งเดียว หรือวางลิงก์ Google Drive</p>
+          <h4>แนบเอกสาร / สลิป แล้วปิดงาน <span class="hp-who">ทุกบทบาท</span></h4>
+          <p>ปุ่ม <b>📎</b> อยู่ท้ายทุกแถวในตาราง — กดได้เลย <b>ไม่ต้องรออนุมัติ</b> และไม่ต้องเปิดคำขอ</p>
+          <div class="hp-ui"><div class="cap">คอลัมน์ขวาสุดของตาราง</div>
+            <div class="hp-bar"><span class="hp-btn o">📎</span><span class="hp-btn o">👁 ดู</span>
+              <span class="hp-btn o">✏️</span>
+              <span class="muted" style="font-size:11.5px">· ถ้ามีไฟล์แล้วปุ่มจะเป็นสีเขียวพร้อมจำนวน</span></div></div>
+          <table class="hp-t" style="margin-top:9px"><thead><tr>
+            <th style="width:190px">แนบตอนไหน</th><th>แนบอะไร</th></tr></thead><tbody>
+            <tr><td><b>ตอนยื่นคำขอ</b></td><td>ใบเสนอราคา · Invoice · ใบแจ้งหนี้ — ช่วยให้ผู้บริหารอนุมัติได้เร็ว ไม่ต้องถามกลับ</td></tr>
+            <tr><td><b>ตอนโอนเงินแล้ว</b></td><td>สลิปโอนเงิน — โอนหลายบัญชีก็แนบหลายใบได้</td></tr>
+          </tbody></table>
+          <p style="margin-top:9px">ใส่ได้ทั้งรูปและ PDF หลายไฟล์ในครั้งเดียว หรือวางลิงก์ Google Drive</p>
           <div class="hp-ui"><div class="cap">ท้ายหน้าแนบหลักฐาน</div>
             <div class="hp-bar"><span class="hp-btn o">ปิด</span><span class="hp-btn r">🗑️ ลบทั้งหมด</span>
               <span class="hp-btn">💾 บันทึกหลักฐาน</span><span class="hp-btn g">💾 บันทึก + ยืนยันจ่ายแล้ว</span></div></div>
-          <div class="hp-tip">💡 ปุ่มเขียว <b>💾 บันทึก + ยืนยันจ่ายแล้ว</b> = แนบสลิปและปิดงานในคลิกเดียว ไม่ต้องกด 2 รอบ</div>
-          <p style="margin-top:9px">แนบแล้วจะเห็นป้าย <b>📎</b> พร้อมจำนวนไฟล์ในตารางรายการ กดดูได้เลยไม่ต้องเปิดคำขอ</p>
-          <div class="hp-ui"><div class="cap">คอลัมน์ขวาสุดของตาราง</div>
-            <div class="hp-bar"><span class="hp-btn o">📎2</span><span class="hp-btn o">👁 ดู</span></div></div>
+          <div class="hp-tip">💡 ปุ่มเขียว <b>💾 บันทึก + ยืนยันจ่ายแล้ว</b> ขึ้นเฉพาะคำขอที่อนุมัติแล้ว
+            = แนบสลิปและปิดงานในคลิกเดียว ไม่ต้องกด 2 รอบ</div>
         </div>
       </div>
     </div>
@@ -397,7 +405,8 @@ tr:nth-child(even) td{background:#F8FAFD}
         <tr><td>สร้าง / แก้ไข / ส่งคำขอของตัวเอง</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
         <tr><td>👑 อนุมัติจ่าย <span class="muted">(ชั้นเดียว)</span></td><td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
         <tr><td>↩️ ตีกลับ</td><td class="hp-x">✕</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
-        <tr><td>📢 แจ้งโอนเงิน · 📎 แนบหลักฐาน</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
+        <tr><td>📎 แนบเอกสาร <span class="muted">(ทุกสถานะ)</span></td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
+        <tr><td>📢 แจ้งโอนเงิน <span class="muted">(หลังอนุมัติ)</span></td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
         <tr><td>💸 ยืนยันจ่ายแล้ว</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
         <tr><td>👁 ดูคำขอทั้งหมด · 📊 สรุป · Export</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
       </tbody></table></div>
@@ -420,7 +429,7 @@ tr:nth-child(even) td{background:#F8FAFD}
           <td>แก้ที่ <b>⚙️ ตั้งค่าบัญชี</b> ในหน้าแจ้งโอน → กด <b>✔ บันทึก &amp; ใช้กับใบนี้</b> ระบบจำไว้ให้ครั้งต่อไป</td></tr>
         <tr><td><b>คัดลอกข้อความไม่ได้</b></td>
           <td>เบราว์เซอร์บล็อกการคัดลอกอัตโนมัติ — ลากเลือกข้อความในกรอบแล้วกด Ctrl+C</td></tr>
-        <tr><td><b>อัปไฟล์หลักฐานไม่ขึ้น</b></td>
+        <tr><td><b>อัปไฟล์เอกสารไม่ขึ้น</b></td>
           <td>ไฟล์ต้องไม่เกิน 10 MB — ถ้าใหญ่กว่านั้นระบบจะบอกชื่อไฟล์ที่ข้าม · ถ้าทุกไฟล์ล้ม กด <b>⚙️ ที่เก็บไฟล์</b> → <b>🔌 ทดสอบการเชื่อมต่อ</b></td></tr>
         <tr><td><b>ตัวเลขบนแท็ป ⏳ รออนุมัติ ไม่ลด</b></td>
           <td>หน้านี้ไม่รีเฟรชอัตโนมัติเพื่อประหยัดทรัพยากร — กด <b>F5</b> หรือสลับแท็ปกลับมา</td></tr>
@@ -644,9 +653,10 @@ tr:nth-child(even) td{background:#F8FAFD}
 <div class="modal-bg" id="proofBg" style="z-index:76">
   <div class="modal" id="proofModal" style="max-width:920px">
     <button class="expand-btn" onclick="toggleWide('proofModal',this)">⛶ ขยายเต็มจอ</button>
-    <h3 id="pfTitle">📎 หลักฐานการโอน</h3>
+    <h3 id="pfTitle">📎 หลักฐาน / เอกสารแนบ</h3>
     <div class="sub-note">
-      แนบได้ทั้ง <b>รูป</b> (JPG/PNG) และ <b>PDF</b> — หลายไฟล์ในครั้งเดียว<br>
+      แนบได้ทั้ง <b>รูป</b> (JPG/PNG) และ <b>PDF</b> — หลายไฟล์ในครั้งเดียว · <b>แนบได้ทุกสถานะ</b><br>
+      ตอนยื่น → แนบใบเสนอราคา / Invoice / ใบแจ้งหนี้ &nbsp;·&nbsp; ตอนโอนแล้ว → แนบสลิป<br>
       ไฟล์เก็บที่ <b>Google Drive</b> ของบริษัท ไม่เก็บลงฐานข้อมูล จึงไม่กิน Egress
       <span class="muted">(สูงสุด 10 MB/ไฟล์)</span>
     </div>
@@ -671,8 +681,8 @@ tr:nth-child(even) td{background:#F8FAFD}
 
     <div id="pf_list"></div>
 
-    <div class="fld" style="margin-top:10px"><label>หมายเหตุหลักฐาน</label>
-      <textarea id="pf_note" rows="2" placeholder="เช่น โอนครบตามยอด · สลิป 2 ใบ (2 บัญชี)"></textarea></div>
+    <div class="fld" style="margin-top:10px"><label>หมายเหตุเอกสารแนบ</label>
+      <textarea id="pf_note" rows="2" placeholder="เช่น Invoice + ใบเสนอราคา · หรือ โอนครบตามยอด สลิป 2 ใบ (2 บัญชี)"></textarea></div>
 
     <div class="row" style="margin-top:12px;justify-content:flex-end">
       <button class="btn ghost" onclick="$('proofBg').style.display='none'">ปิด</button>
@@ -981,8 +991,9 @@ function reqTable(rows,opts){
       <td>${stPill(r.status)}</td>
       <td style="font-size:11.5px">${esc(r.requester_name||r.requester||'-')}</td>
       <td style="white-space:nowrap">
-        ${proofList(r).length?`<button class="btn mini ghost" title="ดูหลักฐานการโอน ${proofList(r).length} ไฟล์"
-          onclick="viewProof('${r.id}',0)">📎${proofList(r).length}</button> `:''}
+        <button class="btn mini ${proofList(r).length?'green':'ghost'}"
+          title="${proofList(r).length?('มีเอกสารแนบ '+proofList(r).length+' ไฟล์ — กดเพื่อดู/เพิ่ม'):'แนบหลักฐาน / เอกสาร (รูป หรือ PDF)'}"
+          onclick="openProof('${r.id}')">📎${proofList(r).length||''}</button>
         <button class="btn mini ghost" onclick="viewReq('${r.id}')">👁 ดู</button>
         ${canEditReq(r)?`<button class="btn mini" onclick="openReq('${r.id}')">✏️</button>`:''}
       </td></tr>`;});
@@ -1408,7 +1419,7 @@ function viewReq(id){
     .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
   /* checked = ใบเก่าที่เคยผ่านหัวหน้าจัดซื้อ เก็บชื่อไว้ให้ประวัติอ่านได้ */
   const LA={created:'สร้างคำขอ',updated:'แก้ไข',submitted:'ส่งอนุมัติ',checked:'หัวหน้าอนุมัติ (ใบเก่า)',
-            approved:'ผู้บริหารอนุมัติ',rejected:'ตีกลับ',paid:'ยืนยันจ่ายแล้ว',xfer:'📢 แจ้งโอนเงิน',proof:'📎 แนบหลักฐาน'};
+            approved:'ผู้บริหารอนุมัติ',rejected:'ตีกลับ',paid:'ยืนยันจ่ายแล้ว',xfer:'📢 แจ้งโอนเงิน',proof:'📎 แนบเอกสาร'};
 
   $('vBody').innerHTML=`
     <div style="display:flex;gap:26px;flex-wrap:wrap;background:#F7F9FC;border-radius:10px;padding:12px 15px;margin-bottom:12px;font-size:12.5px;line-height:1.9">
@@ -1424,7 +1435,7 @@ function viewReq(id){
       <div><div class="muted" style="font-size:11px">ผู้ยื่น</div><b>${esc(r.requester_name||r.requester||'-')}</b></div>
     </div>
     ${proofList(r).length?`<div style="background:#E9F6EE;border-left:5px solid var(--green);border-radius:9px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.7">
-      <b style="color:var(--green)">📎 หลักฐานการโอน ${proofList(r).length} ไฟล์</b>
+      <b style="color:var(--green)">📎 เอกสารแนบ ${proofList(r).length} ไฟล์</b>
       ${r.proof_by?`<span class="muted"> · แนบโดย ${esc(r.proof_by)}${r.proof_at?(' · '+new Date(r.proof_at).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'})):''}</span>`:''}
       <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:8px">
         ${proofList(r).map((it,i)=>`<button class="btn mini ghost" onclick="viewProof('${r.id}',${i})">${isPdf(it)?'📄':'🖼️'} ${esc((it.name||('ไฟล์ '+(i+1))).slice(0,26))}</button>`).join('')}
@@ -1458,9 +1469,9 @@ function viewReq(id){
   else if(['submitted','mgr_approved'].includes(r.status)&&IS_MGR)
     btns+=`<button class="btn red" onclick="openReject('${r.id}')">↩️ ตีกลับ</button>`;
   if(['approved','paid'].includes(r.status))
-    btns+=`<button class="btn gold" onclick="$('viewBg').style.display='none';openXfer('${r.id}')">📢 แจ้งโอนเงิน</button>`
-          +`<button class="btn green" onclick="openProof('${r.id}')">📎 แนบหลักฐานการโอน${
-            proofList(r).length?(' ('+proofList(r).length+')'):''}</button>`;
+    btns+=`<button class="btn gold" onclick="$('viewBg').style.display='none';openXfer('${r.id}')">📢 แจ้งโอนเงิน</button>`;
+  btns+=`<button class="btn green" onclick="openProof('${r.id}')">📎 แนบหลักฐาน / เอกสาร${
+          proofList(r).length?(' ('+proofList(r).length+')'):''}</button>`;
   if(r.status==='approved'&&(IS_MGR||IS_EXEC||IS_BUYER))
     btns+=`<button class="btn" onclick="act('${r.id}','paid')">💸 ยืนยันจ่ายแล้ว</button>`;
   $('vActions').innerHTML=btns;
@@ -1549,7 +1560,7 @@ function printReq(id){
     ${r.note?`<div style="margin-top:10px;font-size:12.5px;line-height:1.8">
       <b>หมายเหตุ</b><div style="white-space:pre-wrap">${esc(r.note)}</div></div>`:''}
     ${proofList(r).length?`<div style="margin-top:10px;font-size:12.5px;line-height:1.8">
-      <b>หลักฐานการโอน</b> ${proofList(r).length} ไฟล์${r.proof_by?(' · แนบโดย '+esc(r.proof_by)):''}
+      <b>เอกสารแนบ</b> ${proofList(r).length} ไฟล์${r.proof_by?(' · แนบโดย '+esc(r.proof_by)):''}
       ${r.proof_note?`<div style="white-space:pre-wrap">${esc(r.proof_note)}</div>`:''}</div>`:''}
     <div class="sign-row">
       <div class="sign-box"><div class="sign-line"></div>ผู้ขออนุมัติ<div class="sign-sub">(ฝ่ายจัดซื้อ)</div>
@@ -2035,11 +2046,10 @@ const proofList=r=>Array.isArray(r&&r.proofs)?r.proofs.filter(x=>x&&(x.url||x.id
 /* ---------- เปิด ---------- */
 function openProof(id){
   const r=REQS.find(x=>String(x.id)===String(id)); if(!r)return toast('ไม่พบคำขอนี้');
-  if(!['approved','paid'].includes(r.status))
-    return alert('แนบหลักฐานการโอนได้เมื่ออนุมัติจ่ายแล้ว\n\nสถานะปัจจุบัน: '+((ST[r.status]||{}).t||r.status));
-  PF_ID=id;
+  PF_ID=id;                      // แนบได้ทุกสถานะ — ตอนยื่นแนบใบเสนอราคา/Invoice ตอนจ่ายแล้วแนบสลิป
   PF_ITEMS=JSON.parse(JSON.stringify(proofList(r)));
-  $('pfTitle').innerHTML='📎 หลักฐานการโอน — '+esc(r.req_no||'')
+  $('pfTitle').innerHTML='📎 หลักฐาน / เอกสารแนบ — '+esc(r.req_no||'')
+    +' '+stPill(r.status)
     +' <span class="muted" style="font-size:12.5px;font-weight:400">'+money2(r.total_thb)+' ฿</span>';
   $('pf_note').value=r.proof_note||'';
   $('pf_url').value=''; $('pf_file').value='';
@@ -2051,7 +2061,7 @@ function openProof(id){
 function renderPfList(){
   $('pf_clear').style.display=PF_ITEMS.length?'':'none';
   if(!PF_ITEMS.length){
-    $('pf_list').innerHTML='<div class="empty" style="padding:18px">ยังไม่มีไฟล์ — เลือกไฟล์ หรือวางลิงก์ Drive</div>';
+    $('pf_list').innerHTML='<div class="empty" style="padding:18px">ยังไม่มีไฟล์ — กด “เลือกไฟล์จากเครื่อง” หรือวางลิงก์ Drive</div>';
     return;
   }
   $('pf_list').innerHTML='<div style="display:flex;flex-wrap:wrap;gap:10px">'
@@ -2142,7 +2152,7 @@ async function pfSave(alsoPaid){
   if(error)return alert(/proof|column/i.test(error.message)
     ? 'ยังไม่ได้เพิ่มคอลัมน์หลักฐาน\n\nกรุณารันไฟล์ payapprove_xfer.sql บน Supabase ก่อน\n\nรายละเอียด: '+error.message
     : 'บันทึกไม่สำเร็จ: '+error.message);
-  await addLog(PF_ID,'proof','แนบหลักฐานการโอน '+PF_ITEMS.length+' ไฟล์'+(alsoPaid?' + ยืนยันจ่ายแล้ว':''));
+  await addLog(PF_ID,'proof','แนบเอกสาร '+PF_ITEMS.length+' ไฟล์'+(alsoPaid?' + ยืนยันจ่ายแล้ว':''));
   $('proofBg').style.display='none'; $('viewBg').style.display='none';
   await loadAll();
   toast('บันทึกหลักฐาน '+PF_ITEMS.length+' ไฟล์แล้ว ✅');
