@@ -65,6 +65,49 @@ tr:nth-child(even) td{background:#F8FAFD}
 .modal.wide{max-width:calc(100vw - 28px)!important}
 .expand-btn{position:absolute;top:14px;right:16px;background:#EEF2F7;border:1px solid var(--line);border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--navy);z-index:2}
 /* ===== แถบสายอนุมัติ ===== */
+/* ---------- แท็ปวิธีใช้งาน ---------- */
+.hp-h{font-size:16px;font-weight:800;color:var(--navy);margin:22px 0 10px;display:flex;align-items:center;gap:8px}
+.hp-h:first-child{margin-top:4px}
+.hp-h .num{background:var(--navy);color:#fff;width:26px;height:26px;border-radius:50%;display:inline-flex;
+  align-items:center;justify-content:center;font-size:13px;flex:0 0 auto}
+.hp-flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:2px;margin:4px 0 6px}
+.hp-node{flex:1 1 150px;min-width:150px;background:#fff;border:2px solid var(--line);border-radius:12px;padding:11px 12px}
+.hp-node .ic{font-size:21px;line-height:1.2}
+.hp-node .ti{font-weight:800;font-size:13px;color:var(--navy);margin-top:3px}
+.hp-node .wh{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.6}
+.hp-node .do{font-size:11.5px;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);line-height:1.6}
+.hp-node.c1{border-color:#94A3B8}.hp-node.c2{border-color:var(--amber)}.hp-node.c3{border-color:var(--blue)}
+.hp-node.c4{border-color:var(--green)}.hp-node.c5{border-color:#166534}.hp-node.cx{border-color:var(--red);background:#FFF7F7}
+.hp-arw{display:flex;align-items:center;justify-content:center;color:#94A3B8;font-size:20px;font-weight:800;flex:0 0 22px}
+@media(max-width:880px){.hp-node{flex:1 1 100%}.hp-arw{flex:1 1 100%;transform:rotate(90deg);padding:2px 0}}
+.hp-step{display:grid;grid-template-columns:40px 1fr;gap:12px;padding:13px 0;border-top:1px solid var(--line)}
+.hp-step:first-of-type{border-top:0}
+.hp-step .bub{width:34px;height:34px;border-radius:50%;background:var(--gold);color:#fff;font-weight:800;
+  display:flex;align-items:center;justify-content:center;font-size:15px}
+.hp-step h4{margin:4px 0 5px;font-size:14px;color:var(--navy)}
+.hp-step p{margin:0 0 7px;font-size:12.5px;line-height:1.75;color:#334155}
+.hp-who{display:inline-block;background:#EEF2F7;color:#475569;border-radius:20px;padding:1px 9px;font-size:11px;font-weight:700;margin-left:6px}
+.hp-ui{background:#F7F9FC;border:1px dashed #C3CDDB;border-radius:10px;padding:10px 11px;margin:7px 0 2px}
+.hp-ui .cap{font-size:10.5px;color:var(--muted);margin-bottom:7px;letter-spacing:.3px}
+.hp-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.hp-btn{display:inline-flex;align-items:center;gap:4px;background:var(--navy);color:#fff;border-radius:7px;
+  padding:5px 11px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.hp-btn.g{background:var(--green)}.hp-btn.r{background:var(--red)}.hp-btn.y{background:var(--gold)}
+.hp-btn.o{background:#fff;color:var(--navy);border:1px solid var(--line);font-weight:600}
+.hp-fld{background:#fff;border:1px solid var(--line);border-radius:7px;padding:5px 9px;font-size:11.5px;color:#475569;min-width:120px}
+.hp-lbl{font-size:10.5px;color:var(--muted);display:block;margin-bottom:2px}
+.hp-tip{background:#FDF8E7;border-left:4px solid var(--gold);border-radius:8px;padding:9px 12px;font-size:12.5px;line-height:1.75;margin:8px 0 2px}
+.hp-warn{background:#FCE4E4;border-left:4px solid var(--red);border-radius:8px;padding:9px 12px;font-size:12.5px;line-height:1.75;margin:8px 0 2px}
+.hp-t{width:100%;font-size:12.5px}
+.hp-t th{font-size:12px}
+.hp-t td,.hp-t th{padding:7px 9px}
+.hp-tw{overflow-x:auto;max-width:100%}
+.hp-tw .hp-t{min-width:520px}
+#tab-help .hp-ui .hp-fld{max-width:100%;overflow-wrap:anywhere}
+#tab-help .card{overflow:hidden}
+@media(max-width:560px){.hp-tw .hp-t{min-width:420px}.hp-step{grid-template-columns:30px 1fr;gap:9px}
+  .hp-step .bub{width:26px;height:26px;font-size:13px}}
+.hp-chk{color:var(--green);font-weight:800}.hp-x{color:#CBD5E1;font-weight:800}
 .flow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0}
 .flow .step{display:flex;align-items:center;gap:6px;background:#F1F5F9;border-radius:20px;padding:5px 13px;font-size:12px;color:#64748B}
 .flow .step.done{background:#EAF3DE;color:var(--green);font-weight:700}
@@ -100,7 +143,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-15</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-16</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -110,6 +153,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="tab"    data-t="mine"  onclick="goTab('mine')">📝 ของฉัน</div>
   <div class="tab"    data-t="todo"  onclick="goTab('todo')">⏳ รออนุมัติ <span id="todoBadge"></span></div>
   <div class="tab"    data-t="report" onclick="goTab('report')">📊 สรุป</div>
+  <div class="tab"    data-t="help"  onclick="goTab('help')">📖 วิธีใช้งาน</div>
 </div>
 
 <div class="wrap">
@@ -170,6 +214,224 @@ tr:nth-child(even) td{background:#F8FAFD}
         <button class="btn ghost" onclick="exportReport()">⬇️ Export Excel</button>
       </div>
       <div id="rpBody"></div>
+    </div>
+  </div>
+
+  <!-- ============ วิธีใช้งาน ============ -->
+  <div id="tab-help" style="display:none">
+
+    <div class="card">
+      <h2>🗺️ ภาพรวม — เส้นทางของ 1 คำขอ</h2>
+      <div class="sub-note">อ่านจากซ้ายไปขวา · แต่ละกล่องบอกว่า <b>ใครทำ</b> และ <b>กดปุ่มอะไร</b></div>
+
+      <div class="hp-flow">
+        <div class="hp-node c1"><div class="ic">📄</div><div class="ti">1. สร้างคำขอ</div>
+          <div class="wh">ฝ่ายจัดซื้อ</div>
+          <div class="do">ดึงงวดจ่าย → ใส่เหตุผล → <b>ส่งอนุมัติ</b></div></div>
+        <div class="hp-arw">▸</div>
+        <div class="hp-node c2"><div class="ic">🧑‍💼</div><div class="ti">2. หัวหน้าจัดซื้อ</div>
+          <div class="wh">ตรวจยอด / เอกสาร</div>
+          <div class="do"><b>✔ หัวหน้าอนุมัติ</b> หรือ ↩️ ตีกลับ</div></div>
+        <div class="hp-arw">▸</div>
+        <div class="hp-node c3"><div class="ic">👑</div><div class="ti">3. ผู้บริหาร</div>
+          <div class="wh">อนุมัติจ่ายจริง</div>
+          <div class="do"><b>👑 อนุมัติจ่าย</b> หรือ ↩️ ตีกลับ</div></div>
+        <div class="hp-arw">▸</div>
+        <div class="hp-node c4"><div class="ic">📢</div><div class="ti">4. แจ้งโอน</div>
+          <div class="wh">จัดซื้อ / บัญชี</div>
+          <div class="do">คัดลอกข้อความ → วางในกลุ่มแชท</div></div>
+        <div class="hp-arw">▸</div>
+        <div class="hp-node c5"><div class="ic">📎</div><div class="ti">5. แนบหลักฐาน</div>
+          <div class="wh">ผู้โอนเงิน</div>
+          <div class="do">แนบสลิป → <b>ยืนยันจ่ายแล้ว</b></div></div>
+      </div>
+
+      <div class="hp-flow" style="margin-top:2px">
+        <div class="hp-node cx" style="flex:1 1 100%">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div class="ic">↩️</div>
+            <div><div class="ti">ถ้าถูกตีกลับ (ขั้น 2 หรือ 3)</div>
+              <div class="wh">คำขอกลับไปหาผู้ยื่น พร้อมเหตุผลที่ตีกลับ — แก้แล้วกด <b>ส่งอนุมัติ</b> อีกครั้ง
+                จะเริ่มนับใหม่ที่ขั้น 2 (ไม่ต้องสร้างคำขอใหม่ เลขคำขอเดิม ประวัติยังอยู่ครบ)</div></div>
+          </div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📝 ทำทีละขั้น</h2>
+
+      <div class="hp-step">
+        <div class="bub">1</div>
+        <div>
+          <h4>สร้างคำขอ <span class="hp-who">จัดซื้อ</span></h4>
+          <p>แท็ป <b>📋 รายการคำขอ</b> → ปุ่ม <b>+ สร้างคำขอ</b> มุมขวา</p>
+          <div class="hp-ui"><div class="cap">แถบเครื่องมือด้านบนตาราง</div>
+            <div class="hp-bar">
+              <span class="hp-fld">🔍 ค้นหา เลขคำขอ / PO</span>
+              <span class="hp-fld">— ทุกสถานะ —</span>
+              <span class="hp-btn o">ล้างตัวกรอง</span>
+              <span class="hp-btn">+ สร้างคำขอ</span>
+            </div></div>
+        </div>
+      </div>
+
+      <div class="hp-step">
+        <div class="bub">2</div>
+        <div>
+          <h4>กรอกหัวคำขอ <span class="hp-who">จัดซื้อ</span></h4>
+          <p>ช่องที่มี <b>★</b> บังคับกรอก — <b>กำหนดชำระ</b>, <b>จ่ายในนาม</b>, <b>ช่องทางการโอน</b></p>
+          <div class="hp-ui"><div class="cap">ฟอร์มคำขอ</div>
+            <div class="hp-bar" style="gap:10px">
+              <div><span class="hp-lbl">จ่ายในนาม ★</span><span class="hp-fld">LIKESHOP</span></div>
+              <div><span class="hp-lbl">ช่องทางการโอน ★</span><span class="hp-fld">ธนาคาร (SWIFT Code)</span></div>
+              <div><span class="hp-lbl">ช่องทางการชำระเงิน</span><span class="hp-fld">โอนบัญชีบริษัท SCB</span></div>
+            </div>
+            <div style="margin-top:8px"><span class="hp-lbl">เลขบัญชีที่จ่าย — ใส่ได้หลายบัญชี บรรทัดละบัญชี</span>
+              <div class="hp-fld" style="line-height:1.8;min-width:100%">SCB 123-4-56789-0&nbsp; (ไลค์ช็อป มอลล์)<br>KBANK 987-6-54321-0&nbsp; (มาซารุ)</div></div>
+          </div>
+          <div class="hp-tip">💡 <b>ช่องทางการโอน</b> = เงินไปทางไหน (JMF / Ksher / ธนาคาร) ·
+            <b>ช่องทางการชำระเงิน</b> = เงินออกจากบัญชีไหนของเรา — เลือกช่องทางที่เคยใช้ ระบบเติมเลขบัญชีเดิมให้เอง</div>
+        </div>
+      </div>
+
+      <div class="hp-step">
+        <div class="bub">3</div>
+        <div>
+          <h4>ใส่รายการที่จะจ่าย <span class="hp-who">จัดซื้อ</span></h4>
+          <p>มี 3 ทางเลือก — แนะนำ <b>ดึงงวดจ่าย</b> เพราะยอดและเรทมาจากระบบวางแผนจ่ายเงินโดยตรง ไม่ต้องพิมพ์เอง ไม่พลาด</p>
+          <div class="hp-ui"><div class="cap">ปุ่มกลางฟอร์ม</div>
+            <div class="hp-bar">
+              <span class="hp-btn">＋ ดึงงวดจ่าย</span>
+              <span class="hp-btn y">📄 ดึงจากใบปะหน้า</span>
+              <span class="hp-btn o">＋ เพิ่มรายการเอง</span>
+            </div></div>
+          <div class="hp-tw"><table class="hp-t" style="margin-top:9px"><thead><tr>
+            <th style="width:150px">ปุ่ม</th><th>ใช้เมื่อไหร่</th></tr></thead><tbody>
+            <tr><td><b>＋ ดึงงวดจ่าย</b></td><td>ปกติใช้อันนี้ — เลือกงวดที่<b>ยังไม่เคยถูกยื่น</b> ติ๊กแล้วกดเพิ่ม</td></tr>
+            <tr><td><b>📄 ดึงจากใบปะหน้า</b></td><td>ทำใบปะหน้าไว้แล้ว → ดึงงวดทั้งใบมาทีเดียว เติมจ่ายในนาม/ช่องทาง/กำหนดชำระให้อัตโนมัติ</td></tr>
+            <tr><td><b>＋ เพิ่มรายการเอง</b></td><td>กรณีพิเศษที่ไม่มีในระบบวางแผน — ต้องพิมพ์ยอดเอง</td></tr>
+          </tbody></table></div>
+        </div>
+      </div>
+
+      <div class="hp-step">
+        <div class="bub">4</div>
+        <div>
+          <h4>ใส่เหตุผล แล้วส่ง <span class="hp-who">จัดซื้อ</span></h4>
+          <p><b>เหตุผลการขออนุมัติ ★</b> บังคับกรอกก่อนส่ง — เขียนให้ผู้อนุมัติตัดสินใจได้ทันทีโดยไม่ต้องถามกลับ</p>
+          <div class="hp-ui"><div class="cap">ท้ายฟอร์ม</div>
+            <div class="hp-bar"><span class="hp-btn o">ปิด</span>
+              <span class="hp-btn o">💾 บันทึกร่าง</span><span class="hp-btn y">📤 ส่งอนุมัติ</span></div></div>
+          <div class="hp-tw"><table class="hp-t" style="margin-top:9px"><tbody>
+            <tr><td style="width:150px"><b>💾 บันทึกร่าง</b></td><td>เก็บไว้ทำต่อ — ยังไม่ส่งถึงใคร แก้ได้ตลอด</td></tr>
+            <tr><td><b>📤 ส่งอนุมัติ</b></td><td>ส่งเข้าคิวหัวหน้าจัดซื้อ — หลังส่งแล้วแก้ไม่ได้ จนกว่าจะถูกตีกลับ</td></tr>
+          </tbody></table></div>
+        </div>
+      </div>
+
+      <div class="hp-step">
+        <div class="bub">5</div>
+        <div>
+          <h4>อนุมัติ 2 ชั้น <span class="hp-who">หัวหน้าจัดซื้อ</span> <span class="hp-who">ผู้บริหาร</span></h4>
+          <p>ดูคำขอที่รอตัวเองได้ที่แท็ป <b>⏳ รออนุมัติ</b> (มีตัวเลขแจ้งเตือนบนแท็ป) → กด <b>👁 ดู</b> → ปุ่มจะขึ้นตามสิทธิ์</p>
+          <div class="hp-ui"><div class="cap">ท้ายหน้าดูคำขอ — หัวหน้าจัดซื้อ</div>
+            <div class="hp-bar"><span class="hp-btn o">ปิด</span><span class="hp-btn o">🖨️ พิมพ์ใบขออนุมัติ</span>
+              <span class="hp-btn r">↩️ ตีกลับ</span><span class="hp-btn g">✔ หัวหน้าอนุมัติ</span></div></div>
+          <div class="hp-ui"><div class="cap">ท้ายหน้าดูคำขอ — ผู้บริหาร</div>
+            <div class="hp-bar"><span class="hp-btn o">ปิด</span><span class="hp-btn o">🖨️ พิมพ์ใบขออนุมัติ</span>
+              <span class="hp-btn r">↩️ ตีกลับ</span><span class="hp-btn g">👑 อนุมัติจ่าย</span></div></div>
+          <div class="hp-tip">💡 ตีกลับต้องใส่เหตุผล — มีปุ่มเหตุผลสำเร็จรูปให้กด (ยอดไม่ตรง / ไม่มีหลักฐาน / ขอเลื่อนกำหนด)
+            ผู้ยื่นจะเห็นเป็นกรอบแดงในคำขอ</div>
+        </div>
+      </div>
+
+      <div class="hp-step">
+        <div class="bub">6</div>
+        <div>
+          <h4>แจ้งโอนเงิน <span class="hp-who">จัดซื้อ / บัญชี</span></h4>
+          <p>เปิดคำขอที่อนุมัติแล้ว → <b>📢 แจ้งโอนเงิน</b> → ระบบสร้างข้อความให้ตามช่องทางที่เลือกไว้</p>
+          <div class="hp-ui"><div class="cap">ปุ่มที่ขึ้นหลังอนุมัติครบ</div>
+            <div class="hp-bar"><span class="hp-btn y">📢 แจ้งโอนเงิน</span>
+              <span class="hp-btn g">📎 แนบหลักฐานการโอน</span><span class="hp-btn">💸 ยืนยันจ่ายแล้ว</span></div></div>
+          <div class="hp-ui"><div class="cap">ในหน้าแจ้งโอน — ซ้ายกรอก ขวาเห็นผลทันที</div>
+            <div class="hp-bar"><span class="hp-btn">📋 คัดลอกข้อความ</span>
+              <span class="hp-btn o">🖼️ ดาวน์โหลดรูป</span><span class="hp-btn o">⚙️ ตั้งค่าบัญชี</span>
+              <span class="hp-btn y">💾 บันทึกข้อมูลแจ้งโอน</span></div></div>
+          <div class="hp-tw"><table class="hp-t" style="margin-top:9px"><thead><tr>
+            <th style="width:190px">ช่องทางการโอนที่เลือกไว้</th><th>ได้ข้อความแบบ</th><th style="width:210px">ต้องกรอกเพิ่ม</th></tr></thead><tbody>
+            <tr><td><b>JMF CARGO</b></td><td>แจ้งโอน SCB — ยอดชำระ + เลขบัญชี</td><td>ไม่ต้อง (มีให้แล้ว)</td></tr>
+            <tr><td><b>Ksher Payment Co.Ltd.</b></td><td>เติมเงินเข้าระบบ Ksher — ยอดเติม + เรท + ยอดเดิม</td><td>ยอดเดิมในระบบ · ชื่อผู้ใช้ Ksher</td></tr>
+            <tr><td><b>ธนาคาร (SWIFT Code)</b></td><td>โอนต่างประเทศ — บัญชีปลายทาง + SWIFT</td><td>ชื่อ/เลขบัญชี/ที่อยู่ผู้รับ · ธนาคารปลายทาง + SWIFT</td></tr>
+          </tbody></table></div>
+          <div class="hp-tip">💡 กรอกเสร็จกด <b>💾 บันทึกข้อมูลแจ้งโอน</b> — ครั้งหน้าเปิดคำขอเดิม ข้อมูลกลับมาครบ ไม่ต้องพิมพ์ใหม่</div>
+        </div>
+      </div>
+
+      <div class="hp-step">
+        <div class="bub">7</div>
+        <div>
+          <h4>แนบสลิป แล้วปิดงาน <span class="hp-who">ผู้โอนเงิน</span></h4>
+          <p><b>📎 แนบหลักฐานการโอน</b> — ใส่ได้ทั้งรูปและ PDF หลายไฟล์ในครั้งเดียว หรือวางลิงก์ Google Drive</p>
+          <div class="hp-ui"><div class="cap">ท้ายหน้าแนบหลักฐาน</div>
+            <div class="hp-bar"><span class="hp-btn o">ปิด</span><span class="hp-btn r">🗑️ ลบทั้งหมด</span>
+              <span class="hp-btn">💾 บันทึกหลักฐาน</span><span class="hp-btn g">💾 บันทึก + ยืนยันจ่ายแล้ว</span></div></div>
+          <div class="hp-tip">💡 ปุ่มเขียว <b>💾 บันทึก + ยืนยันจ่ายแล้ว</b> = แนบสลิปและปิดงานในคลิกเดียว ไม่ต้องกด 2 รอบ</div>
+          <p style="margin-top:9px">แนบแล้วจะเห็นป้าย <b>📎</b> พร้อมจำนวนไฟล์ในตารางรายการ กดดูได้เลยไม่ต้องเปิดคำขอ</p>
+          <div class="hp-ui"><div class="cap">คอลัมน์ขวาสุดของตาราง</div>
+            <div class="hp-bar"><span class="hp-btn o">📎2</span><span class="hp-btn o">👁 ดู</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🏷️ ป้ายสถานะ อ่านอย่างไร</h2>
+      <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:190px">ป้าย</th><th style="width:190px">รออะไร / ใครต้องทำต่อ</th><th>แก้ไขคำขอได้ไหม</th></tr></thead><tbody>
+        <tr><td><span class="pill st-draft">📄 ร่าง</span></td><td>ผู้ยื่นยังไม่ส่ง</td><td><span class="hp-chk">✔</span> ได้ (เฉพาะผู้ยื่น)</td></tr>
+        <tr><td><span class="pill st-submitted">⏳ รอหัวหน้าอนุมัติ</span></td><td>หัวหน้าจัดซื้อ</td><td><span class="hp-x">✕</span> ไม่ได้</td></tr>
+        <tr><td><span class="pill st-mgr">⏳ รอผู้บริหารอนุมัติ</span></td><td>ผู้บริหาร</td><td><span class="hp-x">✕</span> ไม่ได้</td></tr>
+        <tr><td><span class="pill st-rejected">↩️ ตีกลับ</span></td><td>ผู้ยื่นต้องแก้แล้วส่งใหม่</td><td><span class="hp-chk">✔</span> ได้</td></tr>
+        <tr><td><span class="pill st-approved">✅ อนุมัติแล้ว</span></td><td>โอนเงิน + แนบหลักฐาน</td><td><span class="hp-x">✕</span> ไม่ได้</td></tr>
+        <tr><td><span class="pill st-paid">💸 จ่ายแล้ว</span></td><td>จบขั้นตอน</td><td><span class="hp-x">✕</span> ไม่ได้</td></tr>
+      </tbody></table></div>
+    </div>
+
+    <div class="card">
+      <h2>🔑 ใครทำอะไรได้</h2>
+      <div class="hp-tw"><table class="hp-t"><thead><tr><th>การกระทำ</th><th style="width:96px">จัดซื้อ</th>
+        <th style="width:112px">หัวหน้าจัดซื้อ</th><th style="width:96px">ผู้บริหาร</th></tr></thead><tbody>
+        <tr><td>สร้าง / แก้ไข / ส่งคำขอของตัวเอง</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
+        <tr><td>✔ หัวหน้าอนุมัติ</td><td class="hp-x">✕</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
+        <tr><td>👑 อนุมัติจ่าย</td><td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
+        <tr><td>↩️ ตีกลับ</td><td class="hp-x">✕</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
+        <tr><td>📢 แจ้งโอนเงิน · 📎 แนบหลักฐาน</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
+        <tr><td>💸 ยืนยันจ่ายแล้ว</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
+        <tr><td>👁 ดูคำขอทั้งหมด · 📊 สรุป · Export</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
+      </tbody></table></div>
+      <div class="sub-note" style="margin:11px 0 0">สิทธิ์ของคุณดูที่ป้ายมุมขวาบนสุดของหน้า — ถ้าปุ่มที่ควรเห็นไม่ขึ้น แจ้งฝ่ายจัดซื้อให้ตรวจสิทธิ์</div>
+    </div>
+
+    <div class="card" style="margin-bottom:0">
+      <h2>❓ ปัญหาที่พบบ่อย</h2>
+      <div class="hp-tw"><table class="hp-t"><tbody>
+        <tr><td style="width:300px"><b>ส่งอนุมัติไปแล้ว อยากแก้</b></td>
+          <td>แก้เองไม่ได้ — ขอให้ผู้อนุมัติกด <b>↩️ ตีกลับ</b> คำขอจะกลับมาแก้ได้ เลขคำขอเดิม</td></tr>
+        <tr><td><b>ดึงงวดจ่ายแล้วไม่เจองวดที่ต้องการ</b></td>
+          <td>งวดนั้นถูกยื่นในคำขออื่นไปแล้ว — ระบบซ่อนงวดที่ยื่นแล้วเพื่อกันจ่ายซ้ำ ลองล้างตัวกรองวันที่ดูก่อน</td></tr>
+        <tr><td><b>ปุ่ม 📢 แจ้งโอนเงิน ไม่ขึ้น</b></td>
+          <td>ขึ้นเฉพาะสถานะ <b>อนุมัติแล้ว</b> หรือ <b>จ่ายแล้ว</b> — ถ้ายังรออนุมัติจะยังไม่มีปุ่ม</td></tr>
+        <tr><td><b>เลขบัญชี JMF / Ksher ในข้อความไม่ถูก</b></td>
+          <td>แก้ที่ <b>⚙️ ตั้งค่าบัญชี</b> ในหน้าแจ้งโอน → กด <b>✔ บันทึก &amp; ใช้กับใบนี้</b> ระบบจำไว้ให้ครั้งต่อไป</td></tr>
+        <tr><td><b>คัดลอกข้อความไม่ได้</b></td>
+          <td>เบราว์เซอร์บล็อกการคัดลอกอัตโนมัติ — ลากเลือกข้อความในกรอบแล้วกด Ctrl+C</td></tr>
+        <tr><td><b>อัปไฟล์หลักฐานไม่ขึ้น</b></td>
+          <td>ไฟล์ต้องไม่เกิน 10 MB — ถ้าใหญ่กว่านั้นระบบจะบอกชื่อไฟล์ที่ข้าม · ถ้าทุกไฟล์ล้ม กด <b>⚙️ ที่เก็บไฟล์</b> → <b>🔌 ทดสอบการเชื่อมต่อ</b></td></tr>
+        <tr><td><b>ตัวเลขบนแท็ป ⏳ รออนุมัติ ไม่ลด</b></td>
+          <td>หน้านี้ไม่รีเฟรชอัตโนมัติเพื่อประหยัดทรัพยากร — กด <b>F5</b> หรือสลับแท็ปกลับมา</td></tr>
+        <tr><td><b>ลืมว่าคำขอไปถึงขั้นไหน ใครอนุมัติแล้ว</b></td>
+          <td>เปิดคำขอ → ดูแถบขั้นตอนด้านบน และตาราง <b>🕘 ประวัติการดำเนินการ</b> ด้านล่างสุด บันทึกทุกการกระทำพร้อมเวลาและชื่อคน</td></tr>
+      </tbody></table></div>
+      <div class="hp-warn" style="margin-top:12px">⚠️ <b>กันจ่ายซ้ำ</b> — ก่อนสร้างคำขอใหม่ ให้ค้นเลข PO ในช่องค้นหาก่อนทุกครั้ง
+        ถ้าเจอคำขอเดิมที่ยัง <b>รออนุมัติ</b> อยู่ อย่าสร้างใบใหม่ซ้อน</div>
     </div>
   </div>
 
@@ -638,7 +900,7 @@ function renderAll(){renderKpi();renderList();renderMine();renderTodo();renderRe
    TABS
    ================================================================== */
 function goTab(t){
-  ['list','mine','todo','report'].forEach(k=>$('tab-'+k).style.display=k===t?'':'none');
+  ['list','mine','todo','report','help'].forEach(k=>$('tab-'+k).style.display=k===t?'':'none');
   document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on',el.dataset.t===t));
   if(t==='report')renderReport();
 }
