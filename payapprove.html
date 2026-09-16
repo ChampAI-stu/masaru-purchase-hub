@@ -100,7 +100,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-14</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-15</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -196,12 +196,14 @@ tr:nth-child(even) td{background:#F8FAFD}
           <input id="r_method" list="methodList" onchange="methodPicked()" placeholder="เช่น โอนบัญชีบริษัท SCB / เงินสด / เช็ค"
                  title="บัญชีหรือวิธีที่เราจ่ายเงินออกไป — พิมพ์ได้อิสระ หรือเลือกจากที่เคยใช้">
           <datalist id="methodList"></datalist></div>
-        <div class="fld"><label>เลขบัญชีที่จ่าย</label>
-          <input id="r_acct" list="acctList" inputmode="numeric" placeholder="เช่น 123-4-56789-0"
-                 title="เลขบัญชีที่บริษัทใช้จ่ายเงินออกไป — พิมพ์ได้อิสระ หรือเลือกจากที่เคยใช้">
-          <datalist id="acctList"></datalist></div>
         <div class="fld"><label>สกุลเงิน</label>
           <select id="r_cur"><option value="CNY">¥ CNY</option><option value="USD">$ USD</option><option value="THB">฿ THB</option></select></div>
+        <div class="fld" style="grid-column:1/-1">
+          <label>เลขบัญชีที่จ่าย <span class="muted" style="font-weight:400">— ใส่ได้หลายบัญชี บรรทัดละบัญชี</span></label>
+          <textarea id="r_acct" rows="3" oninput="growAcct()"
+            placeholder="เช่น&#10;SCB 123-4-56789-0  (ไลค์ช็อป มอลล์)&#10;KBANK 987-6-54321-0  (มาซารุ มาร์เก็ตติ้ง)"
+            style="min-height:76px;resize:vertical;line-height:1.75"></textarea>
+          <div id="acctChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div></div>
       </div>
 
       <div class="row" style="margin:6px 0">
@@ -766,7 +768,7 @@ function canEditReq(r){
 const METHOD_DEF=['โอนเงิน — บัญชีบริษัท','โอนเงิน — บัญชีบุคคล','เงินสด','เช็ค','บัตรเครดิต','หักบัญชีอัตโนมัติ'];
 let ACCT_OF={};                               // ช่องทางการชำระเงิน → เลขบัญชีที่ใช้ล่าสุด
 function fillMethodList(){
-  const el=$('methodList'), ea=$('acctList');
+  const el=$('methodList');
   const recent=REQS.slice().sort((a,b)=>String(b.req_date||'').localeCompare(String(a.req_date||'')));
   ACCT_OF={};
   recent.forEach(function(r){
@@ -777,18 +779,44 @@ function fillMethodList(){
     const used=[...new Set(REQS.map(r=>String(r.pay_method||'').trim()).filter(Boolean))].sort();
     el.innerHTML=[...new Set(used.concat(METHOD_DEF))].map(v=>'<option value="'+esc(v)+'"></option>').join('');
   }
-  if(ea){
-    const accts=[...new Set(REQS.map(r=>String(r.pay_acct||'').trim()).filter(Boolean))].sort();
-    ea.innerHTML=accts.map(function(v){
-      const m=Object.keys(ACCT_OF).find(k=>ACCT_OF[k]===v)||'';
-      return '<option value="'+esc(v)+'">'+esc(m)+'</option>';
-    }).join('');
-  }
+  renderAcctChips();
 }
 /* เลือกช่องทางที่เคยใช้ → เติมเลขบัญชีเดิมให้ ถ้ายังไม่ได้กรอก */
 function methodPicked(){
   const m=$('r_method').value.trim();
-  if(m&&ACCT_OF[m]&&!$('r_acct').value.trim())$('r_acct').value=ACCT_OF[m];
+  if(m&&ACCT_OF[m]&&!$('r_acct').value.trim()){ $('r_acct').value=ACCT_OF[m]; growAcct(); }
+}
+/* ช่องเลขบัญชียืดตามจำนวนบรรทัด ไม่ต้องลากมุม */
+function growAcct(){
+  const el=$('r_acct'); if(!el)return;
+  el.style.height='auto';
+  el.style.height=Math.min(Math.max(el.scrollHeight+2,76),260)+'px';
+}
+/* ชิปบัญชีที่เคยใช้ — textarea ใช้ datalist ไม่ได้ จึงทำเป็นปุ่มกดเติมแทน */
+function renderAcctChips(){
+  const box=$('acctChips'); if(!box)return;
+  const seen=new Set(), out=[];
+  REQS.slice().sort((a,b)=>String(b.req_date||'').localeCompare(String(a.req_date||''))).forEach(function(r){
+    String(r.pay_acct||'').split('\n').map(x=>x.trim()).filter(Boolean).forEach(function(line){
+      if(seen.has(line)||out.length>=8)return;
+      seen.add(line); out.push(line);
+    });
+  });
+  box.innerHTML = out.length
+    ? '<span class="muted" style="font-size:11.5px;align-self:center">เคยใช้:</span>'
+      +out.map(v=>'<button type="button" class="btn mini ghost" style="font-size:11.5px"'
+        +' onclick="acctAdd(this.dataset.v)" data-v="'+esc(v)+'" title="กดเพื่อเติมเป็นบรรทัดใหม่">'
+        +esc(v.length>34?v.slice(0,34)+'…':v)+'</button>').join('')
+    : '';
+}
+function acctAdd(v){
+  const el=$('r_acct'); if(!el||!v)return;
+  const cur=el.value.replace(/\s+$/,'');
+  const lines=cur.split('\n').map(x=>x.trim()).filter(Boolean);
+  if(lines.includes(String(v).trim()))return toast('บัญชีนี้มีอยู่แล้ว');
+  el.value=(cur?cur+'\n':'')+v;
+  growAcct(); el.focus();
+  el.selectionStart=el.selectionEnd=el.value.length;
 }
 function openReq(id){
   EDIT_ID=id||null;
@@ -808,6 +836,7 @@ function openReq(id){
   ITEMS=(r&&Array.isArray(r.items))?JSON.parse(JSON.stringify(r.items)):[];
   drawItems();
   $('reqBg').style.display='flex';
+  growAcct();                      // ต้องเรียกหลังโมดัลโชว์ scrollHeight จึงจะถูก
 }
 function addManual(){
   ITEMS.push({pay_id:'',po:'',sku:'',inst:'',amount:0,rate:0,thb:0,fee:0,payee:''});
@@ -1129,7 +1158,7 @@ function viewReq(id){
       <div><div class="muted" style="font-size:11px">จ่ายในนาม</div><b>${esc(r.pay_type||'-')}</b></div>
       <div><div class="muted" style="font-size:11px">ช่องทางการโอน</div><b>${esc(r.channel||'-')}</b></div>
       <div><div class="muted" style="font-size:11px">ช่องทางการชำระเงิน</div><b>${esc(r.pay_method||'-')}</b>
-        ${r.pay_acct?`<div class="muted" style="font-size:11px">บัญชี ${esc(r.pay_acct)}</div>`:''}</div>
+        ${r.pay_acct?`<div class="muted" style="font-size:11px;white-space:pre-wrap;line-height:1.6">${esc(r.pay_acct)}</div>`:''}</div>
       <div><div class="muted" style="font-size:11px">ยอดรวม</div>
         <b style="font-size:16px">${money2(r.total_amount)} ${cs}</b>
         <div class="muted" style="font-size:11px">≈ ${money2(r.total_thb)} ฿</div></div>
@@ -1244,7 +1273,7 @@ function printReq(id){
       <div><b>จ่ายในนาม:</b> ${esc(r.pay_type||'-')}</div>
       <div><b>ช่องทางการโอน:</b> ${esc(r.channel||'-')}</div>
       ${r.pay_method?`<div><b>ช่องทางการชำระเงิน:</b> ${esc(r.pay_method)}</div>`:''}
-      ${r.pay_acct?`<div><b>เลขบัญชีที่จ่าย:</b> ${esc(r.pay_acct)}</div>`:''}
+      ${r.pay_acct?`<div style="white-space:pre-wrap"><b>เลขบัญชีที่จ่าย:</b> ${esc(r.pay_acct)}</div>`:''}
       <div><b>กำหนดชำระ:</b> ${thDate(r.due_date)}</div>
       ${r.urgency==='urgent'?'<div><b style="color:#B01722">🔥 ด่วน</b></div>':''}
     </div>
@@ -2005,7 +2034,7 @@ function exportReport(){
     r.urgency==='urgent'?'ด่วน':'',r.requester_name||r.requester||'',r.checked_by||'',r.approved_by||'',
     r.reason||'',r.note||'',r.reject_note||'']));
   const ws=XLSX.utils.aoa_to_sheet(out),wb=XLSX.utils.book_new();
-  ws['!cols']=[{wch:17},{wch:11},{wch:11},{wch:12},{wch:20},{wch:24},{wch:18},{wch:7},{wch:13},{wch:11},{wch:13},
+  ws['!cols']=[{wch:17},{wch:11},{wch:11},{wch:12},{wch:20},{wch:24},{wch:30},{wch:7},{wch:13},{wch:11},{wch:13},
                {wch:18},{wch:7},{wch:18},{wch:22},{wch:22},{wch:32},{wch:26},{wch:32}];
   XLSX.utils.book_append_sheet(wb,ws,'คำขออนุมัติ');
   XLSX.writeFile(wb,'คำขออนุมัติชำระเงิน_'+mo+'.xlsx');
