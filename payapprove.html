@@ -100,7 +100,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-12</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-13</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -374,6 +374,90 @@ tr:nth-child(even) td{background:#F8FAFD}
   </div>
 </div>
 
+
+<!-- ============ MODAL: แนบหลักฐานการโอน ============ -->
+<div class="modal-bg" id="proofBg" style="z-index:76">
+  <div class="modal" id="proofModal" style="max-width:920px">
+    <button class="expand-btn" onclick="toggleWide('proofModal',this)">⛶ ขยายเต็มจอ</button>
+    <h3 id="pfTitle">📎 หลักฐานการโอน</h3>
+    <div class="sub-note">
+      แนบได้ทั้ง <b>รูป</b> (JPG/PNG) และ <b>PDF</b> — หลายไฟล์ในครั้งเดียว<br>
+      ไฟล์เก็บที่ <b>Google Drive</b> ของบริษัท ไม่เก็บลงฐานข้อมูล จึงไม่กิน Egress
+      <span class="muted">(สูงสุด 10 MB/ไฟล์)</span>
+    </div>
+
+    <div class="grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="fld"><label>เลือกไฟล์จากเครื่อง</label>
+        <input type="file" id="pf_file" multiple accept="image/*,application/pdf,.pdf" onchange="pfUpload()"></div>
+      <div class="fld"><label>หรือวางลิงก์ Google Drive</label>
+        <input id="pf_url" placeholder="https://drive.google.com/file/d/..."
+          onkeydown="if(event.key==='Enter'){event.preventDefault();pfAddLink();}"></div>
+    </div>
+    <div class="row" style="margin:-4px 0 10px">
+      <button class="btn mini ghost" onclick="pfAddLink()">＋ เพิ่มลิงก์</button>
+      <button class="btn mini ghost" onclick="openPfCfg()">⚙️ ที่เก็บไฟล์</button>
+    </div>
+
+    <div id="pf_prog" style="display:none;margin-bottom:10px">
+      <div style="height:7px;background:#E3E8F0;border-radius:20px;overflow:hidden">
+        <div id="pf_bar" style="height:100%;width:0;background:var(--green);transition:width .25s"></div></div>
+      <div id="pf_stat" class="muted" style="font-size:12px;margin-top:5px"></div>
+    </div>
+
+    <div id="pf_list"></div>
+
+    <div class="fld" style="margin-top:10px"><label>หมายเหตุหลักฐาน</label>
+      <textarea id="pf_note" rows="2" placeholder="เช่น โอนครบตามยอด · สลิป 2 ใบ (2 บัญชี)"></textarea></div>
+
+    <div class="row" style="margin-top:12px;justify-content:flex-end">
+      <button class="btn ghost" onclick="$('proofBg').style.display='none'">ปิด</button>
+      <button class="btn ghost red" id="pf_clear" onclick="pfRemoveAll()" style="display:none">🗑️ ลบทั้งหมด</button>
+      <button class="btn" onclick="pfSave(false)">💾 บันทึกหลักฐาน</button>
+      <button class="btn green" id="pf_savepaid" onclick="pfSave(true)" style="display:none">💾 บันทึก + ยืนยันจ่ายแล้ว</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: ดูหลักฐาน ============ -->
+<div class="modal-bg" id="pvBg" style="z-index:80">
+  <div class="modal" id="pvModal" style="max-width:940px">
+    <h3 id="pvTitle" style="margin-right:40px">หลักฐานการโอน</h3>
+    <div id="pvBody" style="background:#111827;border-radius:9px;padding:10px;min-height:200px"></div>
+    <div class="muted" id="pvNote" style="font-size:12px;margin-top:8px;white-space:pre-wrap"></div>
+    <div class="row" style="margin-top:12px;justify-content:space-between">
+      <div class="row">
+        <button class="btn mini ghost" onclick="pvGo(-1)">‹ ก่อนหน้า</button>
+        <span class="muted" style="font-size:12.5px" id="pvIdx"></span>
+        <button class="btn mini ghost" onclick="pvGo(1)">ถัดไป ›</button>
+      </div>
+      <div class="row">
+        <a class="btn mini ghost" id="pvOpen" target="_blank" rel="noopener">↗ เปิดใน Drive</a>
+        <button class="btn ghost" onclick="$('pvBg').style.display='none'">ปิด</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: ตั้งค่าที่เก็บไฟล์ ============ -->
+<div class="modal-bg" id="pfCfgBg" style="z-index:85">
+  <div class="modal" style="max-width:620px">
+    <h3>⚙️ ที่เก็บไฟล์หลักฐาน</h3>
+    <div class="sub-note">ใช้ Google Apps Script ตัวเดียวกับที่ระบบวางแผนจ่ายเงินใช้เก็บสลิป —
+      ไฟล์จะไปอยู่ในโฟลเดอร์ <b>หลักฐานการโอน / เลขคำขอ</b></div>
+    <div class="fld"><label>Web app URL (ลงท้าย /exec)</label>
+      <input id="pfg_url" placeholder="https://script.google.com/macros/s/AKfy..../exec"></div>
+    <div class="fld"><label>Secret</label><input id="pfg_secret"></div>
+    <div id="pfg_stat" style="font-size:12.5px;margin-bottom:10px"></div>
+    <div id="pfg_lock" class="muted" style="font-size:12px;display:none;margin-bottom:10px">
+      🔒 ตั้งค่ากลางไว้ในไฟล์แล้ว — ถ้าจะเปลี่ยน ให้แก้ตัวแปร <code>GAS_URL</code> ในไฟล์ payapprove.html</div>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn mini ghost" onclick="pfTestGas()">🔌 ทดสอบการเชื่อมต่อ</button>
+      <button class="btn ghost" onclick="$('pfCfgBg').style.display='none'">ปิด</button>
+      <button class="btn" id="pfg_save" onclick="savePfCfg()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -631,6 +715,8 @@ function reqTable(rows,opts){
       <td>${stPill(r.status)}</td>
       <td style="font-size:11.5px">${esc(r.requester_name||r.requester||'-')}</td>
       <td style="white-space:nowrap">
+        ${proofList(r).length?`<button class="btn mini ghost" title="ดูหลักฐานการโอน ${proofList(r).length} ไฟล์"
+          onclick="viewProof('${r.id}',0)">📎${proofList(r).length}</button> `:''}
         <button class="btn mini ghost" onclick="viewReq('${r.id}')">👁 ดู</button>
         ${canEditReq(r)?`<button class="btn mini" onclick="openReq('${r.id}')">✏️</button>`:''}
       </td></tr>`;});
@@ -1008,7 +1094,7 @@ function viewReq(id){
   const lg=LOGS.filter(l=>String(l.req_id)===String(id))
     .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
   const LA={created:'สร้างคำขอ',updated:'แก้ไข',submitted:'ส่งอนุมัติ',checked:'หัวหน้าอนุมัติ',
-            approved:'ผู้บริหารอนุมัติ',rejected:'ตีกลับ',paid:'ยืนยันจ่ายแล้ว',xfer:'📢 แจ้งโอนเงิน'};
+            approved:'ผู้บริหารอนุมัติ',rejected:'ตีกลับ',paid:'ยืนยันจ่ายแล้ว',xfer:'📢 แจ้งโอนเงิน',proof:'📎 แนบหลักฐาน'};
 
   $('vBody').innerHTML=`
     <div style="display:flex;gap:26px;flex-wrap:wrap;background:#F7F9FC;border-radius:10px;padding:12px 15px;margin-bottom:12px;font-size:12.5px;line-height:1.9">
@@ -1022,6 +1108,13 @@ function viewReq(id){
         <div class="muted" style="font-size:11px">≈ ${money2(r.total_thb)} ฿</div></div>
       <div><div class="muted" style="font-size:11px">ผู้ยื่น</div><b>${esc(r.requester_name||r.requester||'-')}</b></div>
     </div>
+    ${proofList(r).length?`<div style="background:#E9F6EE;border-left:5px solid var(--green);border-radius:9px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.7">
+      <b style="color:var(--green)">📎 หลักฐานการโอน ${proofList(r).length} ไฟล์</b>
+      ${r.proof_by?`<span class="muted"> · แนบโดย ${esc(r.proof_by)}${r.proof_at?(' · '+new Date(r.proof_at).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'})):''}</span>`:''}
+      <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:8px">
+        ${proofList(r).map((it,i)=>`<button class="btn mini ghost" onclick="viewProof('${r.id}',${i})">${isPdf(it)?'📄':'🖼️'} ${esc((it.name||('ไฟล์ '+(i+1))).slice(0,26))}</button>`).join('')}
+      </div>
+      ${r.proof_note?`<div style="margin-top:7px;white-space:pre-wrap">${esc(r.proof_note)}</div>`:''}</div>`:''}
     ${r.status==='rejected'&&r.reject_note?`<div style="background:#FCE4E4;border-left:5px solid var(--red);border-radius:9px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;white-space:pre-wrap;line-height:1.7">
       <b style="color:var(--red)">↩️ ถูกตีกลับโดย ${esc(r.reject_by||'')}</b><br>${esc(r.reject_note)}</div>`:''}
     ${r.reason?`<div style="background:#E6F1FB;border-left:5px solid var(--blue);border-radius:9px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;white-space:pre-wrap;line-height:1.7">
@@ -1050,7 +1143,9 @@ function viewReq(id){
     btns+=`<button class="btn red" onclick="openReject('${r.id}')">↩️ ตีกลับ</button>
            <button class="btn green" onclick="act('${r.id}','approved')">👑 อนุมัติจ่าย</button>`;
   if(['approved','paid'].includes(r.status))
-    btns+=`<button class="btn gold" onclick="$('viewBg').style.display='none';openXfer('${r.id}')">📢 แจ้งโอนเงิน</button>`;
+    btns+=`<button class="btn gold" onclick="$('viewBg').style.display='none';openXfer('${r.id}')">📢 แจ้งโอนเงิน</button>`
+          +`<button class="btn green" onclick="openProof('${r.id}')">📎 แนบหลักฐานการโอน${
+            proofList(r).length?(' ('+proofList(r).length+')'):''}</button>`;
   if(r.status==='approved'&&(IS_MGR||IS_EXEC||IS_BUYER))
     btns+=`<button class="btn" onclick="act('${r.id}','paid')">💸 ยืนยันจ่ายแล้ว</button>`;
   $('vActions').innerHTML=btns;
@@ -1138,6 +1233,9 @@ function printReq(id){
       <b>เหตุผลการขออนุมัติ</b><div style="white-space:pre-wrap">${esc(r.reason)}</div></div>`:''}
     ${r.note?`<div style="margin-top:10px;font-size:12.5px;line-height:1.8">
       <b>หมายเหตุ</b><div style="white-space:pre-wrap">${esc(r.note)}</div></div>`:''}
+    ${proofList(r).length?`<div style="margin-top:10px;font-size:12.5px;line-height:1.8">
+      <b>หลักฐานการโอน</b> ${proofList(r).length} ไฟล์${r.proof_by?(' · แนบโดย '+esc(r.proof_by)):''}
+      ${r.proof_note?`<div style="white-space:pre-wrap">${esc(r.proof_note)}</div>`:''}</div>`:''}
     <div class="sign-row">
       <div class="sign-box"><div class="sign-line"></div>ผู้ขออนุมัติ<div class="sign-sub">(ฝ่ายจัดซื้อ)</div>
         <div style="color:#666;font-size:11px">${esc(r.requester_name||r.requester||'')}</div></div>
@@ -1571,6 +1669,246 @@ async function xfSave(){
   if(k>=0)REQS[k].xfer=JSON.parse(JSON.stringify(XF));   // อัปเดตในหน้า ไม่ต้องโหลดใหม่
   await addLog(XF_REQ.id,'xfer','สร้างข้อความแจ้งโอน ('+(XK_NAME[XF.kind]||'')+')');
   toast('บันทึกข้อมูลแจ้งโอนแล้ว 💾 เปิดใช้ซ้ำได้');
+}
+
+
+/* ==================================================================
+   หลักฐานการโอน — แนบรูป/PDF
+   ⚡ ไฟล์เก็บที่ Google Drive (ผ่าน Apps Script ตัวเดียวกับระบบสลิปใน pay.html)
+      ฐานข้อมูลเก็บแค่ "ลิงก์ + Drive file id" → Egress เกือบเป็นศูนย์
+      ถ้าต่อ Drive ไม่ได้ จะถอยไปใช้ Supabase Storage bucket "slips" ให้เอง
+   ================================================================== */
+const GAS_URL    = 'https://script.google.com/macros/s/AKfycbwjp--1ScpX43QdarB4JLnlQJSZoAuqsQ8edrIP2vSYUjq7QwbWU0jlWk6lGo5zQ26Hdg/exec';
+const GAS_SECRET = 'masaru-slip-2026';
+const GAS_KEY='masaru_slip_gas', PF_BUCKET='slips', MAX_PF_MB=10;
+let PF_ID=null, PF_ITEMS=[], PV_ITEMS=[], PV_IDX=0;
+
+function gasCfg(){
+  let c={}; try{ c=JSON.parse(localStorage.getItem(GAS_KEY)||'{}'); }catch(e){}
+  return {url:(GAS_URL||c.url||'').trim(), secret:(GAS_URL?GAS_SECRET:(c.secret||GAS_SECRET))};
+}
+const gasLocked=()=>!!GAS_URL;
+const gasUrl=()=>(gasCfg().url||'').trim();
+async function gasCall(payload){
+  const c=gasCfg();
+  if(!c.url)throw new Error('ยังไม่ได้ตั้งค่า Web app URL');
+  const r=await fetch(c.url,{method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},          // เลี่ยง CORS preflight
+    body:JSON.stringify(Object.assign({secret:c.secret||''},payload))});
+  const t=await r.text();
+  let j; try{ j=JSON.parse(t); }
+  catch(e){ throw new Error('Apps Script ตอบกลับผิดรูปแบบ — เช็คว่า Deploy เป็น Web app และ Access = Anyone'); }
+  if(!j.ok)throw new Error(j.error||'Apps Script ทำงานไม่สำเร็จ');
+  return j;
+}
+const fileToB64=f=>new Promise((res,rej)=>{
+  const r=new FileReader();
+  r.onload=()=>res(String(r.result).split(',')[1]||'');
+  r.onerror=()=>rej(new Error('อ่านไฟล์ไม่ได้'));
+  r.readAsDataURL(f);
+});
+function driveId(u){
+  const m=String(u||'').match(/\/file\/d\/([\w-]{10,})|[?&]id=([\w-]{10,})/);
+  return m?(m[1]||m[2]):'';
+}
+const isPdf=it=>/pdf/i.test(it.mime||'')||/\.pdf(\?|$)/i.test(it.url||'');
+function pfThumb(it){
+  const id=it.id||driveId(it.url);
+  if(id)return 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w400';
+  return isPdf(it)?'':(it.url||'');
+}
+const proofList=r=>Array.isArray(r&&r.proofs)?r.proofs.filter(x=>x&&(x.url||x.id)):[];
+
+/* ---------- เปิด ---------- */
+function openProof(id){
+  const r=REQS.find(x=>String(x.id)===String(id)); if(!r)return toast('ไม่พบคำขอนี้');
+  if(!['approved','paid'].includes(r.status))
+    return alert('แนบหลักฐานการโอนได้เมื่ออนุมัติจ่ายแล้ว\n\nสถานะปัจจุบัน: '+((ST[r.status]||{}).t||r.status));
+  PF_ID=id;
+  PF_ITEMS=JSON.parse(JSON.stringify(proofList(r)));
+  $('pfTitle').innerHTML='📎 หลักฐานการโอน — '+esc(r.req_no||'')
+    +' <span class="muted" style="font-size:12.5px;font-weight:400">'+money2(r.total_thb)+' ฿</span>';
+  $('pf_note').value=r.proof_note||'';
+  $('pf_url').value=''; $('pf_file').value='';
+  $('pf_prog').style.display='none'; $('pf_stat').textContent='';
+  $('pf_savepaid').style.display=(r.status==='approved'&&(IS_MGR||IS_EXEC||IS_BUYER))?'':'none';
+  renderPfList();
+  $('proofBg').style.display='flex';
+}
+function renderPfList(){
+  $('pf_clear').style.display=PF_ITEMS.length?'':'none';
+  if(!PF_ITEMS.length){
+    $('pf_list').innerHTML='<div class="empty" style="padding:18px">ยังไม่มีไฟล์ — เลือกไฟล์ หรือวางลิงก์ Drive</div>';
+    return;
+  }
+  $('pf_list').innerHTML='<div style="display:flex;flex-wrap:wrap;gap:10px">'
+    +PF_ITEMS.map(function(it,i){
+      const th=pfThumb(it), pdf=isPdf(it);
+      return '<div style="width:132px;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff">'
+        +'<div style="height:104px;background:#F4F6FA;display:flex;align-items:center;justify-content:center;cursor:pointer"'
+        +' onclick="pfView('+i+')">'
+        +(th&&!pdf
+            ? '<img src="'+esc(th)+'" style="max-width:100%;max-height:104px;display:block" loading="lazy"'
+              +' onerror="this.outerHTML=\'<span style=&quot;font-size:34px&quot;>🖼️</span>\'">'
+            : '<span style="font-size:34px">'+(pdf?'📄':'🖼️')+'</span>')
+        +'</div>'
+        +'<div style="padding:6px 7px;font-size:11px;line-height:1.5;word-break:break-all">'+esc(it.name||('ไฟล์ '+(i+1)))+'</div>'
+        +'<div class="row" style="padding:0 6px 7px;gap:4px">'
+        +'<button class="btn mini ghost" style="flex:1" onclick="pfView('+i+')">👁</button>'
+        +'<button class="btn mini red" onclick="pfDel('+i+')">✕</button>'
+        +'</div></div>';
+    }).join('')+'</div>';
+}
+function pfAddLink(){
+  const u=$('pf_url').value.trim(); if(!u)return;
+  if(!/^https?:\/\//i.test(u))return alert('ลิงก์ต้องเริ่มด้วย http:// หรือ https://');
+  PF_ITEMS.push({url:u,open:u,id:driveId(u),name:'ลิงก์ '+(PF_ITEMS.length+1),mime:'',src:'link'});
+  $('pf_url').value=''; renderPfList();
+}
+function pfDel(i){ PF_ITEMS.splice(i,1); renderPfList(); }
+
+/* ---------- อัปโหลด ---------- */
+async function pfUpload(){
+  const files=[...$('pf_file').files]; if(!files.length)return;
+  const r=REQS.find(x=>String(x.id)===String(PF_ID))||{};
+  const big=files.filter(f=>f.size>MAX_PF_MB*1024*1024);
+  if(big.length)alert('ข้ามไฟล์ที่ใหญ่เกิน '+MAX_PF_MB+' MB:\n'+big.map(f=>'· '+f.name).join('\n'));
+  const list=files.filter(f=>f.size<=MAX_PF_MB*1024*1024);
+  if(!list.length){ $('pf_file').value=''; return; }
+
+  $('pf_prog').style.display=''; $('pf_bar').style.width='0%';
+  let ok=0; const fail=[];
+  for(let i=0;i<list.length;i++){
+    const f=list[i];
+    $('pf_stat').textContent='กำลังอัปโหลด '+(i+1)+'/'+list.length+' — '+f.name;
+    try{ PF_ITEMS.push(await pfUploadOne(f,r)); ok++; renderPfList(); }
+    catch(e){ console.warn('[proof]',f.name,e.message); fail.push(f.name+' — '+e.message); }
+    $('pf_bar').style.width=Math.round((i+1)/list.length*100)+'%';
+  }
+  $('pf_file').value='';
+  setTimeout(()=>{ $('pf_prog').style.display='none'; },900);
+  $('pf_stat').innerHTML = fail.length
+    ? '<b style="color:#B45309">อัปสำเร็จ '+ok+'/'+list.length+' — กดบันทึกเพื่อผูกกับคำขอนี้</b>'
+      +'<div style="color:#D0212B;font-size:11.5px;margin-top:3px">'+fail.map(esc).join('<br>')+'</div>'
+    : '<b style="color:#1E7145">✅ อัปโหลดครบ '+ok+' ไฟล์ — กดบันทึกเพื่อผูกกับคำขอนี้</b>';
+}
+/* Drive ก่อน — ไม่ได้ค่อยถอยไป Supabase Storage */
+async function pfUploadOne(f,r){
+  const po=[...new Set((r.items||[]).map(i=>String(i.po||'').trim()).filter(Boolean))].join('-');
+  if(gasUrl()){
+    try{
+      const j=await gasCall({action:'upload',
+        filename:(r.req_no||'REQ')+'_'+(po||'PO')+'_'+f.name,
+        folder:'หลักฐานการโอน/'+String(r.req_no||'ไม่ระบุเลขคำขอ').replace(/[\\/:*?"<>|]/g,'-'),
+        mime:f.type||'application/octet-stream', data:await fileToB64(f),
+        payDate:r.due_date||'', po:po, installment:'', amount:r.total_thb||'',
+        currency:'THB', channel:r.channel||'', payType:r.pay_type||'', payee:'', actor:ME||''});
+      return {url:j.openUrl||j.viewUrl||'',open:j.openUrl||'',id:j.fileId||'',
+              name:f.name,mime:f.type||'',src:'drive'};
+    }catch(e){ console.warn('[proof] drive:',e.message); }
+  }
+  const ext=(f.name.split('.').pop()||'bin').toLowerCase();
+  const path='req/'+(new Date()).toISOString().slice(0,7)+'/'+PF_ID+'_'+Date.now()
+    +'_'+Math.random().toString(36).slice(2,7)+'.'+ext;
+  const {error}=await sb.storage.from(PF_BUCKET).upload(path,f,{upsert:true,contentType:f.type||undefined});
+  if(error)throw new Error(/not found|bucket/i.test(error.message)
+    ? 'อัปขึ้น Drive ไม่ได้ และยังไม่มี bucket "slips" ในระบบ' : error.message);
+  const {data}=sb.storage.from(PF_BUCKET).getPublicUrl(path);
+  return {url:data.publicUrl,open:data.publicUrl,id:'',name:f.name,mime:f.type||'',src:'supabase'};
+}
+
+/* ---------- บันทึก / ลบ ---------- */
+async function pfSave(alsoPaid){
+  if($('pf_url').value.trim())pfAddLink();
+  const first=PF_ITEMS[0]||null;
+  const up={proofs:PF_ITEMS, proof_note:$('pf_note').value.trim()||null,
+            proof_at:first?new Date().toISOString():null, proof_by:first?ME:null,
+            updated_at:new Date().toISOString()};
+  if(alsoPaid){ up.status='paid'; up.paid_by=ME; up.paid_at=new Date().toISOString(); }
+  const {error}=await sb.from('pay_requests').update(up).eq('id',PF_ID);
+  if(error)return alert(/proof|column/i.test(error.message)
+    ? 'ยังไม่ได้เพิ่มคอลัมน์หลักฐาน\n\nกรุณารันไฟล์ payapprove_xfer.sql บน Supabase ก่อน\n\nรายละเอียด: '+error.message
+    : 'บันทึกไม่สำเร็จ: '+error.message);
+  await addLog(PF_ID,'proof','แนบหลักฐานการโอน '+PF_ITEMS.length+' ไฟล์'+(alsoPaid?' + ยืนยันจ่ายแล้ว':''));
+  $('proofBg').style.display='none'; $('viewBg').style.display='none';
+  await loadAll();
+  toast('บันทึกหลักฐาน '+PF_ITEMS.length+' ไฟล์แล้ว ✅');
+}
+async function pfRemoveAll(){
+  if(!confirm('ลบหลักฐานทั้งหมด '+PF_ITEMS.length+' ไฟล์ของคำขอนี้?'))return;
+  if(gasUrl()){
+    for(const it of PF_ITEMS){
+      if(it.id){ try{ await gasCall({action:'delete',fileId:it.id}); }
+                 catch(e){ console.warn('[proof] ลบใน Drive ไม่ได้:',e.message); } }
+    }
+  }
+  PF_ITEMS=[]; renderPfList();
+  const {error}=await sb.from('pay_requests')
+    .update({proofs:[],proof_note:null,proof_at:null,proof_by:null,
+             updated_at:new Date().toISOString()}).eq('id',PF_ID);
+  if(error)return alert('ลบไม่สำเร็จ: '+error.message);
+  await loadAll(); toast('ลบหลักฐานแล้ว');
+}
+
+/* ---------- ดูแบบแกลเลอรี ---------- */
+function pfView(i){ pvOpen(PF_ITEMS,i,$('pf_note').value||''); }
+function viewProof(id,i){
+  const r=REQS.find(x=>String(x.id)===String(id))||{};
+  pvOpen(proofList(r),i,r.proof_note||'');
+}
+function pvOpen(items,i,note){
+  PV_ITEMS=items||[]; if(!PV_ITEMS.length)return toast('ยังไม่มีหลักฐาน');
+  PV_IDX=Math.min(Math.max(+i||0,0),PV_ITEMS.length-1);
+  $('pvNote').textContent=note||'';
+  renderPv(); $('pvBg').style.display='flex';
+}
+function pvGo(d){ PV_IDX=(PV_IDX+d+PV_ITEMS.length)%PV_ITEMS.length; renderPv(); }
+function renderPv(){
+  const it=PV_ITEMS[PV_IDX]||{}, id=it.id||driveId(it.url), pdf=isPdf(it);
+  const frame=u=>'<iframe src="'+esc(u)+'" style="width:100%;height:64vh;border:0;background:#fff;border-radius:6px"></iframe>';
+  let body;
+  if(id&&!pdf){
+    body='<img src="https://drive.google.com/thumbnail?id='+esc(id)+'&sz=w1600"'
+      +' style="max-width:100%;max-height:64vh;display:block;margin:0 auto;border-radius:6px"'
+      +' onerror="this.outerHTML=\'<iframe src=&quot;https://drive.google.com/file/d/'+esc(id)
+      +'/preview&quot; style=&quot;width:100%;height:64vh;border:0;background:#fff;border-radius:6px&quot;></iframe>\'">';
+  }else if(id){ body=frame('https://drive.google.com/file/d/'+id+'/preview'); }
+  else if(pdf){ body=frame(it.url||''); }
+  else{ body='<img src="'+esc(it.url||'')+'" style="max-width:100%;max-height:64vh;display:block;margin:0 auto;border-radius:6px">'; }
+  $('pvBody').innerHTML=body;
+  $('pvTitle').textContent=(it.name||'หลักฐานการโอน');
+  $('pvIdx').textContent=(PV_IDX+1)+' / '+PV_ITEMS.length;
+  const a=$('pvOpen');
+  a.href=it.open||it.url||'#'; a.style.display=(it.open||it.url)?'':'none';
+}
+
+/* ---------- ตั้งค่าที่เก็บไฟล์ ---------- */
+function openPfCfg(){
+  const c=gasCfg(), lock=gasLocked();
+  $('pfg_url').value=c.url||''; $('pfg_secret').value=c.secret||'';
+  $('pfg_url').disabled=lock; $('pfg_secret').disabled=lock;
+  $('pfg_save').style.display=lock?'none':'';
+  $('pfg_lock').style.display=lock?'':'none';
+  $('pfg_stat').textContent=''; $('pfCfgBg').style.display='flex';
+}
+function savePfCfg(){
+  const url=$('pfg_url').value.trim();
+  if(url&&!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(url))
+    return alert('URL ไม่ถูกต้อง\n\nต้องลงท้ายด้วย /exec จากหน้า Deploy → Web app');
+  try{ localStorage.setItem(GAS_KEY,JSON.stringify({url,secret:$('pfg_secret').value.trim()})); }catch(e){}
+  $('pfCfgBg').style.display='none';
+  toast(url?'ตั้งค่า Google Drive แล้ว ✅':'ปิด Drive — จะเก็บใน Storage ของระบบแทน');
+}
+async function pfTestGas(){
+  if(!$('pfg_url').value.trim())return alert('ใส่ URL ก่อน');
+  if(!gasLocked())try{ localStorage.setItem(GAS_KEY,JSON.stringify(
+    {url:$('pfg_url').value.trim(),secret:$('pfg_secret').value.trim()})); }catch(e){}
+  $('pfg_stat').textContent='กำลังทดสอบ…';
+  try{
+    const j=await gasCall({action:'ping'});
+    $('pfg_stat').innerHTML='<b style="color:#1E7145">✅ '+esc(j.msg||'เชื่อมต่อสำเร็จ')+'</b>'
+      +(j.folder?'<br><span class="muted">โฟลเดอร์ปลายทาง: '+esc(j.folder)+'</span>':'');
+  }catch(e){ $('pfg_stat').innerHTML='<b style="color:#D0212B">❌ '+esc(e.message)+'</b>'; }
 }
 
 /* ==================================================================
