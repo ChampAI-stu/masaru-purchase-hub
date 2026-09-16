@@ -100,7 +100,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-11</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-12</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -192,6 +192,10 @@ tr:nth-child(even) td{background:#F8FAFD}
         <div class="fld"><label>ช่องทางการโอน ★</label>
           <select id="r_ch"><option value="">— เลือก —</option>
             <option>JMF CARGO</option><option>Ksher Payment Co.Ltd.</option><option>ธนาคาร (SWIFT Code)</option></select></div>
+        <div class="fld"><label>ช่องทางการชำระเงิน</label>
+          <input id="r_method" list="methodList" placeholder="เช่น โอนบัญชีบริษัท SCB / เงินสด / เช็ค"
+                 title="บัญชีหรือวิธีที่เราจ่ายเงินออกไป — พิมพ์ได้อิสระ หรือเลือกจากที่เคยใช้">
+          <datalist id="methodList"></datalist></div>
         <div class="fld"><label>สกุลเงิน</label>
           <select id="r_cur"><option value="CNY">¥ CNY</option><option value="USD">$ USD</option><option value="THB">฿ THB</option></select></div>
       </div>
@@ -668,8 +672,17 @@ function canEditReq(r){
 /* ==================================================================
    ฟอร์มคำขอ
    ================================================================== */
+/* ช่องทางการชำระเงิน — ตัวเลือกตั้งต้น + สิ่งที่เคยกรอกไว้จริง ระบบจำเพิ่มให้เอง */
+const METHOD_DEF=['โอนเงิน — บัญชีบริษัท','โอนเงิน — บัญชีบุคคล','เงินสด','เช็ค','บัตรเครดิต','หักบัญชีอัตโนมัติ'];
+function fillMethodList(){
+  const el=$('methodList'); if(!el)return;
+  const used=[...new Set(REQS.map(r=>String(r.pay_method||'').trim()).filter(Boolean))].sort();
+  const all=[...new Set(used.concat(METHOD_DEF))];
+  el.innerHTML=all.map(v=>'<option value="'+esc(v)+'"></option>').join('');
+}
 function openReq(id){
   EDIT_ID=id||null;
+  fillMethodList();
   const r=id?REQS.find(x=>String(x.id)===String(id)):null;
   $('reqTitle').textContent=r?('แก้ไขคำขอ '+(r.req_no||'')):'สร้างคำขออนุมัติชำระเงิน';
   $('r_date').value=(r&&r.req_date)||todayStr();
@@ -677,6 +690,7 @@ function openReq(id){
   $('r_urg').value=(r&&r.urgency)||'normal';
   $('r_type').value=(r&&r.pay_type)||'';
   $('r_ch').value=(r&&r.channel)||'';
+  $('r_method').value=(r&&r.pay_method)||'';
   $('r_cur').value=(r&&r.currency)||'CNY';
   $('r_reason').value=(r&&r.reason)||'';
   $('r_note').value=(r&&r.note)||'';
@@ -919,6 +933,7 @@ async function saveReq(mode){
   const rec={
     req_date:$('r_date').value||todayStr(), due_date:$('r_due').value,
     pay_type:$('r_type').value, channel:$('r_ch').value, currency:$('r_cur').value,
+    pay_method:$('r_method').value.trim()||null,
     urgency:$('r_urg').value, reason:$('r_reason').value.trim()||null,
     note:$('r_note').value.trim()||null,
     items:ITEMS, payment_ids:ITEMS.map(i=>i.pay_id).filter(Boolean),
@@ -1001,6 +1016,7 @@ function viewReq(id){
       <div><div class="muted" style="font-size:11px">กำหนดชำระ</div><b>${thDate(r.due_date)}</b></div>
       <div><div class="muted" style="font-size:11px">จ่ายในนาม</div><b>${esc(r.pay_type||'-')}</b></div>
       <div><div class="muted" style="font-size:11px">ช่องทางการโอน</div><b>${esc(r.channel||'-')}</b></div>
+      <div><div class="muted" style="font-size:11px">ช่องทางการชำระเงิน</div><b>${esc(r.pay_method||'-')}</b></div>
       <div><div class="muted" style="font-size:11px">ยอดรวม</div>
         <b style="font-size:16px">${money2(r.total_amount)} ${cs}</b>
         <div class="muted" style="font-size:11px">≈ ${money2(r.total_thb)} ฿</div></div>
@@ -1105,6 +1121,7 @@ function printReq(id){
     <div class="meta">
       <div><b>จ่ายในนาม:</b> ${esc(r.pay_type||'-')}</div>
       <div><b>ช่องทางการโอน:</b> ${esc(r.channel||'-')}</div>
+      ${r.pay_method?`<div><b>ช่องทางการชำระเงิน:</b> ${esc(r.pay_method)}</div>`:''}
       <div><b>กำหนดชำระ:</b> ${thDate(r.due_date)}</div>
       ${r.urgency==='urgent'?'<div><b style="color:#B01722">🔥 ด่วน</b></div>':''}
     </div>
@@ -1614,14 +1631,15 @@ function exportReport(){
   const mo=$('rpMonth').value||monthStr();
   const rows=REQS.filter(r=>String(r.req_date||'').slice(0,7)===mo);
   if(!rows.length)return toast('เดือนนี้ไม่มีข้อมูล');
-  const out=[['เลขคำขอ','วันที่ยื่น','กำหนดชำระ','จ่ายในนาม','ช่องทาง','สกุล','ยอด','ค่าธรรมเนียม','รวมบาท',
+  const out=[['เลขคำขอ','วันที่ยื่น','กำหนดชำระ','จ่ายในนาม','ช่องทาง','ช่องทางการชำระเงิน','สกุล','ยอด','ค่าธรรมเนียม','รวมบาท',
               'สถานะ','ด่วน','ผู้ยื่น','หัวหน้าอนุมัติ','ผู้บริหารอนุมัติ','เหตุผล','หมายเหตุ','เหตุผลที่ตีกลับ']];
   rows.forEach(r=>out.push([r.req_no||'',r.req_date||'',r.due_date||'',r.pay_type||'',r.channel||'',
+    r.pay_method||'',
     r.currency||'',+r.total_amount||0,+r.total_fee||0,+r.total_thb||0,(ST[r.status]||{}).t||r.status,
     r.urgency==='urgent'?'ด่วน':'',r.requester_name||r.requester||'',r.checked_by||'',r.approved_by||'',
     r.reason||'',r.note||'',r.reject_note||'']));
   const ws=XLSX.utils.aoa_to_sheet(out),wb=XLSX.utils.book_new();
-  ws['!cols']=[{wch:17},{wch:11},{wch:11},{wch:12},{wch:20},{wch:7},{wch:13},{wch:11},{wch:13},
+  ws['!cols']=[{wch:17},{wch:11},{wch:11},{wch:12},{wch:20},{wch:24},{wch:7},{wch:13},{wch:11},{wch:13},
                {wch:18},{wch:7},{wch:18},{wch:22},{wch:22},{wch:32},{wch:26},{wch:32}];
   XLSX.utils.book_append_sheet(wb,ws,'คำขออนุมัติ');
   XLSX.writeFile(wb,'คำขออนุมัติชำระเงิน_'+mo+'.xlsx');
