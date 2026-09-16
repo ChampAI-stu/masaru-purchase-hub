@@ -142,7 +142,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-19</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-22</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -465,7 +465,8 @@ tr:nth-child(even) td{background:#F8FAFD}
                  title="บัญชีหรือวิธีที่เราจ่ายเงินออกไป — พิมพ์ได้อิสระ หรือเลือกจากที่เคยใช้">
           <datalist id="methodList"></datalist></div>
         <div class="fld"><label>สกุลเงิน</label>
-          <select id="r_cur"><option value="CNY">¥ CNY</option><option value="USD">$ USD</option><option value="THB">฿ THB</option></select></div>
+          <select id="r_cur" onchange="drawItems();curWarn()"><option value="CNY">¥ CNY</option><option value="USD">$ USD</option><option value="THB">฿ THB</option></select>
+          <div id="curWarn"></div></div>
         <div class="fld" style="grid-column:1/-1">
           <label>เลขบัญชีที่จ่าย <span class="muted" style="font-weight:400">— ใส่ได้หลายบัญชี บรรทัดละบัญชี</span></label>
           <textarea id="r_acct" rows="3" oninput="growAcct()"
@@ -898,6 +899,40 @@ function subscribe(){
 }
 const billOf=id=>BILLS.find(b=>String(b.id)===String(id))||{};
 const payOf=id=>PAYS.find(p=>String(p.id)===String(id))||null;
+/* ═══ สกุลเงินของคำขอ ต้องมาจากบิลของงวดที่ดึงมา ═══
+   บั๊กเดิม: ดึงงวดจ่ายแล้วไม่ตั้งค่า → คงค่าเดิมของ dropdown (หรือที่คนเลือกไว้ก่อน)
+   ทำให้ยอดหยวนโชว์เป็นดอลลาร์ ตัวเลขถูกแต่หน่วยผิด = อ่านผิดทั้งใบ */
+function itemCurs(){
+  return [...new Set(ITEMS.map(function(i){
+    const p=payOf(i.pay_id); if(!p)return '';
+    const b=billOf(p.bill_id)||{}; return b.currency||'';
+  }).filter(Boolean))];
+}
+function syncCur(){
+  const cs=itemCurs();
+  if(cs.length===1){ $('r_cur').value=cs[0]; }
+  curWarn();
+}
+/* ป้ายเตือนใต้ช่องสกุลเงิน เมื่อไม่ตรงกับบิล หรือปนหลายสกุล */
+function curWarn(){
+  const box=$('curWarn'); if(!box)return;
+  const cs=itemCurs(), cur=$('r_cur').value;
+  if(!cs.length){ box.innerHTML=''; return; }
+  if(cs.length>1){
+    box.innerHTML='<div style="background:#FCE4E4;border-left:4px solid var(--red);border-radius:7px;'
+      +'padding:7px 10px;font-size:12px;line-height:1.6;margin-top:5px">⚠️ รายการในคำขอนี้มี '
+      +cs.length+' สกุลเงิน ('+cs.map(esc).join(', ')+') — <b>คำขอ 1 ใบควรเป็นสกุลเดียว</b> '
+      +'แยกเป็นหลายใบจะถูกต้องกว่า</div>';
+    return;
+  }
+  box.innerHTML = (cs[0]===cur) ? ''
+    : '<div style="background:#FCE4E4;border-left:4px solid var(--red);border-radius:7px;'
+      +'padding:7px 10px;font-size:12px;line-height:1.6;margin-top:5px">⚠️ งวดที่ดึงมาเป็นสกุล <b>'
+      +esc(cs[0])+'</b> แต่เลือกไว้ '+esc(cur)+' — ยอดจะแสดงหน่วยผิด '
+      +'<a href="#" onclick="$(\'r_cur\').value=\''+esc(cs[0])+'\';drawItems();curWarn();return false" '
+      +'style="font-weight:700">แก้เป็น '+esc(cs[0])+'</a></div>';
+}
+
 const thbOf=p=>{if(!p)return 0;
   if(p.amount_thb!=null&&p.amount_thb!=='')return +p.amount_thb||0;
   const r=+p.rate||0;return r?(Math.abs(+p.amount||0)*r):0;};
@@ -1107,6 +1142,7 @@ function openReq(id){
   drawItems();
   $('reqBg').style.display='flex';
   growAcct();                      // ต้องเรียกหลังโมดัลโชว์ scrollHeight จึงจะถูก
+  curWarn();                        // ใบเก่าที่หน่วยเงินผิด จะเห็นป้ายเตือนทันทีที่เปิด
 }
 function addManual(){
   ITEMS.push({pay_id:'',po:'',sku:'',inst:'',amount:0,rate:0,thb:0,fee:0,payee:''});
@@ -1147,7 +1183,12 @@ function drawItems(){
     <td class="num">${money2(tAmt)}</td><td class="num">-</td>
     <td class="num">${money2(tThb-tFee)}</td><td class="num">${money2(tFee)}</td><td></td></tr>`;
   $('r_items').innerHTML=h+'</tbody></table>';
-  $('r_sum').innerHTML=`${ITEMS.length} รายการ · รวม <b>${money2(tAmt)} ${cs}</b> ≈ <b>${money2(tThb)} ฿</b>`;
+  /* ยังไม่ใส่เรท → บาทเป็น 0 ซึ่งไม่ใช่ยอดจริง ต้องบอกให้ชัด ไม่โชว์ 0.00 เฉย ๆ */
+  const noRate = cs!=='฿' && tAmt>0 && tThb<=0;
+  $('r_sum').innerHTML=`${ITEMS.length} รายการ · รวม <b>${money2(tAmt)} ${cs}</b> `
+    +(noRate ? '<span style="color:var(--red)">· ⚠️ ยังไม่ใส่เรท จึงยังคิดเป็นบาทไม่ได้</span>'
+             : `≈ <b>${money2(tThb)} ฿</b>`);
+  curWarn();
 }
 
 /* ---------- เลือกงวดจ่ายจากระบบวางแผน ---------- */
@@ -1235,6 +1276,7 @@ function addPicked(){
   if(!$('r_type').value&&rows[0].pay_type)$('r_type').value=rows[0].pay_type;
   if(!$('r_ch').value&&rows[0].channel)$('r_ch').value=rows[0].channel;
   if(!$('r_due').value&&rows[0].pay_date)$('r_due').value=rows[0].pay_date;
+  syncCur();                     // ⭐ สกุลเงินต้องมาจากบิลของงวด ไม่ใช่ค่าตั้งต้นของ dropdown
   $('pickBg').style.display='none';
   drawItems();
   toast('เพิ่ม '+rows.length+' งวดแล้ว');
@@ -1312,7 +1354,7 @@ function useDoc(id){
   if(!$('r_type').value&&x.company)$('r_type').value=x.company;
   if(!$('r_ch').value){const c=docChOf(x); if(c&&c.indexOf(' / ')<0)$('r_ch').value=c;}
   if(!$('r_due').value&&x.doc_date)$('r_due').value=x.doc_date;
-  if(!$('r_cur').value||curs.length===1)$('r_cur').value=curs[0]||'CNY';
+  syncCur();
   if(!$('r_reason').value.trim())
     $('r_reason').value='ตามใบปะหน้าเอกสารค่าใช้จ่ายประจำวันที่ '+(x.doc_date||'')
       +(x.company?(' · จ่ายในนาม '+x.company):'');
@@ -1336,6 +1378,16 @@ async function saveReq(mode){
   if(!$('r_ch').value)   return toast('เลือกช่องทางการโอนก่อน');
   if(!ITEMS.length)      return toast('ยังไม่มีรายการ');
   if(mode==='submitted'&&!$('r_reason').value.trim())return toast('ใส่เหตุผลการขออนุมัติก่อนส่ง');
+
+  /* กันหน่วยเงินผิด — ตัวเลขถูกแต่หน่วยผิด อ่านผิดทั้งใบ */
+  const cs0=itemCurs();
+  if(cs0.length===1&&cs0[0]!==$('r_cur').value&&
+     !confirm('สกุลเงินไม่ตรงกับบิลของงวดที่ดึงมา\n\n'
+       +'งวดเป็นสกุล: '+cs0[0]+'\nเลือกไว้: '+$('r_cur').value
+       +'\n\nบันทึกต่อไหม? (แนะนำให้กดยกเลิก แล้วแก้สกุลเงินก่อน)'))return;
+  if(cs0.length>1&&mode==='submitted'&&
+     !confirm('คำขอนี้มีหลายสกุลเงิน ('+cs0.join(', ')+')\n\n'
+       +'ควรแยกเป็นคำขอละสกุล — ส่งอนุมัติต่อไหม?'))return;
 
   const tAmt=ITEMS.reduce((s,x)=>s+num(x.amount),0);
   const tFee=ITEMS.reduce((s,x)=>s+num(x.fee),0);
@@ -1431,7 +1483,10 @@ function viewReq(id){
         ${r.pay_acct?`<div class="muted" style="font-size:11px;white-space:pre-wrap;line-height:1.6">${esc(r.pay_acct)}</div>`:''}</div>
       <div><div class="muted" style="font-size:11px">ยอดรวม</div>
         <b style="font-size:16px">${money2(r.total_amount)} ${cs}</b>
-        <div class="muted" style="font-size:11px">≈ ${money2(r.total_thb)} ฿</div></div>
+        <div class="muted" style="font-size:11px">${
+          (r.currency!=='THB'&&(+r.total_amount||0)>0&&(+r.total_thb||0)<=0)
+            ? '<span style="color:var(--red)">⚠️ ยังไม่ใส่เรท</span>'
+            : '≈ '+money2(r.total_thb)+' ฿'}</div></div>
       <div><div class="muted" style="font-size:11px">ผู้ยื่น</div><b>${esc(r.requester_name||r.requester||'-')}</b></div>
     </div>
     ${proofList(r).length?`<div style="background:#E9F6EE;border-left:5px solid var(--green);border-radius:9px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.7">
@@ -2233,6 +2288,7 @@ async function pfTestGas(){
       +(j.folder?'<br><span class="muted">โฟลเดอร์ปลายทาง: '+esc(j.folder)+'</span>':'');
   }catch(e){ $('pfg_stat').innerHTML='<b style="color:#D0212B">❌ '+esc(e.message)+'</b>'; }
 }
+
 
 /* ==================================================================
    สรุป
