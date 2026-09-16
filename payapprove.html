@@ -142,7 +142,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-17</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-18</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -168,8 +168,7 @@ tr:nth-child(even) td{background:#F8FAFD}
         <select id="fStatus" style="max-width:190px" onchange="PAGE=1;renderList()">
           <option value="">— ทุกสถานะ —</option>
           <option value="draft">📄 ร่าง</option>
-          <option value="submitted">⏳ รอหัวหน้าอนุมัติ</option>
-          <option value="mgr_approved">⏳ รอผู้บริหารอนุมัติ</option>
+          <option value="submitted">⏳ รอผู้บริหารอนุมัติ</option>
           <option value="approved">✅ อนุมัติแล้ว</option>
           <option value="paid">💸 จ่ายแล้ว</option>
           <option value="rejected">↩️ ตีกลับ</option>
@@ -221,26 +220,23 @@ tr:nth-child(even) td{background:#F8FAFD}
 
     <div class="card">
       <h2>🗺️ ภาพรวม — เส้นทางของ 1 คำขอ</h2>
-      <div class="sub-note">อ่านจากซ้ายไปขวา · แต่ละกล่องบอกว่า <b>ใครทำ</b> และ <b>กดปุ่มอะไร</b></div>
+      <div class="sub-note">อ่านจากซ้ายไปขวา · แต่ละกล่องบอกว่า <b>ใครทำ</b> และ <b>กดปุ่มอะไร</b><br>
+        ⚡ ระบบนี้ <b>อนุมัติชั้นเดียว</b> — จัดซื้อยื่นแล้วเข้าผู้บริหารเลย ไม่ผ่านหัวหน้าจัดซื้อ</div>
 
       <div class="hp-flow">
         <div class="hp-node c1"><div class="ic">📄</div><div class="ti">1. สร้างคำขอ</div>
           <div class="wh">ฝ่ายจัดซื้อ</div>
           <div class="do">ดึงงวดจ่าย → ใส่เหตุผล → <b>ส่งอนุมัติ</b></div></div>
         <div class="hp-arw">▸</div>
-        <div class="hp-node c2"><div class="ic">🧑‍💼</div><div class="ti">2. หัวหน้าจัดซื้อ</div>
-          <div class="wh">ตรวจยอด / เอกสาร</div>
-          <div class="do"><b>✔ หัวหน้าอนุมัติ</b> หรือ ↩️ ตีกลับ</div></div>
-        <div class="hp-arw">▸</div>
-        <div class="hp-node c3"><div class="ic">👑</div><div class="ti">3. ผู้บริหาร</div>
-          <div class="wh">อนุมัติจ่ายจริง</div>
+        <div class="hp-node c3"><div class="ic">👑</div><div class="ti">2. ผู้บริหารอนุมัติ</div>
+          <div class="wh">อนุมัติชั้นเดียว</div>
           <div class="do"><b>👑 อนุมัติจ่าย</b> หรือ ↩️ ตีกลับ</div></div>
         <div class="hp-arw">▸</div>
-        <div class="hp-node c4"><div class="ic">📢</div><div class="ti">4. แจ้งโอน</div>
+        <div class="hp-node c4"><div class="ic">📢</div><div class="ti">3. แจ้งโอน</div>
           <div class="wh">จัดซื้อ / บัญชี</div>
           <div class="do">คัดลอกข้อความ → วางในกลุ่มแชท</div></div>
         <div class="hp-arw">▸</div>
-        <div class="hp-node c5"><div class="ic">📎</div><div class="ti">5. แนบหลักฐาน</div>
+        <div class="hp-node c5"><div class="ic">📎</div><div class="ti">4. แนบหลักฐาน</div>
           <div class="wh">ผู้โอนเงิน</div>
           <div class="do">แนบสลิป → <b>ยืนยันจ่ายแล้ว</b></div></div>
       </div>
@@ -249,9 +245,9 @@ tr:nth-child(even) td{background:#F8FAFD}
         <div class="hp-node cx" style="flex:1 1 100%">
           <div style="display:flex;gap:10px;align-items:flex-start">
             <div class="ic">↩️</div>
-            <div><div class="ti">ถ้าถูกตีกลับ (ขั้น 2 หรือ 3)</div>
+            <div><div class="ti">ถ้าถูกตีกลับ (ขั้น 2)</div>
               <div class="wh">คำขอกลับไปหาผู้ยื่น พร้อมเหตุผลที่ตีกลับ — แก้แล้วกด <b>ส่งอนุมัติ</b> อีกครั้ง
-                จะเริ่มนับใหม่ที่ขั้น 2 (ไม่ต้องสร้างคำขอใหม่ เลขคำขอเดิม ประวัติยังอยู่ครบ)</div></div>
+                กลับเข้าคิวผู้บริหารตามเดิม (ไม่ต้องสร้างคำขอใหม่ เลขคำขอเดิม ประวัติยังอยู่ครบ)</div></div>
           </div></div>
       </div>
     </div>
@@ -323,7 +319,7 @@ tr:nth-child(even) td{background:#F8FAFD}
               <span class="hp-btn o">💾 บันทึกร่าง</span><span class="hp-btn y">📤 ส่งอนุมัติ</span></div></div>
           <div class="hp-tw"><table class="hp-t" style="margin-top:9px"><tbody>
             <tr><td style="width:150px"><b>💾 บันทึกร่าง</b></td><td>เก็บไว้ทำต่อ — ยังไม่ส่งถึงใคร แก้ได้ตลอด</td></tr>
-            <tr><td><b>📤 ส่งอนุมัติ</b></td><td>ส่งเข้าคิวหัวหน้าจัดซื้อ — หลังส่งแล้วแก้ไม่ได้ จนกว่าจะถูกตีกลับ</td></tr>
+            <tr><td><b>📤 ส่งอนุมัติ</b></td><td>ส่งเข้าคิว<b>ผู้บริหาร</b>โดยตรง — หลังส่งแล้วผู้ยื่นแก้ไม่ได้ จนกว่าจะถูกตีกลับ</td></tr>
           </tbody></table></div>
         </div>
       </div>
@@ -331,14 +327,15 @@ tr:nth-child(even) td{background:#F8FAFD}
       <div class="hp-step">
         <div class="bub">5</div>
         <div>
-          <h4>อนุมัติ 2 ชั้น <span class="hp-who">หัวหน้าจัดซื้อ</span> <span class="hp-who">ผู้บริหาร</span></h4>
-          <p>ดูคำขอที่รอตัวเองได้ที่แท็ป <b>⏳ รออนุมัติ</b> (มีตัวเลขแจ้งเตือนบนแท็ป) → กด <b>👁 ดู</b> → ปุ่มจะขึ้นตามสิทธิ์</p>
-          <div class="hp-ui"><div class="cap">ท้ายหน้าดูคำขอ — หัวหน้าจัดซื้อ</div>
-            <div class="hp-bar"><span class="hp-btn o">ปิด</span><span class="hp-btn o">🖨️ พิมพ์ใบขออนุมัติ</span>
-              <span class="hp-btn r">↩️ ตีกลับ</span><span class="hp-btn g">✔ หัวหน้าอนุมัติ</span></div></div>
+          <h4>ผู้บริหารอนุมัติ <span class="hp-who">ผู้บริหาร</span></h4>
+          <p>ส่งแล้วเข้าคิวผู้บริหาร<b>ทันที</b> — ดูได้ที่แท็ป <b>⏳ รออนุมัติ</b> (มีตัวเลขแจ้งเตือนบนแท็ป)
+            → กด <b>👁 ดู</b> → ปุ่มขึ้นตามสิทธิ์</p>
           <div class="hp-ui"><div class="cap">ท้ายหน้าดูคำขอ — ผู้บริหาร</div>
             <div class="hp-bar"><span class="hp-btn o">ปิด</span><span class="hp-btn o">🖨️ พิมพ์ใบขออนุมัติ</span>
               <span class="hp-btn r">↩️ ตีกลับ</span><span class="hp-btn g">👑 อนุมัติจ่าย</span></div></div>
+          <div class="hp-ui"><div class="cap">ท้ายหน้าดูคำขอ — หัวหน้าจัดซื้อ (ตีกลับได้ แต่ไม่มีสิทธิ์อนุมัติ)</div>
+            <div class="hp-bar"><span class="hp-btn o">ปิด</span><span class="hp-btn o">🖨️ พิมพ์ใบขออนุมัติ</span>
+              <span class="hp-btn o">✏️ แก้ไข</span><span class="hp-btn r">↩️ ตีกลับ</span></div></div>
           <div class="hp-tip">💡 ตีกลับต้องใส่เหตุผล — มีปุ่มเหตุผลสำเร็จรูปให้กด (ยอดไม่ตรง / ไม่มีหลักฐาน / ขอเลื่อนกำหนด)
             ผู้ยื่นจะเห็นเป็นกรอบแดงในคำขอ</div>
         </div>
@@ -386,8 +383,7 @@ tr:nth-child(even) td{background:#F8FAFD}
       <h2>🏷️ ป้ายสถานะ อ่านอย่างไร</h2>
       <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:190px">ป้าย</th><th style="width:190px">รออะไร / ใครต้องทำต่อ</th><th>แก้ไขคำขอได้ไหม</th></tr></thead><tbody>
         <tr><td><span class="pill st-draft">📄 ร่าง</span></td><td>ผู้ยื่นยังไม่ส่ง</td><td><span class="hp-chk">✔</span> ได้ (เฉพาะผู้ยื่น)</td></tr>
-        <tr><td><span class="pill st-submitted">⏳ รอหัวหน้าอนุมัติ</span></td><td>หัวหน้าจัดซื้อ</td><td><span class="hp-x">✕</span> ไม่ได้</td></tr>
-        <tr><td><span class="pill st-mgr">⏳ รอผู้บริหารอนุมัติ</span></td><td>ผู้บริหาร</td><td><span class="hp-x">✕</span> ไม่ได้</td></tr>
+        <tr><td><span class="pill st-submitted">⏳ รอผู้บริหารอนุมัติ</span></td><td>ผู้บริหาร</td><td><span class="hp-x">✕</span> ผู้ยื่นแก้ไม่ได้ (หัวหน้าจัดซื้อแก้ได้)</td></tr>
         <tr><td><span class="pill st-rejected">↩️ ตีกลับ</span></td><td>ผู้ยื่นต้องแก้แล้วส่งใหม่</td><td><span class="hp-chk">✔</span> ได้</td></tr>
         <tr><td><span class="pill st-approved">✅ อนุมัติแล้ว</span></td><td>โอนเงิน + แนบหลักฐาน</td><td><span class="hp-x">✕</span> ไม่ได้</td></tr>
         <tr><td><span class="pill st-paid">💸 จ่ายแล้ว</span></td><td>จบขั้นตอน</td><td><span class="hp-x">✕</span> ไม่ได้</td></tr>
@@ -399,8 +395,7 @@ tr:nth-child(even) td{background:#F8FAFD}
       <div class="hp-tw"><table class="hp-t"><thead><tr><th>การกระทำ</th><th style="width:96px">จัดซื้อ</th>
         <th style="width:112px">หัวหน้าจัดซื้อ</th><th style="width:96px">ผู้บริหาร</th></tr></thead><tbody>
         <tr><td>สร้าง / แก้ไข / ส่งคำขอของตัวเอง</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
-        <tr><td>✔ หัวหน้าอนุมัติ</td><td class="hp-x">✕</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
-        <tr><td>👑 อนุมัติจ่าย</td><td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
+        <tr><td>👑 อนุมัติจ่าย <span class="muted">(ชั้นเดียว)</span></td><td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
         <tr><td>↩️ ตีกลับ</td><td class="hp-x">✕</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
         <tr><td>📢 แจ้งโอนเงิน · 📎 แนบหลักฐาน</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
         <tr><td>💸 ยืนยันจ่ายแล้ว</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
@@ -413,7 +408,10 @@ tr:nth-child(even) td{background:#F8FAFD}
       <h2>❓ ปัญหาที่พบบ่อย</h2>
       <div class="hp-tw"><table class="hp-t"><tbody>
         <tr><td style="width:300px"><b>ส่งอนุมัติไปแล้ว อยากแก้</b></td>
-          <td>แก้เองไม่ได้ — ขอให้ผู้อนุมัติกด <b>↩️ ตีกลับ</b> คำขอจะกลับมาแก้ได้ เลขคำขอเดิม</td></tr>
+          <td>ผู้ยื่นแก้เองไม่ได้ — ขอให้ผู้บริหารหรือหัวหน้าจัดซื้อกด <b>↩️ ตีกลับ</b> คำขอจะกลับมาแก้ได้ เลขคำขอเดิม</td></tr>
+        <tr><td><b>ทำไมไม่มีปุ่ม "✔ หัวหน้าอนุมัติ" แล้ว</b></td>
+          <td>ระบบนี้เปลี่ยนเป็น<b>อนุมัติชั้นเดียว</b> — จัดซื้อยื่นแล้วเข้าผู้บริหารเลย
+            หัวหน้าจัดซื้อยัง <b>แก้ไข</b> และ <b>↩️ ตีกลับ</b> ได้ แต่ไม่มีขั้นอนุมัติของตัวเอง</td></tr>
         <tr><td><b>ดึงงวดจ่ายแล้วไม่เจองวดที่ต้องการ</b></td>
           <td>งวดนั้นถูกยื่นในคำขออื่นไปแล้ว — ระบบซ่อนงวดที่ยื่นแล้วเพื่อกันจ่ายซ้ำ ลองล้างตัวกรองวันที่ดูก่อน</td></tr>
         <tr><td><b>ปุ่ม 📢 แจ้งโอนเงิน ไม่ขึ้น</b></td>
@@ -760,7 +758,8 @@ const thShort=d=>{if(!d)return '-';const x=new Date(d+'T00:00:00');
 /* ---------- สถานะ ---------- */
 const ST={
   draft:       {t:'📄 ร่าง',                cls:'st-draft'},
-  submitted:   {t:'⏳ รอหัวหน้าอนุมัติ',     cls:'st-submitted'},
+  submitted:   {t:'⏳ รอผู้บริหารอนุมัติ',   cls:'st-submitted'},
+  /* mgr_approved = สถานะของใบเก่าสมัยที่ยังผ่านหัวหน้าจัดซื้อ — ผู้บริหารกดอนุมัติต่อได้ปกติ */
   mgr_approved:{t:'⏳ รอผู้บริหารอนุมัติ',   cls:'st-mgr'},
   approved:    {t:'✅ อนุมัติแล้ว',          cls:'st-approved'},
   paid:        {t:'💸 จ่ายแล้ว',            cls:'st-paid'},
@@ -795,9 +794,9 @@ async function boot(){
   MY_NAME=(session.user.user_metadata&&(session.user.user_metadata.full_name||session.user.user_metadata.name))||ME.split('@')[0];
   $('rolePill').textContent=IS_EXEC?'👑 ผู้บริหาร':(IS_MGR?'🧑‍💼 หัวหน้าจัดซื้อ':'📦 จัดซื้อ');
   $('todoNote').innerHTML=IS_EXEC
-    ? 'คำขอที่ <b>หัวหน้าอนุมัติแล้ว</b> รอผู้บริหารอนุมัติขั้นสุดท้าย'
-    : (IS_MGR ? 'คำขอที่ <b>ส่งอนุมัติแล้ว</b> รอหัวหน้าจัดซื้อตรวจสอบ'
-              : 'คุณไม่มีสิทธิ์อนุมัติ — แท็บนี้แสดงคำขอที่รอผู้อื่นดำเนินการ');
+    ? 'คำขอที่ <b>ส่งอนุมัติแล้ว</b> รอคุณอนุมัติจ่าย — ระบบนี้อนุมัติชั้นเดียว ไม่ผ่านหัวหน้าจัดซื้อ'
+    : 'คำขอที่ <b>ส่งอนุมัติแล้ว</b> รอผู้บริหารอนุมัติจ่าย'
+      +(IS_MGR?' — คุณตีกลับได้ถ้าข้อมูลไม่ครบ':'');
   if(!IS_BUYER&&!IS_MGR)$('newBtn').style.display='none';
 
   sb.auth.onAuthStateChange(async(e)=>{
@@ -1003,8 +1002,7 @@ function renderMine(){
   $('mineBody').innerHTML=reqTable(rows);
 }
 function todoRows(){
-  if(IS_EXEC)return REQS.filter(r=>r.status==='mgr_approved');
-  if(IS_MGR) return REQS.filter(r=>r.status==='submitted');
+  /* คนอนุมัติมีคนเดียว = ผู้บริหาร → ทุกคนเห็นคิวเดียวกัน */
   return REQS.filter(r=>r.status==='submitted'||r.status==='mgr_approved');
 }
 function renderTodo(){
@@ -1014,7 +1012,7 @@ function renderTodo(){
   $('todoBody').innerHTML=reqTable(rows);
 }
 
-/* สิทธิ์แก้ไข: เจ้าของแก้ได้เฉพาะร่าง/ตีกลับ · หัวหน้าแก้ได้ก่อนผู้บริหารอนุมัติ */
+/* สิทธิ์แก้ไข: เจ้าของแก้ได้เฉพาะร่าง/ตีกลับ · หัวหน้าจัดซื้อแก้ได้ก่อนผู้บริหารอนุมัติ */
 function canEditReq(r){
   if(r.status==='approved'||r.status==='paid')return false;
   if(r.requester===ME&&(r.status==='draft'||r.status==='rejected'))return true;
@@ -1378,11 +1376,10 @@ function flowBar(r){
     return step('📤 ยื่นคำขอ','done')+'<span class="arrow">→</span>'
       +step('↩️ ตีกลับ — รอผู้ยื่นแก้ไข','bad');
   }
+  /* จัดซื้อยื่น → ผู้บริหารอนุมัติเลย (ไม่ผ่านหัวหน้าจัดซื้อ) */
   return step('📤 ยื่นคำขอ', s==='draft'?'now':'done')
     +'<span class="arrow">→</span>'
-    +step('🧑‍💼 หัวหน้าจัดซื้อ', A(['mgr_approved','approved','paid'].includes(s), s==='submitted'))
-    +'<span class="arrow">→</span>'
-    +step('👑 ผู้บริหาร', A(['approved','paid'].includes(s), s==='mgr_approved'))
+    +step('👑 ผู้บริหารอนุมัติ', A(['approved','paid'].includes(s), s==='submitted'||s==='mgr_approved'))
     +'<span class="arrow">→</span>'
     +step('💸 จ่ายเงิน', A(s==='paid', s==='approved'));
 }
@@ -1409,7 +1406,8 @@ function viewReq(id){
 
   const lg=LOGS.filter(l=>String(l.req_id)===String(id))
     .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
-  const LA={created:'สร้างคำขอ',updated:'แก้ไข',submitted:'ส่งอนุมัติ',checked:'หัวหน้าอนุมัติ',
+  /* checked = ใบเก่าที่เคยผ่านหัวหน้าจัดซื้อ เก็บชื่อไว้ให้ประวัติอ่านได้ */
+  const LA={created:'สร้างคำขอ',updated:'แก้ไข',submitted:'ส่งอนุมัติ',checked:'หัวหน้าอนุมัติ (ใบเก่า)',
             approved:'ผู้บริหารอนุมัติ',rejected:'ตีกลับ',paid:'ยืนยันจ่ายแล้ว',xfer:'📢 แจ้งโอนเงิน',proof:'📎 แนบหลักฐาน'};
 
   $('vBody').innerHTML=`
@@ -1453,12 +1451,12 @@ function viewReq(id){
   if(canEditReq(r))btns+=`<button class="btn ghost" onclick="$('viewBg').style.display='none';openReq('${r.id}')">✏️ แก้ไข</button>`;
   if(r.status==='draft'&&r.requester===ME)
     btns+=`<button class="btn gold" onclick="act('${r.id}','submitted')">📤 ส่งอนุมัติ</button>`;
-  if(r.status==='submitted'&&IS_MGR)
-    btns+=`<button class="btn red" onclick="openReject('${r.id}')">↩️ ตีกลับ</button>
-           <button class="btn green" onclick="act('${r.id}','mgr_approved')">✔ หัวหน้าอนุมัติ</button>`;
-  if(r.status==='mgr_approved'&&IS_EXEC)
+  /* ผู้บริหารอนุมัติได้เลยจากสถานะส่งอนุมัติ — mgr_approved รับไว้เผื่อใบเก่าที่ค้างอยู่ */
+  if(['submitted','mgr_approved'].includes(r.status)&&IS_EXEC)
     btns+=`<button class="btn red" onclick="openReject('${r.id}')">↩️ ตีกลับ</button>
            <button class="btn green" onclick="act('${r.id}','approved')">👑 อนุมัติจ่าย</button>`;
+  else if(['submitted','mgr_approved'].includes(r.status)&&IS_MGR)
+    btns+=`<button class="btn red" onclick="openReject('${r.id}')">↩️ ตีกลับ</button>`;
   if(['approved','paid'].includes(r.status))
     btns+=`<button class="btn gold" onclick="$('viewBg').style.display='none';openXfer('${r.id}')">📢 แจ้งโอนเงิน</button>`
           +`<button class="btn green" onclick="openProof('${r.id}')">📎 แนบหลักฐานการโอน${
@@ -1471,16 +1469,15 @@ function viewReq(id){
 
 async function act(id,to){
   const r=REQS.find(x=>String(x.id)===String(id)); if(!r)return;
-  const label={submitted:'ส่งอนุมัติ',mgr_approved:'หัวหน้าอนุมัติ',approved:'อนุมัติจ่าย',paid:'ยืนยันจ่ายแล้ว'}[to];
+  const label={submitted:'ส่งอนุมัติ',approved:'อนุมัติจ่าย',paid:'ยืนยันจ่ายแล้ว'}[to];
   if(!confirm(label+' คำขอ '+(r.req_no||'')+' ?\n\nยอดรวม '+money2(r.total_thb)+' ฿'))return;
   const up={status:to,updated_at:new Date().toISOString()};
   const now=new Date().toISOString();
-  if(to==='mgr_approved'){up.checked_by=ME;up.checked_at=now;}
   if(to==='approved'){up.approved_by=ME;up.approved_at=now;}
   if(to==='paid'){up.paid_by=ME;up.paid_at=now;}
   const {error}=await sb.from('pay_requests').update(up).eq('id',id);
   if(error)return alert('ไม่สำเร็จ: '+error.message);
-  await addLog(id,{submitted:'submitted',mgr_approved:'checked',approved:'approved',paid:'paid'}[to],label);
+  await addLog(id,{submitted:'submitted',approved:'approved',paid:'paid'}[to],label);
   $('viewBg').style.display='none';
   await loadAll();
   toast(label+'แล้ว ✅');
@@ -1557,8 +1554,6 @@ function printReq(id){
     <div class="sign-row">
       <div class="sign-box"><div class="sign-line"></div>ผู้ขออนุมัติ<div class="sign-sub">(ฝ่ายจัดซื้อ)</div>
         <div style="color:#666;font-size:11px">${esc(r.requester_name||r.requester||'')}</div></div>
-      <div class="sign-box"><div class="sign-line"></div>ผู้ตรวจสอบ<div class="sign-sub">(หัวหน้าจัดซื้อ)</div>
-        <div style="color:#666;font-size:11px">${esc(r.checked_by||'')}</div></div>
       <div class="sign-box"><div class="sign-line"></div>ผู้ตรวจสอบ<div class="sign-sub">(ฝ่ายบัญชี)</div></div>
       <div class="sign-box"><div class="sign-line"></div>ผู้อนุมัติจ่าย<div class="sign-sub">(ผู้บริหาร)</div>
         <div style="color:#666;font-size:11px">${esc(r.approved_by||'')}</div></div>
@@ -2288,7 +2283,7 @@ function exportReport(){
   const rows=REQS.filter(r=>String(r.req_date||'').slice(0,7)===mo);
   if(!rows.length)return toast('เดือนนี้ไม่มีข้อมูล');
   const out=[['เลขคำขอ','วันที่ยื่น','กำหนดชำระ','จ่ายในนาม','ช่องทาง','ช่องทางการชำระเงิน','เลขบัญชีที่จ่าย','สกุล','ยอด','ค่าธรรมเนียม','รวมบาท',
-              'สถานะ','ด่วน','ผู้ยื่น','หัวหน้าอนุมัติ','ผู้บริหารอนุมัติ','เหตุผล','หมายเหตุ','เหตุผลที่ตีกลับ']];
+              'สถานะ','ด่วน','ผู้ยื่น','หัวหน้าอนุมัติ (ใบเก่า)','ผู้บริหารอนุมัติ','เหตุผล','หมายเหตุ','เหตุผลที่ตีกลับ']];
   rows.forEach(r=>out.push([r.req_no||'',r.req_date||'',r.due_date||'',r.pay_type||'',r.channel||'',
     r.pay_method||'', r.pay_acct||'',
     r.currency||'',+r.total_amount||0,+r.total_fee||0,+r.total_thb||0,(ST[r.status]||{}).t||r.status,
