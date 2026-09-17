@@ -142,7 +142,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-23</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-24</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -928,6 +928,19 @@ function itemCurs(){
     const b=billOf(p.bill_id)||{}; return b.currency||'';
   }).filter(Boolean))];
 }
+/* สกุลเงินตามบิลของคำขอที่บันทึกไว้แล้ว — ใช้ได้ทุกที่ ไม่ต้องเปิดฟอร์ม
+   ยอดในงวดถูกกรอกเป็นสกุลของบิล → บิลคือแหล่งอ้างอิงของ "หน่วย" */
+function reqCurs(r){
+  return [...new Set((r&&Array.isArray(r.items)?r.items:[]).map(function(i){
+    const pp=payOf(i.pay_id); if(!pp)return '';
+    const b=billOf(pp.bill_id)||{}; return b.currency||'';
+  }).filter(Boolean))];
+}
+/* คืนสกุลที่ควรเป็น ถ้าไม่ตรงกับที่บันทึกไว้ — ไม่ตรงคือ "หน่วยผิด" ต้องเห็นทุกครั้งที่เปิด */
+function curMismatch(r){
+  const cs=reqCurs(r);
+  return (cs.length===1&&cs[0]!==r.currency) ? cs[0] : '';
+}
 function syncCur(){
   const cs=itemCurs();
   if(cs.length===1){ $('r_cur').value=cs[0]; }
@@ -1042,7 +1055,8 @@ function reqTable(rows,opts){
       <td>${esc(coShort(r.pay_type))}</td>
       <td style="font-size:11.5px">${esc(r.channel||'-')}</td>
       <td class="num">${(r.items||[]).length}</td>
-      <td class="num">${money(r.total_amount)} ${curSym(r.currency)}</td>
+      <td class="num">${money(r.total_amount)} ${curSym(r.currency)}${
+        curMismatch(r)?` <span title="หน่วยเงินไม่ตรงกับบิล — ควรเป็น ${esc(curMismatch(r))}" style="color:var(--red);font-weight:800">⚠</span>`:''}</td>
       <td class="num"><b>${money(r.total_thb)}</b></td>
       <td>${stPill(r.status)}</td>
       <td style="font-size:11.5px">${esc(r.requester_name||r.requester||'-')}</td>
@@ -1510,6 +1524,17 @@ function viewReq(id){
             : '≈ '+money2(r.total_thb)+' ฿'}</div></div>
       <div><div class="muted" style="font-size:11px">ผู้ยื่น</div><b>${esc(r.requester_name||r.requester||'-')}</b></div>
     </div>
+    ${(function(){
+      const should=curMismatch(r); if(!should)return '';
+      return `<div style="background:#FCE4E4;border-left:5px solid var(--red);border-radius:9px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.7">
+        <b style="color:var(--red)">⚠️ หน่วยเงินไม่ตรงกับบิลใน Purchase Board</b><br>
+        ใบนี้บันทึกเป็น <b>${esc(r.currency||'-')}</b> แต่บิลของงวดที่ดึงมาเป็น <b>${esc(should)}</b>
+        — ตัวเลขถูก แต่หน่วยผิด อ่านผิดทั้งใบ
+        <div class="row" style="margin-top:8px">
+          <button class="btn mini red" onclick="fixReqCur('${r.id}','${esc(should)}')">แก้เป็น ${esc(should)} ตามบิล</button>
+          <span class="muted" style="font-size:11.5px">ถ้า ${esc(r.currency||'-')} ถูกจริง ให้ไปแก้สกุลเงินของบิลในระบบวางแผนจ่ายเงินแทน</span>
+        </div></div>`;
+    })()}
     ${proofList(r).length?`<div style="background:#E9F6EE;border-left:5px solid var(--green);border-radius:9px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.7">
       <b style="color:var(--green)">📎 เอกสารแนบ ${proofList(r).length} ไฟล์</b>
       ${r.proof_by?`<span class="muted"> · แนบโดย ${esc(r.proof_by)}${r.proof_at?(' · '+new Date(r.proof_at).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'})):''}</span>`:''}
@@ -1552,6 +1577,21 @@ function viewReq(id){
     btns+=`<button class="btn" onclick="act('${r.id}','paid')">💸 ยืนยันจ่ายแล้ว</button>`;
   $('vActions').innerHTML=btns;
   $('viewBg').style.display='flex';
+}
+
+/* แก้หน่วยเงินของใบที่บันทึกผิดไว้ — ตัวเลขยอดไม่เปลี่ยน เปลี่ยนแค่หน่วย */
+async function fixReqCur(id,should){
+  const r=REQS.find(x=>String(x.id)===String(id)); if(!r)return;
+  if(!confirm('แก้หน่วยเงินของ '+(r.req_no||'')+'\n\n'
+    +'จาก '+(r.currency||'-')+'  →  '+should+'\n\n'
+    +'ยอด '+money2(r.total_amount)+' ไม่เปลี่ยน เปลี่ยนแค่หน่วยที่แสดง'))return;
+  const {error}=await sb.from('pay_requests')
+    .update({currency:should,updated_at:new Date().toISOString()}).eq('id',id);
+  if(error)return alert('แก้ไม่สำเร็จ: '+error.message);
+  await addLog(id,'updated','แก้หน่วยเงิน '+(r.currency||'-')+' → '+should+' (ตามบิลใน Purchase Board)');
+  await loadAll();
+  viewReq(id);                      // เปิดใบเดิมค้างไว้ ให้เห็นผลทันที
+  toast('แก้หน่วยเงินเป็น '+should+' แล้ว ✅');
 }
 
 async function act(id,to){
