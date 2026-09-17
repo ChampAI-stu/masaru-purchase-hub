@@ -142,7 +142,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-25</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-26</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -393,8 +393,8 @@ tr:nth-child(even) td{background:#F8FAFD}
         <tr><td><span class="pill st-draft">📄 ร่าง</span></td><td>ผู้ยื่นยังไม่ส่ง</td><td><span class="hp-chk">✔</span> ได้ (เฉพาะผู้ยื่น)</td></tr>
         <tr><td><span class="pill st-submitted">⏳ รอผู้บริหารอนุมัติ</span></td><td>ผู้บริหาร</td><td><span class="hp-x">✕</span> ผู้ยื่นแก้ไม่ได้ (หัวหน้าจัดซื้อแก้ได้)</td></tr>
         <tr><td><span class="pill st-rejected">↩️ ตีกลับ</span></td><td>ผู้ยื่นต้องแก้แล้วส่งใหม่</td><td><span class="hp-chk">✔</span> ได้</td></tr>
-        <tr><td><span class="pill st-approved">✅ อนุมัติแล้ว</span></td><td>โอนเงิน + แนบหลักฐาน</td><td><span class="hp-x">✕</span> ไม่ได้</td></tr>
-        <tr><td><span class="pill st-paid">💸 จ่ายแล้ว</span></td><td>จบขั้นตอน</td><td><span class="hp-x">✕</span> ไม่ได้</td></tr>
+        <tr><td><span class="pill st-approved">✅ อนุมัติแล้ว</span></td><td>โอนเงิน + แนบหลักฐาน</td><td><span class="hp-x">✕</span> ล็อกแล้ว แก้ไม่ได้ทุกบทบาท</td></tr>
+        <tr><td><span class="pill st-paid">💸 จ่ายแล้ว</span></td><td>จบขั้นตอน</td><td><span class="hp-x">✕</span> ล็อกแล้ว แก้ไม่ได้ทุกบทบาท</td></tr>
       </tbody></table></div>
     </div>
 
@@ -402,7 +402,10 @@ tr:nth-child(even) td{background:#F8FAFD}
       <h2>🔑 ใครทำอะไรได้</h2>
       <div class="hp-tw"><table class="hp-t"><thead><tr><th>การกระทำ</th><th style="width:96px">จัดซื้อ</th>
         <th style="width:112px">หัวหน้าจัดซื้อ</th><th style="width:96px">ผู้บริหาร</th></tr></thead><tbody>
-        <tr><td>สร้าง / แก้ไข / ส่งคำขอของตัวเอง</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
+        <tr><td>สร้าง / ส่งคำขอ</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
+        <tr><td>✏️ แก้ไขคำขอ <span class="muted">(ใบที่ยังไม่อนุมัติ — ของใครก็ได้)</span></td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
+        <tr><td>🗑️ ลบคำขอ <span class="muted">(ใบที่ยังไม่อนุมัติ)</span></td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
+        <tr><td>🗑️ ลบใบที่<b>อนุมัติ/จ่ายแล้ว</b> <span class="muted">(ต้องพิมพ์เลขคำขอยืนยัน)</span></td><td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
         <tr><td>👑 อนุมัติจ่าย <span class="muted">(ชั้นเดียว)</span></td><td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
         <tr><td>↩️ ตีกลับ</td><td class="hp-x">✕</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
         <tr><td>📎 แนบเอกสาร <span class="muted">(ทุกสถานะ)</span></td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
@@ -1154,24 +1157,20 @@ function renderTodo(){
 }
 
 /* ═══ สิทธิ์แก้ไข ═══
-   เจ้าของ: ร่าง / ตีกลับ  ·  หัวหน้าจัดซื้อ: ทุกใบก่อนอนุมัติ
-   ผู้บริหาร: ทุกใบก่อนอนุมัติ (เดิมแก้ไม่ได้เลย ทำให้ต้องตีกลับทั้งใบเพราะพิมพ์ผิดตัวเดียว) */
+   ทีมจัดซื้อทำงานแทนกัน → ใครในทีมก็แก้ใบที่ยังไม่อนุมัติได้ (ประวัติบันทึกว่าใครแก้)
+   ใบที่อนุมัติ/จ่ายแล้ว = ล็อกทุกบทบาท ห้ามแก้ย้อนหลัง */
 function canEditReq(r){
+  if(!r)return false;
   if(r.status==='approved'||r.status==='paid')return false;
-  if(r.requester===ME&&(r.status==='draft'||r.status==='rejected'))return true;
-  if(IS_MGR||IS_EXEC)return true;
-  return false;
+  return IS_BUYER||IS_MGR||IS_EXEC;
 }
 /* ═══ สิทธิ์ลบ ═══
-   ร่าง/ตีกลับ  : เจ้าของ หรือ หัวหน้า/ผู้บริหาร
-   ส่งอนุมัติแล้ว: หัวหน้า/ผู้บริหาร
-   อนุมัติ/จ่ายแล้ว: ผู้บริหารเท่านั้น + ต้องพิมพ์เลขคำขอยืนยัน (เป็นหลักฐานการเงินแล้ว) */
+   ยังไม่อนุมัติ    : ทีมจัดซื้อ / หัวหน้า / ผู้บริหาร
+   อนุมัติ/จ่ายแล้ว : ผู้บริหารเท่านั้น + ต้องพิมพ์เลขคำขอยืนยัน (เป็นหลักฐานการเงินแล้ว) */
 function canDelReq(r){
   if(!r)return false;
-  if(r.status==='draft'||r.status==='rejected')
-    return r.requester===ME||IS_MGR||IS_EXEC;
-  if(r.status==='submitted'||r.status==='mgr_approved')return IS_MGR||IS_EXEC;
-  return IS_EXEC;                       // approved / paid
+  if(r.status==='approved'||r.status==='paid')return IS_EXEC;
+  return IS_BUYER||IS_MGR||IS_EXEC;
 }
 async function delReq(id){
   const r=REQS.find(x=>String(x.id)===String(id)); if(!r)return;
