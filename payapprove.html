@@ -142,7 +142,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-29</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-30</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -500,7 +500,7 @@ tr:nth-child(even) td{background:#F8FAFD}
             <b style="font-size:15px" id="fx_dst">-</b></div>
           <div class="fld" style="margin:0;min-width:140px"><label>เรทแปลง (1 <span id="fx_u1">-</span> = ? <span id="fx_u2">-</span>)</label>
             <input id="r_fx" type="number" step="0.000001" placeholder="เช่น 0.1400"
-                   oninput="FX_WHY='';applyFx()"></div>
+                   oninput="FX_WHY='';FX_TOUCHED=true;applyFx()"></div>
           <div><div class="muted" style="font-size:11px">ยอดโอนรวม</div>
             <b style="font-size:15px" id="fx_out">-</b></div>
           <div style="flex:1"></div>
@@ -516,8 +516,10 @@ tr:nth-child(even) td{background:#F8FAFD}
             <input id="r_rate" type="number" step="0.0001" placeholder="เช่น 36.20" oninput="applyRateAll()"></div>
           <div><div class="muted" style="font-size:11px">ยอดรวมเป็นบาท</div>
             <b style="font-size:15px" id="rb_out">-</b></div>
+          <button class="btn mini ghost" id="rb_reset" style="display:none"
+            onclick="rateReset()" title="คืนเรทที่ดึงมาจากระบบวางแผนจ่ายเงิน">↺ เรทตามระบบ</button>
           <div style="flex:1"></div>
-          <span class="muted" style="font-size:11.5px">ใส่ช่องนี้ = ใช้กับทุกแถว · หรือพิมพ์ทีละแถวในคอลัมน์ "เรท ฿"</span>
+          <span class="muted" style="font-size:11.5px">ใส่ช่องนี้ = ใช้กับทุกแถว · ลบทิ้งได้ · หรือพิมพ์ทีละแถวในคอลัมน์ "เรท ฿"</span>
         </div>
         <div class="muted" style="font-size:11.5px;margin-top:6px" id="rb_hint"></div>
       </div>
@@ -982,30 +984,68 @@ function srcCur(){
   if(cs.length===1)return cs[0];
   return cs.length?'':'';                    // ปนหลายสกุล = ไม่แปลงอัตโนมัติ
 }
-/* ดึงงวดมาใหม่: ตั้งสกุลที่โอนจริงให้เท่าต้นทางก่อน (ไม่แปลง) แล้วให้คนเลือกเปลี่ยนเอง */
+/* ดึงงวดมาใหม่ → ตั้ง "สกุลที่โอนจริง" ให้เอง
+   ① งวดระบุไว้แล้วว่าโอนเป็น USD → ตั้ง USD เลย (ยอด USD มีอยู่แล้ว ไม่ต้องให้ใครแปลง)
+   ② ไม่ได้ระบุ                  → ใช้สกุลตามบิล (ไม่แปลง) */
 function syncCur(){
-  const sc=srcCur();
-  if(sc&&!ITEMS.some(i=>num(i.fx))) $('r_cur').value=sc;
+  if(!FX_TOUCHED){
+    const xc=[...new Set(ITEMS.map(i=>String(i.xf_cur||'')).filter(Boolean))];
+    const sc=srcCur();
+    if(xc.length===1)       $('r_cur').value=xc[0];
+    else if(sc&&!xc.length) $('r_cur').value=sc;
+  }
   applyFx();
 }
-/* เรทแปลง: ยอดโอน = ยอดต้นทาง × เรท  (ต้นทาง→ปลายทาง) */
+/* ═══ คิดยอดโอน ═══
+   ① แถวที่ระบบวางแผนจ่ายเงินคิดยอดปลายทางไว้แล้ว (xf_*) → ใช้ตัวเลขนั้นตรง ๆ
+      ไม่ต้องใส่เรท ไม่คิดใหม่ เพื่อให้ตรงกับใบปะหน้าเป๊ะ ๆ
+   ② แถวที่ยังไม่มี → ยอดโอน = ยอดต้นทาง × เรทที่กรอกในช่อง (ต้นทาง→ปลายทาง) */
 function applyFx(){
   const sc=srcCur(), dst=$('r_cur').value;
   const need = !!sc && sc!==dst;                     // ต้องแปลงเมื่อสกุลต่างกัน
-  if(need){ const a=fxAuto(); if(a)FX_WHY=a.why; } else FX_WHY='';
+  /* ทุกแถวมียอดปลายทางจากระบบครบ = ไม่ต้องพึ่งเรทที่คนกรอกเลย */
+  const auto = need && !!ITEMS.length && ITEMS.every(it=>it.manual||xfFit(it,dst));
+
+  /* ช่องเรทแปลง: โหมดอัตโนมัติ = เติมเรทที่ระบบใช้จริงให้ดู แล้วล็อกไม่ให้แก้ */
+  const fxEl=$('r_fx');
+  if(auto){
+    const s=ITEMS.reduce((a,x)=>a+num(x.src_amount),0);
+    const d=ITEMS.reduce((a,x)=>a+(num(x.xf_amount)||num(x.amount)),0);
+    const e=s>0?+(d/s).toFixed(8):0;
+    if(fxEl){ fxEl.value=e||''; fxEl.disabled=true; }
+    FX_AUTOSET=true; FX_WHY='';
+  }else{
+    if(fxEl){ if(FX_AUTOSET)fxEl.value=''; fxEl.disabled=false; }
+    FX_AUTOSET=false;
+    if(need&&!FX_TOUCHED){ const a=fxAuto(); if(a)FX_WHY=a.why; }
+    if(!need)FX_WHY='';
+  }
   const fx = need ? num($('r_fx').value) : 1;
+  /* ช่อง "เรท → บาท" ที่คนแตะแล้ว = เจ้าของเรทของทั้งใบ (ลบทิ้งก็คือสั่งให้ไม่มีเรท) */
+  const rtAll = RT_TOUCHED ? num($('r_rate').value) : null;
 
   ITEMS.forEach(function(it){
     if(it.src_amount==null)it.src_amount=num(it.amount);   // ใบเก่าที่ยังไม่มี src_amount
     if(!it.src_cur)it.src_cur=sc||dst;
-    if(it.manual)return;                                    // แถวที่ปลดล็อกแก้มือ ไม่ทับ
+    if(it.manual){                                          // แถวที่ปลดล็อกแก้มือ ไม่ทับยอด
+      if(rtAll!=null){ it.rate=rtAll; it.thb=+(num(it.amount)*rtAll).toFixed(2); }
+      return;
+    }
     if(it.src_rate==null)it.src_rate=num(it.rate);      // ใบเก่าที่ยังไม่มี src_rate
-    it.fx = need ? fx : 0;
-    it.amount = need ? +(num(it.src_amount)*fx).toFixed(2) : num(it.src_amount);
-    /* เรทเดิมเป็น "ต้นทาง→บาท" ใช้กับยอดปลายทางตรง ๆ ไม่ได้ ต้องหารด้วยเรทแปลง
-       ทำแบบนี้ยอดบาทจะเท่ากับที่ตีมูลค่าไว้ในบิลเสมอ ไม่บวม ไม่หาย */
-    it.rate = (need&&fx>0) ? +(num(it.src_rate)/fx).toFixed(6) : num(it.src_rate);
-    it.thb = +(num(it.amount)*num(it.rate)).toFixed(2);
+    if(xfFit(it,dst)){
+      /* ① ยอดปลายทาง + เรทโอน มาจากระบบวางแผนจ่ายเงินทั้งคู่ (เรทนั้นเป็น ฿/ปลายทางอยู่แล้ว) */
+      it.fx=num(it.xf_fx); it.amount=num(it.xf_amount); it.rate=num(it.xf_rate);
+    }else if(!need){
+      it.fx=0; it.amount=num(it.src_amount); it.rate=num(it.src_rate);
+    }else{
+      /* ② เรทเดิมเป็น "ต้นทาง→บาท" ใช้กับยอดปลายทางตรง ๆ ไม่ได้ ต้องหารด้วยเรทแปลง
+         ทำแบบนี้ยอดบาทจะเท่ากับที่ตีมูลค่าไว้ในบิลเสมอ ไม่บวม ไม่หาย */
+      it.fx=fx;
+      it.amount=+(num(it.src_amount)*fx).toFixed(2);
+      it.rate=fx>0?+(num(it.src_rate)/fx).toFixed(6):0;
+    }
+    if(rtAll!=null)it.rate=rtAll;
+    it.thb=+(num(it.amount)*num(it.rate)).toFixed(2);
   });
 
   const box=$('fxBox');
@@ -1017,29 +1057,53 @@ function applyFx(){
       $('fx_u1').textContent=sc; $('fx_u2').textContent=dst;
       const tSrc=ITEMS.reduce((a,x)=>a+num(x.src_amount),0);
       const tDst=ITEMS.reduce((a,x)=>a+num(x.amount),0);
-      $('fx_out').innerHTML = fx>0
+      $('fx_out').innerHTML = tDst>0
         ? money2(tDst)+' '+curSym(dst)
         : '<span style="color:var(--red)">ยังไม่ใส่เรท</span>';
-      $('fx_note').innerHTML = fx>0
-        ? 'ยอดตามบิล '+money2(tSrc)+' '+sc+' × '+fx+' = <b>'+money2(tDst)+' '+dst+'</b> — ยอดที่จะโอนจริง'
-          +(FX_WHY?'<br><span style="color:#1E7145">✅ เติมเรทให้อัตโนมัติจาก'+esc(FX_WHY)+' — แก้ได้ถ้าไม่ตรง</span>':'')
-        : '<span style="color:#B45309">⚠️ บิลเป็น '+sc+' แต่จะโอนเป็น '+dst+' — ใส่เรทแปลงก่อน'
-          +'<br>(ยังไม่เคยมีคำขอที่แปลง '+sc+'→'+dst+' ระบบจึงยังจำเรทให้ไม่ได้ — ใส่ครั้งนี้ครั้งเดียว ครั้งหน้าเติมให้เอง)</span>';
+      if(auto){
+        const cr=[...new Set(ITEMS.map(x=>num(x.xf_cross)).filter(v=>v>0))];
+        $('fx_note').innerHTML='<span style="color:#1E7145">✅ ยอด '+dst
+          +' ดึงมาจากระบบวางแผนจ่ายเงินโดยตรง — ตรงกับใบปะหน้าทุกสตางค์ ไม่ต้องใส่เรท</span>'
+          +'<br>ยอดตามบิล '+money2(tSrc)+' '+sc+' → <b>'+money2(tDst)+' '+dst+'</b>'
+          +(cr.length===1?(' &nbsp;(อัตราแลก '+curSym(sc)+money2(cr[0])+' ต่อ 1 '+dst+')')
+                         :(cr.length>1?' &nbsp;(อัตราแลกไม่เท่ากันทุกงวด — ใช้ของแต่ละงวดตามจริง)':''))
+          +'<br><span class="muted">ถ้าต้องการแปลงเองด้วยเรทอื่น กด “↺ ไม่แปลง” แล้วเลือกสกุลใหม่</span>';
+      }else{
+        $('fx_note').innerHTML = fx>0
+          ? 'ยอดตามบิล '+money2(tSrc)+' '+sc+' × '+fx+' = <b>'+money2(tDst)+' '+dst+'</b> — ยอดที่จะโอนจริง'
+            +(FX_WHY?'<br><span style="color:#1E7145">✅ เติมเรทให้อัตโนมัติจาก'+esc(FX_WHY)+' — แก้ได้ถ้าไม่ตรง</span>':'')
+          : '<span style="color:#B45309">⚠️ บิลเป็น '+sc+' แต่จะโอนเป็น '+dst+' — ใส่เรทแปลงก่อน'
+            +'<br>(งวดที่ดึงมายังไม่ได้ระบุยอด '+dst+' ไว้ในระบบวางแผนจ่ายเงิน จึงต้องใส่เรทเอง)</span>';
+      }
     }
   }
   drawItems();
 }
-/* ใส่เรท→บาททีเดียว ใช้กับทุกแถว (แถวที่พิมพ์เองไว้ก็ทับ เพราะเป็นเรทของทั้งใบ) */
+/* ใส่เรท→บาททีเดียว ใช้กับทุกแถว (แถวที่พิมพ์เองไว้ก็ทับ เพราะเป็นเรทของทั้งใบ)
+   ⭐ ลบค่าในช่องนี้ทิ้งได้ — ลบแล้วคือ "ยังไม่มีเรท" ระบบจะไม่เติมกลับให้เอง */
 function applyRateAll(){
+  RT_TOUCHED=true;
   const rt=num($('r_rate').value);
-  if(rt>0)ITEMS.forEach(function(it){
-    it.rate=rt; it.thb=+(num(it.amount)*rt).toFixed(2);
-    /* เรทที่พิมพ์เป็นเรทของสกุลปลายทาง → ถอดกลับเป็นเรทต้นทาง
-       ไม่ทำ เรทจะถูกทับกลับทันทีที่ applyFx ทำงานรอบต่อไป */
-    const fx=num(it.fx);
-    it.src_rate = fx>0 ? +(rt*fx).toFixed(6) : rt;
+  ITEMS.forEach(function(it){
+    if(rt>0){
+      it.rate=rt; it.thb=+(num(it.amount)*rt).toFixed(2);
+      /* เรทที่พิมพ์เป็นเรทของสกุลปลายทาง → ถอดกลับเป็นเรทต้นทาง
+         ไม่ทำ เรทจะถูกทับกลับทันทีที่ applyFx ทำงานรอบต่อไป */
+      const fx=num(it.fx);
+      it.src_rate = fx>0 ? +(rt*fx).toFixed(6) : rt;
+      /* ⚠️ ห้ามทับ it.xf_rate — นั่นคือเรทตามระบบ ถ้าทับแล้วปุ่ม "เรทตามระบบ" จะคืนค่าไม่ได้ */
+    }else{
+      it.rate=0; it.thb=0;
+    }
   });
   drawRateBar(); drawItems();
+}
+/* กลับไปใช้เรทตามระบบ — ปุ่มคู่กับการลบ เพื่อไม่ให้ลบแล้วกู้คืนไม่ได้ */
+function rateReset(){
+  RT_TOUCHED=false; $('r_rate').value='';
+  ITEMS.forEach(function(it){ if(it.manual)return; it.rate=0; });
+  applyFx();
+  toast('คืนเรทตามระบบแล้ว');
 }
 function drawRateBar(){
   const bar=$('rateBar'); if(!bar)return;
@@ -1048,15 +1112,19 @@ function drawRateBar(){
   if(bar.style.display==='none')return;
   $('rb_u').textContent=dst;
   const rs=[...new Set(ITEMS.map(i=>num(i.rate)).filter(x=>x>0))];
-  if(rs.length===1&&num($('r_rate').value)!==rs[0])$('r_rate').value=rs[0];
+  /* ⭐ เติมให้เฉพาะตอนที่คนยังไม่แตะช่องนี้ ไม่งั้นลบค่าทิ้งไม่ได้ เดี๋ยวเติมกลับทุกครั้ง */
+  if(!RT_TOUCHED&&rs.length===1&&num($('r_rate').value)!==rs[0])$('r_rate').value=rs[0];
   const tThb=ITEMS.reduce((a,x)=>a+num(x.thb),0);
   $('rb_out').innerHTML = tThb>0 ? money2(tThb)+' ฿'
     : '<span style="color:var(--red)">ยังไม่ใส่เรท</span>';
+  const btn=$('rb_reset'); if(btn)btn.style.display=RT_TOUCHED?'':'none';
   const hint=$('rb_hint');
-  if(hint)hint.innerHTML = rs.length===1&&tThb>0
-    ? '<span style="color:#1E7145">✅ เรทนี้ดึงมาจากงวดในระบบวางแผนจ่ายเงิน</span>'
+  if(hint)hint.innerHTML = (RT_TOUCHED&&!(num($('r_rate').value)>0))
+    ? '<span style="color:#B45309">⚠️ ลบเรททิ้งแล้ว — ยอดบาทจะเป็น 0 จนกว่าจะใส่ใหม่ (กด “↺ เรทตามระบบ” เพื่อคืนค่า)</span>'
+    : (rs.length===1&&tThb>0
+    ? '<span style="color:#1E7145">✅ เรทนี้'+(RT_TOUCHED?'พิมพ์เอง':'ดึงมาจากงวดในระบบวางแผนจ่ายเงิน')+'</span>'
     : (rs.length>1 ? '<span style="color:#B45309">⚠️ แต่ละแถวใช้เรทไม่เท่ากัน — ใส่ช่องนี้จะทับให้เท่ากันทุกแถว</span>'
-                   : 'งวดที่ดึงมายังไม่มีเรทในระบบวางแผนจ่ายเงิน — ใส่ที่นี่ได้เลย');
+                   : 'งวดที่ดึงมายังไม่มีเรทในระบบวางแผนจ่ายเงิน — ใส่ที่นี่ได้เลย'));
 }
 
 /* ═══ เติม "เรทแปลงสกุล" ให้อัตโนมัติ ═══
@@ -1064,13 +1132,21 @@ function drawRateBar(){
    ② ปลายทางอื่น  → จำเรทคู่สกุลนี้จากคำขอล่าสุดที่เคยแปลง
    เติมเฉพาะตอนช่องว่าง ไม่ทับที่คนกรอกไว้                              */
 let FX_WHY='';
+/* ⭐ จำว่า "คนแตะช่องเรทเองแล้ว" — ไม่มีสองตัวนี้ ระบบจะเติมค่ากลับทุกครั้งที่ช่องว่าง
+      กลายเป็นลบค่าในช่องไม่ได้เลย ซึ่งเป็นบั๊กที่เจอจริง */
+let FX_TOUCHED=false;    // ช่อง "เรทแปลงสกุล"
+let RT_TOUCHED=false;    // ช่อง "เรท → บาท"
+let FX_AUTOSET=false;    // ค่าในช่องเรทแปลงมาจากระบบ (โหมดอัตโนมัติ) ไม่ใช่คนพิมพ์
 function fxAuto(){
   const sc=srcCur(), dst=$('r_cur').value;
   if(!sc||sc===dst)return null;
+  if(FX_TOUCHED)return null;                  // คนลบ/พิมพ์เอง = เคารพค่าที่เห็น
   if(num($('r_fx').value)>0)return null;
 
   if(dst==='THB'){
-    const rs=ITEMS.map(i=>num(i.rate)).filter(x=>x>0);
+    /* src_rate = บาทต่อ 1 หน่วยสกุลบิล ซึ่งก็คือเรทแปลง CNY→THB พอดี
+       ใช้ it.rate ไม่ได้ เพราะตอนเพิ่งดึงงวดมา applyFx ยังไม่ได้คิด rate ให้ (ยังเป็น 0) */
+    const rs=ITEMS.map(i=>num(i.src_rate)||num(i.rate)).filter(x=>x>0);
     if(rs.length){
       const v=+(rs.reduce((a,b)=>a+b,0)/rs.length).toFixed(6);
       $('r_fx').value=v;
@@ -1089,7 +1165,10 @@ function fxAuto(){
 /* เลิกแปลง — โอนด้วยสกุลเดียวกับบิล */
 function fxSwapBack(){
   const sc=srcCur(); if(!sc)return;
-  $('r_cur').value=sc; $('r_fx').value='';
+  FX_TOUCHED=false; FX_AUTOSET=false;
+  $('r_cur').value=sc; $('r_fx').disabled=false; $('r_fx').value='';
+  /* ยอดปลายทางจากระบบใช้กับสกุลนี้ไม่ได้แล้ว ต้องกลับไปตั้งต้นที่ยอดตามบิล */
+  ITEMS.forEach(function(it){ if(it.manual)return; it.fx=0; });
   applyFx();
 }
 /* เตือนเฉพาะกรณีที่เป็นปัญหาจริง — สกุลต่างกันไม่ผิด ถ้าใส่เรทแปลงแล้ว */
@@ -1117,6 +1196,40 @@ const rateOf=p=>{
   const amt=Math.abs(+p.amount||0), thb=thbOf(p);
   return (amt>0&&thb>0) ? +(thb/amt).toFixed(6) : 0;
 };
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ยอดที่ "โอนจริง" ของงวด — เอาจากตัวเลขที่ระบบวางแผนจ่ายเงินคำนวณไว้แล้ว
+   ระบบวางแผนจ่ายเงิน (pay.html) เก็บเส้นทางเงินไว้ครบทุกทอด:
+        หยวน ──÷ อัตราแลก (fx_cross ¥/USD) ──► USD ──× เรทโอน (฿/USD) ──► บาท
+   ฉะนั้นงวดที่โอนเป็น USD "มียอด USD อยู่แล้ว" ในช่อง amount_usd
+   ⚠️ ห้ามดึงยอดหยวนมาแล้วแปลงเอง — ใบปะหน้าที่เซ็นกันไปแล้วใช้ตัวเลขนี้
+      คิดใหม่เองจะคลาดกันเป็นสตางค์ แล้วเอกสาร 2 ใบจะไม่ตรงกัน
+   คืนค่าเป็นชิ้นส่วนของ ITEMS: ต้นทาง (src_*) + ปลายทางที่ระบบคิดไว้ (xf_*)
+   ═══════════════════════════════════════════════════════════════════════ */
+function payXfer(p,billCur){
+  const o={src_cur:String(billCur||''),src_amount:0,src_rate:0,
+           xf_cur:'',xf_amount:0,xf_rate:0,xf_fx:0,xf_cross:0};
+  if(!p)return o;
+  /* ยอดสินค้า + ค่าส่ง = ฐานเดียวกับที่ pay.html ใช้หายอด USD (ไม่ใช่ค่าธรรมเนียมโอน) */
+  const gross=+((Math.abs(+p.amount||0)+(+p.ship_fee||0)).toFixed(2));
+  const thb=thbOf(p), pcur=String(p.pay_currency||''), src=o.src_cur;
+  const cross=+p.fx_cross||0, usdF=+p.amount_usd||0;
+  o.src_amount=gross;
+  const xfer = !!(pcur&&src&&pcur!==src&&(usdF>0||cross>0));
+  /* เรท "ต้นทาง→บาท" — งวดที่โอนข้ามสกุล ช่อง rate เก็บเป็น ฿/ปลายทาง ใช้ตรง ๆ ไม่ได้ */
+  o.src_rate = (gross>0&&thb>0) ? +(thb/gross).toFixed(6) : (xfer?0:(+p.rate||0));
+  if(xfer){
+    const amt = usdF>0 ? usdF : +(gross/cross).toFixed(2);
+    o.xf_cur=pcur; o.xf_amount=amt;
+    o.xf_rate=(+p.rate||0)||((amt>0&&thb>0)?+(thb/amt).toFixed(6):0);   // pay.html เก็บเป็น ฿/USD อยู่แล้ว
+    o.xf_fx = gross>0 ? +(amt/gross).toFixed(8) : 0;                     // ต้นทาง→ปลายทาง (= 1 ÷ อัตราแลก)
+    o.xf_cross = cross || (amt>0 ? +(gross/amt).toFixed(4) : 0);
+    if(!o.src_rate) o.src_rate=+(o.xf_rate*o.xf_fx).toFixed(6);
+  }
+  return o;
+}
+/* แถวนี้มียอดปลายทางจากระบบ และตรงกับสกุลที่เลือกจะโอนอยู่หรือไม่ */
+const xfFit=(it,dst)=>!!it&&!!it.xf_cur&&String(it.xf_cur)===String(dst)&&num(it.xf_amount)>0;
 
 function renderAll(){renderKpi();renderList();renderMine();renderTodo();renderReport();}
 
@@ -1356,11 +1469,24 @@ function openReq(id){
   $('r_method').value=(r&&r.pay_method)||'';
   $('r_acct').value=(r&&r.pay_acct)||'';
   $('r_cur').value=(r&&r.currency)||'CNY';
+  FX_TOUCHED=false; RT_TOUCHED=false; FX_AUTOSET=false;
+  $('r_fx').disabled=false;
   $('r_fx').value=(r&&r.fx_rate)||'';
   $('r_rate').value='';            // drawRateBar จะเติมให้เองถ้าทุกแถวใช้เรทเดียวกัน
   $('r_reason').value=(r&&r.reason)||'';
   $('r_note').value=(r&&r.note)||'';
   ITEMS=(r&&Array.isArray(r.items))?JSON.parse(JSON.stringify(r.items)):[];
+  /* ⭐ ใบเก่าที่บันทึกไว้ก่อนมีระบบ xf_* — เติมยอดปลายทางจากระบบวางแผนจ่ายเงินให้
+        ใบที่เคยเอายอดหยวนมาใส่เป็นดอลลาร์ เปิดแก้แล้วบันทึกใหม่จะถูกต้องทันที */
+  ITEMS.forEach(function(it){
+    if(!it.pay_id||it.manual||it.xf_cur)return;
+    const p=payOf(it.pay_id); if(!p)return;
+    const b=billOf(p.bill_id)||{};
+    const x=payXfer(p,b.currency||it.src_cur||'');
+    if(x.xf_cur){ it.xf_cur=x.xf_cur; it.xf_amount=x.xf_amount;
+                  it.xf_rate=x.xf_rate; it.xf_fx=x.xf_fx; it.xf_cross=x.xf_cross;
+                  it.src_amount=x.src_amount; it.src_rate=x.src_rate; }
+  });
   applyFx();                        // คิดยอดโอน + โชว์กล่องแปลงสกุลตามข้อมูลที่โหลดมา
   $('reqBg').style.display='flex';
   growAcct();                      // ต้องเรียกหลังโมดัลโชว์ scrollHeight จึงจะถูก
@@ -1376,8 +1502,11 @@ function toggleManual(i){
   it.manual=!it.manual;
   if(!it.manual){                       // ล็อกกลับ = คืนค่าจากระบบ + คิดแปลงใหม่
     const p=payOf(it.pay_id), b=p?billOf(p.bill_id):null;
-    if(p){ it.src_amount=Math.abs(+p.amount||0); it.rate=rateOf(p); it.src_rate=rateOf(p); it.fee=+p.fee||0;
-           if(b)it.src_cur=b.currency||it.src_cur; }
+    if(p){ const x=payXfer(p,(b&&b.currency)||it.src_cur||'');
+           it.src_amount=x.src_amount; it.src_cur=x.src_cur||it.src_cur; it.src_rate=x.src_rate;
+           it.xf_cur=x.xf_cur; it.xf_amount=x.xf_amount; it.xf_rate=x.xf_rate;
+           it.xf_fx=x.xf_fx; it.xf_cross=x.xf_cross;
+           it.fee=+p.fee||0; }
   }
   applyFx();
   toast(it.manual?'ปลดล็อกแถวนี้ให้แก้เองได้ 🔓':'คืนค่าจากระบบแล้ว 🔒');
@@ -1405,7 +1534,7 @@ function drawItems(){
   const ssym=curSym(sc);
   let h=`<table style="min-width:${fxOn?920:760}px"><thead><tr><th style="width:34px">#</th><th>PO</th><th>SKU</th><th>งวด</th>
     ${fxOn?`<th class="num" style="width:120px">ยอดตามบิล (${ssym})</th>
-            <th class="num" style="width:95px">เรทแปลง</th>`:''}
+            <th class="num" style="width:110px" title="อัตราแลกที่ใช้แปลง ${sc} → ${dst}">อัตราแลก</th>`:''}
     <th class="num" style="width:120px">${fxOn?'ยอดโอน':'ยอด'} (${cs})</th><th class="num" style="width:95px" title="เรทแปลงเป็นบาท สำหรับบัญชี">เรท ฿</th>
     <th class="num" style="width:120px">บาท</th><th class="num" style="width:100px">ค่าธรรมเนียม</th>
     <th style="width:62px"></th></tr></thead><tbody>`;
@@ -1418,7 +1547,10 @@ function drawItems(){
       <td style="font-size:11.5px">${lock?esc(it.sku||'-'):`<input value="${esc(it.sku||'')}" oninput="setItem(${i},'sku',this.value)">`}</td>
       <td>${lock?esc(it.inst||'-'):`<input value="${esc(it.inst||'')}" oninput="setItem(${i},'inst',this.value)">`}</td>
       ${fxOn?`<td class="num">${lock?money2(it.src_amount):N('src_amount','0.01')}</td>
-              <td class="num" style="font-size:11.5px;color:var(--muted)">${it.fx?money2(it.fx):'-'}</td>`:''}
+              <td class="num" style="font-size:11.5px;color:var(--muted)">${
+                  (xfFit(it,dst)&&num(it.xf_cross))
+                    ? ('÷ '+money2(it.xf_cross)+' <span style="font-size:10px">'+ssym+'/'+dst+'</span>')
+                    : (it.fx?('× '+num(it.fx).toFixed(6)):'-')}</td>`:''}
       <td class="num">${lock&&!fxOn?money2(it.amount):(fxOn&&lock?`<b>${money2(it.amount)}</b>`:N('amount','0.01'))}</td>
       <td class="num">${N('rate','0.0001')}</td>
       <td class="num"><b>${money2(it.thb)}</b></td>
@@ -1524,10 +1656,10 @@ function addPicked(){
   const rows=pickRows().filter(p=>PICK_SEL.has(String(p.id)));
   if(!rows.length)return toast('ยังไม่ได้เลือกงวด');
   rows.forEach(p=>{const b=billOf(p.bill_id);
-    ITEMS.push({pay_id:String(p.id),po:b.po_number||'',sku:b.sku||'',inst:p.installment||'',
-      src_amount:Math.abs(+p.amount||0), src_cur:b.currency||'',   // ⭐ ยอด/สกุลตามบิล เก็บไว้เสมอ
-      amount:Math.abs(+p.amount||0),rate:rateOf(p),src_rate:rateOf(p),thb:thbOf(p),fee:+p.fee||0,
-      payee:p.payee||'',pay_date:p.pay_date||''});});
+    /* ⭐ ยอดตามบิล + ยอดที่โอนจริงตามที่ระบบวางแผนจ่ายเงินคิดไว้ ดึงมาทั้งคู่ */
+    ITEMS.push(Object.assign({pay_id:String(p.id),po:b.po_number||'',sku:b.sku||'',inst:p.installment||'',
+      amount:0,rate:0,thb:thbOf(p),fee:+p.fee||0,
+      payee:p.payee||'',pay_date:p.pay_date||''}, payXfer(p,b.currency||'')));});
   if(!$('r_type').value&&rows[0].pay_type)$('r_type').value=rows[0].pay_type;
   if(!$('r_ch').value&&rows[0].channel)$('r_ch').value=rows[0].channel;
   if(!$('r_due').value&&rows[0].pay_date)$('r_due').value=rows[0].pay_date;
@@ -1602,10 +1734,9 @@ function useDoc(id){
   const curs=[...new Set(ps.map(p=>billOf(p.bill_id).currency||'CNY'))];
   if(curs.length>1&&!confirm('ใบนี้มีหลายสกุลเงิน ('+curs.join(', ')+')\n\nคำขอ 1 ใบควรเป็นสกุลเดียว — ดึงมาทั้งหมดไหม?'))return;
   ps.forEach(p=>{const b=billOf(p.bill_id);
-    ITEMS.push({pay_id:String(p.id),po:b.po_number||'',sku:b.sku||'',inst:p.installment||'',
-      src_amount:Math.abs(+p.amount||0), src_cur:b.currency||'',
-      amount:Math.abs(+p.amount||0),rate:rateOf(p),src_rate:rateOf(p),thb:thbOf(p),fee:+p.fee||0,
-      payee:p.payee||'',pay_date:p.pay_date||''});});
+    ITEMS.push(Object.assign({pay_id:String(p.id),po:b.po_number||'',sku:b.sku||'',inst:p.installment||'',
+      amount:0,rate:0,thb:thbOf(p),fee:+p.fee||0,
+      payee:p.payee||'',pay_date:p.pay_date||''}, payXfer(p,b.currency||'')));});
   // เติมหัวคำขอจากใบปะหน้า
   if(!$('r_type').value&&x.company)$('r_type').value=x.company;
   if(!$('r_ch').value){const c=docChOf(x); if(c&&c.indexOf(' / ')<0)$('r_ch').value=c;}
@@ -1636,7 +1767,11 @@ async function saveReq(mode){
   if(mode==='submitted'&&!$('r_reason').value.trim())return toast('ใส่เหตุผลการขออนุมัติก่อนส่ง');
 
   /* สกุลต่างกันได้ แต่ต้องมีเรทแปลง ไม่งั้นยอดโอนเป็น 0 */
-  const sc0=srcCur(), dst0=$('r_cur').value, fx0=num($('r_fx').value);
+  const sc0=srcCur(), dst0=$('r_cur').value;
+  /* เรทแปลงที่ "ใช้จริง" — โหมดอัตโนมัติไม่ได้กรอกช่องนี้ ต้องถอดจากยอดที่คิดได้ */
+  const _tS=ITEMS.reduce((s,x)=>s+num(x.src_amount),0);
+  const _tD=ITEMS.reduce((s,x)=>s+num(x.amount),0);
+  const fx0=(sc0&&sc0!==dst0) ? (_tS>0?+(_tD/_tS).toFixed(8):num($('r_fx').value)) : num($('r_fx').value);
   if(sc0&&sc0!==dst0&&fx0<=0)
     return toast('บิลเป็น '+sc0+' แต่จะโอนเป็น '+dst0+' — ใส่เรทแปลงก่อน');
   const cs0=itemCurs();
