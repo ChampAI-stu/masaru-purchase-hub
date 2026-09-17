@@ -142,7 +142,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-30</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-31</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -472,8 +472,11 @@ tr:nth-child(even) td{background:#F8FAFD}
           <input id="r_method" list="methodList" onchange="methodPicked()" placeholder="เช่น โอนบัญชีบริษัท SCB / เงินสด / เช็ค"
                  title="บัญชีหรือวิธีที่เราจ่ายเงินออกไป — พิมพ์ได้อิสระ หรือเลือกจากที่เคยใช้">
           <datalist id="methodList"></datalist></div>
-        <div class="fld"><label>สกุลเงิน</label>
-          <select id="r_cur" onchange="drawItems();curWarn()"><option value="CNY">¥ CNY</option><option value="USD">$ USD</option><option value="THB">฿ THB</option></select>
+        <div class="fld"><label>สกุลเงินที่โอนจริง ★ <span id="curTag"></span></label>
+          <select id="r_cur" onchange="applyFx();curWarn()">
+            <option value="CNY">¥ CNY — หยวนจีน</option>
+            <option value="USD">$ USD — ดอลลาร์สหรัฐ</option>
+            <option value="THB">฿ THB — บาทไทย</option></select>
           <div id="curWarn"></div></div>
         <div class="fld" style="grid-column:1/-1">
           <label>เลขบัญชีที่จ่าย <span class="muted" style="font-weight:400">— ใส่ได้หลายบัญชี บรรทัดละบัญชี</span></label>
@@ -490,6 +493,8 @@ tr:nth-child(even) td{background:#F8FAFD}
         <div style="flex:1"></div>
         <span id="r_sum" class="muted" style="font-size:12.5px"></span>
       </div>
+      <div id="curBar" style="display:none;border-radius:9px;padding:8px 13px;margin-bottom:9px;
+        font-size:12.5px;line-height:1.7"></div>
       <div id="fxBox" style="display:none;background:#FDF8E7;border:1px solid var(--gold);border-radius:9px;
         padding:10px 13px;margin-bottom:10px">
         <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
@@ -798,6 +803,19 @@ const money=n=>Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2});
 const money2=n=>Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const curSym=c=>({CNY:'¥',USD:'$',THB:'฿'}[c]||c||'');
+/* ═══ ป้ายสกุลเงิน ═══
+   สัญลักษณ์เดี่ยว ๆ (¥ $ ฿) อ่านพลาดได้ง่าย และเคยพลาดจริง (ยอดหยวนถูกอ่านเป็นดอลลาร์)
+   ฉะนั้นทุกที่ที่โชว์ยอด ต้องมีตัวย่อ + ชื่อไทย + สีประจำสกุล กำกับไว้ให้เห็นชัด */
+const CUR_NAME={CNY:'หยวนจีน',USD:'ดอลลาร์สหรัฐ',THB:'บาทไทย'};
+const CUR_CSS ={CNY:'background:#FEF3C7;color:#92400E;border:1px solid #F0C97A',
+                USD:'background:#DCFCE7;color:#166534;border:1px solid #86D8A6',
+                THB:'background:#E6F1FB;color:#17518F;border:1px solid #8FBCE6'};
+const curName=c=>CUR_NAME[c]||c||'-';
+function curPill(c,full){
+  const k=String(c||''); if(!k)return '';
+  return '<span class="pill" style="'+(CUR_CSS[k]||'background:#EEF1F5;color:#334155;border:1px solid #CBD5E1')+'">'
+    +esc(curSym(k))+' '+esc(k)+(full?(' · '+esc(curName(k))):'')+'</span>';
+}
 /* ═══ จ่ายในนาม ═══
    เก็บใน DB เป็นรหัสสั้น (LIKESHOP/MASARU/DAIKI) เพราะต้องแมตช์กับ pay.html และใบเก่า
    แต่ทุกที่ที่คนอ่าน ให้แสดง "ชื่อบริษัทเต็ม" ตามที่ใช้ในเอกสารจริง */
@@ -1098,6 +1116,24 @@ function applyRateAll(){
   });
   drawRateBar(); drawItems();
 }
+/* ═══ แถบบอกสกุลเงินของคำขอ ═══
+   ต้องอ่านได้ใน 1 วินาทีว่า "ใบนี้จ่ายเป็นสกุลอะไร" และยอดนั้นมาจากไหน */
+function drawCurBar(tAmt,tSrc){
+  const bar=$('curBar'); if(!bar)return;
+  const dst=$('r_cur').value, sc=srcCur();
+  const tag=$('curTag'); if(tag)tag.innerHTML=curPill(dst,true);
+  if(!ITEMS.length){ bar.style.display='none'; return; }
+  bar.style.display='';
+  const cssv=(CUR_CSS[dst]||'background:#EEF1F5;color:#334155;border:1px solid #CBD5E1');
+  bar.setAttribute('style','display:block;border-radius:9px;padding:8px 13px;margin-bottom:9px;'
+    +'font-size:12.5px;line-height:1.7;'+cssv);
+  const conv = !!sc && sc!==dst;
+  bar.innerHTML='<b>💰 คำขอใบนี้จ่ายเป็นสกุล '+esc(curName(dst))+' ('+esc(curSym(dst))+' '+esc(dst)+')</b>'
+    +' — ยอดที่จะโอน <b>'+money2(tAmt)+' '+esc(curSym(dst))+'</b>'
+    +(conv ? ('<br><span style="opacity:.85">ตั้งต้นจากบิลสกุล '+esc(curName(sc))+' '
+              +money2(tSrc)+' '+esc(curSym(sc))+' → แปลงเป็น '+esc(dst)+'</span>')
+           : ('<br><span style="opacity:.85">สกุลเดียวกับบิล ไม่มีการแปลงสกุล</span>'));
+}
 /* กลับไปใช้เรทตามระบบ — ปุ่มคู่กับการลบ เพื่อไม่ให้ลบแล้วกู้คืนไม่ได้ */
 function rateReset(){
   RT_TOUCHED=false; $('r_rate').value='';
@@ -1305,7 +1341,8 @@ function reqTable(rows,opts){
   if(!rows.length)return '<div class="empty">ไม่มีรายการ</div>';
   const today=todayStr();
   let h=`<table><thead><tr><th>เลขคำขอ</th><th>วันที่ยื่น</th><th>กำหนดชำระ</th>
-    <th>จ่ายในนาม</th><th>ช่องทาง</th><th class="num">รายการ</th><th class="num">ยอด</th>
+    <th>จ่ายในนาม</th><th>ช่องทาง</th><th class="num">รายการ</th>
+    <th style="width:78px">สกุลเงิน</th><th class="num">ยอด</th>
     <th class="num">รวมบาท</th><th>สถานะ</th><th>ผู้ยื่น</th><th style="width:130px"></th></tr></thead><tbody>`;
   rows.forEach(r=>{
     const late=r.due_date&&r.due_date<=today&&r.status!=='paid'&&r.status!=='approved';
@@ -1316,6 +1353,8 @@ function reqTable(rows,opts){
       <td>${esc(coShort(r.pay_type))}</td>
       <td style="font-size:11.5px">${esc(r.channel||'-')}</td>
       <td class="num">${(r.items||[]).length}</td>
+      <td title="สกุลเงินที่โอนจริงของคำขอนี้${r.src_currency?(' — แปลงมาจาก '+esc(r.src_currency)):''}">${curPill(r.currency)}${
+        r.src_currency?`<div class="muted" style="font-size:10px">← ${esc(r.src_currency)}</div>`:''}</td>
       <td class="num">${money(r.total_amount)} ${curSym(r.currency)}${
         curMismatch(r)?` <span title="หน่วยเงินไม่ตรงกับบิล — ควรเป็น ${esc(curMismatch(r))}" style="color:var(--red);font-weight:800">⚠</span>`:''}</td>
       <td class="num"><b>${money(r.total_thb)}</b></td>
@@ -1527,7 +1566,7 @@ function setItem(i,k,v){
 function drawItems(){
   if(!ITEMS.length){
     $('r_items').innerHTML='<div class="empty">ยังไม่มีรายการ — กด “ดึงงวดจ่ายจากระบบวางแผน” หรือ “เพิ่มรายการเอง”</div>';
-    $('r_sum').textContent='';return;
+    $('r_sum').textContent=''; drawCurBar(0,0); return;   // ป้ายสกุลเงินต้องอัปเดตด้วย ไม่งั้นค้างค่าใบก่อน
   }
   const dst=$('r_cur').value, cs=curSym(dst);
   const sc=srcCur(), fxOn = !!sc && sc!==dst;          // โชว์คอลัมน์ต้นทางเฉพาะเมื่อมีการแปลง
@@ -1571,9 +1610,10 @@ function drawItems(){
   /* ยังไม่ใส่เรท → บาทเป็น 0 ซึ่งไม่ใช่ยอดจริง ต้องบอกให้ชัด ไม่โชว์ 0.00 เฉย ๆ */
   drawRateBar();
   const noRate = cs!=='฿' && tAmt>0 && tThb<=0;
-  $('r_sum').innerHTML=`${ITEMS.length} รายการ · รวม <b>${money2(tAmt)} ${cs}</b> `
+  $('r_sum').innerHTML=`${ITEMS.length} รายการ · รวม <b>${money2(tAmt)} ${cs}</b> ${curPill(dst)} `
     +(noRate ? '<span style="color:var(--red)">· ⚠️ ยังไม่ใส่เรท จึงยังคิดเป็นบาทไม่ได้</span>'
              : `≈ <b>${money2(tThb)} ฿</b>`);
+  drawCurBar(tAmt,tSrc);
   curWarn();
 }
 
@@ -1844,13 +1884,15 @@ function flowBar(r){
 function viewReq(id){
   const r=REQS.find(x=>String(x.id)===String(id)); if(!r)return toast('ไม่พบคำขอนี้');
   VIEW_ID=id;
-  $('vTitle').innerHTML=`${esc(r.req_no||'')} ${stPill(r.status)}`
+  $('vTitle').innerHTML=`${esc(r.req_no||'')} ${stPill(r.status)} ${curPill(r.currency,true)}`
     +(r.urgency==='urgent'?' <span class="pill st-rejected">🔥 ด่วน</span>':'');
   $('vFlow').innerHTML=flowBar(r);
 
   const cs=curSym(r.currency);
   let items=`<table><thead><tr><th style="width:34px">#</th><th>PO</th><th>SKU</th><th>งวด</th>
-    <th class="num">ยอด (${cs})</th><th class="num">เรท</th><th class="num">บาท</th><th class="num">ค่าธรรมเนียม</th></tr></thead><tbody>`;
+    <th class="num" title="${esc(curName(r.currency))}">ยอด (${cs} ${esc(r.currency||'')})</th>
+    <th class="num" title="บาทต่อ 1 ${esc(r.currency||'')}">เรท ฿/${esc(r.currency||'')}</th>
+    <th class="num">บาท</th><th class="num">ค่าธรรมเนียม</th></tr></thead><tbody>`;
   (r.items||[]).forEach((it,i)=>{
     items+=`<tr><td style="text-align:center">${i+1}</td><td><b>${esc(it.po||'-')}</b></td>
       <td style="font-size:11.5px">${esc(it.sku||'-')}</td><td>${esc(it.inst||'-')}</td>
@@ -1873,9 +1915,13 @@ function viewReq(id){
       <div><div class="muted" style="font-size:11px">กำหนดชำระ</div><b>${thDate(r.due_date)}</b></div>
       <div><div class="muted" style="font-size:11px">จ่ายในนาม</div><b>${esc(coFull(r.pay_type))}</b></div>
       <div><div class="muted" style="font-size:11px">ช่องทางการโอน</div><b>${esc(r.channel||'-')}</b></div>
+      <div><div class="muted" style="font-size:11px">สกุลเงินที่โอนจริง</div>
+        <b>${curPill(r.currency,true)}</b>
+        ${r.src_currency?`<div class="muted" style="font-size:11px">แปลงมาจาก ${esc(curName(r.src_currency))} (${esc(r.src_currency)})</div>`
+                        :'<div class="muted" style="font-size:11px">สกุลเดียวกับบิล</div>'}</div>
       <div><div class="muted" style="font-size:11px">ช่องทางการชำระเงิน</div><b>${esc(r.pay_method||'-')}</b>
         ${r.pay_acct?`<div class="muted" style="font-size:11px;white-space:pre-wrap;line-height:1.6">${esc(r.pay_acct)}</div>`:''}</div>
-      <div><div class="muted" style="font-size:11px">ยอดรวม</div>
+      <div><div class="muted" style="font-size:11px">ยอดรวม (${esc(r.currency||'')})</div>
         <b style="font-size:16px">${money2(r.total_amount)} ${cs}</b>
         ${r.src_currency?`<div class="muted" style="font-size:11px">จาก ${money2(r.total_src)} ${esc(r.src_currency)} × ${esc(r.fx_rate)}</div>`:''}
         <div class="muted" style="font-size:11px">${
@@ -2023,6 +2069,7 @@ function printReq(id){
     <div class="meta">
       <div><b>จ่ายในนาม:</b> ${esc(coFull(r.pay_type))}</div>
       <div><b>ช่องทางการโอน:</b> ${esc(r.channel||'-')}</div>
+      <div><b>สกุลเงินที่โอน:</b> ${esc(curSym(r.currency))} ${esc(r.currency||'-')} (${esc(curName(r.currency))})</div>
       ${r.pay_method?`<div><b>ช่องทางการชำระเงิน:</b> ${esc(r.pay_method)}</div>`:''}
       ${r.pay_acct?`<div style="white-space:pre-wrap"><b>เลขบัญชีที่จ่าย:</b> ${esc(r.pay_acct)}</div>`:''}
       ${r.src_currency?`<div><b>แปลงสกุล:</b> ${money2(r.total_src)} ${esc(r.src_currency)} × ${esc(r.fx_rate)} = ${money2(r.total_amount)} ${esc(r.currency||'')}</div>`:''}
@@ -2030,7 +2077,8 @@ function printReq(id){
       ${r.urgency==='urgent'?'<div><b style="color:#B01722">🔥 ด่วน</b></div>':''}
     </div>
     <table><thead><tr><th style="width:34px">ที่</th><th>PO</th><th>SKU</th><th>งวด</th>
-      <th class="num">ยอด (${cs})</th><th class="num">เรท</th><th class="num">จำนวนเงินบาท</th>
+      <th class="num">ยอด (${cs} ${esc(r.currency||'')})</th>
+      <th class="num">เรท ฿/${esc(r.currency||'')}</th><th class="num">จำนวนเงินบาท</th>
       <th class="num">ค่าธรรมเนียม</th><th class="num">รวมชำระ</th></tr></thead>
       <tbody>${rows}
       <tr style="background:#EFEFEF;font-weight:800"><td colspan="4" style="text-align:center">รวมทั้งสิ้น</td>
@@ -2171,7 +2219,7 @@ function xferBlocks(r,f){
     B.push({k:'gap'});
     kv('ธนาคารปลายทาง',f.sw_bbank); kv('SWIFT Code',f.sw_bswift); kv('ที่อยู่ธนาคาร',f.sw_baddr);
     B.push({k:'gap'});
-    kv('สกุลเงิน',f.sw_cur);
+    kv('สกุลเงิน',f.sw_cur?(f.sw_cur+' — '+curName(f.sw_cur)):'');
     B.push({k:'box',c:'red',t:'จำนวนเงิน : '+M(f.sw_amt)+' '+(f.sw_cur||'')});
     const rn=[];
     if(f.sw_seq)rn.push('ชำระครั้งที่ '+f.sw_seq+' ยอด '+M(f.sw_amt)+' '+(f.sw_cur||''));
