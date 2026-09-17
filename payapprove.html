@@ -97,6 +97,16 @@ tr:nth-child(even) td{background:#F8FAFD}
 .hp-lbl{font-size:10.5px;color:var(--muted);display:block;margin-bottom:2px}
 .hp-tip{background:#FDF8E7;border-left:4px solid var(--gold);border-radius:8px;padding:9px 12px;font-size:12.5px;line-height:1.75;margin:8px 0 2px}
 .hp-warn{background:#FCE4E4;border-left:4px solid var(--red);border-radius:8px;padding:9px 12px;font-size:12.5px;line-height:1.75;margin:8px 0 2px}
+.hp-ok{background:#E9F6EE;border-left:4px solid var(--green);border-radius:8px;padding:9px 12px;font-size:12.5px;line-height:1.75;margin:8px 0 2px}
+.hp-money{display:flex;flex-wrap:wrap;align-items:stretch;gap:7px;margin:10px 0 4px}
+.hp-money .box{background:#fff;border:2px solid var(--line);border-radius:11px;padding:9px 13px;min-width:132px}
+.hp-money .box .u{font-size:11px;color:var(--muted)}
+.hp-money .box .v{font-size:15px;font-weight:800;color:var(--navy);margin-top:1px}
+.hp-money .box .s{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+.hp-money .op{font-size:11.5px;font-weight:700;color:#8a6d1f;text-align:center;line-height:1.5;flex:0 0 auto;display:flex;flex-direction:column;justify-content:center}
+.hp-money .box.b1{border-color:#F0C97A;background:#FEF9EE}
+.hp-money .box.b2{border-color:#86D8A6;background:#F2FBF5}
+.hp-money .box.b3{border-color:#8FBCE6;background:#F2F8FE}
 .hp-t{width:100%;font-size:12.5px}
 .hp-t th{font-size:12px}
 .hp-t td,.hp-t th{padding:7px 9px}
@@ -142,7 +152,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-31</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-32</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -293,7 +303,8 @@ tr:nth-child(even) td{background:#F8FAFD}
         <div class="bub">3</div>
         <div>
           <h4>ใส่รายการที่จะจ่าย <span class="hp-who">จัดซื้อ</span></h4>
-          <p>มี 3 ทางเลือก — แนะนำ <b>ดึงงวดจ่าย</b> เพราะยอดและเรทมาจากระบบวางแผนจ่ายเงินโดยตรง ไม่ต้องพิมพ์เอง ไม่พลาด</p>
+          <p>มี 3 ทางเลือก — แนะนำ <b>ดึงงวดจ่าย</b> เพราะยอด สกุลเงิน และเรท มาจากระบบวางแผนจ่ายเงินโดยตรง
+            ไม่ต้องพิมพ์เอง ไม่ต้องคิดเลขเอง และตรงกับใบปะหน้าที่เซ็นกันไปแล้วทุกสตางค์</p>
           <div class="hp-ui"><div class="cap">ปุ่มกลางฟอร์ม</div>
             <div class="hp-bar">
               <span class="hp-btn">＋ ดึงงวดจ่าย</span>
@@ -306,6 +317,11 @@ tr:nth-child(even) td{background:#F8FAFD}
             <tr><td><b>📄 ดึงจากใบปะหน้า</b></td><td>ทำใบปะหน้าไว้แล้ว → ดึงงวดทั้งใบมาทีเดียว เติมจ่ายในนาม/ช่องทาง/กำหนดชำระให้อัตโนมัติ</td></tr>
             <tr><td><b>＋ เพิ่มรายการเอง</b></td><td>กรณีพิเศษที่ไม่มีในระบบวางแผน — ต้องพิมพ์ยอดเอง</td></tr>
           </tbody></table></div>
+          <div class="hp-ok">✅ <b>ดึงงวดมาแล้วไม่ต้องทำอะไรต่อ</b> — ระบบตั้ง <b>สกุลเงินที่โอนจริง</b> ให้เอง
+            (งวดที่ระบุไว้ว่าโอน USD จะได้ยอด USD ที่ระบบวางแผนคำนวณไว้แล้ว ไม่ใช่ยอดหยวนมาแปลงเอง)
+            พร้อมเติมเรทให้ด้วย · รายละเอียดดูหัวข้อ <b>💱 สกุลเงินและเรท</b> ด้านล่าง</div>
+          <div class="hp-tip">💡 แถวที่ดึงมาจะ<b>ล็อกตัวเลขไว้</b>กันพิมพ์ผิด · ถ้าต้องแก้จริง ๆ กด <b>🔓</b> ท้ายแถว
+            แถวจะเป็นสีเหลืองแปลว่า “แก้มือ” · กด <b>🔒</b> เพื่อคืนค่าจากระบบ</div>
         </div>
       </div>
 
@@ -388,6 +404,59 @@ tr:nth-child(even) td{background:#F8FAFD}
     </div>
 
     <div class="card">
+      <h2>💱 สกุลเงินและเรท — ยอดมาจากไหน</h2>
+      <div class="sub-note">ส่วนที่พลาดง่ายที่สุดของระบบนี้ อ่านหัวข้อนี้รอบเดียวแล้วจะไม่ต้องเดาอีก</div>
+
+      <h4 style="margin:14px 0 2px;font-size:14px;color:var(--navy)">เส้นทางเงิน — จากบิลถึงบาท</h4>
+      <p style="font-size:12.5px;line-height:1.75;color:#334155;margin:0 0 4px">
+        บิลเป็นหยวน แต่บางงวดโอนจริงเป็นดอลลาร์ ระบบวางแผนจ่ายเงินเก็บไว้ครบทุกทอด — ระบบนี้ดึงมาใช้ตรง ๆ ไม่คิดใหม่</p>
+      <div class="hp-money">
+        <div class="box b1"><div class="u">ยอดตามบิล</div><div class="v">¥ 160,468.00</div>
+          <div class="s">ค่าสินค้า + ค่าส่ง</div></div>
+        <div class="op">÷ อัตราแลก<br>¥6.69 / 1 USD</div>
+        <div class="box b2"><div class="u">ยอดที่โอนจริง</div><div class="v">$ 23,986.40</div>
+          <div class="s">เลขนี้อยู่ในระบบแล้ว<br>ไม่ต้องคิดเอง</div></div>
+        <div class="op">× เรทโอน<br>32.80 ฿ / 1 USD</div>
+        <div class="box b3"><div class="u">ยอดเป็นบาท</div><div class="v">฿ 786,753.92</div>
+          <div class="s">สำหรับบัญชี</div></div>
+      </div>
+      <div class="hp-ok">✅ ตัวเลขทั้ง 3 ช่อง <b>ตรงกับใบปะหน้า</b>ที่เซ็นกันไปแล้วทุกสตางค์
+        เพราะดึงจากงวดเดียวกัน ไม่ได้คำนวณซ้ำ</div>
+
+      <h4 style="margin:16px 0 2px;font-size:14px;color:var(--navy)">ป้ายสกุลเงิน — ขึ้นทุกที่ที่มีตัวเลข</h4>
+      <p style="font-size:12.5px;line-height:1.75;color:#334155;margin:0 0 4px">
+        สัญลักษณ์เดี่ยว ๆ อ่านพลาดได้ (และเคยพลาดจริง — ยอดหยวนถูกอ่านเป็นดอลลาร์) จึงมีตัวย่อ ชื่อไทย และสีประจำสกุลกำกับไว้</p>
+      <div class="hp-bar" style="margin:6px 0 2px">
+        <span class="pill" style="background:#FEF3C7;color:#92400E;border:1px solid #F0C97A">¥ CNY · หยวนจีน</span>
+        <span class="pill" style="background:#DCFCE7;color:#166534;border:1px solid #86D8A6">$ USD · ดอลลาร์สหรัฐ</span>
+        <span class="pill" style="background:#E6F1FB;color:#17518F;border:1px solid #8FBCE6">฿ THB · บาทไทย</span>
+      </div>
+      <div class="hp-tw"><table class="hp-t" style="margin-top:9px"><thead><tr>
+        <th style="width:210px">เห็นได้ที่</th><th>แสดงอะไร</th></tr></thead><tbody>
+        <tr><td><b>ตารางรายการคำขอ</b></td><td>คอลัมน์ <b>สกุลเงิน</b> อยู่ก่อนช่องยอด — กวาดตาดูทั้งหน้าได้ทันที · ใบที่แปลงสกุลมีบรรทัดเล็ก <b>← CNY</b> บอกต้นทาง</td></tr>
+        <tr><td><b>ตอนกรอกฟอร์ม</b></td><td>แถบสีใต้ปุ่มดึงงวด บอกว่า “คำขอใบนี้จ่ายเป็นสกุลอะไร ยอดเท่าไหร่ ตั้งต้นจากบิลสกุลไหน”</td></tr>
+        <tr><td><b>หน้าดูคำขอ (👁)</b></td><td>ป้ายเต็มข้างเลขคำขอ + ช่อง <b>สกุลเงินที่โอนจริง</b> ในแถบข้อมูล</td></tr>
+        <tr><td><b>ใบพิมพ์ · ข้อความแจ้งโอน</b></td><td>บรรทัด <b>สกุลเงินที่โอน</b> ระบุตัวย่อและชื่อไทย</td></tr>
+      </tbody></table></div>
+
+      <h4 style="margin:16px 0 2px;font-size:14px;color:var(--navy)">ช่องเรท 2 ช่อง ต่างกันอย่างไร</h4>
+      <div class="hp-tw"><table class="hp-t" style="margin-top:4px"><thead><tr>
+        <th style="width:180px">ช่อง</th><th style="width:200px">แปลว่า</th><th>ระบบเติมให้เมื่อไหร่</th></tr></thead><tbody>
+        <tr><td><b>เรทแปลง</b><div class="muted" style="font-size:11px">กล่องเหลือง “แปลงสกุลเงิน”</div></td>
+          <td>สกุลบิล → สกุลที่โอนจริง<br><span class="muted">เช่น หยวน → ดอลลาร์</span></td>
+          <td>งวดระบุยอดปลายทางไว้แล้ว → <b>ล็อกช่องนี้</b> โชว์อัตราแลกให้ดูเท่านั้น ·
+            ถ้างวดไม่ได้ระบุ → จำเรทจากคำขอล่าสุดของคู่สกุลนั้นมาเติมให้ แก้ได้</td></tr>
+        <tr><td><b>เรท → บาท</b><div class="muted" style="font-size:11px">กล่องเทา ใต้กล่องเหลือง</div></td>
+          <td>สกุลที่โอนจริง → บาท<br><span class="muted">เช่น ฿ ต่อ 1 USD</span></td>
+          <td>ดึงจากเรทของงวดในระบบวางแผน · พิมพ์ทับได้ ใช้กับทุกแถว · หรือพิมพ์ทีละแถวในคอลัมน์ <b>เรท ฿</b></td></tr>
+      </tbody></table></div>
+      <div class="hp-tip">💡 <b>ลบเรททิ้งได้</b> — ลบแล้วยอดบาทเป็น 0 พร้อมคำเตือน ระบบไม่เติมกลับให้
+        · อยากได้เรทเดิมคืน กด <b>↺ เรทตามระบบ</b> · อยากเลิกแปลงสกุล โอนตามบิลตรง ๆ กด <b>↺ ไม่แปลง</b></div>
+      <div class="hp-warn">⚠️ <b>ส่งอนุมัติไม่ได้ถ้าไม่มีเรทแปลง</b> — บิลเป็นสกุลหนึ่งแต่จะโอนอีกสกุล
+        โดยยังไม่ใส่เรท ระบบจะไม่ให้ส่ง เพราะยอดโอนจะเป็น 0</div>
+    </div>
+
+    <div class="card">
       <h2>🏷️ ป้ายสถานะ อ่านอย่างไร</h2>
       <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:190px">ป้าย</th><th style="width:190px">รออะไร / ใครต้องทำต่อ</th><th>แก้ไขคำขอได้ไหม</th></tr></thead><tbody>
         <tr><td><span class="pill st-draft">📄 ร่าง</span></td><td>ผู้ยื่นยังไม่ส่ง</td><td><span class="hp-chk">✔</span> ได้ (เฉพาะผู้ยื่น)</td></tr>
@@ -438,6 +507,18 @@ tr:nth-child(even) td{background:#F8FAFD}
           <td>หน้านี้ไม่รีเฟรชอัตโนมัติเพื่อประหยัดทรัพยากร — กด <b>F5</b> หรือสลับแท็ปกลับมา</td></tr>
         <tr><td><b>ลืมว่าคำขอไปถึงขั้นไหน ใครอนุมัติแล้ว</b></td>
           <td>เปิดคำขอ → ดูแถบขั้นตอนด้านบน และตาราง <b>🕘 ประวัติการดำเนินการ</b> ด้านล่างสุด บันทึกทุกการกระทำพร้อมเวลาและชื่อคน</td></tr>
+        <tr><td><b>ยอดที่ดึงมาเป็นหยวน แต่ควรเป็นดอลลาร์</b></td>
+          <td>ใบที่สร้างไว้<b>ก่อน</b>ระบบจะดึงยอด USD เป็น — เปิด <b>✏️ แก้ไข</b> แล้วกดบันทึกใหม่
+            ระบบจะเติมยอดปลายทางจากงวดให้ถูกทันที · ใบใหม่ไม่เจอปัญหานี้อีก</td></tr>
+        <tr><td><b>ไม่รู้ว่าคำขอนี้เป็นสกุลเงินอะไร</b></td>
+          <td>ดูป้ายสีข้างเลขคำขอในหน้าดู หรือคอลัมน์ <b>สกุลเงิน</b> ในตาราง — มีตัวย่อและชื่อไทยกำกับ ไม่ต้องเดาจากสัญลักษณ์</td></tr>
+        <tr><td><b>เรทที่ระบบเติมให้ไม่ตรง อยากแก้/อยากลบ</b></td>
+          <td>พิมพ์ทับได้เลย หรือลบทิ้งก็ได้ ระบบจะไม่เติมกลับ · กด <b>↺ เรทตามระบบ</b> เพื่อคืนค่าเดิม
+            · ถ้าช่องเรทแปลง<b>ล็อกอยู่</b> แปลว่ายอดปลายทางมาจากงวดโดยตรง ไม่ต้องใส่เรท (กด <b>↺ ไม่แปลง</b> ถ้าอยากแปลงเองด้วยเรทอื่น)</td></tr>
+        <tr><td><b>ยอดบาทขึ้น 0</b></td>
+          <td>ยังไม่มีเรท → บาท — ใส่ในกล่องเทา <b>เรท → บาท</b> ช่องเดียว ใช้กับทุกแถว</td></tr>
+        <tr><td><b>อยากลบคำขอที่อนุมัติ/จ่ายแล้ว</b></td>
+          <td>ผู้บริหารเท่านั้น และต้อง<b>พิมพ์เลขคำขอ</b>ยืนยัน · ไฟล์แนบใน Google Drive ไม่ถูกลบตาม ต้องไปลบเอง</td></tr>
       </tbody></table></div>
       <div class="hp-warn" style="margin-top:12px">⚠️ <b>กันจ่ายซ้ำ</b> — ก่อนสร้างคำขอใหม่ ให้ค้นเลข PO ในช่องค้นหาก่อนทุกครั้ง
         ถ้าเจอคำขอเดิมที่ยัง <b>รออนุมัติ</b> อยู่ อย่าสร้างใบใหม่ซ้อน</div>
