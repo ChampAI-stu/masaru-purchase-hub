@@ -1,0 +1,1190 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MASARU — คู่มือระบบฝ่ายจัดซื้อ</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--navy:#1A2942;--blue:#2E75B6;--gold:#C9A84C;--green:#1E7145;--red:#D0212B;
+  --amber:#B7791F;--line:#E3E8F0;--muted:#64748B;--bg:#F1F4F9;--ink:#1E293B}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Sarabun,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+button{font-family:inherit;cursor:pointer}
+input{font-family:inherit;font-size:13.5px}
+a{color:var(--blue)}
+
+/* ---------- โครงหน้า: แถบบน + สารบัญซ้าย + เนื้อหาขวา ---------- */
+.top{background:var(--navy);color:#fff;padding:11px 18px;display:flex;align-items:center;gap:12px;
+  flex-wrap:wrap;position:sticky;top:0;z-index:50;box-shadow:0 2px 10px rgba(26,41,66,.18)}
+.top .bm{font-weight:800;font-size:16px;letter-spacing:.3px}
+.top .bm i{color:var(--red);font-style:normal}
+.top .t2{font-size:12.5px;opacity:.85}
+.pill-top{background:#ffffff22;border:1px solid #ffffff44;border-radius:20px;padding:5px 13px;font-size:12px}
+.top a{color:#fff;text-decoration:none;font-size:12.5px}
+.shell{display:grid;grid-template-columns:262px 1fr;gap:18px;max-width:1280px;margin:0 auto;padding:18px}
+.side{position:sticky;top:64px;align-self:start;max-height:calc(100vh - 82px);overflow:auto}
+.side .box{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px}
+.side h3{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.4px;margin:2px 0 8px}
+.navi a{display:block;text-decoration:none;color:var(--ink);font-size:13px;padding:7px 9px;border-radius:8px;
+  line-height:1.45;border-left:3px solid transparent}
+.navi a:hover{background:#F4F7FB}
+.navi a.on{background:#EEF3FA;border-left-color:var(--navy);font-weight:700;color:var(--navy)}
+.navi a small{display:block;color:var(--muted);font-size:10.5px;font-weight:400}
+#q{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:9px}
+.main{min-width:0}
+@media(max-width:940px){.shell{grid-template-columns:1fr}.side{position:static;max-height:none}}
+
+/* ---------- การ์ด/หัวข้อ ---------- */
+.card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:17px 20px;margin-bottom:15px;overflow:hidden}
+.sec{scroll-margin-top:72px}
+h1{font-size:21px;color:var(--navy);line-height:1.4}
+h2{font-size:17px;color:var(--navy);margin:0 0 4px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;line-height:1.4}
+h2 .fn{font-size:11.5px;color:var(--muted);font-weight:400;background:#F1F5F9;border-radius:6px;padding:2px 8px}
+h3.hh{font-size:14.5px;color:var(--navy);margin:16px 0 4px}
+h3.hh:first-of-type{margin-top:8px}
+.sub-note{color:var(--muted);font-size:12.5px;line-height:1.75;margin-bottom:4px}
+p.tx{font-size:12.5px;line-height:1.8;color:#334155;margin:0 0 7px}
+.lead{background:#EEF3FA;border-left:5px solid var(--navy);border-radius:9px;padding:11px 14px;
+  font-size:12.5px;line-height:1.8;margin:8px 0 12px}
+
+/* ---------- ผังโฟลว์ ---------- */
+.hp-flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:2px;margin:6px 0}
+.hp-node{flex:1 1 150px;min-width:150px;background:#fff;border:2px solid var(--line);border-radius:12px;padding:10px 12px}
+.hp-node .ic{font-size:20px;line-height:1.2}
+.hp-node .ti{font-weight:800;font-size:13px;color:var(--navy);margin-top:3px}
+.hp-node .wh{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.6}
+.hp-node .do{font-size:11.5px;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);line-height:1.6}
+.hp-node.c1{border-color:#94A3B8}.hp-node.c2{border-color:var(--amber)}.hp-node.c3{border-color:var(--blue)}
+.hp-node.c4{border-color:var(--green)}.hp-node.c5{border-color:#166534}
+.hp-node.cx{border-color:var(--red);background:#FFF7F7}
+.hp-arw{display:flex;align-items:center;justify-content:center;color:#94A3B8;font-size:19px;font-weight:800;flex:0 0 22px}
+@media(max-width:880px){.hp-node{flex:1 1 100%}.hp-arw{flex:1 1 100%;transform:rotate(90deg);padding:2px 0}}
+
+/* ---------- ขั้นตอน ---------- */
+.hp-step{display:grid;grid-template-columns:38px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.hp-step:first-of-type{border-top:0}
+.hp-step .bub{width:32px;height:32px;border-radius:50%;background:var(--gold);color:#fff;font-weight:800;
+  display:flex;align-items:center;justify-content:center;font-size:14px}
+.hp-step h4{margin:3px 0 5px;font-size:13.5px;color:var(--navy)}
+.hp-step p{margin:0 0 6px;font-size:12.5px;line-height:1.75;color:#334155}
+.hp-who{display:inline-block;background:#EEF2F7;color:#475569;border-radius:20px;padding:1px 9px;
+  font-size:11px;font-weight:700;margin-left:6px}
+@media(max-width:560px){.hp-step{grid-template-columns:28px 1fr;gap:9px}
+  .hp-step .bub{width:25px;height:25px;font-size:12px}}
+
+/* ---------- จำลองหน้าจอ ---------- */
+.hp-ui{background:#F7F9FC;border:1px dashed #C3CDDB;border-radius:10px;padding:10px 11px;margin:7px 0 2px}
+.hp-ui .cap{font-size:10.5px;color:var(--muted);margin-bottom:7px;letter-spacing:.3px}
+.hp-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.hp-btn{display:inline-flex;align-items:center;gap:4px;background:var(--navy);color:#fff;border-radius:7px;
+  padding:5px 11px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.hp-btn.g{background:var(--green)}.hp-btn.r{background:var(--red)}.hp-btn.y{background:#8a6d1f}
+.hp-btn.b{background:var(--blue)}
+.hp-btn.o{background:#fff;color:var(--navy);border:1px solid var(--line);font-weight:600}
+.hp-fld{background:#fff;border:1px solid var(--line);border-radius:7px;padding:5px 9px;font-size:11.5px;
+  color:#475569;min-width:110px;max-width:100%;overflow-wrap:anywhere}
+.hp-lbl{font-size:10.5px;color:var(--muted);display:block;margin-bottom:2px}
+
+/* ---------- กล่องข้อความ ---------- */
+.hp-tip{background:#FDF8E7;border-left:4px solid var(--gold);border-radius:8px;padding:9px 12px;
+  font-size:12.5px;line-height:1.75;margin:8px 0 2px}
+.hp-warn{background:#FCE4E4;border-left:4px solid var(--red);border-radius:8px;padding:9px 12px;
+  font-size:12.5px;line-height:1.75;margin:8px 0 2px}
+.hp-ok{background:#E9F6EE;border-left:4px solid var(--green);border-radius:8px;padding:9px 12px;
+  font-size:12.5px;line-height:1.75;margin:8px 0 2px}
+.hp-info{background:#E6F1FB;border-left:4px solid var(--blue);border-radius:8px;padding:9px 12px;
+  font-size:12.5px;line-height:1.75;margin:8px 0 2px}
+
+/* ---------- ตาราง ---------- */
+.hp-tw{overflow-x:auto;max-width:100%;margin-top:8px}
+.hp-t{width:100%;font-size:12.5px;border-collapse:collapse}
+.hp-tw .hp-t{min-width:540px}
+.hp-t th{background:var(--navy);color:#fff;padding:7px 9px;text-align:left;font-weight:600;font-size:12px}
+.hp-t td{padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.7}
+.hp-t tr:nth-child(even) td{background:#FAFCFE}
+.hp-chk{color:var(--green);font-weight:800}.hp-x{color:#CBD5E1;font-weight:800}
+.num{text-align:right}
+code{background:#F1F5F9;padding:1px 5px;border-radius:4px;font-size:11.5px;overflow-wrap:anywhere}
+.pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.muted{color:var(--muted)}
+@media(max-width:560px){.hp-tw .hp-t{min-width:440px}}
+
+/* ---------- เส้นทางเงิน ---------- */
+.hp-money{display:flex;flex-wrap:wrap;align-items:stretch;gap:7px;margin:10px 0 4px}
+.hp-money .box{background:#fff;border:2px solid var(--line);border-radius:11px;padding:9px 13px;min-width:128px}
+.hp-money .box .u{font-size:11px;color:var(--muted)}
+.hp-money .box .v{font-size:15px;font-weight:800;color:var(--navy);margin-top:1px}
+.hp-money .box .s{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+.hp-money .op{font-size:11.5px;font-weight:700;color:#8a6d1f;text-align:center;line-height:1.5;
+  flex:0 0 auto;display:flex;flex-direction:column;justify-content:center}
+.hp-money .box.b1{border-color:#F0C97A;background:#FEF9EE}
+.hp-money .box.b2{border-color:#86D8A6;background:#F2FBF5}
+.hp-money .box.b3{border-color:#8FBCE6;background:#F2F8FE}
+
+/* ---------- สูตร ---------- */
+.fx{background:#0F172A;color:#E2E8F0;border-radius:9px;padding:11px 14px;font-size:12px;
+  line-height:1.9;overflow-x:auto;margin:8px 0 2px;white-space:pre;font-family:ui-monospace,Menlo,Consolas,monospace}
+.fx b{color:#FCD34D;font-weight:700}
+
+/* ---------- แผนผังระบบ ---------- */
+.mapg{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;margin:10px 0 4px}
+.mapc{background:#fff;border:2px solid var(--line);border-left-width:6px;border-radius:11px;padding:10px 12px;
+  text-decoration:none;color:var(--ink);display:block}
+.mapc:hover{box-shadow:0 4px 14px rgba(26,41,66,.1)}
+.mapc .n{font-weight:800;font-size:13px;color:var(--navy)}
+.mapc .f{font-size:10.5px;color:var(--muted);margin-top:2px}
+.mapc .d{font-size:11.5px;margin-top:5px;line-height:1.6;color:#475569}
+
+/* ---------- ค้นหา / พิมพ์ ---------- */
+.hit{outline:3px solid #FCD34D;outline-offset:3px;border-radius:12px}
+#noHit{display:none;background:#FCE4E4;border-left:4px solid var(--red);border-radius:9px;
+  padding:11px 14px;font-size:12.5px;margin-bottom:14px}
+@media print{
+  .top,.side,#q,.noprint{display:none!important}
+  .shell{grid-template-columns:1fr;padding:0;max-width:none}
+  .card{break-inside:avoid;border-color:#ccc;box-shadow:none}
+  body{background:#fff;font-size:11.5px}
+  .sec{display:block!important}
+}
+</style></head><body>
+
+<!-- ตรวจสิทธิ์ก่อน — เนื้อหาซ่อนไว้จนกว่าจะยืนยันว่าเป็นคนในระบบ -->
+<div id="gate" style="max-width:540px;margin:80px auto;text-align:center">
+  <div style="font-size:34px">📖</div>
+  <div id="gateMsg" style="margin-top:10px;font-size:15px;color:#64748B">กำลังตรวจสอบสิทธิ์…</div>
+  <div id="gateAct" style="margin-top:16px"></div>
+</div>
+
+<div id="app" style="display:none">
+
+<div class="top">
+  <span class="bm">MA<i>S</i>ARU</span>
+  <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
+  <span style="flex:1"></span>
+  <span class="pill-top" id="whoami"></span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v01-00</span>
+  <button class="hp-btn o" onclick="window.print()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF">🖨️ พิมพ์คู่มือ</button>
+  <a href="index.html" class="pill-top">🏠 หน้ารวม</a>
+</div>
+
+<div class="shell">
+  <!-- ═══════════ สารบัญ ═══════════ -->
+  <div class="side">
+    <div class="box">
+      <input id="q" placeholder="🔍 ค้นหาในคู่มือ" oninput="findAll(this.value)">
+      <h3>สารบัญ</h3>
+      <div class="navi" id="navi">
+        <a href="#s0" class="on">🗺️ ภาพรวมทั้งระบบ<small>ข้อมูลไหลจากไหนไปไหน</small></a>
+        <a href="#s1">📋 Purchase Board<small>board.html · ติดตาม PO</small></a>
+        <a href="#s2">📝 ใบขอซื้อ (PR)<small>pr.html · ขอซื้อ + อนุมัติ</small></a>
+        <a href="#s3">💳 วางแผนจ่ายเงิน<small>pay.html · บิล งวด ใบปะหน้า</small></a>
+        <a href="#s4">✅ ขออนุมัติชำระเงิน<small>payapprove.html · ยื่น-อนุมัติ-จ่าย</small></a>
+        <a href="#s5">🚢 Shipment นำเข้า<small>cost.html · INV/PL ภาษี ขนส่ง</small></a>
+        <a href="#s6">💰 ต้นทุนสินค้า<small>costsku.html · Landed cost + KPI</small></a>
+        <a href="#s7">💾 สำรองข้อมูล<small>backup.html</small></a>
+        <a href="#s8">⚠️ กับดักที่ต้องรู้<small>รวมทุกระบบ</small></a>
+        <a href="#s9">🔑 สิทธิ์การใช้งาน<small>ใครเข้าอะไรได้</small></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ เนื้อหา ═══════════ -->
+  <div class="main">
+    <div id="noHit">ไม่พบคำที่ค้นในคู่มือ — ลองคำสั้นลง เช่น ชื่อปุ่ม หรือชื่อไฟล์</div>
+<!-- ══════════════════════ 0. ภาพรวม ══════════════════════ -->
+<div class="card sec" id="s0">
+  <h1>📖 คู่มือระบบฝ่ายจัดซื้อ MASARU</h1>
+  <div class="sub-note">คู่มือของทุกระบบรวมอยู่ในหน้านี้ที่เดียว · ใช้ช่องค้นหาด้านซ้ายหาชื่อปุ่มหรือคำที่ติดอยู่ได้เลย
+    · กด <b>🖨️ พิมพ์คู่มือ</b> เพื่อบันทึกเป็น PDF ทั้งเล่ม</div>
+  <div class="lead"><b>อ่านอย่างไรให้เร็ว</b> — แต่ละระบบมี 4 ส่วนเหมือนกันหมด:
+    <b>ผังโฟลว์</b> (เห็นภาพรวมใน 10 วินาที) → <b>ทำทีละขั้น</b> (ทำตามได้เลย) →
+    <b>สิทธิ์</b> (ใครทำอะไรได้) → <b>กับดัก</b> (สิ่งที่พลาดบ่อยและวิธีเลี่ยง)</div>
+
+  <h3 class="hh">7 ระบบ ทำอะไร</h3>
+  <div class="mapg">
+    <a class="mapc" href="#s1" style="border-left-color:#94A3B8"><div class="n">📋 Purchase Board</div>
+      <div class="f">board.html</div><div class="d">ประตูรับข้อมูลจาก ERP · ติดตามสถานะ PO/SKU · แผนรับสินค้าเข้าคลัง · รายงานตรงเวลา</div></a>
+    <a class="mapc" href="#s2" style="border-left-color:#B7791F"><div class="n">📝 ใบขอซื้อ (PR)</div>
+      <div class="f">pr.html</div><div class="d">ออกใบขอซื้อ · ตรวจราคาอัตโนมัติ · อนุมัติ 2 ชั้น · ออกเลข PO · ราคากลางต่อ SKU</div></a>
+    <a class="mapc" href="#s3" style="border-left-color:#2E75B6"><div class="n">💳 วางแผนจ่ายเงิน</div>
+      <div class="f">pay.html</div><div class="d">บิลค่าสินค้า · แบ่งงวดจ่าย · ใบปะหน้ารายวัน · ใบเสนอราคา · Ksher Wallet</div></a>
+    <a class="mapc" href="#s4" style="border-left-color:#1E7145"><div class="n">✅ ขออนุมัติชำระเงิน</div>
+      <div class="f">payapprove.html</div><div class="d">ยื่นขออนุมัติจ่าย → ผู้บริหารอนุมัติ → แจ้งโอน → แนบสลิป → ปิดงาน</div></a>
+    <a class="mapc" href="#s5" style="border-left-color:#8a6d1f"><div class="n">🚢 Shipment นำเข้า</div>
+      <div class="f">cost.html</div><div class="d">ข้อมูลใบขนสินค้า · ออก Invoice + Packing List · ติดตามเรือ · สรุปภาษี · ใบวางบิลขนส่ง</div></a>
+    <a class="mapc" href="#s6" style="border-left-color:#D0212B"><div class="n">💰 ต้นทุนสินค้า</div>
+      <div class="f">costsku.html</div><div class="d">คิดต้นทุนรวมต่อหน่วย (Landed cost) · ปันส่วนค่าขนส่ง · KPI Cost Saving</div></a>
+    <a class="mapc" href="#s7" style="border-left-color:#166534"><div class="n">💾 สำรองข้อมูล</div>
+      <div class="f">backup.html</div><div class="d">ดึงทุกตารางเก็บเป็น JSON / Excel ไว้ในเครื่อง</div></a>
+  </div>
+
+  <h3 class="hh">ข้อมูลไหลจากไหนไปไหน</h3>
+  <p class="tx">ทุกระบบใช้ฐานข้อมูล Supabase ตัวเดียวกัน และ<b>ล็อกอินเดียวกัน</b> — ไม่มีการส่งไฟล์ต่อกัน
+    แต่ละระบบอ่าน/เขียนตารางร่วมกัน ฉะนั้น<b>ถ้าต้นทางผิด ปลายทางผิดตามหมด</b></p>
+  <div class="fx">JST / ERP
+   │  export Excel (ทำมือ — ไม่มี API)
+   ▼
+<b>board.html</b>  ── purchase_orders ──┬──► <b>pay.html</b>      (ทำบิล · ซิงก์บิลจาก PO · ชื่อ Vendor)
+   │                                └──► <b>cost.html</b>     (แท็บรวม PO — ดูอย่างเดียว)
+   └── sku_master ──────────────────┬──► <b>pr.html</b>       (ราคากลาง + ประวัติราคา)
+                                    └──► <b>costsku.html</b>  (ฐานคิดต้นทุน)
+<b>pr.html</b>  ── pr / pr_items ────────► <b>pay.html</b>      (เติมเลข Reference PR จากเลข PO)
+<b>pay.html</b> ── pay_payments / pay_docs ─► <b>payapprove.html</b> (ดึงงวดจ่าย · ดึงจากใบปะหน้า)
+<b>cost.html</b> ── shipments ──auto──► shipment_tracking ──► tax_summaries · freight_invoices</div>
+  <div class="hp-warn">⚠️ <b>จุดเปราะที่สุดของทั้งกลุ่มคือการนำเข้า Excel ที่ Purchase Board</b> —
+    ถ้านำเข้าผิดโหมด หรือข้อมูลไม่ครบ จะลามไปถึงบิล ใบปะหน้า และคำขออนุมัติจ่ายเงินทั้งหมด
+    <a href="#s1">อ่านวิธีนำเข้าให้ถูก</a></div>
+
+  <h3 class="hh">เข้าใช้งานอย่างไร</h3>
+  <div class="hp-tw"><table class="hp-t"><tbody>
+    <tr><td style="width:190px"><b>ล็อกอินที่เดียว</b></td>
+      <td>เข้าที่ <b>หน้ารวม</b> (<code>index.html</code>) เท่านั้น — ทุกระบบใช้ session เดียวกัน
+        · เปิดไฟล์ระบบตรง ๆ โดยยังไม่ล็อกอินจะถูกเด้งกลับหน้ารวมทันที</td></tr>
+    <tr><td><b>ออกจากระบบ</b></td><td>กดที่ระบบไหนก็ออกทุกแท็บ (session ร่วมกัน)</td></tr>
+    <tr><td><b>เห็นระบบไม่ครบ</b></td>
+      <td>การ์ดในหน้ารวมขึ้นตามบทบาท — ถ้าควรเห็นแต่ไม่เห็น แจ้งผู้ดูแลตรวจตาราง <code>portal_apps</code></td></tr>
+    <tr><td><b>ปุ่มที่ควรเห็นไม่ขึ้น</b></td>
+      <td>ดูป้ายบทบาทมุมขวาบนของหน้านั้นก่อน ว่าระบบอ่านบทบาทคุณเป็นอะไร แล้วเทียบกับ <a href="#s9">ตารางสิทธิ์</a></td></tr>
+    <tr><td><b>แถบ 🔔 มีข้อมูลใหม่</b></td>
+      <td>หลายระบบ<b>ไม่รีเฟรชเอง</b> เพื่อประหยัดค่าโหลดข้อมูล — ต้องกดแถบนี้เอง ไม่กดจะเห็นข้อมูลเก่า</td></tr>
+  </tbody></table></div>
+</div>
+
+<!-- ══════════════════════ 1. Purchase Board ══════════════════════ -->
+<div class="card sec" id="s1">
+  <h2>📋 Purchase Board <span class="fn">board.html</span></h2>
+  <div class="sub-note">ติดตามสถานะ PO / SKU ทุกใบ + วางแผนรับสินค้าเข้าคลัง + รายงานส่งตรงเวลา
+    · <b>เป็นประตูที่ข้อมูลจาก ERP เข้าสู่ทุกระบบ</b></div>
+
+  <h3 class="hh">4 แท็บ</h3>
+  <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:190px">แท็บ</th><th>ทำอะไร</th><th style="width:120px">ใครเห็น</th></tr></thead><tbody>
+    <tr><td><b>📋 Purchase Board</b></td><td>ตาราง PO ทั้งหมด + การ์ดสรุป + ค้นหา/กรอง/เรียง (หน้าละ 50 แถว)</td><td>ทุกคน</td></tr>
+    <tr><td><b>🚚 แผนรับสินค้า</b></td><td>ปฏิทินรายสัปดาห์ แยกการ์ดต่อวัน แสดงเที่ยวส่ง + ยอดรวมท้ายวัน</td><td>ทุกคน<br><span class="muted">การตลาดเห็น 4 คอลัมน์</span></td></tr>
+    <tr><td><b>📈 รายงาน On-Time</b></td><td>สัดส่วนส่งตรงเวลา/ช้า แยกตามขนส่ง + รายการที่ช้าสุด → พิมพ์ PDF</td><td>จัดซื้อขึ้นไป</td></tr>
+    <tr><td><b>📜 ประวัติการอัพโหลด</b></td><td>บันทึกทุกครั้งที่นำเข้าไฟล์ — ชื่อไฟล์ แถวในไฟล์ นำเข้าจริง โหมด ผู้อัพโหลด</td><td>จัดซื้อขึ้นไป</td></tr>
+  </tbody></table></div>
+
+  <h3 class="hh">งานหลัก ① นำเข้าข้อมูลจาก ERP</h3>
+  <div class="hp-step">
+    <div class="bub">1</div>
+    <div><h4>เตรียมไฟล์ <span class="hp-who">จัดซื้อ</span></h4>
+      <p>Export จาก JST → กด <b>📥 นำเข้า Excel</b> → <b>📂 เลือกไฟล์ Excel / CSV</b>
+        (ไม่มีไฟล์ต้นแบบ กด <b>โหลดเทมเพลต</b> ได้)</p>
+      <p>ระบบจับคู่หัวคอลัมน์ให้เอง และ<b>ข้ามแถวที่สถานะ ERP เป็น “โมฆะ”</b> ให้อัตโนมัติ</p>
+    </div>
+  </div>
+  <div class="hp-step">
+    <div class="bub">2</div>
+    <div><h4>เลือกโหมดให้ถูก — จุดที่พลาดกันมากที่สุด <span class="hp-who">จัดซื้อ</span></h4>
+      <div class="hp-ui"><div class="cap">ในหน้าต่างนำเข้า</div>
+        <div class="hp-bar"><span class="hp-fld">☑ อัปเดตเฉพาะราคา (¥) + Vendor</span>
+          <span class="muted" style="font-size:11.5px">← ติ๊กมาให้ตั้งแต่เริ่ม</span></div></div>
+      <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:150px">สภาพ checkbox</th><th>เขียนอะไรลงระบบ</th><th style="width:170px">ใช้เมื่อ</th></tr></thead><tbody>
+        <tr><td><b>ติ๊กไว้</b> (ค่าเริ่มต้น)</td><td>เขียนแค่ <b>ราคา + Vendor</b> — ไม่แตะสถานะ จำนวน วันที่ ขนส่ง</td><td>อัปราคาให้ทันซัพพลายเออร์</td></tr>
+        <tr><td><b>เอาเครื่องหมายออก</b></td><td>ซิงก์ครบทุกช่องตามไฟล์ (สถานะ จำนวน ETA ขนส่ง)</td><td>ซิงก์สถานะประจำวัน</td></tr>
+      </tbody></table></div>
+      <div class="hp-warn">⚠️ ตั้งใจจะซิงก์สถานะแต่ลืมเอาเครื่องหมายออก → ได้แค่ราคา สถานะไม่ขยับ
+        แล้วมักเข้าใจผิดว่า “ERP ยังไม่อัปเดต”</div>
+    </div>
+  </div>
+  <div class="hp-step">
+    <div class="bub">3</div>
+    <div><h4>ตรวจก่อนยืนยัน <span class="hp-who">จัดซื้อ</span></h4>
+      <p>ดูพรีวิว 50 แถวแรก → กด <b>ยืนยันนำเข้า</b></p>
+      <div class="hp-tip">💡 <b>เช็คยอดทุกครั้ง</b> — เทียบ “นำเข้าจริง” กับจำนวนแถวในไฟล์
+        ถ้าไม่เท่ากันให้ดูว่าข้ามเพราะโมฆะ หรือเพราะ “ไม่พบในระบบ”
+        · ถ้าไฟล์ไม่มีคอลัมน์ Vendor ระบบขึ้นป้ายส้มเตือน แต่ยังนำเข้าได้ — ชื่อซัพพลายเออร์จะไม่ถูกอัปเดต</div>
+    </div>
+  </div>
+
+  <h3 class="hh">งานหลัก ② อัปเดตสถานะระหว่างทาง</h3>
+  <p class="tx">กด <b>🔄 อัพเดท PO</b> → พิมพ์เลข PO (มีรายการช่วยเลือก) → ระบบบอกว่า <b>พบ N รายการใน PO นี้</b>
+    → กรอกเฉพาะช่องที่จะเปลี่ยน (<b>เว้นว่าง = ไม่เปลี่ยน</b>) → <b>อัพเดททั้ง PO</b></p>
+  <div class="hp-warn">⚠️ ปุ่มนี้เปลี่ยน <b>ทุก SKU ในเลข PO นั้นพร้อมกัน</b> ไม่ใช่แค่แถวที่เห็นบนจอ และ<b>ย้อนกลับไม่ได้</b>
+    · ถ้าจะแก้ทีละรายการให้กด ✏️ ในแถวแทน (กด ✏️ แล้วจะเพิ่ม SKU ไม่ได้ แก้ได้ทีละตัว)</div>
+
+  <h3 class="hh">งานหลัก ③ วางแผนรับสินค้าเข้าคลัง</h3>
+  <div class="hp-flow">
+    <div class="hp-node c1"><div class="ic">➕</div><div class="ti">1. เปิดเที่ยวส่ง</div>
+      <div class="wh">จัดซื้อ</div><div class="do">แท็บ 🚚 → <b>+ เพิ่มเที่ยวส่ง</b> → เลือก<b>วันที่รับสินค้า</b> (บังคับ) + ชื่อขนส่ง</div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c3"><div class="ic">🔎</div><div class="ti">2. ดึง SKU</div>
+      <div class="wh">จัดซื้อ</div><div class="do">พิมพ์เลข PO → <b>+ ดึง SKU</b> ได้ทุก SKU ของ PO นั้นเป็นบรรทัดให้เลย</div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c4"><div class="ic">📦</div><div class="ti">3. กรอกของเข้า</div>
+      <div class="wh">จัดซื้อ</div><div class="do">ชิ้น/ลัง · ลัง · ของเข้า · คิว · เคลียร์ออเดอร์ → <b>บันทึก</b></div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c5"><div class="ic">📤</div><div class="ti">4. ส่งให้คลัง</div>
+      <div class="wh">ทุกคน</div><div class="do"><b>📥 Export Excel</b> ส่งคลัง / ขนส่ง</div></div>
+  </div>
+  <div class="hp-warn">⚠️ <b>🗑️ ลบข้อมูลเก่า</b> ลบทุกเที่ยวส่งในช่วงวันที่ที่เลือก พร้อมรายการข้างใน <b>กู้คืนไม่ได้</b>
+    · เว้นช่อง “ถึงวันที่” = ลบแค่วันเดียว
+    · การ<b>แก้ไข</b>เที่ยวส่งคือลบรายการเดิมทิ้งแล้วใส่ใหม่ ถ้าเน็ตหลุดกลางทางรายการอาจหายทั้งเที่ยว — แก้เสร็จเช็คซ้ำ</div>
+
+  <h3 class="hh">งานหลัก ④ ส่งราคาเข้าระบบกลาง</h3>
+  <p class="tx">เมื่อ <b>ของเข้าครบ</b> (ของเข้า ≥ จำนวนสั่ง) ระบบเปลี่ยนสถานะเป็น <b>เข้าคลังแล้ว</b> ให้เอง
+    · ถ้าราคาในแถว<b>ต่าง</b>จากราคากลาง ปุ่ม <b>🔄 อัพเดตราคา</b> จะโผล่ในช่องราคา</p>
+  <div class="hp-ok">✅ กดแล้วราคากลางใน <code>sku_master</code> ถูกอัปเดต → ระบบ PR บันทึกประวัติราคาให้เอง
+    → <b>มีผลกับระบบต้นทุนทันที</b> · SKU ที่ยังไม่มีในระบบ PR จะอัปเดตไม่ได้ ต้องไปเพิ่มที่ PR ก่อน</div>
+
+  <h3 class="hh">6 สถานะ</h3>
+  <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:190px">สถานะ</th><th>หมายถึง</th></tr></thead><tbody>
+    <tr><td>🛒 <b>อยู่ระหว่างสั่งซื้อ</b></td><td>PR อนุมัติแล้ว สั่งซื้อแล้ว</td></tr>
+    <tr><td>🏭 <b>อยู่ระหว่างผลิต</b></td><td>โรงงานกำลังผลิต ยังไม่ส่งออก</td></tr>
+    <tr><td>🚚 <b>อยู่ระหว่างขนส่ง</b></td><td>กำลังขนส่งมาไทย</td></tr>
+    <tr><td>📥 <b>รอนำส่งเข้าคลัง</b></td><td>ถึงไทยแล้ว เตรียมนำส่งไดกิ</td></tr>
+    <tr><td>📦 <b>เข้าคลังแล้ว</b></td><td>คลังรับเข้าระบบแล้ว</td></tr>
+    <tr><td>⚠️ <b>ผิดปกติ</b></td><td>รอจัดซื้อตรวจสอบ</td></tr>
+  </tbody></table></div>
+  <div class="hp-info">ℹ️ <b>ทุกสถานะแก้ได้เท่ากัน</b> ไม่มีการล็อกตามสถานะ — สิทธิ์ขึ้นกับบทบาทเท่านั้น
+    · นอกจากนี้มีป้ายที่คำนวณจาก ETA ให้เอง: <b>🔥 ใกล้เข้า (≤7 วัน)</b> แถวพื้นเหลือง และ
+    <b>⚠️ เลยกำหนด</b> แถวพื้นแดง (นับเฉพาะที่ยังไม่เข้าคลัง)</div>
+
+  <h3 class="hh">กับดักของระบบนี้</h3>
+  <div class="hp-tw"><table class="hp-t"><tbody>
+    <tr><td style="width:250px"><b>ตารางไม่อัปเดตเอง</b></td>
+      <td>ต้องกดแถบ <b>🔔 มีข้อมูลใหม่ — กดเพื่อโหลด</b> ที่ลอยอยู่ล่างจอ (ตั้งใจทำแบบนี้เพื่อลดค่าโหลดข้อมูล)
+        · แท็บแผนรับสินค้าอัปเดตเองทันที ต่างจากแท็บอื่น</td></tr>
+    <tr><td><b>ไฟล์ใหญ่เกิน 1,000 แถว</b></td>
+      <td>ขั้นตอนนำเข้าอ่านข้อมูลเดิมได้สูงสุด 1,000 แถว — ไฟล์ที่ใหญ่กว่านั้นแถวส่วนเกินอาจถูกนับว่า
+        “ไม่พบในระบบ” หรือสถานะถูกคำนวณใหม่ทับของเดิม <b>แบ่งไฟล์เป็นก้อนเล็กปลอดภัยกว่า</b></td></tr>
+    <tr><td><b>สถานะ ERP ที่ระบบไม่รู้จัก</b></td>
+      <td>ค่าอื่นที่ไม่ใช่ รออนุมัติ / อนุมัติเรียบร้อย / สำเร็จ / โมฆะ จะถูกตั้งเป็น
+        <b>“อยู่ระหว่างสั่งซื้อ”</b> ทั้งหมด — เจอสถานะเพี้ยนให้ดูค่าในไฟล์ต้นทาง</td></tr>
+    <tr><td><b>ERP ส่ง “สำเร็จ” แต่ของยังไม่ครบ</b></td>
+      <td>ระบบ<b>ไม่ยอม</b>ให้เป็น “เข้าคลังแล้ว” จะตั้งเป็น “รอนำส่งเข้าคลัง” แทน — นี่คือพฤติกรรมที่ถูกต้อง ไม่ใช่บั๊ก</td></tr>
+    <tr><td><b>หมายเหตุในไฟล์ไม่ถูกอ่าน</b></td>
+      <td>ตั้งใจไม่อ่าน เพื่อคงหมายเหตุที่พิมพ์ไว้ในเว็บ — จดหมายเหตุในเว็บได้เลย ไม่หาย</td></tr>
+    <tr><td><b>ประกาศเด้งซ้ำ</b></td>
+      <td>“ไม่แสดงอีกวันนี้” ผูกกับเวอร์ชันประกาศ — จัดซื้อแก้ประกาศใหม่จะเด้งใหม่กับทุกคน (ตั้งใจ)</td></tr>
+    <tr><td><b>ราคาเป็น ¥ ทุกจุด</b></td><td>หน้านี้ไม่แปลงสกุลเงิน — ตัวเลขที่เห็นคือหยวน</td></tr>
+  </tbody></table></div>
+</div>
+
+<!-- ══════════════════════ 2. PR ══════════════════════ -->
+<div class="card sec" id="s2">
+  <h2>📝 ใบขอซื้อ (PR) <span class="fn">pr.html</span></h2>
+  <div class="sub-note">ออกใบขอซื้อ · ตรวจราคาอัตโนมัติก่อนส่ง · อนุมัติ 2 ชั้น · ออกเลข PO · เก็บราคากลางต่อ SKU</div>
+
+  <h3 class="hh">เส้นทางของ 1 ใบ PR</h3>
+  <div class="hp-flow">
+    <div class="hp-node c1"><div class="ic">📝</div><div class="ti">1. สร้าง</div><div class="wh">จัดซื้อ</div>
+      <div class="do">กรอก → <b>🔍 ตรวจสอบ PR</b> → <b>💾 บันทึก</b><br><span class="muted">= ยังไม่ส่ง</span></div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c2"><div class="ic">📨</div><div class="ti">2. ส่งอนุมัติ</div><div class="wh">จัดซื้อ</div>
+      <div class="do">เปิดใบ → <b>📨 ส่งอนุมัติ</b><br><span class="muted">= รอหัวหน้า</span></div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c3"><div class="ic">🧑‍💼</div><div class="ti">3. หัวหน้า</div><div class="wh">หัวหน้าจัดซื้อ</div>
+      <div class="do"><b>✍️ เซ็นชื่อ</b> แล้ว <b>✅ อนุมัติ (หัวหน้า)</b><br><span class="muted">= รอผู้บริหาร</span></div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c4"><div class="ic">👑</div><div class="ti">4. ผู้บริหาร</div><div class="wh">ผู้บริหาร</div>
+      <div class="do"><b>✍️ เซ็นชื่อ</b> แล้ว <b>✅ อนุมัติ (ผู้บริหาร)</b><br><span class="muted">= อนุมัติสมบูรณ์</span></div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c5"><div class="ic">🔢</div><div class="ti">5. ออกเลข PO</div><div class="wh">จัดซื้อ</div>
+      <div class="do">กรอกเลข PO รายแถว → <b>💾 บันทึก PO</b></div></div>
+  </div>
+  <div class="hp-flow" style="margin-top:2px">
+    <div class="hp-node cx" style="flex:1 1 100%">
+      <div style="display:flex;gap:10px;align-items:flex-start"><div class="ic">↩️</div>
+        <div><div class="ti">ถ้าถูกตีกลับ</div>
+          <div class="wh">หัวหน้าหรือผู้บริหารกด <b>↩️ ตีกลับ</b> (ต้องใส่เหตุผล) → ใบกลับมาหาจัดซื้อ
+            → กด <b>✏️ แก้ไขและส่งใหม่</b> → <b>ใบกลับเป็น “ยังไม่ส่ง” และต้องเดินครบทุกขั้นใหม่</b></div></div>
+      </div></div>
+  </div>
+
+  <h3 class="hh">ทำทีละขั้น</h3>
+  <div class="hp-step">
+    <div class="bub">1</div>
+    <div><h4>ตั้งชื่อในโปรไฟล์ก่อน (ทำครั้งเดียว) <span class="hp-who">ทุกบทบาท</span></h4>
+      <p>ยังไม่ตั้งชื่อ-นามสกุล จะ<b>เซ็นชื่อไม่ได้</b> และปุ่ม <b>👤 ใช้ชื่อฉัน</b> ใช้ไม่ได้
+        — ระบบเตือนให้เองตอนเข้าครั้งแรก</p></div>
+  </div>
+  <div class="hp-step">
+    <div class="bub">2</div>
+    <div><h4>กรอกใบ <span class="hp-who">จัดซื้อ</span></h4>
+      <p>แท็บ <b>➕ สร้าง PR</b> → กรอกหัวใบ → <b>+ เพิ่มแถว</b> ใส่สินค้า
+        · ช่องที่มี ★ คือ <b>จำนวนสั่ง</b> และ <b>ราคา/หน่วย</b></p>
+      <div class="hp-tip">💡 พิมพ์ SKU แล้วระบบเติมชื่อสินค้าและราคามาตรฐานให้
+        · SKU ที่มีหลายซัพพลายเออร์ <b>ต้องเลือกซัพพลายเออร์ก่อน</b> ราคาจึงจะเติม (ไม่เลือก = ติด 🔴)</div></div>
+  </div>
+  <div class="hp-step">
+    <div class="bub">3</div>
+    <div><h4>ตรวจแล้วบันทึก <span class="hp-who">จัดซื้อ</span></h4>
+      <div class="hp-ui"><div class="cap">ท้ายฟอร์ม</div>
+        <div class="hp-bar"><span class="hp-btn b">🔍 ตรวจสอบ PR</span>
+          <span class="hp-btn">💾 บันทึกใบขอซื้อ</span>
+          <span class="muted" style="font-size:11.5px">← กดไม่ได้จนกว่าจะตรวจ</span></div></div>
+      <p><b>ปุ่มบันทึกจะกดไม่ได้จนกว่าจะกดตรวจ</b> ทั้งตอนสร้างใหม่และตอนแก้ไข — นี่คือระบบ ไม่ใช่ปุ่มเสีย</p></div>
+  </div>
+  <div class="hp-step">
+    <div class="bub">4</div>
+    <div><h4>ส่งอนุมัติ <span class="hp-who">จัดซื้อ</span></h4>
+      <p>บันทึกแล้วยัง<b>ไม่ถึงใคร</b> — ต้องเปิดใบขึ้นมากด <b>📨 ส่งอนุมัติ</b> อีกครั้ง
+        · ถ้ายังมี 🔴 หรือ ⚠️ ระบบขึ้นหน้าต่างเตือนก่อน แต่กดยืนยันผ่านได้</p></div>
+  </div>
+  <div class="hp-step">
+    <div class="bub">5</div>
+    <div><h4>เซ็นชื่อ ≠ อนุมัติ <span class="hp-who">หัวหน้า / ผู้บริหาร</span></h4>
+      <div class="hp-warn">⚠️ เป็น <b>2 ปุ่มแยกกัน</b> — <b>✍️ เซ็นชื่อ</b> ใส่ชื่อในช่องลงนามของใบพิมพ์
+        · <b>✅ อนุมัติ</b> เดินสถานะ · <b>อนุมัติแล้วลืมเซ็น ใบ PDF จะไม่มีชื่อ</b>
+        · ผู้บริหารเซ็นก่อนหัวหน้าไม่ได้ และหัวหน้ายกเลิกลายเซ็นไม่ได้ถ้าผู้บริหารเซ็นแล้ว</div></div>
+  </div>
+
+  <h3 class="hh">🔍 ปุ่มตรวจสอบ ตรวจอะไร</h3>
+  <p class="tx">เป็นการตรวจด้วยกฎในเครื่อง ไม่ต้องรอเน็ต ผลติดเป็นป้ายรายแถว</p>
+  <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:110px">ป้าย</th><th>เจออะไร</th></tr></thead><tbody>
+    <tr><td><b style="color:#D0212B">🔴 ต้องตรวจ</b></td>
+      <td>จำนวนหรือราคา ≤ 0 · SKU มีหลายซัพพลายเออร์แต่ไม่เลือก · รายการซ้ำ (SKU+ซัพพลายเออร์ซ้ำแถวอื่น) ·
+        ไม่พบ SKU ในข้อมูลกลาง · ยอดรวมไม่ตรงสูตร · เรทหยวนหลุดช่วง 4.0–6.0</td></tr>
+    <tr><td><b style="color:#B7791F">⚠️ พิจารณา</b></td>
+      <td>มี SKU แต่ยังไม่มีราคามาตรฐานของซัพพลายเออร์นั้น · <b>ราคาต่างจากราคากลาง</b></td></tr>
+    <tr><td><b style="color:#1E7145">✅ ผ่าน</b></td><td>ไม่เจอข้อสงสัย</td></tr>
+  </tbody></table></div>
+  <div class="hp-info">ℹ️ ค่าความคลาดเคลื่อนของราคาตั้งไว้ที่ <b>0</b> — ต่างจากราคากลางแม้สตางค์เดียวก็ขึ้น ⚠️
+    ฉะนั้นจะเจอเตือนบ่อย <b>อย่ากดผ่านอัตโนมัติ</b> ให้ดูก่อนว่าราคาขึ้นจริงหรือพิมพ์ผิด
+    · ถ้าราคาขึ้นจริง ควรอัปราคากลางให้ตรง (อัปที่ Purchase Board หรือแท็บ 🗄️ ข้อมูลกลาง)</div>
+
+  <h3 class="hh">5 สถานะ</h3>
+  <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:170px">สถานะ</th><th style="width:170px">รอใคร</th><th>แก้ไขได้ไหม</th></tr></thead><tbody>
+    <tr><td><span class="pill" style="background:#EEF2F7;color:#475569">ยังไม่ส่ง</span></td><td>ผู้ยื่นยังไม่ส่ง</td>
+      <td><span class="hp-chk">✔</span> จัดซื้อกด ✏️ แก้ไขได้</td></tr>
+    <tr><td><span class="pill" style="background:#FDF3DC;color:#B7791F">รอหัวหน้า</span></td><td>หัวหน้าจัดซื้อ</td>
+      <td><span class="hp-x">✕</span> ต้องกด <b>⏪ ย้อนกลับ</b> เป็นยังไม่ส่งก่อน</td></tr>
+    <tr><td><span class="pill" style="background:#E6F1FB;color:#3A5A8C">รอผู้บริหาร</span></td><td>ผู้บริหาร</td>
+      <td><span class="hp-x">✕</span> ต้องย้อนกลับก่อน</td></tr>
+    <tr><td><span class="pill" style="background:#E9F6EE;color:#1E7145">อนุมัติ</span></td><td>จัดซื้อออกเลข PO</td>
+      <td><span class="hp-x">✕</span> แก้ได้แต่เลข PO</td></tr>
+    <tr><td><span class="pill" style="background:#FCE4E4;color:#D0212B">ตีกลับ</span></td><td>ผู้ยื่นต้องแก้แล้วส่งใหม่</td>
+      <td><span class="hp-chk">✔</span> กด <b>✏️ แก้ไขและส่งใหม่</b></td></tr>
+  </tbody></table></div>
+  <div class="hp-tip">💡 <b>⏪ ย้อนกลับ 1 ขั้น</b> มีให้ตามบทบาท — จัดซื้อย้อน “รอหัวหน้า → ยังไม่ส่ง”,
+    หัวหน้าย้อน “รอผู้บริหาร → รอหัวหน้า”, ผู้บริหารย้อน “อนุมัติ → รอผู้บริหาร”
+    · <b>ใบที่อนุมัติแล้วและออกเลข PO ไปแล้ว ย้อนไม่ได้</b> ต้องลบเลข PO ออกก่อน</div>
+
+  <h3 class="hh">กับดักของระบบนี้</h3>
+  <div class="hp-tw"><table class="hp-t"><tbody>
+    <tr><td style="width:250px"><b style="color:#D0212B">แก้ไขใบ = ลายเซ็นหายหมด</b></td>
+      <td>กดบันทึกหลังแก้ไข ระบบ<b>ล้างลายเซ็นทุกช่อง ล้างเหตุผลที่ตีกลับ และตั้งสถานะกลับเป็น “ยังไม่ส่ง”</b>
+        → ต้องส่งอนุมัติและเซ็นใหม่ทั้งวงจร · แก้คำผิดเล็กน้อยก็เสียรอบอนุมัติ <b>ตรวจให้ครบก่อนส่ง</b></td></tr>
+    <tr><td><b>ปุ่มบันทึกกดไม่ได้</b></td><td>ยังไม่กด <b>🔍 ตรวจสอบ PR</b> — บังคับทุกครั้ง</td></tr>
+    <tr><td><b>บันทึกแล้วหัวหน้าไม่เห็น</b></td><td>บันทึก = ร่างส่วนตัว ต้องกด <b>📨 ส่งอนุมัติ</b> อีกทีจึงเข้าคิว</td></tr>
+    <tr><td><b>เลข PR ซ้ำ</b></td><td>มีแถบเตือนแดงบนสุด + ป้าย ⚠️ เลขซ้ำ + แถวพื้นแดง
+      · ระบบหาเลขใหม่ให้เองตอนสร้าง แต่ถ้าพิมพ์เลขเองซ้ำก็ซ้ำได้</td></tr>
+    <tr><td><b>ไม่มีช่องไหนบังคับกรอกหัวใบ</b></td>
+      <td>เลข PR / วันที่ / ผู้ขอซื้อ / แผนก ปล่อยว่างแล้วบันทึกได้ — ต้องระวังเอง</td></tr>
+    <tr><td><b>นำเข้า Excel ข้อมูลกลาง = ทับทันที</b></td><td>ไม่มีพรีวิว ราคาเดิมถูกทับเลย — ตรวจไฟล์ก่อนเลือก</td></tr>
+    <tr><td><b>ลบ PR = ลบถาวร</b></td><td>กู้คืนไม่ได้ · เห็นปุ่มลบเฉพาะบทบาทจัดซื้อ</td></tr>
+    <tr><td><b>ตารางไม่อัปเดตเอง</b></td><td>กดแถบ 🔔 มีข้อมูลใหม่ เหมือนระบบอื่น</td></tr>
+    <tr><td><b>พิมพ์ PDF ไม่ขึ้น</b></td><td>เปิดหน้าต่างใหม่ — ถ้าเบราว์เซอร์บล็อก popup ต้องอนุญาตก่อน
+      · ฟอร์ม <b>FM-PH-01 (Rev.2)</b> A4 แนวนอน ต้องต่อเน็ตเพื่อโหลดฟอนต์</td></tr>
+  </tbody></table></div>
+</div>
+<!-- ══════════════════════ 3. pay.html ══════════════════════ -->
+<div class="card sec" id="s3">
+  <h2>💳 วางแผนจ่ายเงิน <span class="fn">pay.html</span></h2>
+  <div class="sub-note">บิลค่าสินค้า → แบ่งงวดจ่าย → ใบปะหน้าเอกสารรายวัน · รวมใบเสนอราคา Ksher Wallet และหลักฐานชำระเงินร้านค้า</div>
+
+  <h3 class="hh">8 แท็บ</h3>
+  <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:210px">แท็บ</th><th>ทำอะไร</th></tr></thead><tbody>
+    <tr><td><b>📋 Tracking บิล</b></td><td>บิลค่าสินค้าทุกใบ + งวดจ่ายของแต่ละบิล + บันทึกข้อความภายใน · ซิงก์บิลจาก Purchase Board</td></tr>
+    <tr><td><b>🗓️ แผนจ่ายรายวัน</b></td><td>งวดที่ต้องจ่าย แยกตาม <b>จ่ายในนาม</b> และช่องทางโอน · สลับดู <b>รายวัน / รายเดือน</b> ได้</td></tr>
+    <tr><td><b>🧾 เอกสารประจำวัน</b></td><td>ทำ <b>ใบปะหน้าเอกสารค่าใช้จ่ายประจำวัน</b> จากงวดที่ส่งยอดแล้ว</td></tr>
+    <tr><td><b>💱 ใบเสนอราคา</b></td><td>ออกใบเสนอราคา (ดึงรายการจาก PO ได้) แนบรูป พิมพ์ PDF</td></tr>
+    <tr><td><b>📊 สรุปเดือน</b></td><td>สรุปจ่ายแล้ว/ค้างแผน รายวัน · รายบริษัท · จ่ายในนาม → Export Excel 4 ชีท</td></tr>
+    <tr><td><b>📒 ตารางสรุปบันทึก</b></td><td>รวมบันทึกข้อความภายในทุกใบไว้ที่เดียว → Export Excel</td></tr>
+    <tr><td><b>💰 Ksher Wallet</b></td><td>ยอดคงเหลือในระบบ Ksher · เติมเงิน · ตัดยอดตามงวดที่จ่ายผ่าน Ksher</td></tr>
+    <tr><td><b>🧾 หลักฐานชำระเงินร้านค้า</b></td><td>เก็บสลิปโอนของแต่ละร้าน (เก็บไฟล์ไว้ที่ Google Drive)</td></tr>
+  </tbody></table></div>
+
+  <h3 class="hh">เส้นทางหลัก — จาก PO ถึงใบปะหน้า</h3>
+  <div class="hp-flow">
+    <div class="hp-node c1"><div class="ic">🔄</div><div class="ti">1. สร้างบิล</div><div class="wh">จัดซื้อ</div>
+      <div class="do"><b>🔄 ซิงก์จาก Purchase Board</b> หรือสร้างเอง<br><span class="muted">1 เลข PO = 1 บิล</span></div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c2"><div class="ic">➗</div><div class="ti">2. แบ่งงวด</div><div class="wh">จัดซื้อ</div>
+      <div class="do">ในแถวบิลกด <b>+ งวดจ่าย</b> ใส่ยอด วันที่ เรท ช่องทาง จ่ายในนาม</div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c3"><div class="ic">📤</div><div class="ti">3. ส่งยอด</div><div class="wh">จัดซื้อ</div>
+      <div class="do">เปลี่ยนสถานะงวดเป็น <b>ส่งยอด</b> งวดจึงจะเข้าใบปะหน้าได้</div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c4"><div class="ic">📄</div><div class="ti">4. ใบปะหน้า</div><div class="wh">จัดซื้อ</div>
+      <div class="do">แท็บ 🧾 → <b>🔍 ตรวจข้อมูล</b> → <b>📄 สร้างใบปะหน้า</b></div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c5"><div class="ic">✅</div><div class="ti">5. ขออนุมัติ</div><div class="wh">จัดซื้อ</div>
+      <div class="do">ไประบบ <a href="#s4">ขออนุมัติชำระเงิน</a> → ดึงงวด หรือดึงจากใบปะหน้า</div></div>
+  </div>
+
+  <h3 class="hh">เส้นทางเงิน — ตัวเลขแต่ละช่องมาจากไหน</h3>
+  <p class="tx">บิลเป็นหยวน แต่บางงวดโอนจริงเป็นดอลลาร์ ระบบเก็บไว้ครบทุกทอด</p>
+  <div class="hp-money">
+    <div class="box b1"><div class="u">ยอดตามบิล</div><div class="v">¥ 160,468.00</div>
+      <div class="s">ค่าสินค้า + ค่าส่ง</div></div>
+    <div class="op">÷ อัตราแลก<br>¥6.69 / 1 USD</div>
+    <div class="box b2"><div class="u">ยอดโอน (USD)</div><div class="v">$ 23,986.40</div>
+      <div class="s">ระบบคิดให้<br>หรือพิมพ์เองก็ได้</div></div>
+    <div class="op">× เรทโอน<br>32.80 ฿ / 1 USD</div>
+    <div class="box b3"><div class="u">ยอดเป็นบาท</div><div class="v">฿ 786,753.92</div>
+      <div class="s">สำหรับบัญชี</div></div>
+  </div>
+  <div class="hp-tip">💡 <b>ถ้าโอนเป็นหยวนตรง ๆ</b> ก็แค่ หยวน × เรทโอน ไม่ต้องใช้ช่องอัตราแลกและ USD
+    (ช่องจะซ่อนให้เอง เมื่อเลือกสกุลที่โอนเป็น ¥)
+    · พิมพ์ยอด USD เองได้ ระบบจะถอดอัตราแลกกลับให้</div>
+
+  <h3 class="hh">ยอดหยวนคู่กับบาท ทุกที่ที่สรุปยอด</h3>
+  <p class="tx">ยอดบาทคือยอด<b>ตีมูลค่า</b> แต่เวลาคุยกับซัพพลายเออร์และสั่งโอน เราคุยกันเป็น<b>หยวน</b>
+    ฉะนั้นการ์ดสรุปและตารางจะแสดงทั้งสองหน่วยคู่กัน</p>
+  <div class="hp-ui"><div class="cap">การ์ดสรุปในแท็บแผนจ่ายรายวัน (โหมดรายเดือน)</div>
+    <div class="hp-bar">
+      <span class="hp-fld" style="min-width:160px"><span class="hp-lbl">ยังไม่จ่าย (บาท)</span>
+        <b>57,529,692.51</b><br><span class="muted" style="font-size:11px">¥ 10,234,567 · $ 45,678</span></span>
+      <span class="hp-fld" style="min-width:160px"><span class="hp-lbl">จ่ายแล้ว (บาท)</span>
+        <b>68,650,531.22</b><br><span class="muted" style="font-size:11px">¥ 12,987,654</span></span>
+    </div></div>
+  <div class="hp-info">ℹ️ <b>ไม่บวกข้ามสกุล</b> — บิลหยวนกับบิลดอลลาร์แยกเป็นคนละตัวเลข แสดงเป็น <code>¥ … · $ …</code>
+    ไม่ยุบรวมเป็นก้อนเดียว · ยอดหยวนนับ <b>ค่าสินค้า + ค่าส่ง</b> เพื่อให้ <code>หยวน × เรท = บาท</code> ลงตัวพอดี ตรวจย้อนได้</div>
+
+  <h3 class="hh">ตารางรายเดือน — คอลัมน์คือ “จ่ายในนาม”</h3>
+  <div class="hp-warn">⚠️ <b>เงินออกในนามใคร เป็นเรื่องของงวดจ่าย ไม่ใช่ของบิล</b> —
+    บิลใบเดียวแตกงวดจ่ายในนามต่างกันได้ (บิลเป็น LIKESHOP แต่งวดที่ 2 จ่ายนามบุคคล)
+    ฉะนั้นตารางรายเดือนยึด <b>จ่ายในนาม ของงวด</b> เหมือนแผนรายวัน — ตัวเลขสองหน้าจึงตรงกัน
+    · ตาราง <b>รายบริษัท</b> ในแท็บสรุปเดือนยึดบริษัทของบิล เพราะถามถึงบิลจริง ๆ</div>
+
+  <h3 class="hh">ใบปะหน้าเอกสารประจำวัน</h3>
+  <div class="hp-tw"><table class="hp-t"><tbody>
+    <tr><td style="width:230px"><b>งวดไหนเข้าใบปะหน้า</b></td>
+      <td>เฉพาะงวดที่สถานะ <b>ส่งยอด</b> ของวันที่ที่เลือก · ติ๊กเพิ่มเพื่อรวมงวดที่จ่ายแล้วได้</td></tr>
+    <tr><td><b>🔍 ตรวจข้อมูล</b></td><td>เช็คก่อนสร้างว่ามีงวดที่ยังไม่ส่งยอด / ข้อมูลไม่ครบตกหล่นไหม — <b>กดก่อนทุกครั้ง</b></td></tr>
+    <tr><td><b>💸 ใส่ค่าธรรมเนียมทุกรายการ</b></td><td>ใส่ค่าธรรมเนียมทีเดียวทุกแถว ไม่ต้องพิมพ์ทีละบรรทัด</td></tr>
+    <tr><td><b>📄 สร้างใบปะหน้า</b></td><td>ออกเอกสารพร้อมพิมพ์ + บันทึกใบนั้นไว้ในระบบ (ระบบขออนุมัติดึงไปใช้ต่อได้)</td></tr>
+    <tr><td><b>บิลหยวนแต่โอนดอลลาร์</b></td><td>ใบปะหน้าเพิ่มคอลัมน์ <b>ดอลลาร์ (USD)</b> และ <b>เรทโอน ฿/USD</b> ให้เอง</td></tr>
+  </tbody></table></div>
+
+  <h3 class="hh">บันทึกข้อความภายใน</h3>
+  <p class="tx">ในแถวบิลมีปุ่ม <b>💬</b> เขียนบันทึกภายในได้ · ใบที่เป็น
+    <b>บันทึกข้อความภายใน</b> เต็มรูปแบบจะเปิดกลับมาพิมพ์ซ้ำได้ — <b>คลิกที่บรรทัดบันทึกนั้นตรง ๆ</b>
+    หรือกดปุ่ม 📚 · ทุกบันทึกรวมอยู่ในแท็บ <b>📒 ตารางสรุปบันทึก</b></p>
+  <div class="hp-info">ℹ️ ต้องรันไฟล์ <code>pay_memo_docs.sql</code> ก่อน ไม่งั้นบันทึกจะเปิดกลับมาไม่ได้</div>
+
+  <h3 class="hh">กับดักของระบบนี้</h3>
+  <div class="hp-tw"><table class="hp-t"><tbody>
+    <tr><td style="width:250px"><b>บิลที่ซิงก์มาไม่มีบริษัท</b></td>
+      <td>โค้ดเดิมไม่ได้ใส่บริษัทให้บิลที่ซิงก์จาก Purchase Board — แก้แล้ว ตอนซิงก์จะมีช่อง
+        <b>บริษัทของบิล ★</b> ให้เลือก · บิลเก่าที่ว่างอยู่ ให้ไปแท็บ <b>📊 สรุปเดือน</b>
+        จะมีกล่องเตือนบอกจำนวน + ปุ่ม <b>🔧 เติมบริษัทให้บิลเหล่านี้</b>
+        (ใช้ “จ่ายในนาม” ของงวดเป็นตัวตั้ง · ใบที่หลายงวดไม่ตรงกันจะข้ามไว้ให้แก้มือ)</td></tr>
+    <tr><td><b>งวดไม่ขึ้นในใบปะหน้า</b></td><td>ยังไม่เปลี่ยนสถานะงวดเป็น <b>ส่งยอด</b></td></tr>
+    <tr><td><b>ยอดบาทไม่ตรงที่คิดไว้</b></td>
+      <td>ดูว่าเลือก<b>สกุลที่โอนจริง</b>ถูกไหม — โอน USD ต้องมีทั้งอัตราแลกและเรทโอน
+        · ค่าส่งถูกรวมในฐานคิดยอด USD ด้วย</td></tr>
+    <tr><td><b>ตารางไม่อัปเดตเอง</b></td><td>กดแถบ 🔔 มีข้อมูลใหม่</td></tr>
+    <tr><td><b>ช่องเรทประมาณ ¥→฿ / $→฿</b></td>
+      <td>ใช้ตีมูลค่าเป็นบาท<b>เฉพาะงวดที่ยังไม่ได้ใส่เรทโอนจริง</b> — ไม่ใช่เรทที่ใช้จ่ายจริง</td></tr>
+    <tr><td><b>ปุ่ม ＋ เพิ่มงวดจ่ายใหม่</b></td>
+      <td>เป็นทางลัดไปแท็บ Tracking บิล เพื่อกด <b>+ งวดจ่าย</b> ของบิลที่ต้องการ
+        — งวดต้องผูกกับบิล สร้างลอย ๆ ไม่ได้</td></tr>
+  </tbody></table></div>
+</div>
+
+<!-- ══════════════════════ 4. payapprove.html ══════════════════════ -->
+<div class="card sec" id="s4">
+  <h2>✅ แจ้งขออนุมัติการชำระเงิน <span class="fn">payapprove.html</span></h2>
+  <div class="sub-note">ยื่นขออนุมัติจ่ายเงิน → ผู้บริหารอนุมัติ → แจ้งโอนเข้ากลุ่มแชท → แนบสลิป → ปิดงาน
+    · <b>อนุมัติชั้นเดียว</b> จัดซื้อยื่นแล้วเข้าผู้บริหารเลย ไม่ผ่านหัวหน้าจัดซื้อ</div>
+
+  <h3 class="hh">เส้นทางของ 1 คำขอ</h3>
+  <div class="hp-flow">
+    <div class="hp-node c1"><div class="ic">📄</div><div class="ti">1. สร้างคำขอ</div><div class="wh">ฝ่ายจัดซื้อ</div>
+      <div class="do">ดึงงวดจ่าย → ใส่เหตุผล → <b>📤 ส่งอนุมัติ</b></div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c3"><div class="ic">👑</div><div class="ti">2. ผู้บริหารอนุมัติ</div><div class="wh">อนุมัติชั้นเดียว</div>
+      <div class="do"><b>👑 อนุมัติจ่าย</b> หรือ <b>↩️ ตีกลับ</b></div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c4"><div class="ic">📢</div><div class="ti">3. แจ้งโอน</div><div class="wh">จัดซื้อ / บัญชี</div>
+      <div class="do">คัดลอกข้อความ → วางในกลุ่มแชท</div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c5"><div class="ic">📎</div><div class="ti">4. แนบสลิป</div><div class="wh">ผู้โอนเงิน</div>
+      <div class="do">แนบสลิป → <b>💸 ยืนยันจ่ายแล้ว</b></div></div>
+  </div>
+  <div class="hp-flow" style="margin-top:2px">
+    <div class="hp-node cx" style="flex:1 1 100%">
+      <div style="display:flex;gap:10px;align-items:flex-start"><div class="ic">↩️</div>
+        <div><div class="ti">ถ้าถูกตีกลับ</div>
+          <div class="wh">คำขอกลับไปหาผู้ยื่นพร้อมเหตุผล — แก้แล้วกด <b>ส่งอนุมัติ</b> อีกครั้ง
+            <b>เลขคำขอเดิม ประวัติยังอยู่ครบ</b> ไม่ต้องสร้างใบใหม่</div></div>
+      </div></div>
+  </div>
+
+  <h3 class="hh">ทำทีละขั้น</h3>
+  <div class="hp-step">
+    <div class="bub">1</div>
+    <div><h4>กรอกหัวคำขอ <span class="hp-who">จัดซื้อ</span></h4>
+      <p>แท็บ <b>📋 รายการคำขอ</b> → <b>+ สร้างคำขอ</b> · ช่องที่มี ★ บังคับ:
+        <b>กำหนดชำระ · จ่ายในนาม · ช่องทางการโอน</b></p>
+      <div class="hp-tip">💡 <b>ช่องทางการโอน</b> = เงินไปทางไหน (JMF / Ksher / ธนาคาร) ·
+        <b>ช่องทางการชำระเงิน</b> = เงินออกจากบัญชีไหนของเรา — เลือกช่องทางที่เคยใช้ ระบบเติมเลขบัญชีเดิมให้เอง
+        · เลขบัญชีใส่ได้หลายบรรทัด</div></div>
+  </div>
+  <div class="hp-step">
+    <div class="bub">2</div>
+    <div><h4>ใส่รายการที่จะจ่าย <span class="hp-who">จัดซื้อ</span></h4>
+      <div class="hp-ui"><div class="cap">ปุ่มกลางฟอร์ม</div>
+        <div class="hp-bar"><span class="hp-btn">＋ ดึงงวดจ่าย</span>
+          <span class="hp-btn y">📄 ดึงจากใบปะหน้า</span><span class="hp-btn o">＋ เพิ่มรายการเอง</span></div></div>
+      <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:170px">ปุ่ม</th><th>ใช้เมื่อไหร่</th></tr></thead><tbody>
+        <tr><td><b>＋ ดึงงวดจ่าย</b></td><td>ปกติใช้อันนี้ — เลือกงวดที่<b>ยังไม่เคยถูกยื่น</b> ติ๊กแล้วกดเพิ่ม</td></tr>
+        <tr><td><b>📄 ดึงจากใบปะหน้า</b></td><td>ทำใบปะหน้าไว้แล้ว → ดึงทั้งใบมาทีเดียว เติมจ่ายในนาม/ช่องทาง/กำหนดชำระให้เอง</td></tr>
+        <tr><td><b>＋ เพิ่มรายการเอง</b></td><td>กรณีพิเศษที่ไม่มีในระบบวางแผน — ต้องพิมพ์ยอดเอง</td></tr>
+      </tbody></table></div>
+      <div class="hp-ok">✅ <b>ดึงงวดมาแล้วไม่ต้องคิดเลขต่อ</b> — ระบบตั้ง <b>สกุลเงินที่โอนจริง</b> ให้เอง
+        งวดที่ระบุไว้ว่าโอน USD จะได้ยอด USD ที่ระบบวางแผนคำนวณไว้แล้ว <b>ไม่ใช่ยอดหยวนมาแปลงเอง</b>
+        และเติมเรทให้ด้วย</div>
+      <div class="hp-tip">💡 แถวที่ดึงมา<b>ล็อกตัวเลขไว้</b>กันพิมพ์ผิด — ถ้าต้องแก้จริง ๆ กด <b>🔓</b> ท้ายแถว
+        (แถวเป็นสีเหลือง = แก้มือ) · กด <b>🔒</b> เพื่อคืนค่าจากระบบ</div></div>
+  </div>
+  <div class="hp-step">
+    <div class="bub">3</div>
+    <div><h4>ใส่เหตุผล แล้วส่ง <span class="hp-who">จัดซื้อ</span></h4>
+      <div class="hp-ui"><div class="cap">ท้ายฟอร์ม</div>
+        <div class="hp-bar"><span class="hp-btn o">ปิด</span><span class="hp-btn o">💾 บันทึกร่าง</span>
+          <span class="hp-btn y">📤 ส่งอนุมัติ</span></div></div>
+      <div class="hp-tw"><table class="hp-t"><tbody>
+        <tr><td style="width:170px"><b>💾 บันทึกร่าง</b></td><td>เก็บไว้ทำต่อ ยังไม่ถึงใคร แก้ได้ตลอด</td></tr>
+        <tr><td><b>📤 ส่งอนุมัติ</b></td><td>เข้าคิว<b>ผู้บริหาร</b>โดยตรง — หลังส่งผู้ยื่นแก้ไม่ได้ จนกว่าจะถูกตีกลับ
+          · <b>เหตุผลการขออนุมัติ ★</b> บังคับกรอกก่อนส่ง เขียนให้ผู้อนุมัติตัดสินใจได้ทันทีโดยไม่ต้องถามกลับ</td></tr>
+      </tbody></table></div></div>
+  </div>
+  <div class="hp-step">
+    <div class="bub">4</div>
+    <div><h4>ผู้บริหารอนุมัติ <span class="hp-who">ผู้บริหาร</span></h4>
+      <p>ส่งแล้วเข้าคิว<b>ทันที</b> — ดูที่แท็บ <b>⏳ รออนุมัติ</b> (มีตัวเลขแจ้งเตือนบนแท็บ) → กด <b>👁 ดู</b></p>
+      <div class="hp-ui"><div class="cap">ท้ายหน้าดูคำขอ — ผู้บริหาร</div>
+        <div class="hp-bar"><span class="hp-btn o">ปิด</span><span class="hp-btn o">🖨️ พิมพ์ใบขออนุมัติ</span>
+          <span class="hp-btn r">↩️ ตีกลับ</span><span class="hp-btn g">👑 อนุมัติจ่าย</span></div></div>
+      <div class="hp-tip">💡 ตีกลับต้องใส่เหตุผล — มีเหตุผลสำเร็จรูปให้กด (ยอดไม่ตรง / ไม่มีหลักฐาน / ขอเลื่อนกำหนด)
+        ผู้ยื่นจะเห็นเป็นกรอบแดงในคำขอ</div></div>
+  </div>
+  <div class="hp-step">
+    <div class="bub">5</div>
+    <div><h4>แจ้งโอนเงิน <span class="hp-who">จัดซื้อ / บัญชี</span></h4>
+      <p>เปิดคำขอที่อนุมัติแล้ว → <b>📢 แจ้งโอนเงิน</b> → ระบบสร้างข้อความให้ตามช่องทางที่เลือกไว้</p>
+      <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:200px">ช่องทางการโอน</th><th>ได้ข้อความแบบ</th><th style="width:200px">ต้องกรอกเพิ่ม</th></tr></thead><tbody>
+        <tr><td><b>JMF CARGO</b></td><td>แจ้งโอน SCB — ยอดชำระ + เลขบัญชี</td><td>ไม่ต้อง (มีให้แล้ว)</td></tr>
+        <tr><td><b>Ksher Payment Co.Ltd.</b></td><td>เติมเงินเข้าระบบ Ksher — ยอดเติม + เรท + ยอดเดิม</td><td>ยอดเดิมในระบบ · ชื่อผู้ใช้ Ksher</td></tr>
+        <tr><td><b>ธนาคาร (SWIFT Code)</b></td><td>โอนต่างประเทศ — บัญชีปลายทาง + SWIFT</td><td>ชื่อ/เลขบัญชี/ที่อยู่ผู้รับ · ธนาคารปลายทาง + SWIFT</td></tr>
+      </tbody></table></div>
+      <div class="hp-tip">💡 กรอกเสร็จกด <b>💾 บันทึกข้อมูลแจ้งโอน</b> — ครั้งหน้าเปิดคำขอเดิม ข้อมูลกลับมาครบ
+        · ได้ทั้งข้อความคัดลอก และการ์ดรูปดาวน์โหลด
+        · เลขบัญชี JMF / Ksher ไม่ถูก แก้ที่ <b>⚙️ ตั้งค่าบัญชี</b> แล้วกด <b>✔ บันทึก &amp; ใช้กับใบนี้</b></div></div>
+  </div>
+  <div class="hp-step">
+    <div class="bub">6</div>
+    <div><h4>แนบเอกสาร แล้วปิดงาน <span class="hp-who">ทุกบทบาท</span></h4>
+      <p>ปุ่ม <b>📎</b> อยู่ท้ายทุกแถวในตาราง — กดได้เลย <b>ไม่ต้องรออนุมัติ</b> และไม่ต้องเปิดคำขอ
+        (มีไฟล์แล้วปุ่มจะเป็นสีเขียวพร้อมจำนวน)</p>
+      <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:180px">แนบตอนไหน</th><th>แนบอะไร</th></tr></thead><tbody>
+        <tr><td><b>ตอนยื่นคำขอ</b></td><td>ใบเสนอราคา · Invoice · ใบแจ้งหนี้ — ช่วยให้อนุมัติได้เร็ว ไม่ต้องถามกลับ</td></tr>
+        <tr><td><b>ตอนโอนเงินแล้ว</b></td><td>สลิปโอนเงิน — โอนหลายบัญชีก็แนบหลายใบได้</td></tr>
+      </tbody></table></div>
+      <div class="hp-ok">✅ ปุ่มเขียว <b>💾 บันทึก + ยืนยันจ่ายแล้ว</b> ขึ้นเฉพาะคำขอที่อนุมัติแล้ว
+        = แนบสลิปและปิดงานในคลิกเดียว · ใส่ได้ทั้งรูปและ PDF หลายไฟล์ หรือวางลิงก์ Google Drive
+        · ไฟล์ต้องไม่เกิน 10 MB ต่อไฟล์</div></div>
+  </div>
+
+  <h3 class="hh">💱 สกุลเงินและเรท — ส่วนที่พลาดง่ายที่สุด</h3>
+  <p class="tx">ระบบนี้<b>ไม่คิดเลขซ้ำ</b> — ดึงตัวเลขที่ระบบวางแผนจ่ายเงินคำนวณไว้แล้วมาใช้ตรง ๆ
+    ยอดจึงตรงกับใบปะหน้าที่เซ็นกันไปแล้วทุกสตางค์</p>
+  <div class="hp-bar" style="margin:8px 0 4px">
+    <span class="pill" style="background:#FEF3C7;color:#92400E;border:1px solid #F0C97A">¥ CNY · หยวนจีน</span>
+    <span class="pill" style="background:#DCFCE7;color:#166534;border:1px solid #86D8A6">$ USD · ดอลลาร์สหรัฐ</span>
+    <span class="pill" style="background:#E6F1FB;color:#17518F;border:1px solid #8FBCE6">฿ THB · บาทไทย</span>
+    <span class="muted" style="font-size:11.5px">← ป้ายนี้ขึ้นทุกที่ที่มีตัวเลข</span>
+  </div>
+  <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:210px">เห็นได้ที่</th><th>แสดงอะไร</th></tr></thead><tbody>
+    <tr><td><b>ตารางรายการคำขอ</b></td><td>คอลัมน์ <b>สกุลเงิน</b> อยู่ก่อนช่องยอด — กวาดตาดูทั้งหน้าได้ทันที
+      · ใบที่แปลงสกุลมีบรรทัดเล็ก <b>← CNY</b> บอกต้นทาง</td></tr>
+    <tr><td><b>ตอนกรอกฟอร์ม</b></td><td>แถบสีใต้ปุ่มดึงงวด บอกว่า “คำขอใบนี้จ่ายเป็นสกุลอะไร ยอดเท่าไหร่ ตั้งต้นจากบิลสกุลไหน”</td></tr>
+    <tr><td><b>หน้าดูคำขอ (👁)</b></td><td>ป้ายเต็มข้างเลขคำขอ + ช่อง <b>สกุลเงินที่โอนจริง</b> ในแถบข้อมูล</td></tr>
+    <tr><td><b>ใบพิมพ์ · ข้อความแจ้งโอน</b></td><td>บรรทัด <b>สกุลเงินที่โอน</b> ระบุตัวย่อและชื่อไทย</td></tr>
+  </tbody></table></div>
+
+  <h3 class="hh">ช่องเรท 2 ช่อง ต่างกันอย่างไร</h3>
+  <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:170px">ช่อง</th><th style="width:190px">แปลว่า</th><th>ระบบเติมให้เมื่อไหร่</th></tr></thead><tbody>
+    <tr><td><b>เรทแปลง</b><div class="muted" style="font-size:11px">กล่องเหลือง “แปลงสกุลเงิน”</div></td>
+      <td>สกุลบิล → สกุลที่โอนจริง<br><span class="muted">เช่น หยวน → ดอลลาร์</span></td>
+      <td>งวดระบุยอดปลายทางไว้แล้ว → <b>ล็อกช่องนี้</b> โชว์อัตราแลกให้ดูเท่านั้น ·
+        ถ้างวดไม่ได้ระบุ → จำเรทจากคำขอล่าสุดของคู่สกุลนั้นมาเติมให้ แก้ได้</td></tr>
+    <tr><td><b>เรท → บาท</b><div class="muted" style="font-size:11px">กล่องเทา ใต้กล่องเหลือง</div></td>
+      <td>สกุลที่โอนจริง → บาท<br><span class="muted">เช่น ฿ ต่อ 1 USD</span></td>
+      <td>ดึงจากเรทของงวดในระบบวางแผน · พิมพ์ทับได้ ใช้กับทุกแถว · หรือพิมพ์ทีละแถวในคอลัมน์ <b>เรท ฿</b></td></tr>
+  </tbody></table></div>
+  <div class="hp-tip">💡 <b>ลบเรททิ้งได้</b> — ลบแล้วยอดบาทเป็น 0 พร้อมคำเตือน ระบบไม่เติมกลับให้
+    · อยากได้เรทเดิมคืน กด <b>↺ เรทตามระบบ</b> · อยากเลิกแปลงสกุล โอนตามบิลตรง ๆ กด <b>↺ ไม่แปลง</b></div>
+  <div class="hp-warn">⚠️ <b>ส่งอนุมัติไม่ได้ถ้าไม่มีเรทแปลง</b> — บิลเป็นสกุลหนึ่งแต่จะโอนอีกสกุลโดยยังไม่ใส่เรท
+    ระบบจะไม่ให้ส่ง เพราะยอดโอนจะเป็น 0</div>
+
+  <h3 class="hh">ป้ายสถานะ อ่านอย่างไร</h3>
+  <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:190px">ป้าย</th><th style="width:180px">รออะไร</th><th>แก้ไขได้ไหม</th></tr></thead><tbody>
+    <tr><td><span class="pill" style="background:#EEF2F7;color:#475569">📄 ร่าง</span></td><td>ผู้ยื่นยังไม่ส่ง</td>
+      <td><span class="hp-chk">✔</span> ได้ (เฉพาะผู้ยื่น)</td></tr>
+    <tr><td><span class="pill" style="background:#FDF3DC;color:#B7791F">⏳ รอผู้บริหารอนุมัติ</span></td><td>ผู้บริหาร</td>
+      <td><span class="hp-x">✕</span> ผู้ยื่นแก้ไม่ได้ (ทีมจัดซื้อแก้ได้)</td></tr>
+    <tr><td><span class="pill" style="background:#FCE4E4;color:#D0212B">↩️ ตีกลับ</span></td><td>ผู้ยื่นต้องแก้แล้วส่งใหม่</td>
+      <td><span class="hp-chk">✔</span> ได้</td></tr>
+    <tr><td><span class="pill" style="background:#E9F6EE;color:#1E7145">✅ อนุมัติแล้ว</span></td><td>โอนเงิน + แนบหลักฐาน</td>
+      <td><span class="hp-x">✕</span> ล็อกแล้ว แก้ไม่ได้ทุกบทบาท</td></tr>
+    <tr><td><span class="pill" style="background:#E6F1FB;color:#17518F">💸 จ่ายแล้ว</span></td><td>จบขั้นตอน</td>
+      <td><span class="hp-x">✕</span> ล็อกแล้ว แก้ไม่ได้ทุกบทบาท</td></tr>
+  </tbody></table></div>
+
+  <h3 class="hh">กับดักของระบบนี้</h3>
+  <div class="hp-tw"><table class="hp-t"><tbody>
+    <tr><td style="width:250px"><b>ส่งอนุมัติไปแล้ว อยากแก้</b></td>
+      <td>ผู้ยื่นแก้เองไม่ได้ — ขอให้ผู้บริหารกด <b>↩️ ตีกลับ</b> คำขอจะกลับมาแก้ได้ เลขคำขอเดิม</td></tr>
+    <tr><td><b>ยอดที่ดึงมาเป็นหยวน แต่ควรเป็นดอลลาร์</b></td>
+      <td>ใบที่สร้างไว้<b>ก่อน</b>ระบบจะดึงยอด USD เป็น — เปิด <b>✏️ แก้ไข</b> แล้วกดบันทึกใหม่
+        ระบบเติมยอดปลายทางจากงวดให้ถูกทันที · ใบใหม่ไม่เจอปัญหานี้</td></tr>
+    <tr><td><b>ดึงงวดจ่ายแล้วไม่เจองวดที่ต้องการ</b></td>
+      <td>งวดนั้นถูกยื่นในคำขออื่นไปแล้ว — ระบบซ่อนงวดที่ยื่นแล้วเพื่อกันจ่ายซ้ำ · ลองล้างตัวกรองวันที่</td></tr>
+    <tr><td><b>ปุ่ม 📢 แจ้งโอนเงิน ไม่ขึ้น</b></td><td>ขึ้นเฉพาะสถานะ <b>อนุมัติแล้ว</b> หรือ <b>จ่ายแล้ว</b></td></tr>
+    <tr><td><b>คัดลอกข้อความไม่ได้</b></td><td>เบราว์เซอร์บล็อกการคัดลอกอัตโนมัติ — ลากเลือกข้อความในกรอบแล้วกด Ctrl+C</td></tr>
+    <tr><td><b>ตัวเลขบนแท็บ ⏳ รออนุมัติ ไม่ลด</b></td><td>หน้านี้ไม่รีเฟรชอัตโนมัติ — กด F5 หรือสลับแท็บกลับมา</td></tr>
+    <tr><td><b>อยากลบคำขอที่อนุมัติ/จ่ายแล้ว</b></td>
+      <td>ผู้บริหารเท่านั้น และต้อง<b>พิมพ์เลขคำขอ</b>ยืนยัน · <b>ไฟล์แนบใน Google Drive ไม่ถูกลบตาม</b> ต้องไปลบเอง</td></tr>
+    <tr><td><b>ลืมว่าคำขอไปถึงขั้นไหน</b></td>
+      <td>เปิดคำขอ → ดูแถบขั้นตอนด้านบน และตาราง <b>🕘 ประวัติการดำเนินการ</b> ด้านล่างสุด
+        บันทึกทุกการกระทำพร้อมเวลาและชื่อคน</td></tr>
+  </tbody></table></div>
+  <div class="hp-warn">⚠️ <b>กันจ่ายซ้ำ</b> — ก่อนสร้างคำขอใหม่ ให้ค้นเลข PO ในช่องค้นหาก่อนทุกครั้ง
+    ถ้าเจอคำขอเดิมที่ยัง <b>รออนุมัติ</b> อยู่ อย่าสร้างใบใหม่ซ้อน</div>
+</div>
+<!-- ══════════════════════ 5. cost.html ══════════════════════ -->
+<div class="card sec" id="s5">
+  <h2>🚢 Shipment นำเข้า <span class="fn">cost.html</span></h2>
+  <div class="sub-note">งานนำเข้าสินค้าจากจีนครบวงจร — ข้อมูลใบขนสินค้า → ออก Invoice + Packing List →
+    ติดตามเรือ/ตู้ → สรุปภาษี → ใบวางบิลค่าขนส่ง → สรุปยอดจ่ายรายเดือนให้บัญชี</div>
+
+  <h3 class="hh">9 แท็บ</h3>
+  <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:210px">แท็บ</th><th>ทำอะไร</th></tr></thead><tbody>
+    <tr><td><b>📊 Dashboard</b></td><td>สรุปจำนวน Shipment แต่ละสถานะ + <b>⚠️ ภาษีใกล้ครบ 14 วัน</b> + <b>⏳ DEM ใกล้ครบ 7 วัน</b></td></tr>
+    <tr><td><b>📦 สินค้า + ข้อมูลส่งออก</b></td><td>ข้อมูลใบขนต่อ SKU (ชื่อ EN/TH, Brand, HS Code, Spec, ขนาดกล่อง) + คลังรูปสินค้า</td></tr>
+    <tr><td><b>📋 ตาราง Shipment</b></td><td>ติดตามทุกชิปเมนต์ — ยื่นสมอ., CLS/ETD/ETA, B/L, ตู้, เลขใบขน, ภาษี, DEM, ค่าขนส่ง</td></tr>
+    <tr><td><b>🏢 ผู้ขาย/ผู้ซื้อ</b></td><td>ทะเบียน Vender / Consignee ไว้เลือกตอนออกบิล (กรอกครั้งเดียวใช้ตลอด)</td></tr>
+    <tr><td><b>📄 ออก INV + PL</b></td><td>ออก Invoice + Packing List พร้อมตัวอย่างสด → PDF / Excel</td></tr>
+    <tr><td><b>🚛 ใบวางบิลขนส่ง</b></td><td>ใบวางบิลค่าขนส่ง 22 รายการมาตรฐาน คิด VAT / หัก ณ ที่จ่าย รายแถว</td></tr>
+    <tr><td><b>🧾 สรุปภาษี</b></td><td>ดึงจากใบ INV → คิดอากรขาเข้า + VAT 7% → PDF</td></tr>
+    <tr><td><b>📊 สรุปรายเดือน</b></td><td>จัดกลุ่มตามบริษัทนำเข้า เทียบผลรวมกับยอดที่บัญชีขอ</td></tr>
+    <tr><td><b>📦 รวม PO</b></td><td>🔒 ดูอย่างเดียว — ดึงจาก Purchase Board · แก้ต้องไปแก้ที่บอร์ด</td></tr>
+  </tbody></table></div>
+
+  <h3 class="hh">โฟลว์ใหญ่</h3>
+  <div class="hp-flow">
+    <div class="hp-node c1"><div class="ic">📦</div><div class="ti">1. ข้อมูล SKU</div><div class="wh">จัดซื้อ</div>
+      <div class="do">แท็บสินค้า → <b>แก้ข้อมูลส่งออก</b> + แนบรูป (ครั้งเดียวต่อ SKU ใช้ได้ทุกใบ)</div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c2"><div class="ic">📄</div><div class="ti">2. ออก INV + PL</div><div class="wh">จัดซื้อ</div>
+      <div class="do">เลือกผู้ขาย/ผู้ซื้อ → พิมพ์ SKU กด Enter → <b>💾 บันทึกเอกสาร</b></div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c3"><div class="ic">🚢</div><div class="ti">3. ติดตาม</div><div class="wh">จัดซื้อ / ขนส่ง</div>
+      <div class="do">ระบบ<b>สร้างแถว Shipment ให้เอง</b> → กรอกเรือ ตู้ ใบขน ต่อ</div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c4"><div class="ic">🧾</div><div class="ti">4. ภาษี + ขนส่ง</div><div class="wh">จัดซื้อ</div>
+      <div class="do">สรุปภาษีจากใบ INV · ใบวางบิลค่าขนส่ง</div></div>
+    <div class="hp-arw">▸</div>
+    <div class="hp-node c5"><div class="ic">📊</div><div class="ti">5. ส่งบัญชี</div><div class="wh">จัดซื้อ</div>
+      <div class="do">สรุปรายเดือน → Export</div></div>
+  </div>
+  <div class="hp-ok">✅ กด <b>💾 บันทึกเอกสาร</b> ในแท็บออก INV แล้ว ระบบ<b>สร้างแถวในตาราง Shipment ให้อัตโนมัติ</b>
+    (สถานะเริ่มต้น “กำลังผลิต”) ไม่ต้องสร้างซ้ำ · ในแถว Shipment มีปุ่ม <b>📄 ใบ</b> เปิดใบ INV กลับมาได้</div>
+
+  <h3 class="hh">สูตรที่ใช้จริง</h3>
+  <div class="fx"><b>CBM ต่อกล่อง</b> = (กว้าง × ยาว × สูง) ÷ 1,000,000        [ซม. → ลบ.ม.]
+<b>Cartons</b>      = ปัดขึ้น( จำนวน ÷ จำนวนต่อกล่อง )         [เติมให้เมื่อยังเป็น 0]
+
+<b>ยอดในใบ INV</b>
+  Total CBM   = Σ (Cartons × CBM/กล่อง)
+  Total GW    = Σ GW   — รายการที่จัดเป็น "กลุ่ม" นับ GW ครั้งเดียว
+  Total Price = Σ (ราคา × จำนวน)   — ของแถม (FOC) นับเป็น 0
+  Total ท้ายบิล = Total Price + ค่าขนส่ง (Logistics costs)
+
+<b>สรุปภาษีนำเข้า</b>
+  ยอดเงินบาท  = ราคา × จำนวน × อัตราแลกเปลี่ยน
+  อากรขาเข้า  = ยอดเงินบาท × (อากร% ÷ 100)
+  VAT         = (ยอดเงินบาท + อากรขาเข้า) × 7%
+  รวมชำระ     = อากรขาเข้า + VAT        ← ไม่รวมตัวยอดสินค้า
+
+<b>ใบวางบิลค่าขนส่ง</b> (ต่อแถว)
+  VAT      = ติ๊ก V ? ยอด × VAT%  : 0      [ตั้งไว้ 7%]
+  หัก ณ ที่จ่าย = ติ๊ก W ? ยอด × หัก% : 0      [ตั้งไว้ 3%]
+  ต้องชำระ = ยอด + VAT − หัก ณ ที่จ่าย
+
+<b>เตือนล่วงหน้า</b>
+  DEM เหลือ  = วันครบ DEM − วันนี้        เตือนเมื่อ ≤ 7 วัน (ติดลบ = เกินกำหนด)
+  ภาษีใกล้ครบ = ยังไม่จ่ายภาษี และกำหนด ≤ วันนี้+14</div>
+  <div class="hp-info">ℹ️ <b>VAT คิดบน (ราคาสินค้า + อากร) เท่านั้น ไม่รวมค่าขนส่ง</b> ·
+    ยอดเงินในเอกสารใช้การ<b>ตัดทศนิยมทิ้ง</b> ไม่ปัดขึ้น (68.6789 → 68.67)</div>
+
+  <h3 class="hh">เรื่องที่ต้องรู้ก่อนใช้</h3>
+  <div class="hp-tw"><table class="hp-t"><tbody>
+    <tr><td style="width:230px"><b>ราคาต้นทุนแก้ที่นี่ไม่ได้</b></td>
+      <td>ราคา ¥ มาจากระบบ <a href="#s2">PR</a> — แก้ที่แท็บข้อมูลกลางของ PR หรือที่ Purchase Board</td></tr>
+    <tr><td><b>เลข Invoice ออกให้เอง</b></td>
+      <td>รูปแบบ <code>PO + ปี2หลัก + เดือน2หลัก + ลำดับ3หลัก</code> เช่น <code>PO2608001</code>
+        · กด <b>🔄</b> ข้างช่องเพื่อออกเลขใหม่ตามเดือนของวันที่
+        · ⚠️ ระบบใช้<b>เลขว่างที่น้อยที่สุด</b> — ลบเอกสารทิ้ง เลขนั้นจะถูกออกให้ใบใหม่</td></tr>
+    <tr><td><b>+ ย่อย (จัดกลุ่มรายการ)</b></td>
+      <td>สินค้าหลายตัวที่อยู่กล่องเดียวกัน — ใช้ <b>GW / กว้าง / ยาว / สูง / Mark ร่วมกัน</b>
+        · กด <b>⊘</b> เพื่อเอาออกจากกลุ่ม · ถ้าราคาในกลุ่มไม่เท่ากัน Unit Price ที่โชว์จะเป็นราคาเฉลี่ยถ่วงน้ำหนัก</td></tr>
+    <tr><td><b>🔄 Auto Save</b></td>
+      <td>บันทึกจริงหลังหยุดพิมพ์ <b>5 วินาที</b> เฉพาะเอกสารที่บันทึกลงระบบแล้ว
+        · ร่างในเครื่องเก็บให้หลัง 0.8 วินาที</td></tr>
+    <tr><td><b>ขึ้นแถบให้เลือกร่าง</b></td>
+      <td>ระบบ<b>ไม่กู้ร่างอัตโนมัติ</b> เพราะร่างอาจเก่ากว่าของจริง (คนอื่นแก้ไปแล้ว)
+        → ให้เลือก <b>↩︎ ใช้ร่างนี้</b> หรือ <b>🗑 ทิ้งร่าง</b> เอง</td></tr>
+    <tr><td><b>📤 อัปหลายรูป</b></td>
+      <td>จับคู่ SKU <b>จากชื่อไฟล์</b> เช่น <code>SCS-415.jpg</code> → SKU <code>SCS-415</code>
+        (ตัวเล็ก/ตัวใหญ่และ space/_ แทนด้วย - ให้เอง)</td></tr>
+    <tr><td><b>🧹 ล้างรูป</b></td><td>ลบรูปที่ฝังในใบนี้เพื่อคืนพื้นที่ฐานข้อมูล — <b>ต้องกดบันทึกทับด้วย</b></td></tr>
+    <tr><td><b>เข้าแล้วเด้งกลับหน้ารวม</b></td>
+      <td>เปิด <code>cost.html?debug=1</code> จะไม่เด้ง และแสดงว่าติดตรงไหน + บทบาทที่ระบบอ่านได้</td></tr>
+  </tbody></table></div>
+
+  <h3 class="hh">กับดักของระบบนี้</h3>
+  <div class="hp-tw"><table class="hp-t"><tbody>
+    <tr><td style="width:250px"><b style="color:#D0212B">ลบแถว Shipment ที่ผูกใบ INV</b></td>
+      <td><b>ลบเอกสาร INV/PL ทิ้งไปด้วย กู้คืนไม่ได้</b> — อ่านข้อความยืนยันให้ครบก่อนกด</td></tr>
+    <tr><td><b>แถวที่ยังไม่กรอกวันที่</b></td>
+      <td>ถูกดันขึ้นบนสุดตั้งใจ ไม่ให้ตกไปหน้าสุดท้ายจนคิดว่าข้อมูลหาย
+        · มี KPI สีแดง <b>⚠️ ยังไม่ระบุวันที่</b> กดกรองได้</td></tr>
+    <tr><td><b>ของแถม (FOC) ถูกคิดภาษี</b></td>
+      <td>ในใบ INV ของแถมนับเป็น 0 แต่ใน<b>แท็บสรุปภาษีถูกนับเต็มราคา</b>
+        → ต้องแก้ยอดหรือลบแถว FOC ออกเองในแท็บสรุปภาษี</td></tr>
+    <tr><td><b>เปิดแท็บใบวางบิลครั้งแรกแล้วว่าง</b></td>
+      <td>รายการยังไม่โหลด — พิมพ์อะไรในช่องค้นหาแล้วลบออก หรือกด F5</td></tr>
+    <tr><td><b>รูปไม่ขึ้น Google Drive</b></td>
+      <td>ขึ้น <b>⚠️ ขึ้น Google Drive ไม่ได้</b> ทุกครั้ง แม้ปุ่มทดสอบจะบอกว่าสำเร็จ
+        — รูปย่อยังบันทึกในระบบและใช้งานได้ปกติ แต่<b>ไม่มีต้นฉบับใน Drive</b> (รอแก้โค้ด)</td></tr>
+    <tr><td><b>รูปใน PDF เป็นภาพย่อ</b></td><td>โปรแกรมสร้าง PDF ดึงรูปจาก Drive ไม่ได้ — ดูเต็มให้เปิดลิงก์ Drive</td></tr>
+    <tr><td><b>VAT 7% แก้ในหน้าจอไม่ได้</b></td><td>ตรึงไว้ในโค้ด ถ้าอัตราเปลี่ยนต้องแก้โค้ด</td></tr>
+    <tr><td><b>ตาราง Shipment / สรุปภาษี ไม่บังคับกรอกอะไรเลย</b></td>
+      <td>กดบันทึกตอนว่างก็สร้างแถวเปล่าได้ — ระวังแถวขยะ</td></tr>
+  </tbody></table></div>
+</div>
+
+<!-- ══════════════════════ 6. costsku.html ══════════════════════ -->
+<div class="card sec" id="s6">
+  <h2>💰 ต้นทุนสินค้า <span class="fn">costsku.html</span></h2>
+  <div class="sub-note">คิด <b>ต้นทุนรวมต่อหน่วย (Landed Cost)</b> ของทุก SKU — ราคาหยวนจากระบบ PR + ค่าขนส่ง + VAT
+    · ปันส่วนค่าขนส่งต่อชิปเมนต์ · ติดตาม KPI Cost Saving</div>
+
+  <h3 class="hh">5 แท็บ</h3>
+  <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:200px">แท็บ</th><th>ทำอะไร</th></tr></thead><tbody>
+    <tr><td><b>📊 Dashboard</b></td><td>จำนวน SKU · ต้นทุนเฉลี่ย/หน่วย · ค่าขนส่งเฉลี่ย/หน่วย · กรอกน้ำหนักแล้วกี่ตัว + <b>Top 15 ต้นทุนสูงสุด</b></td></tr>
+    <tr><td><b>💰 ต้นทุนสินค้า</b></td><td>ตารางหลัก — กรอกช่องสีฟ้า 5 ช่อง แล้ว CBM / ค่าส่ง / VAT / รวมต่อหน่วย คิดสดทันที</td></tr>
+    <tr><td><b>📦 คำนวณค่าขนส่ง</b></td><td>ปันส่วนค่าขนส่งรวมของล็อตลงแต่ละ SKU ตามน้ำหนักหรือปริมาตร</td></tr>
+    <tr><td><b>🎯 KPI Cost Saving</b></td><td>Hero SKU Tracker — กรอกต้นทุนรายเดือน 12 ช่อง → %Saving / คะแนน / ผ่าน-ไม่ผ่าน</td></tr>
+    <tr><td><b>⚙️ ตั้งค่า</b></td><td>เรทหยวน · VAT% · เรทต่อ กก. · เรทต่อ CBM · วิธีคิดค่าขนส่ง · เป้า Cost Saving%</td></tr>
+  </tbody></table></div>
+
+  <h3 class="hh">ลำดับที่ต้องทำ</h3>
+  <div class="hp-step">
+    <div class="bub">1</div>
+    <div><h4>ตั้งค่าก่อนเสมอ <span class="hp-who">จัดซื้อ</span></h4>
+      <p>แท็บ <b>⚙️ ตั้งค่า</b> → เรทหยวน · VAT% · <b>เรทค่าขนส่งต่อ กก.</b> · <b>เรทต่อ CBM</b> ·
+        วิธีคิด (แนะนำ <b>มากกว่า / Volumetric</b>) → <b>💾 บันทึกการตั้งค่า</b></p>
+      <div class="hp-warn">⚠️ ค่าพวกนี้ใช้คิด<b>ทั้งระบบ</b> — แก้ที่นี่กระทบต้นทุนทุก SKU ทันที
+        · ถ้าเรทค่าขนส่งเป็น 0 ค่าขนส่งจะออกมา 0 เงียบ ๆ ไม่มีคำเตือน</div></div>
+  </div>
+  <div class="hp-step">
+    <div class="bub">2</div>
+    <div><h4>กรอกน้ำหนักและขนาดกล่อง <span class="hp-who">จัดซื้อ</span></h4>
+      <div class="hp-warn">⚠️ <b>ค่าที่กรอกคือ “ต่อลัง” ไม่ใช่ต่อชิ้น</b> ตามใบ Packing List —
+        ระบบหารด้วย “ชิ้น/ลัง” ให้เอง · <b>เว้นช่อง “ชิ้น/ลัง” ว่าง = 1 ชิ้น/ลัง</b>
+        ลืมกรอกช่องนี้ ต้นทุนค่าขนส่งจะสูงเกินจริงหลายเท่า</div>
+      <p>ต้องกรอก <b>ยาว + กว้าง + สูง ครบทั้ง 3 ค่า</b> CBM จึงจะไม่เป็น 0
+        · SKU ที่มีหลายซัพพลายเออร์เป็นหลายแถว <b>ต้องกรอกแยกทุกแถว</b></p>
+      <p>กรอกเสร็จกด <b>💾 บันทึกทั้งหมด</b> (บันทึกครั้งเดียวทั้งตาราง ไม่ใช่รายแถว)</p></div>
+  </div>
+  <div class="hp-step">
+    <div class="bub">3</div>
+    <div><h4>ปันส่วนค่าขนส่งของล็อต <span class="hp-who">จัดซื้อ</span></h4>
+      <p>แท็บ <b>📦 คำนวณค่าขนส่ง</b> → ใส่ค่าขนส่งรวมทั้งชิปเมนต์ → เลือก <b>ตามน้ำหนัก</b> หรือ
+        <b>ตามปริมาตร</b> → พิมพ์ SKU กด Enter ทีละตัว → แก้จำนวน</p>
+      <div class="hp-warn">⚠️ <b>แท็บนี้ไม่มีปุ่มบันทึก</b> — รีเฟรชแล้วหาย ต้องจดหรือคัดลอกผลไว้เอง
+        · วิธีแบ่งในแท็บนี้แยกจากหน้าตั้งค่า (ที่นี่มีแค่ น้ำหนัก/ปริมาตร ไม่มี “มากกว่า”)
+        ตัวเลขสองแท็บจึงไม่ตรงกันเป็นเรื่องปกติ</div></div>
+  </div>
+
+  <h3 class="hh">สูตรคิดต้นทุน</h3>
+  <div class="fx"><b>ชิ้น/ลัง</b>        = ถ้าเว้นว่าง → 1
+<b>ต้นทุนบาท</b>      = ราคา ¥ (จากระบบ PR) × เรทแลกเปลี่ยน
+
+CBM ต่อลัง     = (ยาว × กว้าง × สูง) ÷ 1,000,000
+<b>CBM ต่อหน่วย</b>   = CBM ต่อลัง ÷ ชิ้น/ลัง
+<b>น้ำหนักต่อหน่วย</b> = น้ำหนักต่อลัง ÷ ชิ้น/ลัง
+
+ค่าส่งตามน้ำหนัก = น้ำหนักต่อหน่วย × เรทบาท/กก.
+ค่าส่งตามปริมาตร = CBM ต่อหน่วย    × เรทบาท/CBM
+<b>ค่าส่งที่ใช้</b>    = ตามวิธีที่ตั้งไว้ — น้ำหนัก / ปริมาตร / <b>มากกว่า</b> (เลือกค่าที่สูงกว่า)
+
+VAT            = (ต้นทุนบาท + ค่าส่งที่ใช้) × VAT%     ← คิด VAT บนค่าขนส่งด้วย
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<b>ต้นทุนรวม/หน่วย = ต้นทุนบาท + ค่าส่งที่ใช้ + VAT</b>
+
+
+<b>ปันส่วนค่าขนส่งต่อชิปเมนต์</b>
+  ฐาน            = Σ (น้ำหนักรวม หรือ ปริมาตรรวม) ของทุก SKU ในล็อต
+  สัดส่วนของ SKU  = (น้ำหนักรวม หรือ ปริมาตรรวม ของ SKU นี้) ÷ ฐาน
+  ค่าส่งของ SKU   = สัดส่วน × ค่าขนส่งรวมทั้งล็อต
+  ค่าส่ง/หน่วย    = ค่าส่งของ SKU ÷ จำนวน
+  → ผลรวมเท่ากับยอดที่กรอกเสมอ
+
+
+<b>KPI Cost Saving</b>
+  %Saving เดือน i = (Baseline − ต้นทุนเดือน i) ÷ Baseline
+     นับเฉพาะเดือนที่ ≥ "เริ่มเดือน" และมีค่ากรอก และ Baseline > 0
+  เฉลี่ย%         = ค่าเฉลี่ยของเดือนที่นับได้ (เดือนที่เว้นว่างไม่ถ่วงค่าเฉลี่ย)
+  คะแนน           = ≥6% → 5 · ≥4% → 4 · ≥3% → 3 · ≥2% → 2 · ต่ำกว่า → 1
+  ผ่าน/ไม่ผ่าน     = Hero + คะแนน ≥ 4 → ✅ ผ่าน · Regular → ไม่ตัดสิน</div>
+  <div class="hp-info">ℹ️ <b>VAT ถูกคิดบนค่าขนส่งด้วย</b> — ถ้าค่าขนส่งจริงไม่มี VAT ต้นทุนจะสูงเกินไป
+    ให้เทียบกับใบวางบิลจริงก่อนใช้ตัดสินใจ</div>
+
+  <h3 class="hh">กับดักของระบบนี้ — อ่านก่อนใช้</h3>
+  <div class="hp-warn">🔴 <b>ช่อง “นน./ลัง” ยังแสดงค่าผิด</b> — ถ้า “ชิ้น/ลัง” มากกว่า 1
+    ช่องนี้จะแสดงน้ำหนัก<b>ต่อหน่วย</b> แทนต่อลัง และถ้าแก้ค่าอะไรในแถวนั้นแล้วกดบันทึก
+    น้ำหนักต่อลังจะถูกหารด้วยชิ้น/ลังทุกรอบ (20 → 2 → 0.2)
+    <br><b>วิธีเลี่ยงตอนนี้:</b> กรอกครั้งเดียวแล้วอย่ากลับไปแก้ซ้ำ · เช็คค่าจริงจากไฟล์ที่กด
+    <b>📥 ส่งออก Excel</b> (คอลัมน์ใน Excel ถูกต้อง) · <b>รอแก้โค้ด</b></div>
+  <div class="hp-tw"><table class="hp-t"><tbody>
+    <tr><td style="width:250px"><b>💾 บันทึกทั้งหมด = ทับทุกแถว</b></td>
+      <td>ไม่ใช่แค่แถวที่แก้ — ถ้าสองคนกรอกพร้อมกัน คนกดทีหลังทับของคนแรกหมด
+        (ระบบนี้ไม่มีแถบเตือนข้อมูลใหม่) <b>ตกลงกันก่อนว่าใครกรอก</b></td></tr>
+    <tr><td><b>แท็บ KPI ยังล็อกปี 2025</b></td><td>บันทึกเป็นปี 2025 เสมอ — ต้องแก้โค้ดถึงจะขึ้นปีใหม่</td></tr>
+    <tr><td><b>เป้า Cost Saving % ในหน้าตั้งค่า</b></td>
+      <td><b>ไม่มีผลกับการตัดสินผ่าน/ไม่ผ่าน</b> — เกณฑ์จริงคือคะแนน ≥ 4 (= เฉลี่ย ≥ 4%) ตรึงไว้ในโค้ด
+        ตั้งเป้า 10% ก็ยังผ่านที่ 4%</td></tr>
+    <tr><td><b>ตารางแสดง 600 แถวแรก</b></td><td>ใช้ช่องค้นหาจำกัดให้แคบลงก่อน</td></tr>
+    <tr><td><b>เรทหยวนใส่ 0 ไม่ได้</b></td><td>ระบบเด้งกลับเป็น 5.2 เองโดยไม่เตือน</td></tr>
+    <tr><td><b>ชื่อสินค้าในตาราง KPI แก้ไม่ได้</b></td><td>ไม่มีช่องกรอก — ค้นหาด้วยรหัส SKU แทน</td></tr>
+    <tr><td><b>ค่าเฉลี่ยบน Dashboard</b></td>
+      <td>เป็นค่าเฉลี่ย<b>ต่อ SKU</b> ไม่ได้ถ่วงน้ำหนักตามยอดสั่งซื้อ — อย่าใช้แทนต้นทุนเฉลี่ยจริงของล็อต</td></tr>
+    <tr><td><b>ไม่มีปุ่มรีเฟรช</b></td><td>โหลดครั้งเดียวตอนเปิดหน้า — ต้องกด F5 เอง</td></tr>
+  </tbody></table></div>
+  <div class="hp-warn">⚠️ <b>ขนาดกล่อง/น้ำหนัก ต้องกรอก 2 ที่</b> — ระบบนี้กับ <a href="#s5">Shipment นำเข้า</a>
+    เก็บคนละตารางและ<b>ไม่ซิงก์กัน</b> (ที่นั่นใช้ทำใบขน ที่นี่ใช้คิดต้นทุน)
+    ถ้าสองที่ไม่ตรงกัน ต้นทุนกับใบขนสินค้าจะขัดกัน — กรอกให้ตรงกันทั้งสองที่</div>
+</div>
+
+<!-- ══════════════════════ 7. backup.html ══════════════════════ -->
+<div class="card sec" id="s7">
+  <h2>💾 สำรองข้อมูล <span class="fn">backup.html</span></h2>
+  <div class="sub-note">ดึงข้อมูลทุกตารางออกมาเก็บไว้ในเครื่อง ใช้กู้คืนหรือย้ายไปฐานข้อมูลใหม่
+    · เข้าได้เฉพาะบทบาท <b>จัดซื้อ</b></div>
+  <div class="hp-step">
+    <div class="bub">1</div>
+    <div><h4>กดสำรอง</h4>
+      <div class="hp-ui"><div class="cap">ปุ่มบนการ์ด</div>
+        <div class="hp-bar"><span class="hp-btn g">▶ เริ่มสำรองข้อมูล</span>
+          <span class="hp-btn o">⬇ ดาวน์โหลด JSON</span><span class="hp-btn o">⬇ ดาวน์โหลด Excel</span></div></div>
+      <p>ระบบไล่ดึงทีละตาราง (~31 ตาราง) แสดงผลรายตารางว่าสำเร็จหรือไม่ พร้อมจำนวนแถวและขนาด</p></div>
+  </div>
+  <div class="hp-step">
+    <div class="bub">2</div>
+    <div><h4>เลือกไฟล์ให้ถูกงาน</h4>
+      <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:130px">ไฟล์</th><th>ใช้ทำอะไร</th></tr></thead><tbody>
+        <tr><td><b>JSON</b></td><td><b>ไฟล์หลัก เก็บไว้ให้ดี</b> — ข้อมูลครบทุกคอลัมน์ ใช้กู้คืน / ย้ายฐานข้อมูล</td></tr>
+        <tr><td><b>Excel</b></td><td>อ่านและทำงานต่อด้วยมือ — <b>ตัดคอลัมน์รูปออก</b> เพื่อให้ไฟล์เปิดไหว</td></tr>
+      </tbody></table></div></div>
+  </div>
+  <div class="hp-info">ℹ️ <b>ไม่ต้องกลัวเปลืองค่าโหลดข้อมูล</b> — ประมาณ 1 MB ต่อครั้ง = 0.02% ของโควตาเดือน
+    · สัปดาห์ละครั้ง = 0.09%/เดือน · ตัวเลขจริงแสดงให้เห็นหลังกดเสร็จ
+    · บางตารางขึ้น ✕ ได้เป็นเรื่องปกติ ถ้าตารางนั้นยังไม่มีในฐานข้อมูล</div>
+  <div class="hp-tip">💡 <b>ถ้าต้องย้ายไปฐานข้อมูลใหม่</b> — สร้าง Supabase project ใหม่ใน <b>องค์กรใหม่</b>
+    (โควตานับต่อองค์กร สร้างในองค์กรเดิมไม่ช่วย) → รันไฟล์ <code>.sql</code> ให้ครบ →
+    import JSON กลับเข้าไป → แก้ URL และ Key ในทุกไฟล์ <code>.html</code></div>
+</div>
+
+<!-- ══════════════════════ 8. กับดักรวม ══════════════════════ -->
+<div class="card sec" id="s8">
+  <h2>⚠️ กับดักที่ต้องรู้ — รวมทุกระบบ</h2>
+  <div class="sub-note">เรียงตามความเสียหายจริงที่เกิดขึ้นได้ — ข้อ 1–3 คือเรื่องที่ทำให้<b>ตัวเลขผิด</b>
+    ข้อ 4–7 คือเรื่องที่ทำให้<b>งานหาย</b></div>
+
+  <h3 class="hh">ทำให้ตัวเลขผิด</h3>
+  <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:56px">#</th><th style="width:210px">เรื่อง</th><th>ต้องทำอย่างไร</th></tr></thead><tbody>
+    <tr><td><b>1</b></td><td><b>นำเข้า Excel ผิดโหมด</b><div class="muted" style="font-size:11px">Purchase Board</div></td>
+      <td>checkbox <b>อัปเดตเฉพาะราคา + Vendor</b> ติ๊กมาให้ตั้งแต่เริ่ม — จะซิงก์สถานะต้อง<b>เอาเครื่องหมายออกก่อน</b>
+        และเช็คยอด “นำเข้าจริง” กับจำนวนแถวในไฟล์ทุกครั้ง <a href="#s1">ดูรายละเอียด</a></td></tr>
+    <tr><td><b>2</b></td><td><b>ช่อง นน./ลัง ในระบบต้นทุน</b><div class="muted" style="font-size:11px">costsku.html</div></td>
+      <td>ถ้า “ชิ้น/ลัง” &gt; 1 อย่าแก้ค่าในแถวเดิมซ้ำ ๆ แล้วกดบันทึก น้ำหนักจะถูกหารทิ้งทุกรอบ
+        · เช็คค่าจริงจากไฟล์ Excel ที่ส่งออก <b>รอแก้โค้ด</b></td></tr>
+    <tr><td><b>3</b></td><td><b>ของแถม (FOC) ถูกคิดภาษี</b><div class="muted" style="font-size:11px">cost.html</div></td>
+      <td>แท็บสรุปภาษีนับ FOC เต็มราคา ต่างจากใบ INV ที่นับเป็น 0 — ต้องลบหรือแก้แถว FOC เองในสรุปภาษี</td></tr>
+  </tbody></table></div>
+
+  <h3 class="hh">ทำให้งานหาย</h3>
+  <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:56px">#</th><th style="width:210px">เรื่อง</th><th>ต้องทำอย่างไร</th></tr></thead><tbody>
+    <tr><td><b>4</b></td><td><b>แก้ไขใบ PR = ลายเซ็นหายหมด</b><div class="muted" style="font-size:11px">pr.html</div></td>
+      <td>สถานะกลับเป็น “ยังไม่ส่ง” ต้องเดินอนุมัติใหม่ทั้งวงจร — <b>ตรวจให้ครบก่อนส่ง</b></td></tr>
+    <tr><td><b>5</b></td><td><b>ลบข้อมูลเก่า (แผนรับสินค้า)</b><div class="muted" style="font-size:11px">board.html</div></td>
+      <td>ลบทุกเที่ยวส่งในช่วงวันที่พร้อมรายการข้างใน <b>กู้คืนไม่ได้</b> — สำรองก่อนถ้าไม่มั่นใจ</td></tr>
+    <tr><td><b>6</b></td><td><b>ลบแถว Shipment ที่ผูกใบ INV</b><div class="muted" style="font-size:11px">cost.html</div></td>
+      <td>เอกสาร INV/PL ถูกลบไปด้วย <b>กู้คืนไม่ได้</b></td></tr>
+    <tr><td><b>7</b></td><td><b>สองคนกรอกตารางต้นทุนพร้อมกัน</b><div class="muted" style="font-size:11px">costsku.html</div></td>
+      <td>ปุ่มบันทึกทับทุกแถว และระบบนี้ไม่มีแถบเตือนข้อมูลใหม่ — ตกลงกันก่อนว่าใครกรอก</td></tr>
+  </tbody></table></div>
+
+  <h3 class="hh">เรื่องที่เข้าใจผิดกันบ่อย (ไม่ใช่บั๊ก)</h3>
+  <div class="hp-tw"><table class="hp-t"><tbody>
+    <tr><td style="width:250px"><b>ตารางไม่อัปเดตเอง</b></td>
+      <td>ตั้งใจทำแบบนี้ — เดิมทุกครั้งที่มีคนแก้ ทุกเบราว์เซอร์ที่เปิดอยู่จะโหลดตารางใหม่ทั้งตาราง
+        ทำให้ค่าโหลดข้อมูลทะลุโควตา · ตอนนี้ขึ้นแถบ <b>🔔 มีข้อมูลใหม่</b> ให้กดเอง
+        <b>ถ้าไม่กด จะเห็นข้อมูลเก่า</b></td></tr>
+    <tr><td><b>ปุ่มบันทึก PR กดไม่ได้</b></td><td>ต้องกด <b>🔍 ตรวจสอบ PR</b> ก่อนทุกครั้ง</td></tr>
+    <tr><td><b>เซ็นชื่อแล้วแต่สถานะไม่ขยับ</b></td><td>เซ็นชื่อกับอนุมัติเป็น 2 ปุ่มแยกกัน ต้องกดทั้งคู่</td></tr>
+    <tr><td><b>ERP ส่ง “สำเร็จ” แต่สถานะไม่เป็นเข้าคลัง</b></td>
+      <td>ของเข้ายังไม่ครบจำนวน ระบบตั้งใจไม่ยอมให้ปิด — ตรวจยอดของเข้าก่อน</td></tr>
+    <tr><td><b>งวดจ่ายหาไม่เจอในระบบขออนุมัติ</b></td><td>ถูกยื่นในคำขออื่นไปแล้ว ระบบซ่อนไว้กันจ่ายซ้ำ</td></tr>
+    <tr><td><b>ป้ายบทบาทขึ้นว่าหัวหน้า แต่ทำได้เท่าจัดซื้อ</b></td>
+      <td>ใน Purchase Board / Shipment / ต้นทุน ยังไม่แยกชั้นสิทธิ์ — หัวหน้าและผู้บริหารทำได้เท่าจัดซื้อ
+        การแยกชั้นมีจริงเฉพาะ <a href="#s2">PR</a> และ <a href="#s4">ขออนุมัติชำระเงิน</a></td></tr>
+  </tbody></table></div>
+</div>
+
+<!-- ══════════════════════ 9. สิทธิ์ ══════════════════════ -->
+<div class="card sec" id="s9">
+  <h2>🔑 สิทธิ์การใช้งาน</h2>
+  <div class="sub-note">บทบาทตั้งที่บัญชีผู้ใช้ · ดูบทบาทของตัวเองได้จากป้ายมุมขวาบนของแต่ละหน้า</div>
+
+  <h3 class="hh">ระบบไหนเข้าได้</h3>
+  <div class="hp-tw"><table class="hp-t"><thead><tr><th>ระบบ</th>
+    <th style="width:86px">จัดซื้อ</th><th style="width:106px">หัวหน้าจัดซื้อ</th><th style="width:90px">ผู้บริหาร</th>
+    <th style="width:86px">การตลาด</th><th style="width:80px">ขนส่ง</th></tr></thead><tbody>
+    <tr><td>📋 Purchase Board</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
+      <td class="hp-chk">✔<div class="muted" style="font-size:10.5px">จำกัด</div></td><td class="hp-x">✕</td></tr>
+    <tr><td>📝 ใบขอซื้อ (PR)</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
+    <tr><td>💳 วางแผนจ่ายเงิน</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
+    <tr><td>✅ ขออนุมัติชำระเงิน</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
+    <tr><td>🚢 Shipment นำเข้า</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
+      <td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
+    <tr><td>💰 ต้นทุนสินค้า</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
+    <tr><td>💾 สำรองข้อมูล</td><td class="hp-chk">✔</td><td class="hp-x">✕</td><td class="hp-x">✕</td>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
+    <tr><td>📖 คู่มือ (หน้านี้)</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
+      <td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
+  </tbody></table></div>
+  <div class="hp-info">ℹ️ การ์ดในหน้ารวมขึ้นตามตาราง <code>portal_apps</code> — ถ้าควรเห็นแต่ไม่เห็น
+    ให้ผู้ดูแลตรวจว่าแถวของระบบนั้นใส่บทบาทครบไหม (ไม่ใช่ปัญหาของตัวระบบ)</div>
+
+  <h3 class="hh">ทำอะไรได้ในแต่ละระบบ</h3>
+  <div class="hp-tw"><table class="hp-t"><thead><tr><th>การกระทำ</th>
+    <th style="width:86px">จัดซื้อ</th><th style="width:106px">หัวหน้าจัดซื้อ</th><th style="width:90px">ผู้บริหาร</th>
+    <th style="width:86px">การตลาด</th></tr></thead><tbody>
+    <tr><td colspan="5" style="background:#EEF3FA;font-weight:700;color:#1A2942">📋 Purchase Board</td></tr>
+    <tr><td>ดูตาราง PO · Export แผนรับสินค้า</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
+    <tr><td>เพิ่ม/แก้/ลบ PO · นำเข้า Excel · เที่ยวส่ง</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
+    <tr><td>เห็นและแก้ราคา (¥) · เห็นบริษัทขนส่ง</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
+    <tr><td>รายงาน On-Time · ประวัติอัพโหลด · แก้ประกาศ</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
+    <tr><td colspan="5" style="background:#EEF3FA;font-weight:700;color:#1A2942">📝 ใบขอซื้อ (PR)</td></tr>
+    <tr><td>สร้าง / แก้ / บันทึกใบ · แก้ข้อมูลกลาง</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
+    <tr><td>📨 ส่งอนุมัติ · ลบใบ · กรอกเลข PO</td><td class="hp-chk">✔</td><td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
+    <tr><td>✅ อนุมัติ (หัวหน้า)</td><td class="hp-x">✕</td><td class="hp-chk">✔</td><td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
+    <tr><td>✅ อนุมัติ (ผู้บริหาร)</td><td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
+    <tr><td>↩️ ตีกลับ · 📊 Dashboard</td><td class="hp-x">✕</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
+    <tr><td colspan="5" style="background:#EEF3FA;font-weight:700;color:#1A2942">✅ ขออนุมัติชำระเงิน</td></tr>
+    <tr><td>สร้าง / ส่งคำขอ</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
+    <tr><td>✏️ แก้ไข · 🗑️ ลบ <span class="muted">(ใบที่ยังไม่อนุมัติ · ของใครก็ได้)</span></td>
+      <td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
+    <tr><td>🗑️ ลบใบที่<b>อนุมัติ/จ่ายแล้ว</b> <span class="muted">(พิมพ์เลขคำขอยืนยัน)</span></td>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
+    <tr><td>👑 อนุมัติจ่าย</td><td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
+    <tr><td>↩️ ตีกลับ</td><td class="hp-x">✕</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
+    <tr><td>📎 แนบเอกสาร · 📢 แจ้งโอน · 💸 ยืนยันจ่ายแล้ว</td>
+      <td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-x">✕</td></tr>
+  </tbody></table></div>
+  <div class="hp-tip">💡 <b>ระบบวางแผนจ่ายเงิน · Shipment นำเข้า · ต้นทุนสินค้า</b> —
+    ทุกบทบาทที่เข้าได้ <b>แก้ไขได้เท่ากันหมด</b> ยังไม่มีการแยกชั้นสิทธิ์ในระบบเหล่านี้</div>
+</div>
+
+  </div>
+</div>
+</div>
+
+<script>
+const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
+const SUPABASE_KEY='sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=i=>document.getElementById(i);
+const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ═══ ตรวจสิทธิ์ ═══
+   คู่มือให้ทุกบทบาทที่เข้าหน้ารวมได้อ่านได้ — ปิดกั้นคู่มือไม่ช่วยอะไร
+   คนที่เข้าระบบไม่ได้ก็ไม่ต้องอ่าน คนที่เข้าได้ยิ่งต้องอ่าน */
+const ROLE_LABEL={purchase:'จัดซื้อ',pr_manager:'หัวหน้าจัดซื้อ',pr_exec:'ผู้บริหาร',
+                  executive:'ผู้บริหาร',marketing:'การตลาด',shipping:'ขนส่ง'};
+const ALLOWED=['purchase','marketing','pr_manager','pr_exec','executive','shipping'];
+function getRoles(s){
+  const m=(s&&s.user&&s.user.app_metadata)||{};
+  if(Array.isArray(m.user_roles)&&m.user_roles.length)return m.user_roles;
+  if(m.user_role)return [m.user_role];
+  return [];
+}
+function denied(msg,login){
+  $('gateMsg').innerHTML=msg;
+  $('gateAct').innerHTML = login
+    ? '<a href="index.html" style="display:inline-block;background:#1A2942;color:#fff;text-decoration:none;'
+      +'padding:10px 20px;border-radius:9px;font-weight:700">เข้าสู่ระบบ</a>'
+    : '<a href="index.html" style="display:inline-block;background:#fff;color:#1A2942;text-decoration:none;'
+      +'border:1px solid #E3E8F0;padding:10px 20px;border-radius:9px;font-weight:700">← กลับหน้ารวม</a>';
+}
+async function gate(){
+  let s=null;
+  try{ s=(await sb.auth.getSession()).data.session; }
+  catch(e){ denied('ตรวจสอบสิทธิ์ไม่ได้: '+esc(e.message),true); return false; }
+  if(!s){ denied('ต้องเข้าสู่ระบบก่อนอ่านคู่มือ',true); return false; }
+  const roles=getRoles(s);
+  if(!roles.some(r=>ALLOWED.includes(r))){
+    denied('บัญชีนี้ยังไม่มีสิทธิ์เข้าระบบฝ่ายจัดซื้อ<br><span style="font-size:13px">'
+      +esc(s.user.email||'')+'</span>');
+    return false;
+  }
+  $('whoami').textContent=roles.map(r=>ROLE_LABEL[r]||r).join(' · ');
+  $('gate').style.display='none';
+  $('app').style.display='';
+  return true;
+}
+
+/* ═══ สารบัญ: ไฮไลต์หัวข้อที่กำลังอ่าน ═══ */
+function watchScroll(){
+  const links=[...document.querySelectorAll('#navi a')];
+  const secs=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  const io=new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if(!e.isIntersecting)return;
+      links.forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+e.target.id));
+    });
+  },{rootMargin:'-70px 0px -72% 0px'});
+  secs.forEach(s=>io.observe(s));
+}
+
+/* ═══ ค้นหา — ซ่อนการ์ดที่ไม่มีคำนั้น ไม่ต้องเลื่อนหาเอง ═══ */
+function findAll(q){
+  q=String(q||'').trim().toLowerCase();
+  const cards=[...document.querySelectorAll('.main .card')];
+  let hit=0;
+  cards.forEach(function(c){
+    c.classList.remove('hit');
+    if(!q){ c.style.display=''; return; }
+    const ok=c.textContent.toLowerCase().includes(q);
+    c.style.display = ok?'':'none';
+    if(ok){ hit++; if(hit===1)c.classList.add('hit'); }
+  });
+  $('noHit').style.display=(q&&!hit)?'block':'none';
+}
+
+gate().then(ok=>{ if(ok)watchScroll(); });
+</script>
+</body></html>
