@@ -276,7 +276,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-88</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-89</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -620,7 +620,17 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
           <optgroup label="นามบริษัท"><option>LIKESHOP</option><option>MASARU</option><option>DAIKI</option></optgroup>
           <optgroup label="นามบุคคล"><option>คุณวุฒิ</option><option>คุณแนน</option></optgroup>
         </select>
-        <input type="month" id="wlMonth" onchange="WL_PAGE=1;renderWallet()" style="max-width:160px">
+        <span style="display:inline-flex;gap:6px;align-items:center;flex-wrap:nowrap">
+          <button class="btn mini" id="wlVDay"   onclick="wlView('day')">รายวัน</button>
+          <button class="btn mini" id="wlVMonth" onclick="wlView('month')">รายเดือน</button>
+          <button class="btn mini" onclick="wlShift(-1)" title="ก่อนหน้า">◀</button>
+          <input type="date"  id="wlDay"   onchange="WL_PAGE=1;renderWallet()"
+                 style="max-width:168px;min-width:168px;display:none">
+          <input type="month" id="wlMonth" onchange="WL_PAGE=1;renderWallet()"
+                 style="max-width:160px;min-width:160px">
+          <button class="btn mini" onclick="wlShift(1)" title="ถัดไป">▶</button>
+          <button class="btn mini" id="wlNowBtn" onclick="wlNow()">เดือนนี้</button>
+        </span>
         <select id="wlType" onchange="WL_PAGE=1;renderWallet()" style="max-width:170px">
           <option value="">— ทุกประเภทรายการ —</option>
           <option value="topup">💵 เติมเงิน</option>
@@ -1135,7 +1145,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v09-88';
+const PAY_VERSION='v09-89';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -2027,6 +2037,65 @@ function pagerBar(total,page,fn,per){
 }
 let LG_PAGE=1, RM_PAGE=1;
 let WL_PAGE=1; const WL_PER=25;          // Ksher Wallet — หน้าละ 25 รายการ
+/* ═══ ช่วงเวลาของ Ksher Wallet — ดูได้ทั้งรายวันและรายเดือน ═══
+   ยอด "คงเหลือ" คิดจาก walletRun() ทั้งชุดเสมอ ไม่ได้คิดจากแถวที่กรองไว้
+   ฉะนั้นเปลี่ยนช่วงเวลาแล้วยอดคงเหลือยังถูกต้อง ไม่ใช่ยอดของช่วงนั้น */
+let WL_VIEW='month';                      // 'month' | 'day'
+function wlView(v){
+  WL_VIEW = (v==='day') ? 'day' : 'month';
+  const on='background:var(--navy);color:#fff;border:0',
+        off='background:#fff;color:var(--navy);border:1px solid var(--line)';
+  if($('wlVDay'))  $('wlVDay').style.cssText   = WL_VIEW==='day'  ?on:off;
+  if($('wlVMonth'))$('wlVMonth').style.cssText = WL_VIEW==='month'?on:off;
+  if($('wlDay'))   $('wlDay').style.display    = WL_VIEW==='day'  ?'':'none';
+  if($('wlMonth')) $('wlMonth').style.display  = WL_VIEW==='month'?'':'none';
+  if($('wlNowBtn'))$('wlNowBtn').textContent   = WL_VIEW==='day'?'วันนี้':'เดือนนี้';
+  /* สลับโหมดแล้วให้ช่วงเวลาสองช่องสอดคล้องกัน ไม่ใช่เด้งไปเดือนอื่น */
+  if(WL_VIEW==='day'){
+    const mo=$('wlMonth').value||monthStr();
+    const d=$('wlDay').value||'';
+    if(!d || d.slice(0,7)!==mo)
+      $('wlDay').value = (mo===monthStr()) ? todayStr() : (mo+'-01');
+  }else{
+    const d=$('wlDay').value;
+    if(d)$('wlMonth').value=d.slice(0,7);
+  }
+  WL_PAGE=1; renderWallet();
+}
+function wlShift(k){
+  if(WL_VIEW==='day'){
+    const v=$('wlDay').value||todayStr();
+    const dt=new Date(v+'T00:00:00'); dt.setDate(dt.getDate()+k);
+    $('wlDay').value=ymdLocal(dt);
+  }else{
+    const v=$('wlMonth').value||monthStr();
+    const [y,m]=v.split('-').map(Number);
+    const dt=new Date(y,(m-1)+k,1);
+    $('wlMonth').value=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
+  }
+  WL_PAGE=1; renderWallet();
+}
+function wlNow(){
+  if(WL_VIEW==='day')$('wlDay').value=todayStr(); else $('wlMonth').value=monthStr();
+  WL_PAGE=1; renderWallet();
+}
+/* ช่วงเวลาที่กำลังดู — ใช้ร่วมกันทั้งตาราง การ์ดสรุป และไฟล์ Export
+   จัดรูปวันที่แบบเดียวกับที่ใช้ในใบปะหน้า (วัน เดือนเต็ม พ.ศ.) */
+function wlPeriod(){
+  if(WL_VIEW==='day'){
+    if(!$('wlDay').value)$('wlDay').value=todayStr();
+    const d=$('wlDay').value, D=new Date(d+'T00:00:00');
+    const lb=isNaN(D.getTime()) ? d
+      : (D.toLocaleDateString('th-TH',{day:'numeric',month:'long'})+' '+(D.getFullYear()+543));
+    return {key:d, len:10, label:'วันที่ '+lb, file:d};
+  }
+  if(!$('wlMonth').value)$('wlMonth').value=monthStr();
+  const m=$('wlMonth').value, pr=m.split('-').map(Number);
+  const M=new Date(pr[0],(pr[1]||1)-1,1);
+  const lb=isNaN(M.getTime()) ? m
+    : (M.toLocaleDateString('th-TH',{month:'long'})+' '+(M.getFullYear()+543));
+  return {key:m, len:7, label:lb, file:m};
+}
 function wlGo(n){ WL_PAGE=n; renderWallet(); if($('wlBody'))$('wlBody').scrollIntoView({block:'start',behavior:'smooth'}); }
 function lgGo(n){ LG_PAGE=n; renderLedger(); $('lgBody').scrollIntoView({block:'start'}); }
 function rmGo(n){ RM_PAGE=n; renderRemit(); $('rmBody').scrollIntoView({block:'start'}); }
@@ -3883,7 +3952,7 @@ function goTab(t){
   document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on',el.dataset.t===t));
   ['bills','plan','doc','quot','month','ledger','wallet','remit'].forEach(k=>$('tab-'+k).style.display=k===t?'':'none');
   if(t==='quot')loadQuot();
-  if(t==='wallet'){ loadWallet().then(renderWallet); }
+  if(t==='wallet'){ loadWallet().then(()=>wlView(WL_VIEW)); }   // wlView เรียก renderWallet ต่อเอง
   if(t==='remit')renderRemit();
   if(t==='ledger')renderLedger();
   if(t==='plan')planView(PLANVIEW);
@@ -4873,11 +4942,11 @@ function balToCny(thb,rate){ return rate>0 ? thb/rate : 0; }
 
 function renderWallet(){
   if(!$('wlBody'))return;
-  if(!$('wlMonth').value)$('wlMonth').value=monthStr();
-  const mo=$('wlMonth').value, ty=$('wlType').value, u=$('wlUser').value;
+  const PD=wlPeriod();
+  const ty=$('wlType').value, u=$('wlUser').value;
   const run=walletRun(u);
   const cur=run.length?run[run.length-1]:{_bal:0};
-  const inMo=run.filter(w=>String(w.txn_date||'').slice(0,7)===mo);
+  const inMo=run.filter(w=>String(w.txn_date||'').slice(0,PD.len)===PD.key);
   const topM=inMo.filter(w=>+w.amount_thb>0).reduce((s,w)=>s+(+w.amount_thb||0),0);
   const useM=inMo.filter(w=>+w.amount_thb<0).reduce((s,w)=>s-(+w.amount_thb||0),0);
   const rNow=fxEst('CNY')||0;
@@ -4891,14 +4960,20 @@ function renderWallet(){
       <div class="val">${money(a._bal)}<span style="font-size:.45em"> ฿</span></div>
       <div class="lbl" style="opacity:.75">${rNow?('≈ '+money(balToCny(a._bal,rNow))+' ¥ @'+rNow):'ใส่เรทในแท็บแผนจ่าย'}</div>
     </div>`).join('')
-    + `<div class="kpi gold"><div class="lbl">${u?('เดือนนี้ · '+esc(u)):'เดือนนี้ · ทุก User'} (บาท)</div>
+    + `<div class="kpi gold"><div class="lbl">${esc(PD.label)}${u?(' · '+esc(u)):' · ทุก User'} (บาท)</div>
         <div class="val" style="font-size:19px">+${money(topM)}<span style="font-size:.55em"> เติม</span></div>
         <div class="lbl" style="opacity:.75">−${money(useM)} ใช้ไป</div></div>`;
 
-  let list=run.filter(w=>!mo||String(w.txn_date||'').slice(0,7)===mo);
+  let list=run.filter(w=>String(w.txn_date||'').slice(0,PD.len)===PD.key);
   if(ty)list=list.filter(w=>w.txn_type===ty);
   list=list.slice().reverse();
-  if(!list.length){$('wlBody').innerHTML='<div class="empty">เดือนนี้ยังไม่มีรายการ — กด 💵 เติมเงิน เพื่อเริ่ม</div>';return;}
+  if(!list.length){
+    /* บอกให้ชัดว่าไม่มีรายการของ "ช่วงไหน" ไม่ใช่ขึ้นคำว่าเดือนนี้ทั้งที่ดูรายวันอยู่ */
+    $('wlBody').innerHTML='<div class="empty">'+esc(PD.label)+' ยังไม่มีรายการ'
+      +(ty?' ตามประเภทที่เลือก':'')
+      +'<div class="muted" style="margin-top:6px">กด ◀ ▶ เพื่อดู'
+      +(WL_VIEW==='day'?'วัน':'เดือน')+'อื่น · หรือกด 💵 เติมเงิน เพื่อเริ่ม</div></div>';
+    return;}
 
   /* แบ่งหน้า — หน้าละ WL_PER (25) รายการ
      หมายเหตุ: คอลัมน์ "คงเหลือ" คิดจาก walletRun() ทั้งชุดแล้ว ตัดหน้าไม่ทำให้ยอดเพี้ยน */
@@ -5083,13 +5158,20 @@ async function doSpendCut(){
 function exportWallet(){
   const rows=[['วันที่','User','ประเภท','PO','รายละเอียด','บาท','เรทวันนั้น','หยวนอ้างอิง','ค่าธรรมเนียม','คงเหลือ (฿)']];
   const T={topup:'เติมเงิน',spend:'ตัดจ่าย',adjust:'ปรับยอด'};
-  walletRun($('wlUser').value).forEach(w=>rows.push([w.txn_date||'',w.ksher_user||'',T[w.txn_type]||w.txn_type,w.po_number||'',w.note||'',
+  /* ส่งออกเฉพาะช่วงเวลาที่กำลังดู — ชื่อไฟล์บอกช่วงไว้แล้ว เนื้อในต้องตรงกัน
+     คอลัมน์ "คงเหลือ" ยังถูกต้อง เพราะ walletRun() ไล่ยอดจากทั้งชุดก่อนกรอง */
+  const PD=wlPeriod(), ty=$('wlType').value;
+  walletRun($('wlUser').value)
+    .filter(w=>String(w.txn_date||'').slice(0,PD.len)===PD.key)
+    .filter(w=>!ty||w.txn_type===ty)
+    .forEach(w=>rows.push([w.txn_date||'',w.ksher_user||'',T[w.txn_type]||w.txn_type,w.po_number||'',w.note||'',
     +w.amount_thb||0,+w.rate||'',Math.abs(+w.amount_cny||0)||'',+w.fee_thb||0,
     +w._bal.toFixed(2)]));
+  if(rows.length===1)return toast(PD.label+' ไม่มีรายการให้ส่งออก');
   const ws=XLSX.utils.aoa_to_sheet(rows), wb=XLSX.utils.book_new();
   ws['!cols']=[{wch:11},{wch:12},{wch:11},{wch:12},{wch:34},{wch:14},{wch:11},{wch:13},{wch:11},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws,'Ksher Wallet');
-  XLSX.writeFile(wb,'KsherWallet_'+($('wlMonth').value||monthStr())+'.xlsx');
+  XLSX.writeFile(wb,'KsherWallet_'+wlPeriod().file+'.xlsx');
 }
 
 /* ==================================================================
