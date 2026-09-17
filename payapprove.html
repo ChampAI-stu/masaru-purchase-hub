@@ -142,7 +142,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-24</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-25</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -486,6 +486,23 @@ tr:nth-child(even) td{background:#F8FAFD}
         <button class="btn mini ghost" onclick="addManual()">＋ เพิ่มรายการเอง</button>
         <div style="flex:1"></div>
         <span id="r_sum" class="muted" style="font-size:12.5px"></span>
+      </div>
+      <div id="fxBox" style="display:none;background:#FDF8E7;border:1px solid var(--gold);border-radius:9px;
+        padding:10px 13px;margin-bottom:10px">
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
+          <div><div class="muted" style="font-size:11px">สกุลต้นทาง (ตามบิล/PO)</div>
+            <b style="font-size:15px" id="fx_src">-</b></div>
+          <div style="font-size:18px;color:var(--muted);padding-bottom:2px">→</div>
+          <div><div class="muted" style="font-size:11px">สกุลที่โอนจริง</div>
+            <b style="font-size:15px" id="fx_dst">-</b></div>
+          <div class="fld" style="margin:0;min-width:140px"><label>เรทแปลง (1 <span id="fx_u1">-</span> = ? <span id="fx_u2">-</span>)</label>
+            <input id="r_fx" type="number" step="0.000001" placeholder="เช่น 0.1400" oninput="applyFx()"></div>
+          <div><div class="muted" style="font-size:11px">ยอดโอนรวม</div>
+            <b style="font-size:15px" id="fx_out">-</b></div>
+          <div style="flex:1"></div>
+          <button class="btn mini ghost" onclick="fxSwapBack()" title="ยกเลิกการแปลง ใช้สกุลต้นทางโอนตรง">↺ ไม่แปลง</button>
+        </div>
+        <div class="muted" style="font-size:11.5px;margin-top:6px" id="fx_note"></div>
       </div>
       <div class="scroll"><div id="r_items"></div></div>
 
@@ -938,32 +955,74 @@ function reqCurs(r){
 }
 /* คืนสกุลที่ควรเป็น ถ้าไม่ตรงกับที่บันทึกไว้ — ไม่ตรงคือ "หน่วยผิด" ต้องเห็นทุกครั้งที่เปิด */
 function curMismatch(r){
+  if(r&&r.src_currency&&+r.fx_rate>0)return '';   // แปลงสกุลไว้แล้ว = ถูกต้อง ไม่ใช่หน่วยผิด
   const cs=reqCurs(r);
   return (cs.length===1&&cs[0]!==r.currency) ? cs[0] : '';
 }
-function syncCur(){
-  const cs=itemCurs();
-  if(cs.length===1){ $('r_cur').value=cs[0]; }
-  curWarn();
+/* สกุลต้นทางของรายการ (จากบิล) — ใช้ตั้ง "ต้นทาง" ของการแปลง */
+function srcCur(){
+  const cs=[...new Set(ITEMS.map(i=>String(i.src_cur||'')).filter(Boolean))];
+  if(cs.length===1)return cs[0];
+  return cs.length?'':'';                    // ปนหลายสกุล = ไม่แปลงอัตโนมัติ
 }
-/* ป้ายเตือนใต้ช่องสกุลเงิน เมื่อไม่ตรงกับบิล หรือปนหลายสกุล */
+/* ดึงงวดมาใหม่: ตั้งสกุลที่โอนจริงให้เท่าต้นทางก่อน (ไม่แปลง) แล้วให้คนเลือกเปลี่ยนเอง */
+function syncCur(){
+  const sc=srcCur();
+  if(sc&&!ITEMS.some(i=>num(i.fx))) $('r_cur').value=sc;
+  applyFx();
+}
+/* เรทแปลง: ยอดโอน = ยอดต้นทาง × เรท  (ต้นทาง→ปลายทาง) */
+function applyFx(){
+  const sc=srcCur(), dst=$('r_cur').value;
+  const need = !!sc && sc!==dst;                     // ต้องแปลงเมื่อสกุลต่างกัน
+  const fx = need ? num($('r_fx').value) : 1;
+
+  ITEMS.forEach(function(it){
+    if(it.src_amount==null)it.src_amount=num(it.amount);   // ใบเก่าที่ยังไม่มี src_amount
+    if(!it.src_cur)it.src_cur=sc||dst;
+    if(it.manual)return;                                    // แถวที่ปลดล็อกแก้มือ ไม่ทับ
+    it.fx = need ? fx : 0;
+    it.amount = need ? +(num(it.src_amount)*fx).toFixed(2) : num(it.src_amount);
+    it.thb = +(num(it.amount)*num(it.rate)).toFixed(2);
+  });
+
+  const box=$('fxBox');
+  if(box){
+    box.style.display = need ? '' : 'none';
+    if(need){
+      $('fx_src').textContent=curSym(sc)+' '+sc;
+      $('fx_dst').textContent=curSym(dst)+' '+dst;
+      $('fx_u1').textContent=sc; $('fx_u2').textContent=dst;
+      const tSrc=ITEMS.reduce((a,x)=>a+num(x.src_amount),0);
+      const tDst=ITEMS.reduce((a,x)=>a+num(x.amount),0);
+      $('fx_out').innerHTML = fx>0
+        ? money2(tDst)+' '+curSym(dst)
+        : '<span style="color:var(--red)">ยังไม่ใส่เรท</span>';
+      $('fx_note').innerHTML = fx>0
+        ? 'ยอดตามบิล '+money2(tSrc)+' '+sc+' × '+fx+' = <b>'+money2(tDst)+' '+dst+'</b> — ยอดที่จะโอนจริง'
+        : '<span style="color:#B45309">⚠️ บิลเป็น '+sc+' แต่จะโอนเป็น '+dst+' — ใส่เรทแปลงก่อน ไม่งั้นยอดโอนเป็น 0</span>';
+    }
+  }
+  drawItems();
+}
+/* เลิกแปลง — โอนด้วยสกุลเดียวกับบิล */
+function fxSwapBack(){
+  const sc=srcCur(); if(!sc)return;
+  $('r_cur').value=sc; $('r_fx').value='';
+  applyFx();
+}
+/* เตือนเฉพาะกรณีที่เป็นปัญหาจริง — สกุลต่างกันไม่ผิด ถ้าใส่เรทแปลงแล้ว */
 function curWarn(){
   const box=$('curWarn'); if(!box)return;
-  const cs=itemCurs(), cur=$('r_cur').value;
-  if(!cs.length){ box.innerHTML=''; return; }
+  const cs=itemCurs();
   if(cs.length>1){
     box.innerHTML='<div style="background:#FCE4E4;border-left:4px solid var(--red);border-radius:7px;'
-      +'padding:7px 10px;font-size:12px;line-height:1.6;margin-top:5px">⚠️ รายการในคำขอนี้มี '
-      +cs.length+' สกุลเงิน ('+cs.map(esc).join(', ')+') — <b>คำขอ 1 ใบควรเป็นสกุลเดียว</b> '
-      +'แยกเป็นหลายใบจะถูกต้องกว่า</div>';
+      +'padding:7px 10px;font-size:12px;line-height:1.6;margin-top:5px">⚠️ งวดที่ดึงมามี '
+      +cs.length+' สกุล ('+cs.map(esc).join(', ')+') — แปลงอัตโนมัติไม่ได้ '
+      +'<b>ควรแยกเป็นคำขอละสกุล</b></div>';
     return;
   }
-  box.innerHTML = (cs[0]===cur) ? ''
-    : '<div style="background:#FCE4E4;border-left:4px solid var(--red);border-radius:7px;'
-      +'padding:7px 10px;font-size:12px;line-height:1.6;margin-top:5px">⚠️ งวดที่ดึงมาเป็นสกุล <b>'
-      +esc(cs[0])+'</b> แต่เลือกไว้ '+esc(cur)+' — ยอดจะแสดงหน่วยผิด '
-      +'<a href="#" onclick="$(\'r_cur\').value=\''+esc(cs[0])+'\';drawItems();curWarn();return false" '
-      +'style="font-weight:700">แก้เป็น '+esc(cs[0])+'</a></div>';
+  box.innerHTML='';
 }
 
 const thbOf=p=>{if(!p)return 0;
@@ -1066,6 +1125,7 @@ function reqTable(rows,opts){
           onclick="openProof('${r.id}')">📎${proofList(r).length||''}</button>
         <button class="btn mini ghost" onclick="viewReq('${r.id}')">👁 ดู</button>
         ${canEditReq(r)?`<button class="btn mini" onclick="openReq('${r.id}')">✏️</button>`:''}
+        ${canDelReq(r)?`<button class="btn mini red" title="ลบคำขอ" onclick="delReq('${r.id}')">🗑️</button>`:''}
       </td></tr>`;});
   return h+'</tbody></table>'+(opts&&opts.pager?opts.pager:'');
 }
@@ -1093,12 +1153,52 @@ function renderTodo(){
   $('todoBody').innerHTML=reqTable(rows);
 }
 
-/* สิทธิ์แก้ไข: เจ้าของแก้ได้เฉพาะร่าง/ตีกลับ · หัวหน้าจัดซื้อแก้ได้ก่อนผู้บริหารอนุมัติ */
+/* ═══ สิทธิ์แก้ไข ═══
+   เจ้าของ: ร่าง / ตีกลับ  ·  หัวหน้าจัดซื้อ: ทุกใบก่อนอนุมัติ
+   ผู้บริหาร: ทุกใบก่อนอนุมัติ (เดิมแก้ไม่ได้เลย ทำให้ต้องตีกลับทั้งใบเพราะพิมพ์ผิดตัวเดียว) */
 function canEditReq(r){
   if(r.status==='approved'||r.status==='paid')return false;
   if(r.requester===ME&&(r.status==='draft'||r.status==='rejected'))return true;
-  if(IS_MGR&&r.status!=='approved'&&r.status!=='paid')return true;
+  if(IS_MGR||IS_EXEC)return true;
   return false;
+}
+/* ═══ สิทธิ์ลบ ═══
+   ร่าง/ตีกลับ  : เจ้าของ หรือ หัวหน้า/ผู้บริหาร
+   ส่งอนุมัติแล้ว: หัวหน้า/ผู้บริหาร
+   อนุมัติ/จ่ายแล้ว: ผู้บริหารเท่านั้น + ต้องพิมพ์เลขคำขอยืนยัน (เป็นหลักฐานการเงินแล้ว) */
+function canDelReq(r){
+  if(!r)return false;
+  if(r.status==='draft'||r.status==='rejected')
+    return r.requester===ME||IS_MGR||IS_EXEC;
+  if(r.status==='submitted'||r.status==='mgr_approved')return IS_MGR||IS_EXEC;
+  return IS_EXEC;                       // approved / paid
+}
+async function delReq(id){
+  const r=REQS.find(x=>String(x.id)===String(id)); if(!r)return;
+  if(!canDelReq(r))return alert('คุณไม่มีสิทธิ์ลบคำขอสถานะนี้');
+  const hard=['approved','paid'].includes(r.status);
+  const info=(r.req_no||'')+'\nยอด '+money2(r.total_thb)+' ฿'
+    +'\nสถานะ '+((ST[r.status]||{}).t||r.status);
+  if(hard){
+    const typed=prompt('⛔ ใบนี้'+(r.status==='paid'?'จ่ายเงินไปแล้ว':'อนุมัติจ่ายแล้ว')
+      +' — เป็นหลักฐานทางการเงิน\n\n'+info
+      +'\n\nถ้ายืนยันจะลบ ให้พิมพ์เลขคำขอให้ตรง:');
+    if(typed===null)return;
+    if(String(typed).trim()!==String(r.req_no||'').trim())return alert('เลขคำขอไม่ตรง — ยกเลิกการลบ');
+  }else{
+    if(!confirm('ลบคำขอนี้?\n\n'+info+'\n\nลบแล้วกู้คืนไม่ได้'))return;
+  }
+  const np=proofList(r).length;
+  if(np&&!confirm('ใบนี้มีเอกสารแนบ '+np+' ไฟล์\n\n'
+    +'ไฟล์ใน Google Drive จะยังอยู่ (ไม่ถูกลบ) แต่จะไม่ผูกกับคำขอใดอีก\n\nลบต่อไหม?'))return;
+
+  await addLog(id,'deleted','ลบคำขอ '+(r.req_no||'')+' · ยอด '+money2(r.total_thb)+' ฿ · สถานะ '
+    +((ST[r.status]||{}).t||r.status));
+  const {error}=await sb.from('pay_requests').delete().eq('id',id);
+  if(error)return alert('ลบไม่สำเร็จ: '+error.message);
+  $('viewBg').style.display='none';
+  await loadAll();
+  toast('ลบคำขอ '+(r.req_no||'')+' แล้ว 🗑️');
 }
 
 /* ==================================================================
@@ -1171,23 +1271,41 @@ function openReq(id){
   $('r_method').value=(r&&r.pay_method)||'';
   $('r_acct').value=(r&&r.pay_acct)||'';
   $('r_cur').value=(r&&r.currency)||'CNY';
+  $('r_fx').value=(r&&r.fx_rate)||'';
   $('r_reason').value=(r&&r.reason)||'';
   $('r_note').value=(r&&r.note)||'';
   ITEMS=(r&&Array.isArray(r.items))?JSON.parse(JSON.stringify(r.items)):[];
-  drawItems();
+  applyFx();                        // คิดยอดโอน + โชว์กล่องแปลงสกุลตามข้อมูลที่โหลดมา
   $('reqBg').style.display='flex';
   growAcct();                      // ต้องเรียกหลังโมดัลโชว์ scrollHeight จึงจะถูก
-  curWarn();                        // ใบเก่าที่หน่วยเงินผิด จะเห็นป้ายเตือนทันทีที่เปิด
 }
 function addManual(){
-  ITEMS.push({pay_id:'',po:'',sku:'',inst:'',amount:0,rate:0,thb:0,fee:0,payee:''});
+  ITEMS.push({pay_id:'',po:'',sku:'',inst:'',src_amount:0,src_cur:$('r_cur').value,
+              amount:0,rate:0,thb:0,fee:0,payee:''});
   drawItems();
 }
 function delItem(i){ITEMS.splice(i,1);drawItems();}
+function toggleManual(i){
+  const it=ITEMS[i]; if(!it)return;
+  it.manual=!it.manual;
+  if(!it.manual){                       // ล็อกกลับ = คืนค่าจากระบบ + คิดแปลงใหม่
+    const p=payOf(it.pay_id), b=p?billOf(p.bill_id):null;
+    if(p){ it.src_amount=Math.abs(+p.amount||0); it.rate=+p.rate||0; it.fee=+p.fee||0;
+           if(b)it.src_cur=b.currency||it.src_cur; }
+  }
+  applyFx();
+  toast(it.manual?'ปลดล็อกแถวนี้ให้แก้เองได้ 🔓':'คืนค่าจากระบบแล้ว 🔒');
+}
 function setItem(i,k,v){
   ITEMS[i][k]=(k==='po'||k==='sku'||k==='inst'||k==='payee')?v:num(v);
   const it=ITEMS[i];
-  if(k==='amount'||k==='rate')it.thb=+(it.amount*it.rate).toFixed(2);
+  /* แก้ยอดตามบิล → คิดยอดโอนใหม่ตามเรทแปลง แล้วคิดบาทต่อ */
+  if(k==='src_amount'){
+    const fx=num(it.fx);
+    it.amount = fx>0 ? +(num(it.src_amount)*fx).toFixed(2) : num(it.src_amount);
+  }
+  if(k==='amount'&&!num(it.fx))it.src_amount=num(it.amount);   // ไม่ได้แปลง = สองค่าเท่ากัน
+  it.thb=+(num(it.amount)*num(it.rate)).toFixed(2);
   drawItems();
 }
 function drawItems(){
@@ -1195,26 +1313,39 @@ function drawItems(){
     $('r_items').innerHTML='<div class="empty">ยังไม่มีรายการ — กด “ดึงงวดจ่ายจากระบบวางแผน” หรือ “เพิ่มรายการเอง”</div>';
     $('r_sum').textContent='';return;
   }
-  const cs=curSym($('r_cur').value);
-  let h=`<table><thead><tr><th style="width:34px">#</th><th>PO</th><th>SKU</th><th>งวด</th>
-    <th class="num" style="width:120px">ยอด (${cs})</th><th class="num" style="width:100px">เรท</th>
+  const dst=$('r_cur').value, cs=curSym(dst);
+  const sc=srcCur(), fxOn = !!sc && sc!==dst;          // โชว์คอลัมน์ต้นทางเฉพาะเมื่อมีการแปลง
+  const ssym=curSym(sc);
+  let h=`<table style="min-width:${fxOn?920:760}px"><thead><tr><th style="width:34px">#</th><th>PO</th><th>SKU</th><th>งวด</th>
+    ${fxOn?`<th class="num" style="width:120px">ยอดตามบิล (${ssym})</th>
+            <th class="num" style="width:95px">เรทแปลง</th>`:''}
+    <th class="num" style="width:120px">${fxOn?'ยอดโอน':'ยอด'} (${cs})</th><th class="num" style="width:95px">เรท ฿</th>
     <th class="num" style="width:120px">บาท</th><th class="num" style="width:100px">ค่าธรรมเนียม</th>
-    <th style="width:36px"></th></tr></thead><tbody>`;
+    <th style="width:62px"></th></tr></thead><tbody>`;
   ITEMS.forEach((it,i)=>{
-    const lock=!!it.pay_id;   // ดึงมาจากระบบ = ไม่ให้แก้ตัวเลข
-    h+=`<tr><td style="text-align:center">${i+1}</td>
+    /* ดึงมาจากระบบ = ล็อกไว้กันพิมพ์ผิด แต่กด 🔓 ปลดล็อกแก้เองได้ (ติดป้าย "แก้มือ") */
+    const lock=!!it.pay_id && !it.manual;
+    const N=(k,step)=>`<input type="number" step="${step}" style="text-align:right" value="${it[k]||''}" oninput="setItem(${i},'${k}',this.value)">`;
+    h+=`<tr${it.manual?' style="background:#FFFBEB"':''}><td style="text-align:center">${i+1}</td>
       <td>${lock?`<b>${esc(it.po||'-')}</b>`:`<input value="${esc(it.po||'')}" oninput="setItem(${i},'po',this.value)">`}</td>
       <td style="font-size:11.5px">${lock?esc(it.sku||'-'):`<input value="${esc(it.sku||'')}" oninput="setItem(${i},'sku',this.value)">`}</td>
       <td>${lock?esc(it.inst||'-'):`<input value="${esc(it.inst||'')}" oninput="setItem(${i},'inst',this.value)">`}</td>
-      <td class="num">${lock?money2(it.amount):`<input type="number" step="0.01" style="text-align:right" value="${it.amount||''}" oninput="setItem(${i},'amount',this.value)">`}</td>
-      <td class="num">${lock?(it.rate?money2(it.rate):'-'):`<input type="number" step="0.0001" style="text-align:right" value="${it.rate||''}" oninput="setItem(${i},'rate',this.value)">`}</td>
+      ${fxOn?`<td class="num">${lock?money2(it.src_amount):N('src_amount','0.01')}</td>
+              <td class="num" style="font-size:11.5px;color:var(--muted)">${it.fx?money2(it.fx):'-'}</td>`:''}
+      <td class="num">${lock&&!fxOn?money2(it.amount):(fxOn&&lock?`<b>${money2(it.amount)}</b>`:N('amount','0.01'))}</td>
+      <td class="num">${lock?(it.rate?money2(it.rate):'-'):N('rate','0.0001')}</td>
       <td class="num"><b>${money2(it.thb)}</b></td>
-      <td class="num">${lock?money2(it.fee):`<input type="number" step="0.01" style="text-align:right" value="${it.fee||''}" oninput="setItem(${i},'fee',this.value)">`}</td>
-      <td><button class="btn mini red" onclick="delItem(${i})">✕</button></td></tr>`;});
+      <td class="num">${lock?money2(it.fee):N('fee','0.01')}</td>
+      <td style="white-space:nowrap">
+        ${it.pay_id?`<button class="btn mini ghost" title="${it.manual?'กลับไปใช้ยอดจากระบบ':'ปลดล็อกแก้ตัวเลขเอง'}"
+           onclick="toggleManual(${i})">${it.manual?'🔒':'🔓'}</button>`:''}
+        <button class="btn mini red" onclick="delItem(${i})">✕</button></td></tr>`;});
+  const tSrc=ITEMS.reduce((s,x)=>s+num(x.src_amount),0);
   const tAmt=ITEMS.reduce((s,x)=>s+num(x.amount),0);
   const tThb=ITEMS.reduce((s,x)=>s+num(x.thb)+num(x.fee),0);
   const tFee=ITEMS.reduce((s,x)=>s+num(x.fee),0);
   h+=`<tr style="background:#EFEFEF;font-weight:800"><td colspan="4" style="text-align:center">รวม</td>
+    ${fxOn?`<td class="num">${money2(tSrc)}</td><td class="num">-</td>`:''}
     <td class="num">${money2(tAmt)}</td><td class="num">-</td>
     <td class="num">${money2(tThb-tFee)}</td><td class="num">${money2(tFee)}</td><td></td></tr>`;
   $('r_items').innerHTML=h+'</tbody></table>';
@@ -1306,6 +1437,7 @@ function addPicked(){
   if(!rows.length)return toast('ยังไม่ได้เลือกงวด');
   rows.forEach(p=>{const b=billOf(p.bill_id);
     ITEMS.push({pay_id:String(p.id),po:b.po_number||'',sku:b.sku||'',inst:p.installment||'',
+      src_amount:Math.abs(+p.amount||0), src_cur:b.currency||'',   // ⭐ ยอด/สกุลตามบิล เก็บไว้เสมอ
       amount:Math.abs(+p.amount||0),rate:+p.rate||0,thb:thbOf(p),fee:+p.fee||0,
       payee:p.payee||'',pay_date:p.pay_date||''});});
   if(!$('r_type').value&&rows[0].pay_type)$('r_type').value=rows[0].pay_type;
@@ -1383,6 +1515,7 @@ function useDoc(id){
   if(curs.length>1&&!confirm('ใบนี้มีหลายสกุลเงิน ('+curs.join(', ')+')\n\nคำขอ 1 ใบควรเป็นสกุลเดียว — ดึงมาทั้งหมดไหม?'))return;
   ps.forEach(p=>{const b=billOf(p.bill_id);
     ITEMS.push({pay_id:String(p.id),po:b.po_number||'',sku:b.sku||'',inst:p.installment||'',
+      src_amount:Math.abs(+p.amount||0), src_cur:b.currency||'',
       amount:Math.abs(+p.amount||0),rate:+p.rate||0,thb:thbOf(p),fee:+p.fee||0,
       payee:p.payee||'',pay_date:p.pay_date||''});});
   // เติมหัวคำขอจากใบปะหน้า
@@ -1414,16 +1547,16 @@ async function saveReq(mode){
   if(!ITEMS.length)      return toast('ยังไม่มีรายการ');
   if(mode==='submitted'&&!$('r_reason').value.trim())return toast('ใส่เหตุผลการขออนุมัติก่อนส่ง');
 
-  /* กันหน่วยเงินผิด — ตัวเลขถูกแต่หน่วยผิด อ่านผิดทั้งใบ */
+  /* สกุลต่างกันได้ แต่ต้องมีเรทแปลง ไม่งั้นยอดโอนเป็น 0 */
+  const sc0=srcCur(), dst0=$('r_cur').value, fx0=num($('r_fx').value);
+  if(sc0&&sc0!==dst0&&fx0<=0)
+    return toast('บิลเป็น '+sc0+' แต่จะโอนเป็น '+dst0+' — ใส่เรทแปลงก่อน');
   const cs0=itemCurs();
-  if(cs0.length===1&&cs0[0]!==$('r_cur').value&&
-     !confirm('สกุลเงินไม่ตรงกับบิลของงวดที่ดึงมา\n\n'
-       +'งวดเป็นสกุล: '+cs0[0]+'\nเลือกไว้: '+$('r_cur').value
-       +'\n\nบันทึกต่อไหม? (แนะนำให้กดยกเลิก แล้วแก้สกุลเงินก่อน)'))return;
   if(cs0.length>1&&mode==='submitted'&&
-     !confirm('คำขอนี้มีหลายสกุลเงิน ('+cs0.join(', ')+')\n\n'
-       +'ควรแยกเป็นคำขอละสกุล — ส่งอนุมัติต่อไหม?'))return;
+     !confirm('คำขอนี้มีงวดหลายสกุล ('+cs0.join(', ')+')\n\n'
+       +'แปลงอัตโนมัติไม่ได้ ควรแยกเป็นคำขอละสกุล — ส่งอนุมัติต่อไหม?'))return;
 
+  const tSrc=ITEMS.reduce((s,x)=>s+num(x.src_amount),0);
   const tAmt=ITEMS.reduce((s,x)=>s+num(x.amount),0);
   const tFee=ITEMS.reduce((s,x)=>s+num(x.fee),0);
   const tThb=ITEMS.reduce((s,x)=>s+num(x.thb),0)+tFee;
@@ -1435,6 +1568,9 @@ async function saveReq(mode){
     urgency:$('r_urg').value, reason:$('r_reason').value.trim()||null,
     note:$('r_note').value.trim()||null,
     items:ITEMS, payment_ids:ITEMS.map(i=>i.pay_id).filter(Boolean),
+    src_currency:(sc0&&sc0!==dst0)?sc0:null,        // สกุลต้นทาง เก็บเมื่อมีการแปลงจริง
+    fx_rate:(sc0&&sc0!==dst0)?fx0:null,             // เรทแปลง ต้นทาง→ปลายทาง
+    total_src:+tSrc.toFixed(2),                     // ยอดรวมสกุลต้นทาง
     total_amount:+tAmt.toFixed(2), total_thb:+tThb.toFixed(2), total_fee:+tFee.toFixed(2),
     status:mode, updated_at:new Date().toISOString()
   };
@@ -1506,7 +1642,7 @@ function viewReq(id){
     .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
   /* checked = ใบเก่าที่เคยผ่านหัวหน้าจัดซื้อ เก็บชื่อไว้ให้ประวัติอ่านได้ */
   const LA={created:'สร้างคำขอ',updated:'แก้ไข',submitted:'ส่งอนุมัติ',checked:'หัวหน้าอนุมัติ (ใบเก่า)',
-            approved:'ผู้บริหารอนุมัติ',rejected:'ตีกลับ',paid:'ยืนยันจ่ายแล้ว',xfer:'📢 แจ้งโอนเงิน',proof:'📎 แนบเอกสาร'};
+            approved:'ผู้บริหารอนุมัติ',rejected:'ตีกลับ',deleted:'🗑️ ลบคำขอ',paid:'ยืนยันจ่ายแล้ว',xfer:'📢 แจ้งโอนเงิน',proof:'📎 แนบเอกสาร'};
 
   $('vBody').innerHTML=`
     <div style="display:flex;gap:26px;flex-wrap:wrap;background:#F7F9FC;border-radius:10px;padding:12px 15px;margin-bottom:12px;font-size:12.5px;line-height:1.9">
@@ -1518,6 +1654,7 @@ function viewReq(id){
         ${r.pay_acct?`<div class="muted" style="font-size:11px;white-space:pre-wrap;line-height:1.6">${esc(r.pay_acct)}</div>`:''}</div>
       <div><div class="muted" style="font-size:11px">ยอดรวม</div>
         <b style="font-size:16px">${money2(r.total_amount)} ${cs}</b>
+        ${r.src_currency?`<div class="muted" style="font-size:11px">จาก ${money2(r.total_src)} ${esc(r.src_currency)} × ${esc(r.fx_rate)}</div>`:''}
         <div class="muted" style="font-size:11px">${
           (r.currency!=='THB'&&(+r.total_amount||0)>0&&(+r.total_thb||0)<=0)
             ? '<span style="color:var(--red)">⚠️ ยังไม่ใส่เรท</span>'
@@ -1525,14 +1662,20 @@ function viewReq(id){
       <div><div class="muted" style="font-size:11px">ผู้ยื่น</div><b>${esc(r.requester_name||r.requester||'-')}</b></div>
     </div>
     ${(function(){
+      /* มีการแปลงสกุล → โชว์ที่มาของยอดให้ตรวจย้อนได้ */
+      if(r.src_currency&&+r.fx_rate>0){
+        return `<div style="background:#FDF8E7;border-left:5px solid var(--gold);border-radius:9px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.7">
+          <b>💱 แปลงสกุลเงิน</b> — ยอดตามบิล <b>${money2(r.total_src)} ${esc(r.src_currency)}</b>
+          × เรท <b>${esc(r.fx_rate)}</b> = ยอดโอน <b>${money2(r.total_amount)} ${esc(r.currency||'')}</b></div>`;
+      }
+      /* ไม่ได้แปลง แต่สกุลไม่ตรงบิล = ยังเป็นหน่วยผิดจริง */
       const should=curMismatch(r); if(!should)return '';
       return `<div style="background:#FCE4E4;border-left:5px solid var(--red);border-radius:9px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.7">
-        <b style="color:var(--red)">⚠️ หน่วยเงินไม่ตรงกับบิลใน Purchase Board</b><br>
-        ใบนี้บันทึกเป็น <b>${esc(r.currency||'-')}</b> แต่บิลของงวดที่ดึงมาเป็น <b>${esc(should)}</b>
-        — ตัวเลขถูก แต่หน่วยผิด อ่านผิดทั้งใบ
+        <b style="color:var(--red)">⚠️ หน่วยเงินไม่ตรงกับบิล และไม่มีเรทแปลง</b><br>
+        ใบนี้เป็น <b>${esc(r.currency||'-')}</b> แต่บิลของงวดเป็น <b>${esc(should)}</b>
+        — ถ้าจะโอนเป็น ${esc(r.currency||'-')} ต้องใส่เรทแปลง (กด ✏️ แก้ไข) · ถ้าโอนเป็น ${esc(should)} กดปุ่มนี้
         <div class="row" style="margin-top:8px">
-          <button class="btn mini red" onclick="fixReqCur('${r.id}','${esc(should)}')">แก้เป็น ${esc(should)} ตามบิล</button>
-          <span class="muted" style="font-size:11.5px">ถ้า ${esc(r.currency||'-')} ถูกจริง ให้ไปแก้สกุลเงินของบิลในระบบวางแผนจ่ายเงินแทน</span>
+          <button class="btn mini red" onclick="fixReqCur('${r.id}','${esc(should)}')">ใช้ ${esc(should)} ตามบิล</button>
         </div></div>`;
     })()}
     ${proofList(r).length?`<div style="background:#E9F6EE;border-left:5px solid var(--green);border-radius:9px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.7">
@@ -1561,6 +1704,7 @@ function viewReq(id){
   let btns=`<button class="btn ghost" onclick="$('viewBg').style.display='none'">ปิด</button>
     <button class="btn ghost" onclick="printReq('${r.id}')">🖨️ พิมพ์ใบขออนุมัติ</button>`;
   if(canEditReq(r))btns+=`<button class="btn ghost" onclick="$('viewBg').style.display='none';openReq('${r.id}')">✏️ แก้ไข</button>`;
+  if(canDelReq(r))btns+=`<button class="btn ghost red" onclick="delReq('${r.id}')">🗑️ ลบคำขอ</button>`;
   if(r.status==='draft'&&r.requester===ME)
     btns+=`<button class="btn gold" onclick="act('${r.id}','submitted')">📤 ส่งอนุมัติ</button>`;
   /* ผู้บริหารอนุมัติได้เลยจากสถานะส่งอนุมัติ — mgr_approved รับไว้เผื่อใบเก่าที่ค้างอยู่ */
@@ -1658,6 +1802,7 @@ function printReq(id){
       <div><b>ช่องทางการโอน:</b> ${esc(r.channel||'-')}</div>
       ${r.pay_method?`<div><b>ช่องทางการชำระเงิน:</b> ${esc(r.pay_method)}</div>`:''}
       ${r.pay_acct?`<div style="white-space:pre-wrap"><b>เลขบัญชีที่จ่าย:</b> ${esc(r.pay_acct)}</div>`:''}
+      ${r.src_currency?`<div><b>แปลงสกุล:</b> ${money2(r.total_src)} ${esc(r.src_currency)} × ${esc(r.fx_rate)} = ${money2(r.total_amount)} ${esc(r.currency||'')}</div>`:''}
       <div><b>กำหนดชำระ:</b> ${thDate(r.due_date)}</div>
       ${r.urgency==='urgent'?'<div><b style="color:#B01722">🔥 ด่วน</b></div>':''}
     </div>
@@ -2408,15 +2553,16 @@ function exportReport(){
   const mo=$('rpMonth').value||monthStr();
   const rows=REQS.filter(r=>String(r.req_date||'').slice(0,7)===mo);
   if(!rows.length)return toast('เดือนนี้ไม่มีข้อมูล');
-  const out=[['เลขคำขอ','วันที่ยื่น','กำหนดชำระ','จ่ายในนาม','ช่องทาง','ช่องทางการชำระเงิน','เลขบัญชีที่จ่าย','สกุล','ยอด','ค่าธรรมเนียม','รวมบาท',
+  const out=[['เลขคำขอ','วันที่ยื่น','กำหนดชำระ','จ่ายในนาม','ช่องทาง','ช่องทางการชำระเงิน','เลขบัญชีที่จ่าย','สกุลต้นทาง','ยอดต้นทาง','เรทแปลง','สกุล','ยอด','ค่าธรรมเนียม','รวมบาท',
               'สถานะ','ด่วน','ผู้ยื่น','หัวหน้าอนุมัติ (ใบเก่า)','ผู้บริหารอนุมัติ','เหตุผล','หมายเหตุ','เหตุผลที่ตีกลับ']];
   rows.forEach(r=>out.push([r.req_no||'',r.req_date||'',r.due_date||'',coFull(r.pay_type),r.channel||'',
     r.pay_method||'', r.pay_acct||'',
+    r.src_currency||'', r.src_currency?(+r.total_src||0):'', r.src_currency?(+r.fx_rate||0):'',
     r.currency||'',+r.total_amount||0,+r.total_fee||0,+r.total_thb||0,(ST[r.status]||{}).t||r.status,
     r.urgency==='urgent'?'ด่วน':'',r.requester_name||r.requester||'',r.checked_by||'',r.approved_by||'',
     r.reason||'',r.note||'',r.reject_note||'']));
   const ws=XLSX.utils.aoa_to_sheet(out),wb=XLSX.utils.book_new();
-  ws['!cols']=[{wch:17},{wch:11},{wch:11},{wch:12},{wch:20},{wch:24},{wch:30},{wch:7},{wch:13},{wch:11},{wch:13},
+  ws['!cols']=[{wch:17},{wch:11},{wch:11},{wch:12},{wch:20},{wch:24},{wch:30},{wch:9},{wch:13},{wch:10},{wch:7},{wch:13},{wch:11},{wch:13},
                {wch:18},{wch:7},{wch:18},{wch:22},{wch:22},{wch:32},{wch:26},{wch:32}];
   XLSX.utils.book_append_sheet(wb,ws,'คำขออนุมัติ');
   XLSX.writeFile(wb,'คำขออนุมัติชำระเงิน_'+mo+'.xlsx');
