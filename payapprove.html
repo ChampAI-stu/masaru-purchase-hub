@@ -66,6 +66,12 @@ tr:nth-child(even) td{background:#F8FAFD}
 .modal>*{min-width:0}
 .modal img,.modal canvas{max-width:100%}
 /* แถบปุ่มท้ายกล่อง — ติดขอบล่างไว้เสมอ ไม่ไหลตกออกนอกกล่อง */
+/* ค่าที่ dev ตั้งไว้ในไฟล์ — โชว์เป็นข้อมูลอ่านได้เลย ไม่ทำเป็นช่องกรอกที่กรอกไม่ได้ */
+.kv{display:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;
+  color:#334155;background:#F4F6FA;border:1px solid var(--line);border-radius:7px;padding:7px 10px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lockpill{display:none;font-size:11px;font-weight:700;color:#7A5A10;background:#FDF3DC;
+  border:1px solid #E6D08A;border-radius:12px;padding:2px 9px;margin-left:7px;vertical-align:middle}
 .modal-foot{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center;
   position:sticky;bottom:0;background:#fff;margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
 .expand-btn{position:absolute;top:14px;right:16px;background:#EEF2F7;border:1px solid var(--line);border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--navy);z-index:2}
@@ -105,7 +111,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-42</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-43</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -520,33 +526,32 @@ tr:nth-child(even) td{background:#F8FAFD}
 <div class="modal-bg" id="pfCfgBg" style="z-index:85">
   <div class="modal" style="max-width:620px">
     <h3>⚙️ ตั้งค่า — ที่เก็บไฟล์ &amp; ปฏิทิน</h3>
+    <!-- กล่องนี้สูงกว่าจอเตี้ย ๆ ได้ → ให้เนื้อหาเลื่อนเอง ไม่ให้ล้นออกนอกกล่อง -->
+    <div class="scroll" style="padding-right:4px">
     <div class="sub-note">ใช้ Google Apps Script ตัวเดียวกับที่ระบบวางแผนจ่ายเงินใช้เก็บสลิป —
       ไฟล์จะไปอยู่ในโฟลเดอร์ <b>หลักฐานการโอน / เลขคำขอ</b></div>
-    <div class="fld"><label>Web app URL (ลงท้าย /exec)</label>
-      <input id="pfg_url" placeholder="https://script.google.com/macros/s/AKfy..../exec"></div>
-    <div class="fld"><label>Secret</label><input id="pfg_secret"></div>
+    <div class="fld"><label>Web app URL (ลงท้าย /exec)<span id="pfg_lock" class="lockpill">🔒 ตั้งไว้ในไฟล์</span></label>
+      <input id="pfg_url" placeholder="https://script.google.com/macros/s/AKfy..../exec">
+      <div class="kv" id="pfg_url_v"></div></div>
+    <div class="fld"><label>Secret</label>
+      <input id="pfg_secret">
+      <div class="kv" id="pfg_secret_v"></div></div>
     <div id="pfg_stat" style="font-size:12.5px;margin-bottom:10px"></div>
-    <div id="pfg_lock" class="muted" style="font-size:12px;display:none;margin-bottom:10px">
-      🔒 ตั้งค่ากลางไว้ในไฟล์แล้ว — ถ้าจะเปลี่ยน ให้แก้ตัวแปร <code>GAS_URL</code> ในไฟล์ payapprove.html</div>
 
     <h3 style="font-size:15px;margin:16px 0 4px">📅 ปฏิทิน Google</h3>
     <div class="sub-note">ส่งกำหนดชำระขึ้นปฏิทินกลาง พร้อมตั้งเตือนล่วงหน้า —
       ใช้ Apps Script ตัวเดียวกับด้านบน ทุกคนในทีมไม่ต้องล็อกอิน Google เอง
-      <br>ยังไม่ได้ติดตั้ง? ดูขั้นตอนหัวไฟล์ <code>Code.gs</code> (ข้อ 6–8)
-      <br><b>การเตือนตั้งแยกได้ทีละคำขอ</b> — ในฟอร์มคำขอ ใต้ช่องกำหนดชำระ
-      ค่าข้างล่างนี้คือค่าที่ติ๊กมาให้ตอนสร้างใบใหม่</div>
-    <div class="fld"><label>Calendar ID</label>
-      <input id="cal_id" placeholder="xxxxxxxx@group.calendar.google.com"></div>
-    <div class="fld"><label>เตือนล่วงหน้า <span class="muted" style="font-weight:400">— ค่าเริ่มต้นของคำขอใหม่</span></label>
-      <div class="row" style="gap:14px;margin:2px 0 0">
-        <label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;margin:0;cursor:pointer">
-          <input type="checkbox" id="cal_r3d"> 3 วันก่อน</label>
-        <label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;margin:0;cursor:pointer">
-          <input type="checkbox" id="cal_r1d"> 1 วันก่อน</label>
-        <label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;margin:0;cursor:pointer">
-          <input type="checkbox" id="cal_r2h"> 2 ชั่วโมงก่อน</label>
-      </div></div>
+      <br>ยังไม่ได้ติดตั้ง? ดูขั้นตอนหัวไฟล์ <code>Code.gs</code> (ข้อ 6–8)</div>
+    <div class="fld"><label>Calendar ID<span id="cal_lock" class="lockpill">🔒 ตั้งไว้ในไฟล์</span></label>
+      <input id="cal_id" placeholder="xxxxxxxx@group.calendar.google.com">
+      <div class="kv" id="cal_id_v"></div></div>
+    <div class="fld"><label>เตือนล่วงหน้า</label>
+      <div class="muted" style="font-size:12px;line-height:1.7">
+        ตั้งแยกทีละคำขอ — อยู่ในฟอร์มคำขอ ใต้ช่องกำหนดชำระ
+        <br>ค่าที่ติ๊กมาให้ตอนสร้างใบใหม่ = <b id="rem_def_txt"></b>
+        (แก้ที่ตัวแปร <code>REM_DEF</code> ในไฟล์ payapprove.html)</div></div>
     <div id="cal_stat" style="font-size:12.5px;margin-bottom:10px"></div>
+    </div>
 
     <div class="modal-foot">
       <button class="btn mini ghost" onclick="pfTestGas()">🔌 ทดสอบที่เก็บไฟล์</button>
@@ -2578,22 +2583,21 @@ async function gasCall(payload){
 const CAL_ID  = 'deec4e0a220a4d8378030044b39ac23d0808ec41b8998f5b952a9244299fca75@group.calendar.google.com';   /* ⭐ ปฏิทินกลาง: MASARU — กำหนดชำระเงิน (จัดซื้อ)
                                              ตั้งไว้ในไฟล์ = ทุกเครื่องใช้ร่วมกัน ไม่ต้องให้แต่ละคนไปตั้งเอง */
 const CAL_KEY = 'masaru_pa_cal';
-const CAL_DEF = {rem3d:false, rem1d:true, rem2h:true};   /* ค่าตั้งต้นของการเตือน */
+/* ⭐ ค่าตั้งต้นของ "เตือนล่วงหน้า" สำหรับคำขอใบใหม่ (นาทีก่อนถึงกำหนด)
+      ตัวจริงตั้งรายคำขอในฟอร์ม — ค่านี้แค่ติ๊กมาให้ตอนเปิดใบใหม่
+      เดิมเก็บใน localStorage → แต่ละเครื่องได้ค่าไม่เหมือนกัน ไม่มีประโยชน์
+      จึงย้ายมาเป็นตัวแปรในไฟล์ แก้ครั้งเดียวเหมือนกันทุกเครื่อง
+      4320 = 3 วัน · 1440 = 1 วัน · 120 = 2 ชม. */
+const REM_DEF = [1440, 120];
 
 function calCfg(){
   let c={}; try{ c=JSON.parse(localStorage.getItem(CAL_KEY)||'{}'); }catch(e){}
-  return Object.assign({}, CAL_DEF, c, {id:(CAL_ID||c.id||'').trim()});
+  return {id:(CAL_ID||c.id||'').trim()};
 }
 const calLocked = ()=>!!CAL_ID;
 const calOn     = ()=>!!(calCfg().id && gasUrl());
-/* รายการนาทีที่จะเตือน เรียงจากไกลไปใกล้ — ค่าตั้งต้น (ใช้กับใบที่ยังไม่เคยตั้งเอง) */
-function calRem(){
-  const c=calCfg(), out=[];
-  if(c.rem3d)out.push(4320);
-  if(c.rem1d)out.push(1440);
-  if(c.rem2h)out.push(120);
-  return out.length?out:[1440,120];
-}
+/* ค่าตั้งต้น — ใช้กับใบที่ยังไม่เคยตั้งเอง (cal_remind เป็น null) */
+const calRem=()=>REM_DEF.map(Number).filter(x=>x>0&&x<=40320);
 /* ===== เตือนล่วงหน้า "รายคำขอ" =====
    เดิมตั้งรวมที่กล่อง ⚙️ แล้วเก็บใน localStorage → จำได้แค่เบราว์เซอร์เครื่องนั้น
    คนอื่นเปิดใบเดียวกันได้การเตือนไม่เหมือนกัน และใบด่วนกับใบปกติแยกกันไม่ได้
@@ -2605,9 +2609,8 @@ const curReq=()=>EDIT_ID?(REQS.find(x=>String(x.id)===String(EDIT_ID))||null):nu
 function remSet(arr){
   /* null/undefined = ใบใหม่ หรือใบเก่าที่บันทึกไว้ก่อนมีฟีเจอร์นี้ → ใช้ค่าตั้งต้น
      [] = ตั้งไว้ว่า "ไม่เตือน" ต้องเคารพ ห้ามเอาค่าตั้งต้นมาทับ */
-  const a=Array.isArray(arr)?arr.map(Number):null, c=calCfg();
-  const def={4320:!!c.rem3d,1440:!!c.rem1d,120:!!c.rem2h};
-  REM_OPT.forEach(function(o){ const el=$(o[2]); if(el)el.checked=a?a.includes(o[0]):def[o[0]]; });
+  const a=Array.isArray(arr)?arr.map(Number):null, d=calRem();
+  REM_OPT.forEach(function(o){ const el=$(o[2]); if(el)el.checked=(a||d).includes(o[0]); });
 }
 function remGet(){
   return REM_OPT.filter(function(o){ const el=$(o[2]); return el&&el.checked; }).map(o=>o[0]);
@@ -2908,23 +2911,31 @@ function renderPv(){
 }
 
 /* ---------- ตั้งค่าที่เก็บไฟล์ ---------- */
+/* ค่าที่ตั้งไว้ในไฟล์ → โชว์เป็นข้อความอ่านได้เลย
+   ไม่เอาช่องกรอกที่กรอกไม่ได้มาวางไว้ให้เข้าใจผิดว่าแก้ได้ */
+function pfKv(id,val,locked){
+  const inp=$(id), box=$(id+'_v'); if(!inp||!box)return;
+  inp.style.display=locked?'none':''; inp.disabled=false; inp.value=val||'';
+  /* .kv ตั้ง display:none ไว้ใน CSS → ต้องใส่ค่าจริง ไม่ใช่ '' ไม่งั้นกลับไปซ่อนตามคลาส */
+  box.style.display=locked?'block':'none';
+  box.textContent=val||'—'; box.title=val||'';
+}
 function openPfCfg(){
   const c=gasCfg(), lock=gasLocked();
-  $('pfg_url').value=c.url||''; $('pfg_secret').value=c.secret||'';
-  $('pfg_url').disabled=lock; $('pfg_secret').disabled=lock;
-  $('pfg_lock').style.display=lock?'':'none';
+  pfKv('pfg_url',c.url,lock); pfKv('pfg_secret',c.secret,lock);
+  $('pfg_lock').style.display=lock?'inline-block':'none';
   $('pfg_stat').textContent='';
   /* ส่วนปฏิทิน */
   const k=calCfg(), cl=calLocked();
-  $('cal_id').value=k.id||''; $('cal_id').disabled=cl;
-  $('cal_r3d').checked=!!k.rem3d; $('cal_r1d').checked=!!k.rem1d;
-  $('cal_r2h').checked=!!k.rem2h;
+  pfKv('cal_id',k.id,cl);
+  $('cal_lock').style.display=cl?'inline-block':'none';
+  $('rem_def_txt').textContent=remTxt(calRem());
   $('cal_stat').innerHTML = calOn()
     ? '<span class="muted">พร้อมใช้ — คำขอที่ส่งอนุมัติจะขึ้นปฏิทินอัตโนมัติ</span>'
     : '<span style="color:#B45309">ยังไม่พร้อมใช้ — '
       +(!gasUrl()?'ต้องตั้ง Web app URL ด้านบนก่อน':'ใส่ Calendar ID แล้วกดทดสอบ')+'</span>';
-  /* ปุ่มบันทึกยังต้องมีเสมอ เพราะการตั้งค่า "เตือนล่วงหน้า" บันทึกที่นี่ แม้ URL จะล็อกไว้ */
-  $('pfg_save').style.display='';
+  /* ล็อกไว้ในไฟล์ทั้งคู่ = ไม่มีอะไรให้บันทึก → ซ่อนปุ่มไป ไม่ให้กดแล้วงงว่าบันทึกอะไร */
+  $('pfg_save').style.display=(lock&&cl)?'none':'';
   $('pfCfgBg').style.display='flex';
 }
 function savePfCfg(){
@@ -2938,9 +2949,7 @@ function savePfCfg(){
       +'การตั้งค่าของปฏิทินนั้น → หัวข้อ "รวมปฏิทิน"');
   if(!gasLocked())
     try{ localStorage.setItem(GAS_KEY,JSON.stringify({url,secret:$('pfg_secret').value.trim()})); }catch(e){}
-  try{ localStorage.setItem(CAL_KEY,JSON.stringify({
-    id:calLocked()?'':calId, rem3d:$('cal_r3d').checked, rem1d:$('cal_r1d').checked,
-    rem2h:$('cal_r2h').checked})); }catch(e){}
+  try{ localStorage.setItem(CAL_KEY,JSON.stringify({id:calLocked()?'':calId})); }catch(e){}
   $('pfCfgBg').style.display='none';
   toast('บันทึกการตั้งค่าแล้ว ✅'+(calOn()?' · ปฏิทินพร้อมใช้ 📅':''));
 }
