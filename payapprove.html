@@ -99,7 +99,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-36</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-37</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -533,9 +533,6 @@ tr:nth-child(even) td{background:#F8FAFD}
           <input type="checkbox" id="cal_rmail"> ส่งอีเมลด้วย</label>
       </div></div>
     <div id="cal_stat" style="font-size:12.5px;margin-bottom:10px"></div>
-    <div id="cal_lock" class="muted" style="font-size:12px;display:none;margin-bottom:10px">
-      🔒 ตั้ง Calendar ID กลางไว้ในไฟล์แล้ว — ถ้าจะเปลี่ยน ให้แก้ตัวแปร <code>CAL_ID</code> ในไฟล์ payapprove.html
-      <br><b>แนะนำให้ตั้งในไฟล์</b> เพราะถ้าตั้งในหน้านี้ จะจำไว้แค่เบราว์เซอร์เครื่องนี้เครื่องเดียว</div>
 
     <div class="row" style="justify-content:flex-end;margin-top:4px">
       <button class="btn mini ghost" onclick="pfTestGas()">🔌 ทดสอบที่เก็บไฟล์</button>
@@ -2687,7 +2684,6 @@ function openPfCfg(){
   $('cal_id').value=k.id||''; $('cal_id').disabled=cl;
   $('cal_r3d').checked=!!k.rem3d; $('cal_r1d').checked=!!k.rem1d;
   $('cal_r2h').checked=!!k.rem2h; $('cal_rmail').checked=!!k.mail;
-  $('cal_lock').style.display=cl?'':'none';
   $('cal_stat').innerHTML = calOn()
     ? '<span class="muted">พร้อมใช้ — คำขอที่ส่งอนุมัติจะขึ้นปฏิทินอัตโนมัติ</span>'
     : '<span style="color:#B45309">ยังไม่พร้อมใช้ — '
