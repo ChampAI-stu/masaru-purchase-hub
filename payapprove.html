@@ -99,7 +99,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-33</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-34</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -187,7 +187,13 @@ tr:nth-child(even) td{background:#F8FAFD}
     <div class="scroll">
       <div class="grid3">
         <div class="fld"><label>วันที่ยื่น</label><input type="date" id="r_date"></div>
-        <div class="fld"><label>กำหนดชำระ ★</label><input type="date" id="r_due"></div>
+        <div class="fld"><label>กำหนดชำระ ★ <span class="muted" style="font-weight:400">— วันและเวลา</span></label>
+          <div style="display:flex;gap:6px">
+            <input type="date" id="r_due" style="flex:1 1 auto;min-width:0">
+            <input type="time" id="r_dueT" step="900" style="flex:0 0 105px;width:105px"
+                   title="เวลาที่ต้องโอน — ใช้ตั้งเตือนบนปฏิทิน">
+          </div>
+          <div id="r_calHint" class="muted" style="font-size:11px;margin-top:3px"></div></div>
         <div class="fld"><label>ความเร่งด่วน</label>
           <select id="r_urg"><option value="normal">ปกติ</option><option value="urgent">🔥 ด่วน</option></select></div>
         <div class="fld"><label>จ่ายในนาม ★</label>
@@ -505,8 +511,35 @@ tr:nth-child(even) td{background:#F8FAFD}
     <div id="pfg_stat" style="font-size:12.5px;margin-bottom:10px"></div>
     <div id="pfg_lock" class="muted" style="font-size:12px;display:none;margin-bottom:10px">
       🔒 ตั้งค่ากลางไว้ในไฟล์แล้ว — ถ้าจะเปลี่ยน ให้แก้ตัวแปร <code>GAS_URL</code> ในไฟล์ payapprove.html</div>
-    <div class="row" style="justify-content:flex-end">
-      <button class="btn mini ghost" onclick="pfTestGas()">🔌 ทดสอบการเชื่อมต่อ</button>
+
+    <h3 style="font-size:15px;margin:16px 0 4px">📅 ปฏิทิน Google</h3>
+    <div class="sub-note">ส่งกำหนดชำระขึ้นปฏิทินกลาง พร้อมตั้งเตือนล่วงหน้า —
+      ใช้ Apps Script ตัวเดียวกับด้านบน ทุกคนในทีมไม่ต้องล็อกอิน Google เอง
+      <br>ยังไม่ได้ติดตั้ง? ดูขั้นตอนในไฟล์ <code>calendar.gs</code></div>
+    <div class="fld"><label>Calendar ID</label>
+      <input id="cal_id" placeholder="xxxxxxxx@group.calendar.google.com"></div>
+    <div class="fld"><label>เตือนล่วงหน้า</label>
+      <div class="row" style="gap:14px;margin:2px 0 0">
+        <label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;margin:0;cursor:pointer">
+          <input type="checkbox" id="cal_r3d"> 3 วันก่อน</label>
+        <label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;margin:0;cursor:pointer">
+          <input type="checkbox" id="cal_r1d"> 1 วันก่อน</label>
+        <label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;margin:0;cursor:pointer">
+          <input type="checkbox" id="cal_r2h"> 2 ชั่วโมงก่อน</label>
+        <label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;margin:0;cursor:pointer"
+               title="ส่งอีเมลเตือนตามเวลาที่ไกลที่สุดที่เลือกไว้">
+          <input type="checkbox" id="cal_rmail"> ส่งอีเมลด้วย</label>
+      </div></div>
+    <div id="cal_stat" style="font-size:12.5px;margin-bottom:10px"></div>
+    <div id="cal_lock" class="muted" style="font-size:12px;display:none;margin-bottom:10px">
+      🔒 ตั้ง Calendar ID กลางไว้ในไฟล์แล้ว — ถ้าจะเปลี่ยน ให้แก้ตัวแปร <code>CAL_ID</code> ในไฟล์ payapprove.html
+      <br><b>แนะนำให้ตั้งในไฟล์</b> เพราะถ้าตั้งในหน้านี้ จะจำไว้แค่เบราว์เซอร์เครื่องนี้เครื่องเดียว</div>
+
+    <div class="row" style="justify-content:flex-end;margin-top:4px">
+      <button class="btn mini ghost" onclick="pfTestGas()">🔌 ทดสอบที่เก็บไฟล์</button>
+      <button class="btn mini ghost" onclick="calTest()">📅 ทดสอบปฏิทิน</button>
+      <button class="btn mini ghost" onclick="calBackfill()" title="ส่งใบที่ยังไม่ขึ้นปฏิทินขึ้นไปทั้งหมด">↻ ซิงก์ย้อนหลัง</button>
+      <div style="flex:1"></div>
       <button class="btn ghost" onclick="$('pfCfgBg').style.display='none'">ปิด</button>
       <button class="btn" id="pfg_save" onclick="savePfCfg()">💾 บันทึก</button>
     </div>
@@ -1082,7 +1115,9 @@ function reqTable(rows,opts){
     h+=`<tr>
       <td><b>${esc(r.req_no||'-')}</b>${r.urgency==='urgent'?' <span class="pill st-rejected">🔥 ด่วน</span>':''}</td>
       <td>${thShort(r.req_date)}</td>
-      <td${late?' style="color:var(--red);font-weight:700"':''}>${thShort(r.due_date)}</td>
+      <td${late?' style="color:var(--red);font-weight:700"':''}>${thShort(r.due_date)}
+        ${r.due_time?`<div class="muted" style="font-size:10.5px;font-weight:400">${esc(r.due_time)} น.${
+          r.cal_event_id?' 📅':''}</div>`:''}</td>
       <td>${esc(coShort(r.pay_type))}</td>
       <td style="font-size:11.5px">${esc(r.channel||'-')}</td>
       <td class="num">${(r.items||[]).length}</td>
@@ -1164,6 +1199,9 @@ async function delReq(id){
 
   await addLog(id,'deleted','ลบคำขอ '+(r.req_no||'')+' · ยอด '+money2(r.total_thb)+' ฿ · สถานะ '
     +((ST[r.status]||{}).t||r.status));
+  /* ลบ event ก่อนลบแถว — ถ้าลบแถวก่อน จะไม่เหลือ cal_event_id ให้ตามลบ
+     กลายเป็น event ค้างบนปฏิทินที่ไม่มีคำขอรองรับ */
+  await calDrop(r,true);
   const {error}=await sb.from('pay_requests').delete().eq('id',id);
   if(error)return alert('ลบไม่สำเร็จ: '+error.message);
   $('viewBg').style.display='none';
@@ -1235,6 +1273,9 @@ function openReq(id){
   $('reqTitle').textContent=r?('แก้ไขคำขอ '+(r.req_no||'')):'สร้างคำขออนุมัติชำระเงิน';
   $('r_date').value=(r&&r.req_date)||todayStr();
   $('r_due').value=(r&&r.due_date)||'';
+  /* ใบเก่าไม่มีเวลา → ตั้ง 10:00 ให้ แก้ได้ · ใบใหม่ก็เริ่มที่ 10:00 เหมือนกัน */
+  $('r_dueT').value=(r&&r.due_time)||'10:00';
+  calHint(r);
   $('r_urg').value=(r&&r.urgency)||'normal';
   $('r_type').value=(r&&r.pay_type)||'';
   $('r_ch').value=(r&&r.channel)||'';
@@ -1262,6 +1303,22 @@ function openReq(id){
   applyFx();                        // คิดยอดโอน + โชว์กล่องแปลงสกุลตามข้อมูลที่โหลดมา
   $('reqBg').style.display='flex';
   growAcct();                      // ต้องเรียกหลังโมดัลโชว์ scrollHeight จึงจะถูก
+}
+/* คำใบ้ใต้ช่องกำหนดชำระ — บอกว่าจะขึ้นปฏิทินไหม และใบนี้ขึ้นไปแล้วหรือยัง */
+function calHint(r){
+  const el=$('r_calHint'); if(!el)return;
+  if(!calOn()){
+    el.innerHTML='<span style="color:#B45309">ยังไม่ได้ต่อปฏิทิน</span> — เวลาจะถูกบันทึกไว้ '
+      +'แต่ยังไม่ขึ้น Google Calendar (ตั้งค่าที่ ⚙️ ท้ายหน้ารายการคำขอ)';
+    return;
+  }
+  el.innerHTML = (r&&r.cal_event_id)
+    ? '<span style="color:#1E7145">📅 ใบนี้อยู่บนปฏิทินแล้ว</span> — แก้วันหรือเวลาแล้วกดบันทึก event จะขยับตาม'
+    : '📅 กด <b>ส่งอนุมัติ</b> แล้วจะขึ้นปฏิทินให้เอง พร้อมเตือนล่วงหน้า '+calRemTxt();
+}
+function calRemTxt(){
+  const m={4320:'3 วัน',1440:'1 วัน',120:'2 ชม.'};
+  return calRem().map(x=>m[x]||(x+' นาที')).join(' และ ')+'ก่อนถึงกำหนด';
 }
 function addManual(){
   ITEMS.push({pay_id:'',po:'',sku:'',inst:'',src_amount:0,src_cur:$('r_cur').value,
@@ -1533,7 +1590,8 @@ async function nextReqNo(){
   return pre+String(n).padStart(3,'0');
 }
 async function saveReq(mode){
-  if(!$('r_due').value)  return toast('เลือกกำหนดชำระก่อน');
+  if(!$('r_due').value)  return toast('เลือกวันกำหนดชำระก่อน');
+  if(!$('r_dueT').value) return toast('ใส่เวลากำหนดชำระก่อน — ใช้ตั้งเตือนบนปฏิทิน');
   if(!$('r_type').value) return toast('เลือกจ่ายในนามก่อน');
   if(!$('r_ch').value)   return toast('เลือกช่องทางการโอนก่อน');
   if(!ITEMS.length)      return toast('ยังไม่มีรายการ');
@@ -1558,6 +1616,7 @@ async function saveReq(mode){
   const tThb=ITEMS.reduce((s,x)=>s+num(x.thb),0)+tFee;
   const rec={
     req_date:$('r_date').value||todayStr(), due_date:$('r_due').value,
+    due_time:$('r_dueT').value,
     pay_type:$('r_type').value, channel:$('r_ch').value, currency:$('r_cur').value,
     pay_method:$('r_method').value.trim()||null,
     pay_acct:$('r_acct').value.trim()||null,
@@ -1587,8 +1646,14 @@ async function saveReq(mode){
   await addLog(id, EDIT_ID?(mode==='submitted'?'submitted':'updated'):'created',
     mode==='submitted'?'ส่งอนุมัติ':'บันทึกร่าง');
   $('reqBg').style.display='none';
+  /* ปฏิทิน: สร้าง event ตอนส่งอนุมัติ · ใบที่อยู่บนปฏิทินแล้วก็อัปเดตทุกครั้งที่บันทึก
+     ร่างที่ยังไม่เคยส่ง ไม่ขึ้นปฏิทิน เพื่อไม่ให้ปฏิทินรกด้วยใบที่ยังไม่ได้ยื่น */
+  const wasOnCal = !!(REQS.find(x=>String(x.id)===String(id))||{}).cal_event_id;
+  if(mode==='submitted'||wasOnCal)await calAfter(id,true);
   await loadAll();
-  toast(mode==='submitted'?'ส่งอนุมัติแล้ว 📤':'บันทึกร่างแล้ว 💾');
+  toast(mode==='submitted'
+    ? ('ส่งอนุมัติแล้ว 📤'+(calOn()?' · ลงปฏิทินแล้ว 📅':''))
+    : 'บันทึกร่างแล้ว 💾');
 }
 async function addLog(reqId,action,note){
   try{ await sb.from('pay_request_logs').insert({req_id:reqId,action,actor:ME,note:note||null}); }
@@ -1645,7 +1710,11 @@ function viewReq(id){
   $('vBody').innerHTML=`
     <div style="display:flex;gap:26px;flex-wrap:wrap;background:#F7F9FC;border-radius:10px;padding:12px 15px;margin-bottom:12px;font-size:12.5px;line-height:1.9">
       <div><div class="muted" style="font-size:11px">วันที่ยื่น</div><b>${thDate(r.req_date)}</b></div>
-      <div><div class="muted" style="font-size:11px">กำหนดชำระ</div><b>${thDate(r.due_date)}</b></div>
+      <div><div class="muted" style="font-size:11px">กำหนดชำระ</div>
+        <b>${thDate(r.due_date)}${r.due_time?(' · '+esc(r.due_time)+' น.'):''}</b>
+        ${r.cal_link?`<div style="font-size:11px;margin-top:2px"><a href="${esc(r.cal_link)}" target="_blank"
+          rel="noopener" style="color:var(--blue);font-weight:700">📅 เปิดบนปฏิทิน</a></div>`
+        :(r.cal_event_id?'<div class="muted" style="font-size:11px;margin-top:2px">📅 อยู่บนปฏิทิน</div>':'')}</div>
       <div><div class="muted" style="font-size:11px">จ่ายในนาม</div><b>${esc(coFull(r.pay_type))}</b></div>
       <div><div class="muted" style="font-size:11px">ช่องทางการโอน</div><b>${esc(r.channel||'-')}</b></div>
       <div><div class="muted" style="font-size:11px">สกุลเงินที่โอนจริง</div>
@@ -1752,6 +1821,7 @@ async function act(id,to){
   if(error)return alert('ไม่สำเร็จ: '+error.message);
   await addLog(id,{submitted:'submitted',approved:'approved',paid:'paid'}[to],label);
   $('viewBg').style.display='none';
+  await calAfter(id,true);      // หัวข้อ event เปลี่ยนตามสถานะ (⏳ → ✅ → 💸) พร้อมเปลี่ยนสี
   await loadAll();
   toast(label+'แล้ว ✅');
 }
@@ -1779,6 +1849,9 @@ async function doReject(){
   if(error)return alert('ไม่สำเร็จ: '+error.message);
   await addLog(REJ_ID,'rejected',note);
   $('rejBg').style.display='none';$('viewBg').style.display='none';
+  /* ไม่ลบ event ทิ้ง — ติดป้าย ↩️ แดงไว้ ให้เห็นบนปฏิทินว่ายังมีของค้างที่ต้องแก้
+     ถ้าลบทิ้ง กำหนดชำระจะหายจากสายตาทั้งทีม */
+  await calAfter(REJ_ID,true);
   await loadAll();toast('ตีกลับแล้ว ↩️');
 }
 
@@ -1806,7 +1879,7 @@ function printReq(id){
       ${r.pay_method?`<div><b>ช่องทางการชำระเงิน:</b> ${esc(r.pay_method)}</div>`:''}
       ${r.pay_acct?`<div style="white-space:pre-wrap"><b>เลขบัญชีที่จ่าย:</b> ${esc(r.pay_acct)}</div>`:''}
       ${r.src_currency?`<div><b>แปลงสกุล:</b> ${money2(r.total_src)} ${esc(r.src_currency)} × ${esc(r.fx_rate)} = ${money2(r.total_amount)} ${esc(r.currency||'')}</div>`:''}
-      <div><b>กำหนดชำระ:</b> ${thDate(r.due_date)}</div>
+      <div><b>กำหนดชำระ:</b> ${thDate(r.due_date)}${r.due_time?(' เวลา '+esc(r.due_time)+' น.'):''}</div>
       ${r.urgency==='urgent'?'<div><b style="color:#B01722">🔥 ด่วน</b></div>':''}
     </div>
     <table><thead><tr><th style="width:34px">ที่</th><th>PO</th><th>SKU</th><th>งวด</th>
@@ -1956,7 +2029,8 @@ function xferBlocks(r,f){
     B.push({k:'box',c:'red',t:'จำนวนเงิน : '+M(f.sw_amt)+' '+(f.sw_cur||'')});
     const rn=[];
     if(f.sw_seq)rn.push('ชำระครั้งที่ '+f.sw_seq+' ยอด '+M(f.sw_amt)+' '+(f.sw_cur||''));
-    if(f.sw_paydate)rn.push('ชำระ วันที่ '+dSlash(f.sw_paydate));
+    if(f.sw_paydate)rn.push('ชำระ วันที่ '+dSlash(f.sw_paydate)
+      +(r.due_time?(' เวลา '+r.due_time+' น.'):''));
     if(rn.length){ B.push({k:'gap'}); B.push({k:'note',t:'*** Reminder Note ***\n'+rn.join('\n')}); }
     B.push({k:'gap'}); B.push({k:'p',t:'สามารถโอนได้เลยค่ะ '+(f.mention||'')});
   }
@@ -2289,6 +2363,135 @@ async function gasCall(payload){
   if(!j.ok)throw new Error(j.error||'Apps Script ทำงานไม่สำเร็จ');
   return j;
 }
+/* ══════════════════════════════════════════════════════════════════
+   ปฏิทิน Google — ส่งกำหนดชำระขึ้นปฏิทินกลาง + ตั้งเตือนล่วงหน้า
+   ผ่าน Apps Script ตัวเดียวกับที่เก็บไฟล์ (ดูวิธีติดตั้งในไฟล์ calendar.gs)
+
+   ⚠️ หลักการสำคัญ: ปฏิทินเป็นของเสริม ห้ามทำให้งานหลักล้ม
+      ส่งขึ้นปฏิทินไม่ได้ ก็ต้องบันทึก/ส่งอนุมัติ/อนุมัติ สำเร็จอยู่ดี
+      ทุกจุดที่เรียกจึงจับ error ไว้เอง แล้วแค่เตือน ไม่ throw ออกไป
+   ══════════════════════════════════════════════════════════════════ */
+const CAL_ID  = '';                       /* ⭐ วาง Calendar ID ที่นี่ แล้วทุกเครื่องใช้ร่วมกัน */
+const CAL_KEY = 'masaru_pa_cal';
+const CAL_DEF = {rem3d:false, rem1d:true, rem2h:true, mail:false};   /* ค่าตั้งต้นของการเตือน */
+
+function calCfg(){
+  let c={}; try{ c=JSON.parse(localStorage.getItem(CAL_KEY)||'{}'); }catch(e){}
+  return Object.assign({}, CAL_DEF, c, {id:(CAL_ID||c.id||'').trim()});
+}
+const calLocked = ()=>!!CAL_ID;
+const calOn     = ()=>!!(calCfg().id && gasUrl());
+/* รายการนาทีที่จะเตือน เรียงจากไกลไปใกล้ */
+function calRem(){
+  const c=calCfg(), out=[];
+  if(c.rem3d)out.push(4320);
+  if(c.rem1d)out.push(1440);
+  if(c.rem2h)out.push(120);
+  return out.length?out:[1440,120];
+}
+/* หัวข้อ event — อ่านบนปฏิทินแล้วรู้ทันทีว่าใบไหน ยอดเท่าไหร่ ขั้นไหน */
+const CAL_MARK={draft:'📝 ร่าง',submitted:'⏳ รออนุมัติ',approved:'✅ อนุมัติแล้ว',
+                paid:'💸 จ่ายแล้ว',rejected:'↩️ ตีกลับ'};
+function calTitle(r){
+  return (CAL_MARK[r.status]||'')+' '+(r.req_no||'')
+    +' · '+money2(r.total_thb)+' ฿'
+    +' · '+coShort(r.pay_type)
+    +(r.urgency==='urgent'?' 🔥':'');
+}
+function calDesc(r){
+  const L=[];
+  L.push('เลขคำขอ: '+(r.req_no||'-'));
+  L.push('ยอดที่ต้องโอน: '+money2(r.total_amount)+' '+(r.currency||'')
+        +(String(r.currency||'')!=='THB'?('  (≈ '+money2(r.total_thb)+' ฿)'):''));
+  if(r.src_currency)L.push('แปลงจาก: '+money2(r.total_src)+' '+r.src_currency+' × '+r.fx_rate);
+  L.push('จ่ายในนาม: '+coFull(r.pay_type));
+  L.push('ช่องทางการโอน: '+(r.channel||'-'));
+  if(r.pay_method)L.push('ช่องทางการชำระเงิน: '+r.pay_method);
+  if(r.pay_acct)L.push('บัญชีที่จ่าย: '+String(r.pay_acct).replace(/\n/g,' | '));
+  const pos=[...new Set((r.items||[]).map(i=>i.po).filter(Boolean))];
+  if(pos.length)L.push('PO: '+pos.join(', '));
+  L.push('ผู้ยื่น: '+(r.requester_name||r.requester||'-'));
+  if(r.reason)L.push('');L.push(r.reason?('เหตุผล: '+r.reason):'');
+  if(r.status==='rejected'&&r.reject_note)L.push('↩️ ตีกลับ: '+r.reject_note);
+  L.push('');
+  L.push('เปิดในระบบ: '+location.origin+location.pathname);
+  return L.filter((x,i,a)=>!(x===''&&a[i-1]==='')).join('\n');
+}
+
+/* ส่งขึ้นปฏิทิน (สร้างใหม่ หรือแก้ใบเดิม) — คืน true เมื่อสำเร็จ
+   silent = ไม่ต้องขึ้น toast (ใช้ตอนซิงก์ย้อนหลังทีละหลายใบ) */
+async function calPush(r,silent){
+  if(!r||!calOn())return false;
+  if(!r.due_date)return false;
+  const c=calCfg();
+  try{
+    const j=await gasCall({action:'calSave', calendarId:c.id,
+      eventId:r.cal_event_id||'', date:r.due_date, time:r.due_time||'10:00',
+      minutes:60, title:calTitle(r), desc:calDesc(r),
+      reminders:calRem(), emailRemind:!!c.mail, color:r.status});
+    await sb.from('pay_requests').update({
+      /* ลิงก์ตรงที่ event · สร้างไม่ได้ก็ใช้ลิงก์วันนั้นแทน ดีกว่าไม่มีลิงก์เลย */
+      cal_event_id:j.eventId||null, cal_link:j.link||j.dayLink||null,
+      cal_synced_at:new Date().toISOString()}).eq('id',r.id);
+    if(!silent)toast('ลงปฏิทินแล้ว 📅');
+    return true;
+  }catch(e){
+    console.warn('[calendar]',e.message);
+    if(!silent)toast('⚠️ ลงปฏิทินไม่ได้: '+e.message);
+    return false;
+  }
+}
+/* ลบ event — ใช้ตอนลบคำขอ */
+async function calDrop(r,silent){
+  if(!r||!r.cal_event_id||!calOn())return;
+  try{ await gasCall({action:'calDelete',calendarId:calCfg().id,eventId:r.cal_event_id}); }
+  catch(e){ console.warn('[calendar]',e.message);
+    if(!silent)toast('⚠️ ลบ event บนปฏิทินไม่ได้ — ลบในปฏิทินเองอีกที'); }
+}
+/* เรียกหลังบันทึก/เปลี่ยนสถานะ — อ่านค่าล่าสุดจากฐานข้อมูลก่อน
+   เพราะหัวข้อ event ต้องสะท้อนสถานะและยอดที่เพิ่งเขียนลงไป */
+async function calAfter(id,silent){
+  if(!calOn())return;
+  try{
+    const {data}=await sb.from('pay_requests').select('*').eq('id',id).single();
+    if(data)await calPush(data,silent);
+  }catch(e){ console.warn('[calendar]',e.message); }
+}
+
+/* ---------- ปุ่มในกล่องตั้งค่า ---------- */
+async function calTest(){
+  const id=$('cal_id').value.trim();
+  if(!id)return alert('ใส่ Calendar ID ก่อน\n\nหาได้จาก Google Calendar → การตั้งค่าของปฏิทินนั้น → รวมปฏิทิน');
+  if(!gasUrl())return alert('ต้องตั้งค่า Web app URL ด้านบนก่อน');
+  $('cal_stat').textContent='กำลังทดสอบ…';
+  try{
+    const j=await gasCall({action:'calPing',calendarId:id});
+    $('cal_stat').innerHTML='<b style="color:#1E7145">✅ '+esc(j.msg||'เชื่อมต่อสำเร็จ')+'</b>'
+      +(j.calendar?'<br><span class="muted">ปฏิทิน: '+esc(j.calendar)+' · เขตเวลา '+esc(j.tz||'')+'</span>':'');
+  }catch(e){
+    $('cal_stat').innerHTML='<b style="color:#D0212B">❌ '+esc(e.message)+'</b>'
+      +'<br><span class="muted">ยังไม่ได้วางโค้ด <code>calendar.gs</code> ใน Apps Script '
+      +'หรือยังไม่ได้กด Deploy → New version?</span>';
+  }
+}
+/* ส่งใบที่ยังไม่ขึ้นปฏิทินขึ้นไปทั้งหมด — ใช้ครั้งแรกหลังติดตั้ง */
+async function calBackfill(){
+  if(!calOn())return alert('ตั้งค่า Calendar ID และทดสอบให้ผ่านก่อน');
+  const pend=REQS.filter(r=>!r.cal_event_id&&r.due_date
+              &&(r.status==='submitted'||r.status==='approved'));
+  if(!pend.length)return alert('ไม่มีใบที่รอขึ้นปฏิทิน ✅\n\n(นับเฉพาะใบสถานะ รออนุมัติ และ อนุมัติแล้ว)');
+  if(!confirm('จะส่ง '+pend.length+' ใบขึ้นปฏิทิน\n\n'
+    +'ใบที่เก่ากว่าวันนี้จะขึ้นเป็นกิจกรรมย้อนหลัง (ไม่เตือน แต่เห็นในปฏิทิน)\n\nยืนยันไหม?'))return;
+  let ok=0,bad=0;
+  for(let i=0;i<pend.length;i++){
+    $('cal_stat').textContent='กำลังส่ง '+(i+1)+'/'+pend.length+' …';
+    (await calPush(pend[i],true)) ? ok++ : bad++;
+  }
+  $('cal_stat').innerHTML='<b style="color:'+(bad?'#B45309':'#1E7145')+'">'
+    +(bad?'⚠️':'✅')+' ส่งขึ้นปฏิทินแล้ว '+ok+' ใบ'+(bad?(' · ไม่สำเร็จ '+bad+' ใบ'):'')+'</b>';
+  await loadAll();
+}
+
 const fileToB64=f=>new Promise((res,rej)=>{
   const r=new FileReader();
   r.onload=()=>res(String(r.result).split(',')[1]||'');
@@ -2474,17 +2677,38 @@ function openPfCfg(){
   const c=gasCfg(), lock=gasLocked();
   $('pfg_url').value=c.url||''; $('pfg_secret').value=c.secret||'';
   $('pfg_url').disabled=lock; $('pfg_secret').disabled=lock;
-  $('pfg_save').style.display=lock?'none':'';
   $('pfg_lock').style.display=lock?'':'none';
-  $('pfg_stat').textContent=''; $('pfCfgBg').style.display='flex';
+  $('pfg_stat').textContent='';
+  /* ส่วนปฏิทิน */
+  const k=calCfg(), cl=calLocked();
+  $('cal_id').value=k.id||''; $('cal_id').disabled=cl;
+  $('cal_r3d').checked=!!k.rem3d; $('cal_r1d').checked=!!k.rem1d;
+  $('cal_r2h').checked=!!k.rem2h; $('cal_rmail').checked=!!k.mail;
+  $('cal_lock').style.display=cl?'':'none';
+  $('cal_stat').innerHTML = calOn()
+    ? '<span class="muted">พร้อมใช้ — คำขอที่ส่งอนุมัติจะขึ้นปฏิทินอัตโนมัติ</span>'
+    : '<span style="color:#B45309">ยังไม่พร้อมใช้ — '
+      +(!gasUrl()?'ต้องตั้ง Web app URL ด้านบนก่อน':'ใส่ Calendar ID แล้วกดทดสอบ')+'</span>';
+  /* ปุ่มบันทึกยังต้องมีเสมอ เพราะการตั้งค่า "เตือนล่วงหน้า" บันทึกที่นี่ แม้ URL จะล็อกไว้ */
+  $('pfg_save').style.display='';
+  $('pfCfgBg').style.display='flex';
 }
 function savePfCfg(){
   const url=$('pfg_url').value.trim();
   if(url&&!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(url))
     return alert('URL ไม่ถูกต้อง\n\nต้องลงท้ายด้วย /exec จากหน้า Deploy → Web app');
-  try{ localStorage.setItem(GAS_KEY,JSON.stringify({url,secret:$('pfg_secret').value.trim()})); }catch(e){}
+  const calId=$('cal_id').value.trim();
+  if(calId&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(calId))
+    return alert('Calendar ID ไม่ถูกต้อง\n\nต้องเป็นรูปแบบอีเมล เช่น\n'
+      +'xxxxxxxx@group.calendar.google.com\n\nหาได้จาก Google Calendar → '
+      +'การตั้งค่าของปฏิทินนั้น → หัวข้อ "รวมปฏิทิน"');
+  if(!gasLocked())
+    try{ localStorage.setItem(GAS_KEY,JSON.stringify({url,secret:$('pfg_secret').value.trim()})); }catch(e){}
+  try{ localStorage.setItem(CAL_KEY,JSON.stringify({
+    id:calLocked()?'':calId, rem3d:$('cal_r3d').checked, rem1d:$('cal_r1d').checked,
+    rem2h:$('cal_r2h').checked, mail:$('cal_rmail').checked})); }catch(e){}
   $('pfCfgBg').style.display='none';
-  toast(url?'ตั้งค่า Google Drive แล้ว ✅':'ปิด Drive — จะเก็บใน Storage ของระบบแทน');
+  toast('บันทึกการตั้งค่าแล้ว ✅'+(calOn()?' · ปฏิทินพร้อมใช้ 📅':''));
 }
 async function pfTestGas(){
   if(!$('pfg_url').value.trim())return alert('ใส่ URL ก่อน');
@@ -2557,16 +2781,16 @@ function exportReport(){
   const mo=$('rpMonth').value||monthStr();
   const rows=REQS.filter(r=>String(r.req_date||'').slice(0,7)===mo);
   if(!rows.length)return toast('เดือนนี้ไม่มีข้อมูล');
-  const out=[['เลขคำขอ','วันที่ยื่น','กำหนดชำระ','จ่ายในนาม','ช่องทาง','ช่องทางการชำระเงิน','เลขบัญชีที่จ่าย','สกุลต้นทาง','ยอดต้นทาง','เรทแปลง','สกุล','ยอด','ค่าธรรมเนียม','รวมบาท',
+  const out=[['เลขคำขอ','วันที่ยื่น','กำหนดชำระ','เวลา','จ่ายในนาม','ช่องทาง','ช่องทางการชำระเงิน','เลขบัญชีที่จ่าย','สกุลต้นทาง','ยอดต้นทาง','เรทแปลง','สกุล','ยอด','ค่าธรรมเนียม','รวมบาท',
               'สถานะ','ด่วน','ผู้ยื่น','หัวหน้าอนุมัติ (ใบเก่า)','ผู้บริหารอนุมัติ','เหตุผล','หมายเหตุ','เหตุผลที่ตีกลับ']];
-  rows.forEach(r=>out.push([r.req_no||'',r.req_date||'',r.due_date||'',coFull(r.pay_type),r.channel||'',
+  rows.forEach(r=>out.push([r.req_no||'',r.req_date||'',r.due_date||'',r.due_time||'',coFull(r.pay_type),r.channel||'',
     r.pay_method||'', r.pay_acct||'',
     r.src_currency||'', r.src_currency?(+r.total_src||0):'', r.src_currency?(+r.fx_rate||0):'',
     r.currency||'',+r.total_amount||0,+r.total_fee||0,+r.total_thb||0,(ST[r.status]||{}).t||r.status,
     r.urgency==='urgent'?'ด่วน':'',r.requester_name||r.requester||'',r.checked_by||'',r.approved_by||'',
     r.reason||'',r.note||'',r.reject_note||'']));
   const ws=XLSX.utils.aoa_to_sheet(out),wb=XLSX.utils.book_new();
-  ws['!cols']=[{wch:17},{wch:11},{wch:11},{wch:12},{wch:20},{wch:24},{wch:30},{wch:9},{wch:13},{wch:10},{wch:7},{wch:13},{wch:11},{wch:13},
+  ws['!cols']=[{wch:17},{wch:11},{wch:11},{wch:7},{wch:12},{wch:20},{wch:24},{wch:30},{wch:9},{wch:13},{wch:10},{wch:7},{wch:13},{wch:11},{wch:13},
                {wch:18},{wch:7},{wch:18},{wch:22},{wch:22},{wch:32},{wch:26},{wch:32}];
   XLSX.utils.book_append_sheet(wb,ws,'คำขออนุมัติ');
   XLSX.writeFile(wb,'คำขออนุมัติชำระเงิน_'+mo+'.xlsx');
