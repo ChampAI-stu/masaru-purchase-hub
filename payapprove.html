@@ -111,7 +111,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-48</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-49</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -2754,14 +2754,18 @@ async function calPush(r,silent){
     /* สคริปต์เก่าไม่คืน remIds กลับมา = ยังไม่ได้ Deploy cal-v3
        เคสนี้อันตรายที่สุด: ใบหลักก็ไม่มี reminder (เราส่ง [] ไป) และ event เตือนก็ไม่ถูกสร้าง
        → เงียบสนิททั้งระบบ ต้องตะโกนบอกทันที ไม่ใช่ปล่อยให้ค้นเอง */
-    if(REM_EVENTS && rem.length && !Array.isArray(j.remIds) && !GS3_WARNED){
-      GS3_WARNED=true;
-      alert('⚠️ การเตือนยังไม่ทำงาน\n\n'
-        +'calendar.gs ที่ Deploy อยู่ยังเป็นเวอร์ชันเก่า (ต้องเป็น cal-v3)\n'
-        +'ตอนนี้ event ขึ้นปฏิทินได้ แต่จะไม่มีอะไรเตือนเลย\n\n'
-        +'แก้: Apps Script → วาง calendar.gs ตัวใหม่ →\n'
-        +'Deploy → Manage deployments → ✏️ → Version: New version → Deploy\n\n'
-        +'แล้วกด ⚙️ ตั้งค่า → ↻ ซิงก์ย้อนหลัง อีกครั้ง');
+    if(REM_EVENTS && rem.length && !Array.isArray(j.remIds)){
+      /* ไม่ขึ้น alert ขวางงานแล้ว — เคสนี้ event เตือนอาจถูกสร้างสำเร็จก็ได้
+         แต่ระบบจำ id ไม่ได้ ครั้งต่อไปจะลบของเก่าไม่ออก = เตือนซ้อน
+         เตือนครั้งเดียวต่อการเปิดหน้า แล้วทิ้งรายละเอียดไว้ใน console ให้ไล่ต่อ */
+      console.warn('[calendar] calSave ไม่คืน remIds · เวอร์ชันที่ตอบกลับ =',
+                   j.version||'(ไม่ระบุ)', '· คำตอบเต็ม =', j);
+      if(!GS3_WARNED){
+        GS3_WARNED=true;
+        toast('⚠️ calendar.gs ที่ตอบกลับไม่ใช่ cal-v3 (เวอร์ชัน: '
+          +(j.version||'ไม่ระบุ')+') — event เตือนอาจซ้อนกัน '
+          +'เช็คว่ามีไฟล์ calendar ซ้ำในโปรเจกต์ไหม แล้ว Deploy → New version อีกครั้ง',true);
+      }
     }
     const up={
       /* ลิงก์ตรงที่ event · สร้างไม่ได้ก็ใช้ลิงก์วันนั้นแทน ดีกว่าไม่มีลิงก์เลย */
