@@ -276,7 +276,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-89</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-90</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -477,8 +477,25 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div id="tab-month" style="display:none">
     <div class="kpis" id="moKpi"></div>
     <div class="card">
-      <h2>📊 สรุปค่าใช้จ่ายทั้งเดือน</h2>
-      <div class="row"><input type="month" id="moMonth" onchange="renderMonth()" style="max-width:180px">
+      <h2 id="moHead">📊 สรุปค่าใช้จ่าย</h2>
+      <div class="row" style="flex-wrap:wrap;gap:8px">
+        <button class="btn mini" id="moSegM" onclick="moMode('month')">📅 รายเดือน</button>
+        <button class="btn mini ghost" id="moSegR" onclick="moMode('range')">🗓️ เลือกช่วงวันที่</button>
+        <span id="moCtlM" style="display:inline-flex;align-items:center;gap:6px">
+          <input type="month" id="moMonth" onchange="renderMonth()" style="max-width:180px">
+        </span>
+        <span id="moCtlR" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
+          <span class="muted" style="font-size:12px">ตั้งแต่</span>
+          <input type="date" id="moFrom" onchange="renderMonth()" style="width:165px"
+                 title="เว้นว่างได้ — จะดูทุกวันที่มีข้อมูล">
+          <span class="muted" style="font-size:12px">ถึง</span>
+          <input type="date" id="moTo" onchange="renderMonth()" style="width:165px"
+                 title="เว้นว่าง = ดูเฉพาะวันในช่องแรก">
+          <button class="btn mini ghost" onclick="moQuick(7)">7 วันล่าสุด</button>
+          <button class="btn mini ghost" onclick="moQuick(30)">30 วันล่าสุด</button>
+          <button class="btn mini ghost" onclick="moQuick('m')">เดือนนี้</button>
+          <button class="btn mini ghost" onclick="moQuick('pm')">เดือนก่อน</button>
+        </span>
         <div style="flex:1"></div>
         <button class="btn mini" onclick="exportMonth()">📥 Export Excel</button></div>
       <div class="scroll"><div id="moBody"></div></div>
@@ -1145,7 +1162,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v09-89';
+const PAY_VERSION='v09-90';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -1153,6 +1170,85 @@ const APPROVAL_MODE = false;
 // วันที่แบบเวลาไทย — ห้ามใช้ toISOString() เพราะจะเพี้ยนข้ามวัน (UTC ช้ากว่าไทย 7 ชม.)
 const ymdLocal=dt=>dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
 const todayStr=()=>ymdLocal(new Date());
+
+/* ==================================================================
+   ช่องวันที่ วว/ดด/ปปปป (พ.ศ.)
+   ------------------------------------------------------------------
+   input type="date" โชว์รูปแบบตามภาษาของเบราว์เซอร์ — เครื่องที่ตั้ง
+   ภาษาอังกฤษจะได้ mm/dd/yyyy สั่งจากหน้าเว็บไม่ได้ ต้องไปแก้ที่เบราว์เซอร์
+   → วิธีที่ใช้: ซ่อนช่องจริงไว้ (id เดิม ค่าเดิมเป็น yyyy-mm-dd เหมือนเดิม
+     โค้ดส่วนอื่นที่อ่าน/เขียน .value ไม่ต้องแก้อะไรเลย)
+     แล้วโชว์ช่องพิมพ์ วว/ดด/ปปปป (พ.ศ.) ทับให้ + ปุ่ม 📅 เปิดปฏิทินตัวเดิม
+   ================================================================== */
+const DMY_IDS=['dcDate','dhFrom','dhTo','lgFrom','lgTo','md_date','moFrom','moTo','p_date','plDate','q_date','rmFrom','rmTo','spDate','w_date','wlDay'];
+const VAL_DESC=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');
+const p2=n=>String(n).padStart(2,'0');
+function isoToDmy(iso){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(iso||'')))return '';
+  const a=iso.split('-'); return a[2]+'/'+a[1]+'/'+(+a[0]+543);
+}
+/* รับได้ทั้ง 11/08/2569 · 1/8/2569 · 11082569 · และ ค.ศ. 11/08/2026 */
+function dmyToIso(t){
+  const s=String(t||'').trim(); if(!s)return '';
+  let d,m,y;
+  const pt=s.split(/\D+/).filter(Boolean);
+  if(pt.length===3){ d=+pt[0]; m=+pt[1]; y=+pt[2]; }
+  else { const g=s.replace(/\D/g,''); if(g.length!==8)return '';
+         d=+g.slice(0,2); m=+g.slice(2,4); y=+g.slice(4); }
+  if(y>=2400)y-=543;                        /* พิมพ์เป็น พ.ศ. มา → แปลงเป็น ค.ศ. */
+  if(!(y>=1900&&y<=2999&&m>=1&&m<=12&&d>=1&&d<=31))return '';
+  const dt=new Date(y,m-1,d);               /* กัน 31/02 ที่ไม่มีจริง */
+  if(dt.getFullYear()!==y||dt.getMonth()!==m-1||dt.getDate()!==d)return '';
+  return y+'-'+p2(m)+'-'+p2(d);
+}
+function dmyUpgrade(el){
+  if(!el||el.dataset.dmy||el.type!=='date')return; el.dataset.dmy='1';
+  const wrap=document.createElement('span');
+  /* ยกความกว้าง/flex ของช่องเดิมมาไว้ที่ตัวห่อ ไม่ให้ layout เพี้ยน */
+  wrap.style.cssText='position:relative;display:flex;align-items:center;min-width:0'
+    +(el.style.flex?(';flex:'+el.style.flex):'')
+    +(el.style.maxWidth?(';max-width:'+el.style.maxWidth):'');
+  el.parentNode.insertBefore(wrap,el);
+  const tx=document.createElement('input');
+  tx.type='text'; tx.inputMode='numeric'; tx.autocomplete='off'; tx.maxLength=10;
+  tx.placeholder='วว/ดด/ปปปป';
+  tx.title=(el.title?el.title+' — ':'')+'พิมพ์ วัน/เดือน/ปี เช่น 11/08/2569 (ใส่ ค.ศ. ก็ได้ ระบบแปลงให้)';
+  tx.style.cssText='width:100%;min-width:0;padding-right:31px';
+  const bt=document.createElement('button');
+  bt.type='button'; bt.tabIndex=-1; bt.textContent='📅'; bt.title='เลือกจากปฏิทิน';
+  bt.style.cssText='position:absolute;right:3px;top:50%;transform:translateY(-50%);border:0;'
+    +'background:transparent;cursor:pointer;font-size:14px;line-height:1;padding:3px 4px';
+  wrap.appendChild(tx); wrap.appendChild(bt); wrap.appendChild(el);
+  /* ช่องจริงต้องยังถูกเรนเดอร์อยู่ (ห้าม display:none) ไม่งั้น showPicker() ใช้ไม่ได้ */
+  el.style.cssText='position:absolute;right:8px;bottom:0;width:1px;height:1px;'
+    +'min-width:0;padding:0;border:0;opacity:0;pointer-events:none';
+  const paint=()=>{ tx.value=isoToDmy(VAL_DESC.get.call(el)); tx.style.borderColor=''; };
+  const commit=()=>{
+    const iso=dmyToIso(tx.value);
+    tx.style.borderColor=(tx.value.trim()&&!iso)?'var(--red)':'';
+    if(VAL_DESC.get.call(el)===iso)return;
+    VAL_DESC.set.call(el,iso);
+    el.dispatchEvent(new Event('change',{bubbles:true}));   /* ให้ onchange เดิมทำงานต่อ */
+  };
+  tx.addEventListener('input',()=>{
+    let v=tx.value.replace(/[^\d/]/g,'').slice(0,10);
+    if(/^\d+$/.test(v)){                      /* พิมพ์เลขล้วน → เติม / ให้เอง */
+      v=v.slice(0,2)+(v.length>2?'/'+v.slice(2,4):'')+(v.length>4?'/'+v.slice(4,8):'');
+    }
+    tx.value=v;
+    if(dmyToIso(v))commit();
+  });
+  tx.addEventListener('blur',commit);
+  el.addEventListener('change',paint);
+  bt.addEventListener('click',()=>{ try{ el.showPicker(); }catch(e){ tx.focus(); } });
+  /* ดักการเขียนค่าจากโค้ด ($('r_due').value='...') ให้ช่องที่มองเห็นอัปเดตตาม */
+  Object.defineProperty(el,'value',{configurable:true,
+    get(){ return VAL_DESC.get.call(el); },
+    set(v){ VAL_DESC.set.call(el,v); paint(); }});
+  paint();
+}
+function dmyAll(){ DMY_IDS.forEach(id=>dmyUpgrade(document.getElementById(id))); }
+
 const monthStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');};
 console.log('%c pay.html '+PAY_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 try{ const _v=document.getElementById('verBadge'); if(_v)_v.textContent=PAY_VERSION; }catch(e){}
@@ -1205,6 +1301,7 @@ let MASTER=[], POROWS=[], TAXES=[], TRACKS=[], LOGS=[], MEMOS=[];
 
 /* ===== AUTH ===== */
 async function boot(){
+  dmyAll();
   const {data:{session}}=await sb.auth.getSession();
   if(!session){location.replace('index.html');return;}
   const md=session.user.app_metadata||{};
@@ -2766,12 +2863,71 @@ async function planDel(pid){
   await loadAll();toast('ลบแล้ว');
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   TAB 4: สรุปค่าใช้จ่าย — เลือกได้ทั้ง "รายเดือน" และ "ช่วงวันที่"
+   ───────────────────────────────────────────────────────────────
+   ⚠️ ทุกอย่างในแท็บนี้ (KPI · ตารางรายวัน · จ่ายในนาม · งวดค้าง · Export)
+      ต้องกรองด้วย moPeriod() ตัวเดียวกัน ห้ามมีใครไปกรองเองด้วย startsWith(เดือน)
+      ไม่งั้นเลือกช่วงวันที่แล้วตัวเลขบางช่องจะยังเป็นของทั้งเดือน = อ่านผิดทั้งหน้า
+   ═══════════════════════════════════════════════════════════════ */
+let MO_MODE='month';
+/* วันสุดท้ายของเดือน 'YYYY-MM' → 'YYYY-MM-DD' (วันที่ 0 ของเดือนถัดไป = วันสุดท้ายเดือนนี้) */
+const moEnd=m=>{const a=String(m||'').split('-');
+  return m+'-'+String(new Date(+a[0],+a[1],0).getDate()).padStart(2,'0');};
+const moTh=d=>{if(!d)return '';const x=new Date(d+'T00:00:00');
+  return isNaN(x)?d:(x.toLocaleDateString('th-TH',{day:'numeric',month:'short'})+' '+(x.getFullYear()+543));};
+function moMode(v){
+  MO_MODE=(v==='range')?'range':'month';
+  const on=MO_MODE==='range';
+  $('moCtlM').style.display=on?'none':'inline-flex';
+  $('moCtlR').style.display=on?'inline-flex':'none';
+  $('moSegM').className='btn mini'+(on?' ghost':'');
+  $('moSegR').className='btn mini'+(on?'':' ghost');
+  /* เข้าโหมดช่วงครั้งแรก → ตั้งเป็นเดือนที่กำลังดูอยู่ ให้เห็นตัวเลขเดิมก่อน แล้วค่อยขยับ */
+  if(on&&!$('moFrom').value&&!$('moTo').value){
+    const m=$('moMonth').value||monthStr();
+    $('moFrom').value=m+'-01'; $('moTo').value=moEnd(m);
+  }
+  renderMonth();
+}
+function moQuick(k){
+  if(k==='m'||k==='pm'){
+    const d=new Date(); d.setDate(1);
+    if(k==='pm')d.setMonth(d.getMonth()-1);
+    const m=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    $('moFrom').value=m+'-01'; $('moTo').value=moEnd(m);
+  }else{
+    const d=new Date(); d.setDate(d.getDate()-(+k-1));
+    $('moFrom').value=ymdLocal(d); $('moTo').value=todayStr();
+  }
+  renderMonth();
+}
+function moPeriod(){
+  if(MO_MODE==='range'){
+    let f=($('moFrom')&&$('moFrom').value)||'', t=($('moTo')&&$('moTo').value)||'';
+    if(f&&t&&f>t){const x=f;f=t;t=x;}     /* ใส่สลับด้าน → สลับให้เลย ไม่ต้องเด้ง error */
+    if(f&&!t)t=f;                          /* ใส่ช่องเดียว = วันนั้นวันเดียว */
+    if(t&&!f)f=t;
+    const one=(f&&f===t);
+    return {mode:'range',from:f,to:t,
+      head:f?(one?('วันที่ '+moTh(f)):('ช่วง '+moTh(f)+' – '+moTh(t))):'ทุกวันที่มีข้อมูล',
+      tot:f?(one?'รวมทั้งวัน':'รวมทั้งช่วง'):'รวมทั้งหมด',
+      file:f?(one?f:(f+'_ถึง_'+t)):'ทั้งหมด'};
+  }
+  const m=($('moMonth')&&$('moMonth').value)||monthStr();
+  return {mode:'month',from:m+'-01',to:moEnd(m),
+    head:'เดือน '+m, tot:'รวมทั้งเดือน', file:m};
+}
+/* งวดนี้อยู่ในช่วงที่เลือกไหม — ไม่มีวันที่จ่าย ถือว่าไม่อยู่ (ไม่รู้จะนับวันไหน) */
+const moHit=(p,P)=>{const d=String((p&&p.pay_date)||''); if(!d)return false;
+  return P.from?(d>=P.from&&d<=P.to):true;};
+const moRows=P=>PAYS.filter(p=>moHit(p,P));
+
 /* ===== TAB 4: สรุปเดือน ===== */
 /* รายการงวดที่ยังค้างตามแผนของเดือนนั้น (หรือเจาะวันเดียว) */
 function showPending(day){
-  const m=$('moMonth').value||monthStr();
-  let rows=PAYS.filter(p=>(p.pay_date||'').startsWith(m)
-    &&(p.status==='planned'||p.status==='submitted'));
+  const P=moPeriod();
+  let rows=moRows(P).filter(p=>(p.status==='planned'||p.status==='submitted'));
   if(day)rows=rows.filter(p=>p.pay_date===day);
   if(!rows.length)return toast('ไม่มีงวดค้างแผน');
   rows.sort((a,b)=>String(a.pay_date||'').localeCompare(String(b.pay_date||'')));
@@ -2780,7 +2936,7 @@ function showPending(day){
   const late=rows.filter(p=>String(p.pay_date||'')<=today);
   const wait=rows.filter(p=>p.status==='submitted');
 
-  $('pdTitle').innerHTML='🗓️ งวดค้างตามแผน'+(day?(' — วันที่ '+esc(day)):(' — เดือน '+esc(m)));
+  $('pdTitle').innerHTML='🗓️ งวดค้างตามแผน'+(day?(' — วันที่ '+esc(day)):(' — '+esc(P.head)));
   let h=`<div style="display:flex;gap:20px;flex-wrap:wrap;background:#F7F9FC;border-radius:10px;
       padding:11px 14px;margin-bottom:12px;font-size:12.5px">
     <div><div class="muted" style="font-size:11px">จำนวนงวด</div><b style="font-size:16px">${rows.length}</b></div>
@@ -2824,12 +2980,13 @@ function showPending(day){
 function renderMonth(){
   if(!$('moMonth'))return;
   if(!$('moMonth').value)$('moMonth').value=monthStr();
-  const m=$('moMonth').value;
-  const rows=PAYS.filter(p=>(p.pay_date||'').startsWith(m));
+  const P=moPeriod();
+  if($('moHead'))$('moHead').textContent='📊 สรุปค่าใช้จ่าย — '+P.head;
+  const rows=moRows(P);
   const paid=rows.filter(p=>p.status==='paid'), planned=rows.filter(p=>p.status==='planned'||p.status==='submitted');
   const sumThb=a=>a.reduce((s,p)=>s+thbOf(p),0);
   $('moKpi').innerHTML=`
-    <div class="kpi green"><div class="lbl">จ่ายแล้วทั้งเดือน (บาท)</div><div class="val">${money(sumThb(paid))}</div>
+    <div class="kpi green"><div class="lbl">จ่ายแล้ว (บาท)</div><div class="val">${money(sumThb(paid))}</div>
       <div class="sub">${esc(srcChips(paid,' · '))||'—'}</div></div>
     <div class="kpi"><div class="lbl">จำนวนงวดที่จ่าย</div><div class="val">${paid.length}</div></div>
     <div class="kpi gold" ${planned.length?`onclick="showPending()" style="cursor:pointer" title="กดดูรายการ"`:''}>
@@ -2838,15 +2995,16 @@ function renderMonth(){
     <div class="kpi" ${planned.length?`onclick="showPending()" style="cursor:pointer" title="กดดูรายการ"`:''}>
       <div class="lbl">งวดค้างแผน ${planned.length?'<span style="opacity:.75">🔎</span>':''}</div>
       <div class="val">${planned.length}</div></div>`;
-  if(!rows.length){$('moBody').innerHTML='<div class="empty">เดือนนี้ยังไม่มีข้อมูล</div>';return;}
+  if(!rows.length){$('moBody').innerHTML='<div class="empty">ช่วงที่เลือกยังไม่มีข้อมูล — '
+    +esc(P.head)+'</div>';return;}
   const days=[...new Set(rows.map(p=>p.pay_date))].sort();
   let h='<h2>รายวัน</h2><table><thead><tr><th>วันที่</th><th class="right">งวดจ่ายแล้ว</th><th class="right">บาท (จ่ายแล้ว)</th><th class="right">งวดค้างแผน</th><th class="right">บาท (แผน)</th></tr></thead><tbody>';
   days.forEach(d=>{const dp=paid.filter(p=>p.pay_date===d),dl=planned.filter(p=>p.pay_date===d);
     h+=`<tr><td><b>${esc(d)}</b></td><td class="right">${dp.length||'-'}</td><td class="right">${dp.length?money(sumThb(dp)):'-'}</td>
       <td class="right">${dl.length?`<button class="btn mini ghost" onclick="showPending('${esc(d)}')" title="ดูรายการงวดค้างของวันนี้">${dl.length} 🔎</button>`:'-'}</td>
       <td class="right">${dl.length?money(sumThb(dl)):'-'}</td></tr>`;});
-  h+=`<tr style="background:#FFF7DF;font-weight:800"><td>รวมทั้งเดือน</td><td class="right">${paid.length}</td><td class="right">${money(sumThb(paid))}</td>
-    <td class="right">${planned.length?`<button class="btn mini" onclick="showPending()" title="ดูงวดค้างทั้งเดือน">${planned.length} 🔎</button>`:'0'}</td><td class="right">${money(sumThb(planned))}</td></tr></tbody></table>`;
+  h+=`<tr style="background:#FFF7DF;font-weight:800"><td>${esc(P.tot)}</td><td class="right">${paid.length}</td><td class="right">${money(sumThb(paid))}</td>
+    <td class="right">${planned.length?`<button class="btn mini" onclick="showPending()" title="ดูงวดค้างทั้งช่วงที่เลือก">${planned.length} 🔎</button>`:'0'}</td><td class="right">${money(sumThb(planned))}</td></tr></tbody></table>`;
   /* ⚠️ ตัดตาราง "รายบริษัท" ออกแล้ว (v09-88)
      เหตุผล: มันแบ่งด้วยบริษัทของบิล ซึ่งเป็นคำถามคนละข้อกับ "เงินออกในนามใคร"
      ยอดรวมเท่ากันแต่หั่นคนละแบบ วางคู่กันแล้วคนอ่านสับสนว่าอันไหนจริง
@@ -2881,15 +3039,14 @@ function renderMonth(){
 
 /* Export สรุปเดือน — 3 ชีท: รายวัน / จ่ายในนาม / รายละเอียดทุกงวด */
 async function exportMonth(){
-  const m=$('moMonth').value||monthStr();
-  await ensurePoFor(PAYS.filter(p=>(p.pay_date||'').startsWith(m))
-                        .map(p=>billOf(p.bill_id).po_number));
+  const P=moPeriod();
+  await ensurePoFor(moRows(P).map(p=>billOf(p.bill_id).po_number));
   exportMonthInner();
 }
 function exportMonthInner(){
-  const m=$('moMonth').value||monthStr();
-  const rows=PAYS.filter(p=>(p.pay_date||'').startsWith(m)&&p.status!=='rejected');
-  if(!rows.length)return toast('เดือนนี้ยังไม่มีข้อมูล');
+  const P=moPeriod();
+  const rows=moRows(P).filter(p=>p.status!=='rejected');
+  if(!rows.length)return toast('ช่วงที่เลือกยังไม่มีข้อมูล');
   const paid=rows.filter(p=>p.status==='paid'), plan=rows.filter(p=>p.status==='planned'||p.status==='submitted');
   const sT=a=>+a.reduce((s,p)=>s+thbOf(p),0).toFixed(2);
   /* ยอดสกุลต้นทาง — ให้ไฟล์ที่โหลดออกไป ตรงกับที่เห็นบนหน้าจอ ไม่ต้องมาถามกันทีหลัง */
@@ -2903,7 +3060,7 @@ function exportMonthInner(){
   [...new Set(rows.map(p=>p.pay_date))].sort().forEach(d=>{
     const dp=paid.filter(p=>p.pay_date===d), dl=plan.filter(p=>p.pay_date===d), da=rows.filter(p=>p.pay_date===d);
     d1.push([d,dp.length,sT(dp),dl.length,sT(dl),sT(dp)+sT(dl),sY(da),sU(da)]);});
-  d1.push(['รวมทั้งเดือน',paid.length,sT(paid),plan.length,sT(plan),sT(rows),sY(rows),sU(rows)]);
+  d1.push([P.tot,paid.length,sT(paid),plan.length,sT(plan),sT(rows),sY(rows),sU(rows)]);
   add('รายวัน',d1,[{wch:12},{wch:13},{wch:15},{wch:13},{wch:14},{wch:14},{wch:14},{wch:15}]);
 
   // ② จ่ายในนาม  (ชีท "รายบริษัท" ตัดออกแล้ว ให้ตรงกับหน้าจอ)
@@ -2927,7 +3084,7 @@ function exportMonthInner(){
   add('รายละเอียด',d4,[{wch:11},{wch:11},{wch:12},{wch:22},{wch:20},{wch:14},{wch:12},{wch:28},
     {wch:12},{wch:8},{wch:8},{wch:13},{wch:10},{wch:20},{wch:8},{wch:10},{wch:14},{wch:22}]);
 
-  XLSX.writeFile(wb,'สรุปเดือน_'+m+'.xlsx');
+  XLSX.writeFile(wb,'สรุปค่าใช้จ่าย_'+P.file+'.xlsx');
   toast('ดาวน์โหลดแล้ว ✅');
 }
 
