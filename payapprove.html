@@ -105,7 +105,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-40</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-41</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -200,6 +200,18 @@ tr:nth-child(even) td{background:#F8FAFD}
             <input type="date" id="r_due" style="flex:1 1 auto;min-width:0">
             <input type="time" id="r_dueT" step="900" style="flex:0 0 105px;width:105px"
                    title="เวลาที่ต้องโอน — ใช้ตั้งเตือนบนปฏิทิน">
+          </div>
+          <div class="row" id="r_remBar" style="gap:13px;margin:7px 0 0;font-size:12px">
+            <span class="muted" style="font-size:11.5px">🔔 เตือนล่วงหน้า</span>
+            <label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;margin:0;cursor:pointer">
+              <input type="checkbox" id="r_rem3d" style="width:auto" onchange="calHint(curReq())"> 3 วัน</label>
+            <label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;margin:0;cursor:pointer">
+              <input type="checkbox" id="r_rem1d" style="width:auto" onchange="calHint(curReq())"> 1 วัน</label>
+            <label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;margin:0;cursor:pointer">
+              <input type="checkbox" id="r_rem2h" style="width:auto" onchange="calHint(curReq())"> 2 ชม.</label>
+            <label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;margin:0;cursor:pointer"
+                   title="ส่งอีเมลเตือนตามเวลาที่ไกลที่สุดที่เลือกไว้ (นอกจากเด้งเตือนในปฏิทิน)">
+              <input type="checkbox" id="r_remMail" style="width:auto" onchange="calHint(curReq())"> อีเมล</label>
           </div>
           <div id="r_calHint" class="muted" style="font-size:11px;margin-top:3px"></div></div>
         <div class="fld"><label>ความเร่งด่วน</label>
@@ -523,10 +535,12 @@ tr:nth-child(even) td{background:#F8FAFD}
     <h3 style="font-size:15px;margin:16px 0 4px">📅 ปฏิทิน Google</h3>
     <div class="sub-note">ส่งกำหนดชำระขึ้นปฏิทินกลาง พร้อมตั้งเตือนล่วงหน้า —
       ใช้ Apps Script ตัวเดียวกับด้านบน ทุกคนในทีมไม่ต้องล็อกอิน Google เอง
-      <br>ยังไม่ได้ติดตั้ง? ดูขั้นตอนหัวไฟล์ <code>Code.gs</code> (ข้อ 6–8)</div>
+      <br>ยังไม่ได้ติดตั้ง? ดูขั้นตอนหัวไฟล์ <code>Code.gs</code> (ข้อ 6–8)
+      <br><b>การเตือนตั้งแยกได้ทีละคำขอ</b> — ในฟอร์มคำขอ ใต้ช่องกำหนดชำระ
+      ค่าข้างล่างนี้คือค่าที่ติ๊กมาให้ตอนสร้างใบใหม่</div>
     <div class="fld"><label>Calendar ID</label>
       <input id="cal_id" placeholder="xxxxxxxx@group.calendar.google.com"></div>
-    <div class="fld"><label>เตือนล่วงหน้า</label>
+    <div class="fld"><label>เตือนล่วงหน้า <span class="muted" style="font-weight:400">— ค่าเริ่มต้นของคำขอใหม่</span></label>
       <div class="row" style="gap:14px;margin:2px 0 0">
         <label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;margin:0;cursor:pointer">
           <input type="checkbox" id="cal_r3d"> 3 วันก่อน</label>
@@ -1448,6 +1462,7 @@ function openReq(id){
   $('r_due').value=(r&&r.due_date)||'';
   /* ใบเก่าไม่มีเวลา → ตั้ง 10:00 ให้ แก้ได้ · ใบใหม่ก็เริ่มที่ 10:00 เหมือนกัน */
   $('r_dueT').value=(r&&r.due_time)||'10:00';
+  remSet(r?r.cal_remind:null, r?r.cal_mail:null);
   calHint(r);
   $('r_urg').value=(r&&r.urgency)||'normal';
   $('r_type').value=(r&&r.pay_type)||'';
@@ -1485,13 +1500,11 @@ function calHint(r){
       +'แต่ยังไม่ขึ้น Google Calendar (ตั้งค่าที่ ⚙️ ท้ายหน้ารายการคำขอ)';
     return;
   }
+  const rem=remTxt(remGet())+($('r_remMail')&&$('r_remMail').checked?' + อีเมล':'');
   el.innerHTML = (r&&r.cal_event_id)
-    ? '<span style="color:#1E7145">📅 ใบนี้อยู่บนปฏิทินแล้ว</span> — แก้วันหรือเวลาแล้วกดบันทึก event จะขยับตาม'
-    : '📅 กด <b>ส่งอนุมัติ</b> แล้วจะขึ้นปฏิทินให้เอง พร้อมเตือนล่วงหน้า '+calRemTxt();
-}
-function calRemTxt(){
-  const m={4320:'3 วัน',1440:'1 วัน',120:'2 ชม.'};
-  return calRem().map(x=>m[x]||(x+' นาที')).join(' และ ')+'ก่อนถึงกำหนด';
+    ? '<span style="color:#1E7145">📅 ใบนี้อยู่บนปฏิทินแล้ว</span> — แก้วัน เวลา หรือการเตือน '
+      +'แล้วกดบันทึก event จะขยับตาม · ตอนนี้เตือน <b>'+esc(rem)+'</b>'
+    : '📅 กด <b>ส่งอนุมัติ</b> แล้วจะขึ้นปฏิทินให้เอง · เตือน <b>'+esc(rem)+'</b>';
 }
 function addManual(){
   ITEMS.push({pay_id:'',po:'',sku:'',inst:'',src_amount:0,src_cur:$('r_cur').value,
@@ -1796,6 +1809,7 @@ async function saveReq(mode){
     urgency:$('r_urg').value, reason:$('r_reason').value.trim()||null,
     note:$('r_note').value.trim()||null,
     items:ITEMS, payment_ids:ITEMS.map(i=>i.pay_id).filter(Boolean),
+    cal_remind:remGet(), cal_mail:!!($('r_remMail')&&$('r_remMail').checked),
     src_currency:(sc0&&sc0!==dst0)?sc0:null,        // สกุลต้นทาง เก็บเมื่อมีการแปลงจริง
     fx_rate:(sc0&&sc0!==dst0)?fx0:null,             // เรทแปลง ต้นทาง→ปลายทาง
     total_src:+tSrc.toFixed(2),                     // ยอดรวมสกุลต้นทาง
@@ -1803,20 +1817,32 @@ async function saveReq(mode){
     status:mode, updated_at:new Date().toISOString()
   };
   let id=EDIT_ID, SAVED_ROW=null;
+  /* ยังไม่ได้รัน payapprove_remind.sql → อย่าให้งานที่พิมพ์มาทั้งใบหลุด
+     ตัดเฉพาะ 2 ฟิลด์เตือนออกแล้วบันทึกซ้ำ พร้อมบอกว่าต้องไปรันไฟล์ไหน */
+  const remFall=msg=>{
+    if(!/cal_remind|cal_mail/i.test(msg||''))return false;
+    delete rec.cal_remind; delete rec.cal_mail;
+    toast('บันทึกแล้ว แต่ยังตั้งเตือนรายใบไม่ได้ — รันไฟล์ payapprove_remind.sql ก่อน',true);
+    return true;
+  };
   if(EDIT_ID){
     const old=REQS.find(x=>String(x.id)===String(EDIT_ID))||{};
     if(old.status==='rejected'&&mode==='submitted'){ rec.reject_note=null;rec.reject_by=null;rec.reject_at=null; }
     /* .select() = ได้แถวหลังบันทึกกลับมาในคำขอเดิม ไม่ต้องอ่านทั้งตารางใหม่ */
-    const {data,error}=await sb.from('pay_requests').update(rec).eq('id',EDIT_ID).select().single();
-    if(error)return alert('บันทึกไม่สำเร็จ: '+error.message);
-    SAVED_ROW=data;
+    let q=await sb.from('pay_requests').update(rec).eq('id',EDIT_ID).select().single();
+    if(q.error&&remFall(q.error.message))
+      q=await sb.from('pay_requests').update(rec).eq('id',EDIT_ID).select().single();
+    if(q.error)return alert('บันทึกไม่สำเร็จ: '+q.error.message);
+    SAVED_ROW=q.data;
   }else{
     rec.req_no=await nextReqNo();
     rec.requester=ME; rec.requester_name=MY_NAME;
-    const {data,error}=await sb.from('pay_requests').insert(rec).select().single();
-    if(error)return alert('บันทึกไม่สำเร็จ: '+error.message
-      +(/does not exist/i.test(error.message)?'\n\nยังไม่ได้สร้างตาราง — รันไฟล์ payapprove.sql ก่อน':''));
-    id=data.id; SAVED_ROW=data;
+    let q=await sb.from('pay_requests').insert(rec).select().single();
+    if(q.error&&remFall(q.error.message))
+      q=await sb.from('pay_requests').insert(rec).select().single();
+    if(q.error)return alert('บันทึกไม่สำเร็จ: '+q.error.message
+      +(/does not exist/i.test(q.error.message)?'\n\nยังไม่ได้สร้างตาราง — รันไฟล์ payapprove.sql ก่อน':''));
+    id=q.data.id; SAVED_ROW=q.data;
   }
   await addLog(id, EDIT_ID?(mode==='submitted'?'submitted':'updated'):'created',
     mode==='submitted'?'ส่งอนุมัติ':'บันทึกร่าง');
@@ -1892,8 +1918,9 @@ function viewReq(id){
       <div><div class="muted" style="font-size:11px">วันที่ยื่น</div><b>${thDate(r.req_date)}</b></div>
       <div><div class="muted" style="font-size:11px">กำหนดชำระ</div>
         <b>${thDate(r.due_date)}${r.due_time?(' · '+esc(r.due_time)+' น.'):''}</b>
+        <div class="muted" style="font-size:11px;margin-top:1px">🔔 ${esc(remTxt(calRemOf(r)))}${calMailOf(r)?' + อีเมล':''}</div>
         ${r.cal_link?`<div style="font-size:11px;margin-top:2px"><a href="${esc(r.cal_link)}" target="_blank"
-          rel="noopener" style="color:var(--blue);font-weight:700">📅 เปิดบนปฏิทิน</a></div>`
+          rel="noopener" style="color:var(--blue);font-weight:700">📅 เปิดบนปฏิทิน ↗</a></div>`
         :(r.cal_event_id?'<div class="muted" style="font-size:11px;margin-top:2px">📅 อยู่บนปฏิทิน</div>':'')}</div>
       <div><div class="muted" style="font-size:11px">จ่ายในนาม</div><b>${esc(coFull(r.pay_type))}</b></div>
       <div><div class="muted" style="font-size:11px">ช่องทางการโอน</div><b>${esc(r.channel||'-')}</b></div>
@@ -2565,7 +2592,7 @@ function calCfg(){
 }
 const calLocked = ()=>!!CAL_ID;
 const calOn     = ()=>!!(calCfg().id && gasUrl());
-/* รายการนาทีที่จะเตือน เรียงจากไกลไปใกล้ */
+/* รายการนาทีที่จะเตือน เรียงจากไกลไปใกล้ — ค่าตั้งต้น (ใช้กับใบที่ยังไม่เคยตั้งเอง) */
 function calRem(){
   const c=calCfg(), out=[];
   if(c.rem3d)out.push(4320);
@@ -2573,6 +2600,34 @@ function calRem(){
   if(c.rem2h)out.push(120);
   return out.length?out:[1440,120];
 }
+/* ===== เตือนล่วงหน้า "รายคำขอ" =====
+   เดิมตั้งรวมที่กล่อง ⚙️ แล้วเก็บใน localStorage → จำได้แค่เบราว์เซอร์เครื่องนั้น
+   คนอื่นเปิดใบเดียวกันได้การเตือนไม่เหมือนกัน และใบด่วนกับใบปกติแยกกันไม่ได้
+   ✅ ย้ายมาเก็บที่ตัวคำขอ (cal_remind / cal_mail) → ติดไปกับใบ ทุกคนเห็นตรงกัน
+      ค่าในกล่อง ⚙️ เหลือหน้าที่เป็น "ค่าที่ติ๊กมาให้" ตอนสร้างใบใหม่เท่านั้น */
+const REM_OPT=[[4320,'3 วัน','r_rem3d'],[1440,'1 วัน','r_rem1d'],[120,'2 ชม.','r_rem2h']];
+const REM_TH={4320:'3 วัน',1440:'1 วัน',120:'2 ชม.'};
+const curReq=()=>EDIT_ID?(REQS.find(x=>String(x.id)===String(EDIT_ID))||null):null;
+function remSet(arr,mail){
+  /* null/undefined = ใบใหม่ หรือใบเก่าที่บันทึกไว้ก่อนมีฟีเจอร์นี้ → ใช้ค่าตั้งต้น
+     [] = ตั้งไว้ว่า "ไม่เตือน" ต้องเคารพ ห้ามเอาค่าตั้งต้นมาทับ */
+  const a=Array.isArray(arr)?arr.map(Number):null, c=calCfg();
+  const def={4320:!!c.rem3d,1440:!!c.rem1d,120:!!c.rem2h};
+  REM_OPT.forEach(function(o){ const el=$(o[2]); if(el)el.checked=a?a.includes(o[0]):def[o[0]]; });
+  if($('r_remMail'))$('r_remMail').checked=(mail==null)?!!c.mail:!!mail;
+}
+function remGet(){
+  return REM_OPT.filter(function(o){ const el=$(o[2]); return el&&el.checked; }).map(o=>o[0]);
+}
+const remTxt=a=>(a&&a.length)
+  ? a.map(x=>REM_TH[x]||(x+' นาที')).join(' · ')+'ก่อนถึงกำหนด'
+  : 'ไม่เตือน';
+/* ค่าที่จะใช้จริงตอนส่งขึ้นปฏิทิน */
+function calRemOf(r){
+  const a=(r&&Array.isArray(r.cal_remind))?r.cal_remind.map(Number).filter(x=>x>0):null;
+  return a?a:calRem();
+}
+const calMailOf=r=>(r&&r.cal_mail!=null)?!!r.cal_mail:!!calCfg().mail;
 /* หัวข้อ event — อ่านบนปฏิทินแล้วรู้ทันทีว่าใบไหน ยอดเท่าไหร่ ขั้นไหน */
 const CAL_MARK={draft:'📝 ร่าง',submitted:'⏳ รออนุมัติ',approved:'✅ อนุมัติแล้ว',
                 paid:'💸 จ่ายแล้ว',rejected:'↩️ ตีกลับ'};
@@ -2612,7 +2667,7 @@ async function calPush(r,silent){
     const j=await gasCall({action:'calSave', calendarId:c.id,
       eventId:r.cal_event_id||'', date:r.due_date, time:r.due_time||'10:00',
       minutes:60, title:calTitle(r), desc:calDesc(r),
-      reminders:calRem(), emailRemind:!!c.mail, color:r.status});
+      reminders:calRemOf(r), emailRemind:calMailOf(r), color:r.status});
     const {data:up}=await sb.from('pay_requests').update({
       /* ลิงก์ตรงที่ event · สร้างไม่ได้ก็ใช้ลิงก์วันนั้นแทน ดีกว่าไม่มีลิงก์เลย */
       cal_event_id:j.eventId||null, cal_link:j.link||j.dayLink||null,
