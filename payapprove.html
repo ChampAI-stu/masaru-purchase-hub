@@ -105,7 +105,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-41</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-42</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -209,9 +209,6 @@ tr:nth-child(even) td{background:#F8FAFD}
               <input type="checkbox" id="r_rem1d" style="width:auto" onchange="calHint(curReq())"> 1 วัน</label>
             <label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;margin:0;cursor:pointer">
               <input type="checkbox" id="r_rem2h" style="width:auto" onchange="calHint(curReq())"> 2 ชม.</label>
-            <label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;margin:0;cursor:pointer"
-                   title="ส่งอีเมลเตือนตามเวลาที่ไกลที่สุดที่เลือกไว้ (นอกจากเด้งเตือนในปฏิทิน)">
-              <input type="checkbox" id="r_remMail" style="width:auto" onchange="calHint(curReq())"> อีเมล</label>
           </div>
           <div id="r_calHint" class="muted" style="font-size:11px;margin-top:3px"></div></div>
         <div class="fld"><label>ความเร่งด่วน</label>
@@ -548,9 +545,6 @@ tr:nth-child(even) td{background:#F8FAFD}
           <input type="checkbox" id="cal_r1d"> 1 วันก่อน</label>
         <label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;margin:0;cursor:pointer">
           <input type="checkbox" id="cal_r2h"> 2 ชั่วโมงก่อน</label>
-        <label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;margin:0;cursor:pointer"
-               title="ส่งอีเมลเตือนตามเวลาที่ไกลที่สุดที่เลือกไว้">
-          <input type="checkbox" id="cal_rmail"> ส่งอีเมลด้วย</label>
       </div></div>
     <div id="cal_stat" style="font-size:12.5px;margin-bottom:10px"></div>
 
@@ -1462,7 +1456,7 @@ function openReq(id){
   $('r_due').value=(r&&r.due_date)||'';
   /* ใบเก่าไม่มีเวลา → ตั้ง 10:00 ให้ แก้ได้ · ใบใหม่ก็เริ่มที่ 10:00 เหมือนกัน */
   $('r_dueT').value=(r&&r.due_time)||'10:00';
-  remSet(r?r.cal_remind:null, r?r.cal_mail:null);
+  remSet(r?r.cal_remind:null);
   calHint(r);
   $('r_urg').value=(r&&r.urgency)||'normal';
   $('r_type').value=(r&&r.pay_type)||'';
@@ -1500,7 +1494,7 @@ function calHint(r){
       +'แต่ยังไม่ขึ้น Google Calendar (ตั้งค่าที่ ⚙️ ท้ายหน้ารายการคำขอ)';
     return;
   }
-  const rem=remTxt(remGet())+($('r_remMail')&&$('r_remMail').checked?' + อีเมล':'');
+  const rem=remTxt(remGet());
   el.innerHTML = (r&&r.cal_event_id)
     ? '<span style="color:#1E7145">📅 ใบนี้อยู่บนปฏิทินแล้ว</span> — แก้วัน เวลา หรือการเตือน '
       +'แล้วกดบันทึก event จะขยับตาม · ตอนนี้เตือน <b>'+esc(rem)+'</b>'
@@ -1809,7 +1803,7 @@ async function saveReq(mode){
     urgency:$('r_urg').value, reason:$('r_reason').value.trim()||null,
     note:$('r_note').value.trim()||null,
     items:ITEMS, payment_ids:ITEMS.map(i=>i.pay_id).filter(Boolean),
-    cal_remind:remGet(), cal_mail:!!($('r_remMail')&&$('r_remMail').checked),
+    cal_remind:remGet(),
     src_currency:(sc0&&sc0!==dst0)?sc0:null,        // สกุลต้นทาง เก็บเมื่อมีการแปลงจริง
     fx_rate:(sc0&&sc0!==dst0)?fx0:null,             // เรทแปลง ต้นทาง→ปลายทาง
     total_src:+tSrc.toFixed(2),                     // ยอดรวมสกุลต้นทาง
@@ -1820,8 +1814,8 @@ async function saveReq(mode){
   /* ยังไม่ได้รัน payapprove_remind.sql → อย่าให้งานที่พิมพ์มาทั้งใบหลุด
      ตัดเฉพาะ 2 ฟิลด์เตือนออกแล้วบันทึกซ้ำ พร้อมบอกว่าต้องไปรันไฟล์ไหน */
   const remFall=msg=>{
-    if(!/cal_remind|cal_mail/i.test(msg||''))return false;
-    delete rec.cal_remind; delete rec.cal_mail;
+    if(!/cal_remind/i.test(msg||''))return false;
+    delete rec.cal_remind;
     toast('บันทึกแล้ว แต่ยังตั้งเตือนรายใบไม่ได้ — รันไฟล์ payapprove_remind.sql ก่อน',true);
     return true;
   };
@@ -1918,7 +1912,7 @@ function viewReq(id){
       <div><div class="muted" style="font-size:11px">วันที่ยื่น</div><b>${thDate(r.req_date)}</b></div>
       <div><div class="muted" style="font-size:11px">กำหนดชำระ</div>
         <b>${thDate(r.due_date)}${r.due_time?(' · '+esc(r.due_time)+' น.'):''}</b>
-        <div class="muted" style="font-size:11px;margin-top:1px">🔔 ${esc(remTxt(calRemOf(r)))}${calMailOf(r)?' + อีเมล':''}</div>
+        <div class="muted" style="font-size:11px;margin-top:1px">🔔 ${esc(remTxt(calRemOf(r)))}</div>
         ${r.cal_link?`<div style="font-size:11px;margin-top:2px"><a href="${esc(r.cal_link)}" target="_blank"
           rel="noopener" style="color:var(--blue);font-weight:700">📅 เปิดบนปฏิทิน ↗</a></div>`
         :(r.cal_event_id?'<div class="muted" style="font-size:11px;margin-top:2px">📅 อยู่บนปฏิทิน</div>':'')}</div>
@@ -2584,7 +2578,7 @@ async function gasCall(payload){
 const CAL_ID  = 'deec4e0a220a4d8378030044b39ac23d0808ec41b8998f5b952a9244299fca75@group.calendar.google.com';   /* ⭐ ปฏิทินกลาง: MASARU — กำหนดชำระเงิน (จัดซื้อ)
                                              ตั้งไว้ในไฟล์ = ทุกเครื่องใช้ร่วมกัน ไม่ต้องให้แต่ละคนไปตั้งเอง */
 const CAL_KEY = 'masaru_pa_cal';
-const CAL_DEF = {rem3d:false, rem1d:true, rem2h:true, mail:false};   /* ค่าตั้งต้นของการเตือน */
+const CAL_DEF = {rem3d:false, rem1d:true, rem2h:true};   /* ค่าตั้งต้นของการเตือน */
 
 function calCfg(){
   let c={}; try{ c=JSON.parse(localStorage.getItem(CAL_KEY)||'{}'); }catch(e){}
@@ -2603,18 +2597,17 @@ function calRem(){
 /* ===== เตือนล่วงหน้า "รายคำขอ" =====
    เดิมตั้งรวมที่กล่อง ⚙️ แล้วเก็บใน localStorage → จำได้แค่เบราว์เซอร์เครื่องนั้น
    คนอื่นเปิดใบเดียวกันได้การเตือนไม่เหมือนกัน และใบด่วนกับใบปกติแยกกันไม่ได้
-   ✅ ย้ายมาเก็บที่ตัวคำขอ (cal_remind / cal_mail) → ติดไปกับใบ ทุกคนเห็นตรงกัน
+   ✅ ย้ายมาเก็บที่ตัวคำขอ (cal_remind) → ติดไปกับใบ ทุกคนเห็นตรงกัน
       ค่าในกล่อง ⚙️ เหลือหน้าที่เป็น "ค่าที่ติ๊กมาให้" ตอนสร้างใบใหม่เท่านั้น */
 const REM_OPT=[[4320,'3 วัน','r_rem3d'],[1440,'1 วัน','r_rem1d'],[120,'2 ชม.','r_rem2h']];
 const REM_TH={4320:'3 วัน',1440:'1 วัน',120:'2 ชม.'};
 const curReq=()=>EDIT_ID?(REQS.find(x=>String(x.id)===String(EDIT_ID))||null):null;
-function remSet(arr,mail){
+function remSet(arr){
   /* null/undefined = ใบใหม่ หรือใบเก่าที่บันทึกไว้ก่อนมีฟีเจอร์นี้ → ใช้ค่าตั้งต้น
      [] = ตั้งไว้ว่า "ไม่เตือน" ต้องเคารพ ห้ามเอาค่าตั้งต้นมาทับ */
   const a=Array.isArray(arr)?arr.map(Number):null, c=calCfg();
   const def={4320:!!c.rem3d,1440:!!c.rem1d,120:!!c.rem2h};
   REM_OPT.forEach(function(o){ const el=$(o[2]); if(el)el.checked=a?a.includes(o[0]):def[o[0]]; });
-  if($('r_remMail'))$('r_remMail').checked=(mail==null)?!!c.mail:!!mail;
 }
 function remGet(){
   return REM_OPT.filter(function(o){ const el=$(o[2]); return el&&el.checked; }).map(o=>o[0]);
@@ -2627,7 +2620,7 @@ function calRemOf(r){
   const a=(r&&Array.isArray(r.cal_remind))?r.cal_remind.map(Number).filter(x=>x>0):null;
   return a?a:calRem();
 }
-const calMailOf=r=>(r&&r.cal_mail!=null)?!!r.cal_mail:!!calCfg().mail;
+
 /* หัวข้อ event — อ่านบนปฏิทินแล้วรู้ทันทีว่าใบไหน ยอดเท่าไหร่ ขั้นไหน */
 const CAL_MARK={draft:'📝 ร่าง',submitted:'⏳ รออนุมัติ',approved:'✅ อนุมัติแล้ว',
                 paid:'💸 จ่ายแล้ว',rejected:'↩️ ตีกลับ'};
@@ -2667,7 +2660,7 @@ async function calPush(r,silent){
     const j=await gasCall({action:'calSave', calendarId:c.id,
       eventId:r.cal_event_id||'', date:r.due_date, time:r.due_time||'10:00',
       minutes:60, title:calTitle(r), desc:calDesc(r),
-      reminders:calRemOf(r), emailRemind:calMailOf(r), color:r.status});
+      reminders:calRemOf(r), color:r.status});
     const {data:up}=await sb.from('pay_requests').update({
       /* ลิงก์ตรงที่ event · สร้างไม่ได้ก็ใช้ลิงก์วันนั้นแทน ดีกว่าไม่มีลิงก์เลย */
       cal_event_id:j.eventId||null, cal_link:j.link||j.dayLink||null,
@@ -2925,7 +2918,7 @@ function openPfCfg(){
   const k=calCfg(), cl=calLocked();
   $('cal_id').value=k.id||''; $('cal_id').disabled=cl;
   $('cal_r3d').checked=!!k.rem3d; $('cal_r1d').checked=!!k.rem1d;
-  $('cal_r2h').checked=!!k.rem2h; $('cal_rmail').checked=!!k.mail;
+  $('cal_r2h').checked=!!k.rem2h;
   $('cal_stat').innerHTML = calOn()
     ? '<span class="muted">พร้อมใช้ — คำขอที่ส่งอนุมัติจะขึ้นปฏิทินอัตโนมัติ</span>'
     : '<span style="color:#B45309">ยังไม่พร้อมใช้ — '
@@ -2947,7 +2940,7 @@ function savePfCfg(){
     try{ localStorage.setItem(GAS_KEY,JSON.stringify({url,secret:$('pfg_secret').value.trim()})); }catch(e){}
   try{ localStorage.setItem(CAL_KEY,JSON.stringify({
     id:calLocked()?'':calId, rem3d:$('cal_r3d').checked, rem1d:$('cal_r1d').checked,
-    rem2h:$('cal_r2h').checked, mail:$('cal_rmail').checked})); }catch(e){}
+    rem2h:$('cal_r2h').checked})); }catch(e){}
   $('pfCfgBg').style.display='none';
   toast('บันทึกการตั้งค่าแล้ว ✅'+(calOn()?' · ปฏิทินพร้อมใช้ 📅':''));
 }
