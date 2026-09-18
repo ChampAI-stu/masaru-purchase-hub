@@ -99,7 +99,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-35</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-36</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -136,6 +136,8 @@ tr:nth-child(even) td{background:#F8FAFD}
         </select>
         <input type="month" id="fMonth" style="max-width:160px" onchange="PAGE=1;renderList()">
         <button class="btn ghost" onclick="clearFilter()">ล้างตัวกรอง</button>
+        <button class="btn ghost" onclick="openPfCfg()"
+          title="ที่เก็บไฟล์หลักฐาน + ปฏิทิน Google">⚙️ ตั้งค่า</button>
         <button class="btn" id="newBtn" onclick="openReq()">+ สร้างคำขอ</button>
       </div>
       <div class="scroll"><div id="listBody"></div></div>
@@ -502,7 +504,7 @@ tr:nth-child(even) td{background:#F8FAFD}
 <!-- ============ MODAL: ตั้งค่าที่เก็บไฟล์ ============ -->
 <div class="modal-bg" id="pfCfgBg" style="z-index:85">
   <div class="modal" style="max-width:620px">
-    <h3>⚙️ ที่เก็บไฟล์หลักฐาน</h3>
+    <h3>⚙️ ตั้งค่า — ที่เก็บไฟล์ &amp; ปฏิทิน</h3>
     <div class="sub-note">ใช้ Google Apps Script ตัวเดียวกับที่ระบบวางแผนจ่ายเงินใช้เก็บสลิป —
       ไฟล์จะไปอยู่ในโฟลเดอร์ <b>หลักฐานการโอน / เลขคำขอ</b></div>
     <div class="fld"><label>Web app URL (ลงท้าย /exec)</label>
