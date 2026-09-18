@@ -111,7 +111,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-44</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-45</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -555,7 +555,10 @@ tr:nth-child(even) td{background:#F8FAFD}
     <h3 style="font-size:15px;margin:16px 0 4px">📅 ปฏิทิน Google</h3>
     <div class="sub-note">ส่งกำหนดชำระขึ้นปฏิทินกลาง พร้อมตั้งเตือนล่วงหน้า —
       ใช้ Apps Script ตัวเดียวกับด้านบน ทุกคนในทีมไม่ต้องล็อกอิน Google เอง
-      <br>ยังไม่ได้ติดตั้ง? ดูขั้นตอนหัวไฟล์ <code>Code.gs</code> (ข้อ 6–8)</div>
+      <br>ยังไม่ได้ติดตั้ง? ดูขั้นตอนหัวไฟล์ <code>Code.gs</code> (ข้อ 6–8)
+      <br><b>📱 ทุกคนตั้งครั้งเดียวบนมือถือ:</b> แอป Google Calendar → ☰ การตั้งค่า →
+      เลือกปฏิทินนี้ → <b>การแจ้งเตือนเริ่มต้น</b> → ตั้งเป็น <b>"ตอนถึงเวลา"</b>
+      <br>แล้วทุกคนจะเด้งตรงเวลาที่ตั้งไว้รายใบเหมือนกันหมด</div>
     <div class="fld"><label>Calendar ID<span id="cal_lock" class="lockpill">🔒 ตั้งไว้ในไฟล์</span></label>
       <input id="cal_id" placeholder="xxxxxxxx@group.calendar.google.com">
       <div class="kv" id="cal_id_v"></div></div>
@@ -1514,10 +1517,11 @@ function calHint(r){
     return;
   }
   const rem=remTxt(remGet());
+  const who=REM_EVENTS?' (ทุกคนที่เห็นปฏิทินเด้งพร้อมกัน)':'';
   el.innerHTML = (r&&r.cal_event_id)
     ? '<span style="color:#1E7145">📅 ใบนี้อยู่บนปฏิทินแล้ว</span> — แก้วัน เวลา หรือการเตือน '
-      +'แล้วกดบันทึก event จะขยับตาม · ตอนนี้เตือน <b>'+esc(rem)+'</b>'
-    : '📅 กด <b>ส่งอนุมัติ</b> แล้วจะขึ้นปฏิทินให้เอง · เตือน <b>'+esc(rem)+'</b>';
+      +'แล้วกดบันทึก event จะขยับตาม · ตอนนี้เตือน <b>'+esc(rem)+'</b>'+who
+    : '📅 กด <b>ส่งอนุมัติ</b> แล้วจะขึ้นปฏิทินให้เอง · เตือน <b>'+esc(rem)+'</b>'+who;
 }
 function addManual(){
   ITEMS.push({pay_id:'',po:'',sku:'',inst:'',src_amount:0,src_cur:$('r_cur').value,
@@ -2604,6 +2608,16 @@ const CAL_KEY = 'masaru_pa_cal';
       4320 = 3 วัน · 1440 = 1 วัน · 120 = 2 ชม. */
 const REM_DEF = [1440, 120];
 
+/* ⭐ REM_EVENTS — ให้ทุกคนในปฏิทินเด้งเวลาเดียวกับเจ้าของปฏิทิน
+   เอกสาร Google: reminder ของ event เป็น "ข้อมูลส่วนตัวของแต่ละบัญชี"
+   ไม่ถูกแชร์ไปกับ event → เวลาเตือนที่สคริปต์ตั้ง เด้งเฉพาะบัญชีที่ Deploy
+   true  = สร้าง "event เตือน" ไว้ที่เวลานั้นเลย (ของกลาง ทุกคนเห็น)
+           ทุกคนตั้งการแจ้งเตือนเริ่มต้นของปฏิทินนี้เป็น "ตอนถึงเวลา" ครั้งเดียว
+           แลกกับ event เพิ่มไม่เกิน 4 อันต่อคำขอ
+   false = แบบเดิม ใช้ reminder ของ event (เด้งคนเดียว ปฏิทินสะอาด) */
+const REM_EVENTS = true;
+let REMID_WARNED = false;
+
 function calCfg(){
   let c={}; try{ c=JSON.parse(localStorage.getItem(CAL_KEY)||'{}'); }catch(e){}
   return {id:(CAL_ID||c.id||'').trim()};
@@ -2713,17 +2727,32 @@ function calDesc(r){
 async function calPush(r,silent){
   if(!r||!calOn())return false;
   if(!r.due_date)return false;
-  const c=calCfg();
+  const c=calCfg(), rem=calRemOf(r);
   try{
     const j=await gasCall({action:'calSave', calendarId:c.id,
       eventId:r.cal_event_id||'', date:r.due_date, time:r.due_time||'10:00',
-      minutes:60, title:calTitle(r), desc:calDesc(r),
-      reminders:calRemOf(r), color:r.status});
-    const {data:up}=await sb.from('pay_requests').update({
+      minutes:60, title:calTitle(r), desc:calDesc(r), color:r.status,
+      /* โหมด event เตือนแยก: ใบหลักไม่ต้องมี reminder ของตัวเอง
+         ไม่งั้นเจ้าของปฏิทินจะเด้งซ้อน 2 ที (จาก reminder + จาก event เตือน) */
+      reminders: REM_EVENTS?[]:rem,
+      remEvents: REM_EVENTS?rem:[],
+      remIds: Array.isArray(r.cal_rem_ids)?r.cal_rem_ids:[]});
+    const up={
       /* ลิงก์ตรงที่ event · สร้างไม่ได้ก็ใช้ลิงก์วันนั้นแทน ดีกว่าไม่มีลิงก์เลย */
       cal_event_id:j.eventId||null, cal_link:j.link||j.dayLink||null,
-      cal_synced_at:new Date().toISOString()}).eq('id',r.id).select().single();
-    reqMerge(up);        /* แปะในหน่วยความจำ ผู้เรียกวาดจอรอบเดียวตอนจบ */
+      cal_synced_at:new Date().toISOString(),
+      cal_rem_ids:Array.isArray(j.remIds)?j.remIds:[]};
+    let q=await sb.from('pay_requests').update(up).eq('id',r.id).select().single();
+    if(q.error&&/cal_rem_ids/i.test(q.error.message||'')){
+      /* ยังไม่ได้รัน payapprove_calrem.sql → event เตือนสร้างได้ แต่ระบบจำ id ไม่ได้
+         ครั้งต่อไปจะลบของเก่าไม่ได้ = เตือนซ้อน ต้องเตือนให้ไปรันไฟล์ */
+      delete up.cal_rem_ids;
+      q=await sb.from('pay_requests').update(up).eq('id',r.id).select().single();
+      if(!REMID_WARNED){ REMID_WARNED=true;
+        toast('⚠️ ยังไม่ได้รัน payapprove_calrem.sql — event เตือนจะซ้อนกัน',true); }
+    }
+    if(q.error)throw new Error(q.error.message);
+    reqMerge(q.data);    /* แปะในหน่วยความจำ ผู้เรียกวาดจอรอบเดียวตอนจบ */
     if(!silent)toast('ลงปฏิทินแล้ว 📅');
     return true;
   }catch(e){
@@ -2734,8 +2763,11 @@ async function calPush(r,silent){
 }
 /* ลบ event — ใช้ตอนลบคำขอ */
 async function calDrop(r,silent){
-  if(!r||!r.cal_event_id||!calOn())return;
-  try{ await gasCall({action:'calDelete',calendarId:calCfg().id,eventId:r.cal_event_id}); }
+  if(!r||!calOn())return;
+  const rid=Array.isArray(r.cal_rem_ids)?r.cal_rem_ids:[];
+  if(!r.cal_event_id&&!rid.length)return;
+  try{ await gasCall({action:'calDelete',calendarId:calCfg().id,
+        eventId:r.cal_event_id||'', remIds:rid}); }
   catch(e){ console.warn('[calendar]',e.message);
     if(!silent)toast('⚠️ ลบ event บนปฏิทินไม่ได้ — ลบในปฏิทินเองอีกที'); }
 }
