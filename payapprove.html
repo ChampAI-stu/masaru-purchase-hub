@@ -111,7 +111,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-46</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-47</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -2821,13 +2821,32 @@ async function calTest(){
   }
 }
 /* ส่งใบที่ยังไม่ขึ้นปฏิทินขึ้นไปทั้งหมด — ใช้ครั้งแรกหลังติดตั้ง */
+/* ใบที่ต้องส่งขึ้นปฏิทินใหม่ — 2 กรณี
+   ① ยังไม่เคยขึ้นปฏิทินเลย
+   ② ขึ้นปฏิทินแล้ว แต่ยังไม่มี event เตือน ทั้งที่ตั้งเวลาเตือนไว้
+      (เกิดกับใบที่ส่งขึ้นไปก่อนจะ Deploy cal-v3 — event มีแต่ไม่มีอะไรเตือน
+       ถ้าไม่ดักกรณีนี้ ใบเก่าทั้งหมดจะเงียบไปตลอด แล้วหาสาเหตุไม่เจอ) */
+function calPending(){
+  return REQS.filter(function(r){
+    if(!r.due_date)return false;
+    if(r.status!=='submitted'&&r.status!=='approved')return false;
+    if(!r.cal_event_id)return true;
+    if(!REM_EVENTS)return false;
+    const need=calRemOf(r).filter(m=>+m>0).length;
+    const have=Array.isArray(r.cal_rem_ids)?r.cal_rem_ids.length:0;
+    return need>0 && have===0;
+  });
+}
 async function calBackfill(){
   if(!calOn())return alert('ตั้งค่า Calendar ID และทดสอบให้ผ่านก่อน');
-  const pend=REQS.filter(r=>!r.cal_event_id&&r.due_date
-              &&(r.status==='submitted'||r.status==='approved'));
-  if(!pend.length)return alert('ไม่มีใบที่รอขึ้นปฏิทิน ✅\n\n(นับเฉพาะใบสถานะ รออนุมัติ และ อนุมัติแล้ว)');
+  const pend=calPending();
+  if(!pend.length)return alert('ไม่มีใบที่รอขึ้นปฏิทิน ✅\n\n'
+    +'(นับเฉพาะใบสถานะ รออนุมัติ และ อนุมัติแล้ว)');
+  const fresh=pend.filter(r=>!r.cal_event_id).length, fix=pend.length-fresh;
   if(!confirm('จะส่ง '+pend.length+' ใบขึ้นปฏิทิน\n\n'
-    +'ใบที่เก่ากว่าวันนี้จะขึ้นเป็นกิจกรรมย้อนหลัง (ไม่เตือน แต่เห็นในปฏิทิน)\n\nยืนยันไหม?'))return;
+    +(fresh?('• ยังไม่เคยขึ้นปฏิทิน '+fresh+' ใบ\n'):'')
+    +(fix?('• ขึ้นแล้วแต่ยังไม่มี event เตือน '+fix+' ใบ (จะเติมให้)\n'):'')
+    +'\nใบที่เลยกำหนดไปแล้วจะขึ้นเป็นกิจกรรมย้อนหลัง (ไม่เตือน แต่เห็นในปฏิทิน)\n\nยืนยันไหม?'))return;
   let ok=0,bad=0;
   for(let i=0;i<pend.length;i++){
     $('cal_stat').textContent='กำลังส่ง '+(i+1)+'/'+pend.length+' …';
