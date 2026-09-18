@@ -2365,7 +2365,7 @@ async function gasCall(payload){
 }
 /* ══════════════════════════════════════════════════════════════════
    ปฏิทิน Google — ส่งกำหนดชำระขึ้นปฏิทินกลาง + ตั้งเตือนล่วงหน้า
-   ผ่าน Apps Script ตัวเดียวกับที่เก็บไฟล์ (วิธีติดตั้งอยู่หัวไฟล์ Code.gs ข้อ 6-8)
+   ผ่าน Apps Script ตัวเดียวกับที่เก็บไฟล์ (วิธีติดตั้งอยู่หัวไฟล์ calendar.gs)
 
    ⚠️ หลักการสำคัญ: ปฏิทินเป็นของเสริม ห้ามทำให้งานหลักล้ม
       ส่งขึ้นปฏิทินไม่ได้ ก็ต้องบันทึก/ส่งอนุมัติ/อนุมัติ สำเร็จอยู่ดี
@@ -2470,7 +2470,7 @@ async function calTest(){
       +(j.calendar?'<br><span class="muted">ปฏิทิน: '+esc(j.calendar)+' · เขตเวลา '+esc(j.tz||'')+'</span>':'');
   }catch(e){
     $('cal_stat').innerHTML='<b style="color:#D0212B">❌ '+esc(e.message)+'</b>'
-      +'<br><span class="muted">ยังไม่ได้วางไฟล์ <code>Code.gs</code> ตัวใหม่ใน Apps Script '
+      +'<br><span class="muted">ยังไม่ได้วางไฟล์ <code>calendar.gs</code> + <code>Code.gs</code> ตัวใหม่ '
       +'หรือยังไม่ได้กด Deploy → New version?</span>';
   }
 }
