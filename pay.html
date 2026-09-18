@@ -276,7 +276,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-90</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-91</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -940,6 +940,23 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
 </div>
 
 <!-- ============ MODAL: งวดที่เลยกำหนด ============ -->
+<!-- ============ MODAL: งวดที่อาจบันทึกซ้ำ ============ -->
+<div class="modal-bg" id="dupBg">
+  <div class="modal" id="dupModal" style="max-width:1080px">
+    <button class="expand-btn" onclick="toggleWide('dupModal',this)">⛶ ขยายเต็มจอ</button>
+    <h3 style="color:#B45309">🟠 งวดที่อาจบันทึกซ้ำ</h3>
+    <div class="sub-note">ระบบจับให้จาก 3 รูปแบบ — บิลเดียวกันยอดเท่ากัน · ชื่องวดเดียวกันในบิลเดียวกัน ·
+      วันเดียวกันยอดเท่ากันแต่คนละบิล
+      <br>ถ้าตรวจแล้วไม่ใช่ซ้ำจริง กด <b>✓ ไม่ใช่ซ้ำ</b> เพื่อซ่อนกลุ่มนั้น (ซ่อนแค่เบราว์เซอร์เครื่องนี้)</div>
+    <div id="dupBody" class="scroll"></div>
+    <div class="row" style="margin-top:12px;justify-content:flex-end">
+      <button class="btn mini ghost" onclick="dupResetOk()" title="เอากลุ่มที่เคยกด ไม่ใช่ซ้ำ กลับมาแสดง">↺ แสดงที่ซ่อนไว้ทั้งหมด</button>
+      <div style="flex:1"></div>
+      <button class="btn ghost" onclick="$('dupBg').style.display='none'">ปิด</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="overdueBg">
   <div class="modal" id="overdueModal" style="max-width:1000px">
     <button class="expand-btn" onclick="toggleWide('overdueModal',this)">⛶ ขยายเต็มจอ</button>
@@ -1162,7 +1179,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v09-90';
+const PAY_VERSION='v09-91';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -3465,15 +3482,169 @@ function renderChSum(rows){
 
 function renderPlanAlert(){
   if(!$('plAlert'))return;
+  let h='';
   const over=overduePlans();
-  if(!over.length){$('plAlert').innerHTML='';return;}
-  $('plAlert').innerHTML=`<div style="background:#FCE4E4;border:1px solid #F3C6C9;border-left:6px solid #D0212B;
+  if(over.length)h+=`<div style="background:#FCE4E4;border:1px solid #F3C6C9;border-left:6px solid #D0212B;
       border-radius:10px;padding:11px 14px;margin:10px 0;font-size:12.5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <b style="color:#D0212B">⛔ มี ${over.length} งวดที่ถึง/เลยกำหนดจ่ายแล้ว แต่ยังไม่ได้ส่งยอด</b>
     <span class="muted">เร็วสุด ${esc(over[0].pay_date||'')}</span>
     <div style="flex:1"></div>
     <button class="btn mini" onclick="showOverdue()">ดูรายการ →</button>
   </div>`;
+  /* แถบซ้ำ — ต้องค้างอยู่จนกว่าจะแก้จริง เพราะคนกดผ่านเตือนในฟอร์มไปแล้ว */
+  const dup=dupGroups(false);
+  if(dup.length){
+    const cnt=dup.reduce((s,g)=>s+g.rows.length,0);
+    const sum=dup.reduce((s,g)=>s+g.rows.reduce((x,p)=>x+thbOf(p),0),0);
+    h+=`<div style="background:#FDF3DC;border:1px solid #E6D08A;border-left:6px solid #C9A84C;
+        border-radius:10px;padding:11px 14px;margin:10px 0;font-size:12.5px;display:flex;
+        align-items:center;gap:10px;flex-wrap:wrap">
+      <b style="color:#8a6d1f">🟠 พบ ${dup.length} จุดที่อาจบันทึกงวดซ้ำ</b>
+      <span class="muted">${cnt} งวด · รวม ${money(sum)} ฿</span>
+      <div style="flex:1"></div>
+      <button class="btn mini" onclick="showDup()">ตรวจสอบ →</button>
+    </div>`;
+  }
+  $('plAlert').innerHTML=h;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   จับงวดที่อาจบันทึกซ้ำ — โชว์ค้างไว้บนหน้าแผนจ่ายเงิน
+   ───────────────────────────────────────────────────────────────
+   ⚠️ เดิมเตือนเฉพาะตอนกดบันทึกในฟอร์ม (#payWarn) แล้วกดบันทึกอีกครั้งก็ผ่านได้
+      คนกดผ่านแล้วก็จบ ไม่มีใครเห็นอีก → ของซ้ำค้างในแผนจนถึงวันโอนจริง
+   ✅ ย้ายมาเป็นแถบค้างบนหน้าแผน จนกว่าจะลบ/แก้ หรือยืนยันว่าไม่ซ้ำ
+   ═══════════════════════════════════════════════════════════════ */
+const DUP_OK_KEY='masaru_pay_dupok';
+function dupOkSet(){
+  try{ return new Set(JSON.parse(localStorage.getItem(DUP_OK_KEY)||'[]')); }catch(e){ return new Set(); }
+}
+function dupMarkOk(k){
+  const st=dupOkSet(); st.add(k);
+  try{ localStorage.setItem(DUP_OK_KEY,JSON.stringify([...st])); }catch(e){}
+  refreshAlerts(); showDup(true);
+}
+function dupResetOk(){
+  try{ localStorage.removeItem(DUP_OK_KEY); }catch(e){}
+  refreshAlerts(); showDup(true);
+}
+/* คืนกลุ่มที่น่าสงสัย — คีย์ผูกกับ id ของงวดในกลุ่ม
+   เพิ่มงวดซ้ำใบใหม่ = คีย์เปลี่ยน = เด้งกลับมาเตือนอีก ไม่ถูกซ่อนตลอดไป */
+function dupGroups(all){
+  const rows=PAYS.filter(p=>p.status!=='rejected'&&(+p.amount||0)>0);
+  const out=[], seen={};
+  const add=(kind,label,note,list)=>{
+    const key=kind+':'+list.map(p=>String(p.id)).sort().join('|');
+    if(seen[key])return; seen[key]=1;
+    out.push({key,kind,label,note,rows:list.slice().sort((a,b)=>
+      String(a.pay_date||'').localeCompare(String(b.pay_date||'')))});
+  };
+  const group=(keyOf)=>{const m={};
+    rows.forEach(p=>{const k=keyOf(p); if(k==null)return; (m[k]=m[k]||[]).push(p);});
+    return m;};
+
+  /* ① บิลเดียวกัน ยอดเท่ากัน — เคสคลาสสิก กดบันทึกงวดเดิมซ้ำ */
+  const g1=group(p=>String(p.bill_id)+'|'+(+p.amount||0).toFixed(2));
+  Object.keys(g1).forEach(k=>{const g=g1[k]; if(g.length<2)return;
+    const b=billOf(g[0].bill_id);
+    add('bill','บิล '+(b.po_number||'-')+' · ยอด '+money(g[0].amount)+' '+curSym(b.currency),
+      'บิลเดียวกัน ยอดเท่ากัน '+g.length+' งวด',g);});
+
+  /* ② บิลเดียวกัน ชื่องวดเดียวกัน — "มัดจำครั้งที่ 1" สองรอบ */
+  const g2=group(p=>{const nm=String(p.installment||'').trim();
+    return nm?(String(p.bill_id)+'|'+nm):null;});
+  Object.keys(g2).forEach(k=>{const g=g2[k]; if(g.length<2)return;
+    const b=billOf(g[0].bill_id);
+    add('inst','บิล '+(b.po_number||'-')+' · งวด "'+(g[0].installment||'')+'"',
+      'ชื่องวดเดียวกันในบิลเดียวกัน '+g.length+' รายการ',g);});
+
+  /* ③ วันเดียวกัน ยอดเท่ากัน แต่คนละบิล — เสี่ยงโอนซ้ำให้ผู้รับเดียวกัน */
+  const g3=group(p=>p.pay_date?(p.pay_date+'|'+(+p.amount||0).toFixed(2)):null);
+  Object.keys(g3).forEach(k=>{const g=g3[k];
+    const bs=new Set(g.map(p=>String(p.bill_id)));
+    if(g.length<2||bs.size<2)return;          /* บิลเดียว = เข้าข้อ ① ไปแล้ว */
+    add('day','วันที่ '+g[0].pay_date+' · ยอด '+money(g[0].amount),
+      'วันเดียวกัน ยอดเท่ากัน แต่คนละบิล '+bs.size+' บิล',g);});
+
+  const ord={bill:0,inst:1,day:2};
+  out.sort((a,b)=>(ord[a.kind]-ord[b.kind])||a.label.localeCompare(b.label));
+  if(all)return out;
+  const ok=dupOkSet();
+  return out.filter(g=>!ok.has(g.key));
+}
+
+function showDup(keepOpen){
+  const all=dupGroups(true), live=dupGroups(false);
+  const hid=all.length-live.length;
+  if(!all.length){
+    if(keepOpen)$('dupBg').style.display='none';
+    return toast('ไม่พบงวดที่น่าสงสัยว่าซ้ำ ✅');
+  }
+  const cnt=live.reduce((s,g)=>s+g.rows.length,0);
+  const sum=live.reduce((s,g)=>s+g.rows.reduce((x,p)=>x+thbOf(p),0),0);
+  const KIND={bill:'🟠 ยอดซ้ำในบิลเดียวกัน',inst:'🟠 ชื่องวดซ้ำ',day:'🟡 วันเดียวกันยอดเท่ากัน'};
+  let h=`<div style="display:flex;gap:20px;flex-wrap:wrap;background:#FDF3DC;border-radius:10px;
+      padding:11px 14px;margin-bottom:12px;font-size:12.5px">
+    <div><div class="muted" style="font-size:11px">กลุ่มที่น่าสงสัย</div>
+      <b style="font-size:16px;color:#B45309">${live.length}</b></div>
+    <div><div class="muted" style="font-size:11px">งวดที่เกี่ยวข้อง</div><b style="font-size:16px">${cnt}</b></div>
+    <div><div class="muted" style="font-size:11px">ยอดรวม (บาท)</div><b style="font-size:16px">${money(sum)}</b></div>
+    ${hid?`<div><div class="muted" style="font-size:11px">ซ่อนไว้ (ยืนยันว่าไม่ซ้ำ)</div>
+      <b style="font-size:16px;color:#94A3B8">${hid}</b></div>`:''}
+  </div>`;
+  if(!live.length)h+='<div class="empty">กลุ่มที่เหลือถูกยืนยันว่าไม่ซ้ำไว้ทั้งหมด — '
+    +'กด ↺ ด้านล่างเพื่อเอากลับมาแสดง</div>';
+  live.forEach(g=>{
+    h+=`<div style="border:1px solid var(--line);border-radius:10px;margin-bottom:12px;overflow:hidden">
+      <div style="background:#F7F9FC;padding:9px 13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <b style="font-size:12.5px">${KIND[g.kind]||'🟠 ซ้ำ'}</b>
+        <span style="font-size:12.5px">${esc(g.label)}</span>
+        <span class="muted" style="font-size:11.5px">— ${esc(g.note)}</span>
+        <div style="flex:1"></div>
+        <button class="btn mini ghost" onclick="dupMarkOk('${esc(g.key)}')"
+          title="ตรวจแล้วไม่ใช่ซ้ำ — ซ่อนกลุ่มนี้ (เฉพาะเบราว์เซอร์เครื่องนี้)">✓ ไม่ใช่ซ้ำ</button>
+      </div>
+      <table><thead><tr><th style="width:96px">วันที่</th><th>PO</th><th>SKU</th><th>งวด</th>
+        <th class="right">ยอด</th><th class="right">บาท</th><th>ช่องทาง</th><th>จ่ายในนาม</th>
+        <th>ผู้รับผิดชอบ</th><th>สถานะ</th>${canEdit?'<th style="width:120px"></th>':''}</tr></thead><tbody>`;
+    g.rows.forEach(p=>{
+      const b=billOf(p.bill_id);
+      h+=`<tr>
+        <td><b>${esc(p.pay_date||'-')}</b></td>
+        <td><b>${esc(b.po_number||'-')}</b></td>
+        <td style="font-size:11.5px">${esc(b.sku||'-')}</td>
+        <td>${esc(p.installment||'-')}</td>
+        <td class="right">${money(p.amount)} ${curSym(b.currency)}</td>
+        <td class="right"><b>${money(thbOf(p))}</b></td>
+        <td style="font-size:11.5px">${esc(p.channel||'-')}</td>
+        <td style="font-size:11.5px">${esc(p.pay_type||'-')}</td>
+        <td style="font-size:11.5px">${p.responsible?esc(p.responsible):'<span class="muted">-</span>'}</td>
+        <td>${stPill(p.status)}</td>
+        ${canEdit?`<td style="white-space:nowrap">
+          <button class="btn mini ghost" onclick="$('dupBg').style.display='none';editPay('${p.id}','${p.bill_id}')">✏️ แก้</button>
+          ${p.status!=='paid'?`<button class="btn mini ghost red" onclick="delPayDup('${p.id}')" title="ลบงวดนี้">🗑️</button>`:''}
+          </td>`:''}
+      </tr>`;});
+    h+='</tbody></table></div>';
+  });
+  $('dupBody').innerHTML=h;
+  $('dupBg').style.display='flex';
+}
+/* ลบจากในโมดัลนี้ — ลบแล้วอยู่ที่เดิม ไม่เด้งไปหน้าประวัติบิลเหมือน delPay */
+async function delPayDup(pid){
+  const pp=PAYS.find(x=>String(x.id)===String(pid));
+  if(!pp)return;
+  if(pp.status==='paid')return alert('งวดนี้จ่ายแล้ว ลบไม่ได้');
+  const b=billOf(pp.bill_id);
+  if(!confirm('ลบงวดนี้?\n\nPO '+(b.po_number||'-')+' · '+(pp.installment||'')
+    +'\nยอด '+money(pp.amount)+' '+curSym(b.currency)+' · วันที่ '+(pp.pay_date||'-')
+    +'\n\nลบแล้วกู้คืนไม่ได้'))return;
+  const {error}=await sb.from('pay_payments').delete().eq('id',pid);
+  if(error)return toast('ลบไม่สำเร็จ: '+error.message);
+  addLog(b,'deleted','ลบงวดซ้ำ '+(pp.installment||'')+' ยอด '+money(pp.amount));
+  await loadAll();
+  toast('ลบงวดซ้ำแล้ว 🗑️');
+  showDup(true);
 }
 
 /* รายการงวดที่เลยกำหนด — กดจากแถบเตือน */
