@@ -111,7 +111,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-49</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-50</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -1402,14 +1402,23 @@ async function delReq(id){
 
   await addLog(id,'deleted','ลบคำขอ '+(r.req_no||'')+' · ยอด '+money2(r.total_thb)+' ฿ · สถานะ '
     +((ST[r.status]||{}).t||r.status));
-  /* ลบ event ก่อนลบแถว — ถ้าลบแถวก่อน จะไม่เหลือ cal_event_id ให้ตามลบ
+  /* ลบ event ก่อนลบแถว — ถ้าลบแถวก่อน จะไม่เหลือ id ให้ตามลบ
      กลายเป็น event ค้างบนปฏิทินที่ไม่มีคำขอรองรับ */
-  await calDrop(r,true);
+  const calGone = await calDrop(r,true);
   const {error}=await sb.from('pay_requests').delete().eq('id',id);
   if(error)return alert('ลบไม่สำเร็จ: '+error.message);
   $('viewBg').style.display='none';
   reqDrop(id);
-  toast('ลบคำขอ '+(r.req_no||'')+' แล้ว 🗑️');
+  /* ลบในระบบสำเร็จแต่ปฏิทินไม่สำเร็จ = มีของค้างที่ทีมยังเห็น ต้องบอกให้รู้
+     ไม่ปล่อยเงียบ ไม่งั้นจะมีกำหนดชำระผีอยู่ในปฏิทินโดยไม่มีใครรู้ */
+  if(!calGone){
+    alert('ลบคำขอ '+(r.req_no||'')+' ในระบบแล้ว ✅\n\n'
+      +'แต่ลบรายการบนปฏิทินไม่สำเร็จ ⚠️\n'
+      +'กรุณาเปิด Google Calendar แล้วลบรายการที่มีเลข '+(r.req_no||'')+' ด้วยตัวเอง\n'
+      +'(ทั้งใบหลักและรายการ 🔔 ที่ขึ้นต้นด้วยกระดิ่ง)');
+    return;
+  }
+  toast('ลบคำขอ '+(r.req_no||'')+' แล้ว 🗑️ · ลบออกจากปฏิทินด้วย 📅');
 }
 
 /* ==================================================================
@@ -2746,6 +2755,7 @@ async function calPush(r,silent){
     const j=await gasCall({action:'calSave', calendarId:c.id,
       eventId:r.cal_event_id||'', date:r.due_date, time:r.due_time||'10:00',
       minutes:60, title:calTitle(r), desc:calDesc(r), color:r.status,
+      reqNo:r.req_no||'',        /* ใช้กวาด event ที่ id หายไป ให้ไม่ซ้อนกัน */
       /* โหมด event เตือนแยก: ใบหลักไม่ต้องมี reminder ของตัวเอง
          ไม่งั้นเจ้าของปฏิทินจะเด้งซ้อน 2 ที (จาก reminder + จาก event เตือน) */
       reminders: REM_EVENTS?[]:rem,
@@ -2792,14 +2802,24 @@ async function calPush(r,silent){
   }
 }
 /* ลบ event — ใช้ตอนลบคำขอ */
+/* คืน true = ปฏิทินสะอาดแล้ว · false = ลบไม่สำเร็จ ผู้เรียกต้องบอกผู้ใช้
+   ส่ง reqNo + date ไปด้วย เพื่อให้ฝั่งสคริปต์กวาดตามเลขคำขอได้
+   ไม่พึ่ง id อย่างเดียว — id หายก็ยังต้องลบให้ถูกใบ */
 async function calDrop(r,silent){
-  if(!r||!calOn())return;
+  if(!r||!calOn())return true;
   const rid=Array.isArray(r.cal_rem_ids)?r.cal_rem_ids:[];
-  if(!r.cal_event_id&&!rid.length)return;
-  try{ await gasCall({action:'calDelete',calendarId:calCfg().id,
-        eventId:r.cal_event_id||'', remIds:rid}); }
-  catch(e){ console.warn('[calendar]',e.message);
-    if(!silent)toast('⚠️ ลบ event บนปฏิทินไม่ได้ — ลบในปฏิทินเองอีกที'); }
+  if(!r.cal_event_id&&!rid.length&&!r.req_no)return true;
+  try{
+    const j=await gasCall({action:'calDelete',calendarId:calCfg().id,
+      eventId:r.cal_event_id||'', remIds:rid,
+      reqNo:r.req_no||'', date:r.due_date||''});
+    console.log('[calendar] ลบจากปฏิทิน:',j.msg||'',j);
+    return true;
+  }catch(e){
+    console.warn('[calendar] ลบไม่สำเร็จ:',e.message);
+    if(!silent)toast('⚠️ ลบ event บนปฏิทินไม่ได้ — ลบในปฏิทินเองอีกที',true);
+    return false;
+  }
 }
 /* เรียกหลังบันทึก/เปลี่ยนสถานะ — อ่านค่าล่าสุดจากฐานข้อมูลก่อน
    เพราะหัวข้อ event ต้องสะท้อนสถานะและยอดที่เพิ่งเขียนลงไป */
