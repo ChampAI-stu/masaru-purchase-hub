@@ -105,7 +105,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-38</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-39</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -611,6 +611,84 @@ const thDate=d=>{if(!d)return '-';const x=new Date(d+'T00:00:00');
 const thShort=d=>{if(!d)return '-';const x=new Date(d+'T00:00:00');
   return x.toLocaleDateString('th-TH',{day:'2-digit',month:'short'})+' '+String(x.getFullYear()+543).slice(2);};
 
+/* ==================================================================
+   ช่องวันที่ วว/ดด/ปปปป (พ.ศ.)
+   ------------------------------------------------------------------
+   input type="date" โชว์รูปแบบตามภาษาของเบราว์เซอร์ — เครื่องที่ตั้ง
+   ภาษาอังกฤษจะได้ mm/dd/yyyy สั่งจากหน้าเว็บไม่ได้ ต้องไปแก้ที่เบราว์เซอร์
+   → วิธีที่ใช้: ซ่อนช่องจริงไว้ (id เดิม ค่าเดิมเป็น yyyy-mm-dd เหมือนเดิม
+     โค้ดส่วนอื่นที่อ่าน/เขียน .value ไม่ต้องแก้อะไรเลย)
+     แล้วโชว์ช่องพิมพ์ วว/ดด/ปปปป (พ.ศ.) ทับให้ + ปุ่ม 📅 เปิดปฏิทินตัวเดิม
+   ================================================================== */
+const DMY_IDS=['r_date','r_due','pkFrom','pkTo','dpFrom','dpTo'];
+const VAL_DESC=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');
+const p2=n=>String(n).padStart(2,'0');
+function isoToDmy(iso){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(iso||'')))return '';
+  const a=iso.split('-'); return a[2]+'/'+a[1]+'/'+(+a[0]+543);
+}
+/* รับได้ทั้ง 11/08/2569 · 1/8/2569 · 11082569 · และ ค.ศ. 11/08/2026 */
+function dmyToIso(t){
+  const s=String(t||'').trim(); if(!s)return '';
+  let d,m,y;
+  const pt=s.split(/\D+/).filter(Boolean);
+  if(pt.length===3){ d=+pt[0]; m=+pt[1]; y=+pt[2]; }
+  else { const g=s.replace(/\D/g,''); if(g.length!==8)return '';
+         d=+g.slice(0,2); m=+g.slice(2,4); y=+g.slice(4); }
+  if(y>=2400)y-=543;                        /* พิมพ์เป็น พ.ศ. มา → แปลงเป็น ค.ศ. */
+  if(!(y>=1900&&y<=2999&&m>=1&&m<=12&&d>=1&&d<=31))return '';
+  const dt=new Date(y,m-1,d);               /* กัน 31/02 ที่ไม่มีจริง */
+  if(dt.getFullYear()!==y||dt.getMonth()!==m-1||dt.getDate()!==d)return '';
+  return y+'-'+p2(m)+'-'+p2(d);
+}
+function dmyUpgrade(el){
+  if(!el||el.dataset.dmy||el.type!=='date')return; el.dataset.dmy='1';
+  const wrap=document.createElement('span');
+  /* ยกความกว้าง/flex ของช่องเดิมมาไว้ที่ตัวห่อ ไม่ให้ layout เพี้ยน */
+  wrap.style.cssText='position:relative;display:flex;align-items:center;min-width:0'
+    +(el.style.flex?(';flex:'+el.style.flex):'')
+    +(el.style.maxWidth?(';max-width:'+el.style.maxWidth):'');
+  el.parentNode.insertBefore(wrap,el);
+  const tx=document.createElement('input');
+  tx.type='text'; tx.inputMode='numeric'; tx.autocomplete='off'; tx.maxLength=10;
+  tx.placeholder='วว/ดด/ปปปป';
+  tx.title=(el.title?el.title+' — ':'')+'พิมพ์ วัน/เดือน/ปี เช่น 11/08/2569 (ใส่ ค.ศ. ก็ได้ ระบบแปลงให้)';
+  tx.style.cssText='width:100%;min-width:0;padding-right:31px';
+  const bt=document.createElement('button');
+  bt.type='button'; bt.tabIndex=-1; bt.textContent='📅'; bt.title='เลือกจากปฏิทิน';
+  bt.style.cssText='position:absolute;right:3px;top:50%;transform:translateY(-50%);border:0;'
+    +'background:transparent;cursor:pointer;font-size:14px;line-height:1;padding:3px 4px';
+  wrap.appendChild(tx); wrap.appendChild(bt); wrap.appendChild(el);
+  /* ช่องจริงต้องยังถูกเรนเดอร์อยู่ (ห้าม display:none) ไม่งั้น showPicker() ใช้ไม่ได้ */
+  el.style.cssText='position:absolute;right:8px;bottom:0;width:1px;height:1px;'
+    +'min-width:0;padding:0;border:0;opacity:0;pointer-events:none';
+  const paint=()=>{ tx.value=isoToDmy(VAL_DESC.get.call(el)); tx.style.borderColor=''; };
+  const commit=()=>{
+    const iso=dmyToIso(tx.value);
+    tx.style.borderColor=(tx.value.trim()&&!iso)?'var(--red)':'';
+    if(VAL_DESC.get.call(el)===iso)return;
+    VAL_DESC.set.call(el,iso);
+    el.dispatchEvent(new Event('change',{bubbles:true}));   /* ให้ onchange เดิมทำงานต่อ */
+  };
+  tx.addEventListener('input',()=>{
+    let v=tx.value.replace(/[^\d/]/g,'').slice(0,10);
+    if(/^\d+$/.test(v)){                      /* พิมพ์เลขล้วน → เติม / ให้เอง */
+      v=v.slice(0,2)+(v.length>2?'/'+v.slice(2,4):'')+(v.length>4?'/'+v.slice(4,8):'');
+    }
+    tx.value=v;
+    if(dmyToIso(v))commit();
+  });
+  tx.addEventListener('blur',commit);
+  el.addEventListener('change',paint);
+  bt.addEventListener('click',()=>{ try{ el.showPicker(); }catch(e){ tx.focus(); } });
+  /* ดักการเขียนค่าจากโค้ด ($('r_due').value='...') ให้ช่องที่มองเห็นอัปเดตตาม */
+  Object.defineProperty(el,'value',{configurable:true,
+    get(){ return VAL_DESC.get.call(el); },
+    set(v){ VAL_DESC.set.call(el,v); paint(); }});
+  paint();
+}
+function dmyAll(){ DMY_IDS.forEach(id=>dmyUpgrade(document.getElementById(id))); }
+
 /* ---------- สถานะ ---------- */
 const ST={
   draft:       {t:'📄 ร่าง',                cls:'st-draft'},
@@ -638,6 +716,7 @@ $('logoutBtn').addEventListener('click',async()=>{
 $('portalBtn').addEventListener('click',()=>location.href='index.html');
 
 async function boot(){
+  dmyAll();
   const {data:{session}}=await sb.auth.getSession();
   if(!session){location.replace('index.html');return;}
   const md=session.user.app_metadata||{};
