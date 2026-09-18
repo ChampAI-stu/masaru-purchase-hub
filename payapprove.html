@@ -120,7 +120,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-52</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-53</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -2747,17 +2747,33 @@ function calRemOf(r){
 /* หัวข้อ event — อ่านบนปฏิทินแล้วรู้ทันทีว่าใบไหน ยอดเท่าไหร่ ขั้นไหน */
 const CAL_MARK={draft:'📝 ร่าง',submitted:'⏳ รออนุมัติ',approved:'✅ อนุมัติแล้ว',
                 paid:'💸 จ่ายแล้ว',rejected:'↩️ ตีกลับ'};
+/* ยอดที่โชว์บนปฏิทิน
+   บั๊กเดิม: โชว์ยอดบาทตรง ๆ → ใบที่ยังไม่ใส่เรทมี total_thb = 0
+   กลายเป็น "0.00 ฿" บนปฏิทิน อ่านแล้วเข้าใจว่าใบนี้ไม่มียอด ซึ่งผิดและอันตราย
+   → ยังไม่มียอดบาท ให้โชว์ยอดสกุลจริงไปก่อน + ติดป้ายว่ายังไม่ใส่เรท */
+const CUR_SIGN={CNY:'¥',USD:'$',THB:'฿'};
+function calAmt(r){
+  const thb=+r.total_thb||0, amt=+r.total_amount||0, cur=String(r.currency||'');
+  if(thb>0)return money2(thb)+' ฿';
+  if(amt>0)return money2(amt)+' '+(CUR_SIGN[cur]||cur||'');
+  return '-';
+}
+const calNoRate=r=>!(+r.total_thb>0)&&(+r.total_amount>0);
 function calTitle(r){
   return (CAL_MARK[r.status]||'')+' '+(r.req_no||'')
-    +' · '+money2(r.total_thb)+' ฿'
+    +' · '+calAmt(r)+(calNoRate(r)?' (ยังไม่ใส่เรท)':'')
     +' · '+coShort(r.pay_type)
     +(r.urgency==='urgent'?' 🔥':'');
 }
 function calDesc(r){
   const L=[];
   L.push('เลขคำขอ: '+(r.req_no||'-'));
+  /* ≈ บาท ใส่เฉพาะตอนคำนวณได้จริง — ไม่งั้นได้ "(≈ 0.00 ฿)" ที่ทำให้เข้าใจผิด */
   L.push('ยอดที่ต้องโอน: '+money2(r.total_amount)+' '+(r.currency||'')
-        +(String(r.currency||'')!=='THB'?('  (≈ '+money2(r.total_thb)+' ฿)'):''));
+        +((String(r.currency||'')!=='THB'&&+r.total_thb>0)
+          ?('  (≈ '+money2(r.total_thb)+' ฿)'):''));
+  if(calNoRate(r))L.push('⚠️ ยังไม่ได้ใส่เรทแปลง — ยอดบาทยังคำนวณไม่ได้ '
+    +'(เปิดใบในระบบแล้วใส่เรทก่อนอนุมัติ)');
   if(r.src_currency)L.push('แปลงจาก: '+money2(r.total_src)+' '+r.src_currency+' × '+r.fx_rate);
   L.push('จ่ายในนาม: '+coFull(r.pay_type));
   L.push('ช่องทางการโอน: '+(r.channel||'-'));
