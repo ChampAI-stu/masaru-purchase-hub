@@ -62,6 +62,12 @@ tr:nth-child(even) td{background:#F8FAFD}
 .modal{background:#fff;border-radius:14px;padding:20px 22px;width:100%;max-width:680px;max-height:calc(100vh - 48px);display:flex;flex-direction:column;position:relative}
 .modal .scroll{overflow:auto;flex:1 1 auto;min-height:0}
 .modal.wide{max-width:calc(100vw - 28px)!important}
+/* กันเนื้อหาข้างในดันกล่องให้กว้างเกินจอ (canvas/ตาราง/ช่องกรอกยาว ๆ) แล้วปุ่มล่างหลุดขอบ */
+.modal>*{min-width:0}
+.modal img,.modal canvas{max-width:100%}
+/* แถบปุ่มท้ายกล่อง — ติดขอบล่างไว้เสมอ ไม่ไหลตกออกนอกกล่อง */
+.modal-foot{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center;
+  position:sticky;bottom:0;background:#fff;margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
 .expand-btn{position:absolute;top:14px;right:16px;background:#EEF2F7;border:1px solid var(--line);border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--navy);z-index:2}
 /* ===== แถบสายอนุมัติ ===== */
 .flow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0}
@@ -99,7 +105,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-37</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-38</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -276,7 +282,7 @@ tr:nth-child(even) td{background:#F8FAFD}
       <div class="fld"><label>หมายเหตุเพิ่มเติม</label>
         <textarea id="r_note" rows="2"></textarea></div>
     </div>
-    <div class="row" style="margin-top:12px;justify-content:flex-end">
+    <div class="modal-foot">
       <button class="btn ghost" onclick="$('reqBg').style.display='none'">ปิด</button>
       <button class="btn ghost" onclick="saveReq('draft')">💾 บันทึกร่าง</button>
       <button class="btn gold" onclick="saveReq('submitted')">📤 ส่งอนุมัติ</button>
@@ -312,7 +318,7 @@ tr:nth-child(even) td{background:#F8FAFD}
       <span id="pkStat" class="muted" style="font-size:12.5px"></span>
     </div>
     <div class="scroll"><div id="pkBody"></div></div>
-    <div class="row" style="margin-top:12px;justify-content:flex-end">
+    <div class="modal-foot">
       <button class="btn ghost" onclick="$('pickBg').style.display='none'">ยกเลิก</button>
       <button class="btn" onclick="addPicked()">＋ เพิ่มที่เลือก</button>
     </div>
@@ -338,7 +344,7 @@ tr:nth-child(even) td{background:#F8FAFD}
       <span id="dpStat" class="muted" style="font-size:12.5px"></span>
     </div>
     <div class="scroll"><div id="dpBody"></div></div>
-    <div class="row" style="margin-top:12px;justify-content:flex-end">
+    <div class="modal-foot">
       <button class="btn ghost" onclick="$('docPickBg').style.display='none'">ปิด</button>
     </div>
   </div>
@@ -351,7 +357,7 @@ tr:nth-child(even) td{background:#F8FAFD}
     <h3 id="vTitle">คำขออนุมัติชำระเงิน</h3>
     <div id="vFlow" class="flow"></div>
     <div class="scroll" id="vBody"></div>
-    <div class="row" style="margin-top:12px;justify-content:flex-end" id="vActions"></div>
+    <div class="modal-foot" id="vActions"></div>
   </div>
 </div>
 
@@ -368,7 +374,7 @@ tr:nth-child(even) td{background:#F8FAFD}
       <button class="btn mini ghost" onclick="rejAdd('กำหนดชำระเร็วเกินไป ขอเลื่อน')">ขอเลื่อนกำหนด</button>
       <button class="btn mini ghost" onclick="rejAdd('รอตรวจสอบกับซัพพลายเออร์ก่อน')">รอตรวจสอบ</button>
     </div>
-    <div class="row" style="justify-content:flex-end">
+    <div class="modal-foot">
       <button class="btn ghost" onclick="$('rejBg').style.display='none'">ยกเลิก</button>
       <button class="btn red" onclick="doReject()">↩️ ยืนยันตีกลับ</button>
     </div>
@@ -381,7 +387,7 @@ tr:nth-child(even) td{background:#F8FAFD}
     <button class="expand-btn" onclick="toggleWide('printModal',this)">⛶ ขยายเต็มจอ</button>
     <h3>🖨️ ใบขออนุมัติการชำระเงิน</h3>
     <div class="scroll" style="background:#F4F6FA;padding:12px;border-radius:9px"><div id="docPaper"></div></div>
-    <div class="row" style="margin-top:12px;justify-content:flex-end">
+    <div class="modal-foot">
       <button class="btn ghost" onclick="$('printBg').style.display='none'">ปิด</button>
       <button class="btn" onclick="doPrint()">🖨️ พิมพ์ / บันทึก PDF</button>
     </div>
@@ -391,7 +397,7 @@ tr:nth-child(even) td{background:#F8FAFD}
 
 <!-- ============ MODAL: แจ้งโอนเงิน ============ -->
 <div class="modal-bg" id="xferBg" style="z-index:75">
-  <div class="modal" id="xferModal" style="max-width:1180px">
+  <div class="modal" id="xferModal" style="max-width:min(1180px,calc(100vw - 28px))">
     <button class="expand-btn" onclick="toggleWide('xferModal',this)">⛶ ขยายเต็มจอ</button>
     <h3 id="xfTitle">📢 แจ้งโอนเงิน</h3>
     <div class="sub-note">
@@ -400,9 +406,9 @@ tr:nth-child(even) td{background:#F8FAFD}
       <span style="color:#854F0B">⚠️ เลขบัญชี JMF / Ksher ที่ตั้งไว้ให้ <b>ตรวจสอบครั้งแรกก่อนใช้งานจริง</b> — แก้ได้ที่ ⚙️ ตั้งค่าบัญชี แล้วระบบจะจำไว้</span>
     </div>
 
-    <div style="display:grid;grid-template-columns:minmax(340px,430px) 1fr;gap:14px;align-items:start" id="xfGrid">
+    <div style="display:grid;grid-template-columns:minmax(300px,420px) minmax(0,1fr);gap:14px;align-items:start;min-width:0" id="xfGrid">
       <!-- ซ้าย: ฟอร์ม -->
-      <div class="scroll" style="max-height:66vh;padding-right:4px">
+      <div class="scroll" style="max-height:min(66vh,calc(100vh - 310px));min-height:220px;min-width:0;padding-right:4px">
         <div class="row" style="margin-bottom:8px">
           <button class="btn mini ghost" onclick="xfToggleCfg()">⚙️ ตั้งค่าบัญชี</button>
           <button class="btn mini ghost" onclick="xfReset()">↺ รีเซ็ตฟอร์ม</button>
@@ -412,14 +418,14 @@ tr:nth-child(even) td{background:#F8FAFD}
       </div>
 
       <!-- ขวา: พรีวิว -->
-      <div>
-        <div class="row" style="margin-bottom:8px">
+      <div style="min-width:0">
+        <div class="row" style="margin-bottom:8px;flex-wrap:wrap;gap:8px">
           <button class="btn" onclick="xfCopy()">📋 คัดลอกข้อความ</button>
           <button class="btn ghost" onclick="xfDownload()">🖼️ ดาวน์โหลดรูป</button>
           <div style="flex:1"></div>
           <span class="muted" style="font-size:11.5px" id="xfHint"></span>
         </div>
-        <div class="scroll" style="max-height:66vh;background:#F4F6FA;border-radius:9px;padding:12px">
+        <div class="scroll" style="max-height:min(66vh,calc(100vh - 310px));min-height:220px;min-width:0;background:#F4F6FA;border-radius:9px;padding:12px">
           <div style="font-size:11.5px;color:var(--muted);margin-bottom:5px">ข้อความ (สำหรับ copy)</div>
           <pre id="xfText" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:12px 14px;
             font-family:'Segoe UI',Tahoma,sans-serif;font-size:13px;line-height:1.85;white-space:pre-wrap;margin:0 0 14px"></pre>
@@ -429,7 +435,7 @@ tr:nth-child(even) td{background:#F8FAFD}
       </div>
     </div>
 
-    <div class="row" style="margin-top:12px;justify-content:flex-end">
+    <div class="modal-foot">
       <button class="btn ghost" onclick="$('xferBg').style.display='none'">ปิด</button>
       <button class="btn gold" onclick="xfSave()">💾 บันทึกข้อมูลแจ้งโอน</button>
     </div>
@@ -472,7 +478,7 @@ tr:nth-child(even) td{background:#F8FAFD}
     <div class="fld" style="margin-top:10px"><label>หมายเหตุเอกสารแนบ</label>
       <textarea id="pf_note" rows="2" placeholder="เช่น Invoice + ใบเสนอราคา · หรือ โอนครบตามยอด สลิป 2 ใบ (2 บัญชี)"></textarea></div>
 
-    <div class="row" style="margin-top:12px;justify-content:flex-end">
+    <div class="modal-foot">
       <button class="btn ghost" onclick="$('proofBg').style.display='none'">ปิด</button>
       <button class="btn ghost red" id="pf_clear" onclick="pfRemoveAll()" style="display:none">🗑️ ลบทั้งหมด</button>
       <button class="btn" onclick="pfSave(false)">💾 บันทึกหลักฐาน</button>
@@ -534,7 +540,7 @@ tr:nth-child(even) td{background:#F8FAFD}
       </div></div>
     <div id="cal_stat" style="font-size:12.5px;margin-bottom:10px"></div>
 
-    <div class="row" style="justify-content:flex-end;margin-top:4px">
+    <div class="modal-foot">
       <button class="btn mini ghost" onclick="pfTestGas()">🔌 ทดสอบที่เก็บไฟล์</button>
       <button class="btn mini ghost" onclick="calTest()">📅 ทดสอบปฏิทิน</button>
       <button class="btn mini ghost" onclick="calBackfill()" title="ส่งใบที่ยังไม่ขึ้นปฏิทินขึ้นไปทั้งหมด">↻ ซิงก์ย้อนหลัง</button>
