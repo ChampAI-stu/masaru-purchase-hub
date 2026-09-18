@@ -322,6 +322,8 @@
                 <option value="THB">฿ ในประเทศ (THB)</option>
               </select></div>
             <div class="fld grow"><label>ราคามาตรฐาน (¥ / ฿)</label><input id="m-price" type="number" step="0.01"/></div>
+            <div class="fld grow"><label>หมายเหตุราคา <span class="muted" style="font-weight:400">— ลงประวัติ</span></label>
+              <input id="m-note" maxlength="200" placeholder="เช่น ราคาเสนอครั้งแรกจากซัพ"/></div>
           </div>
           <button class="btn sm" onclick="saveSku()">บันทึก</button>
         </div>
@@ -336,7 +338,9 @@
         <div class="scroll">
           <table style="min-width:900px">
             <thead><tr><th>รหัสสินค้า</th><th>ชื่อสินค้า</th><th>Supplier</th>
-              <th class="right">ราคามาตรฐาน</th><th>สกุล</th><th style="white-space:nowrap"></th></tr></thead>
+              <th class="right">ราคามาตรฐาน</th><th>สกุล</th>
+              <th style="min-width:150px" title="หมายเหตุของการแก้ราคาครั้งล่าสุด">หมายเหตุราคา</th>
+              <th style="white-space:nowrap"></th></tr></thead>
             <tbody id="master-rows"></tbody>
           </table>
         </div>
@@ -374,7 +378,8 @@
             <thead><tr>
               <th>วันเวลา</th><th>รหัสสินค้า</th><th>Supplier</th>
               <th class="right">ราคาเดิม</th><th class="right">ราคาใหม่</th>
-              <th class="right">เปลี่ยน</th><th>โดย</th></tr></thead>
+              <th class="right">เปลี่ยน</th><th>โดย</th>
+              <th style="min-width:180px">หมายเหตุ</th></tr></thead>
             <tbody id="hist-rows"></tbody>
           </table>
         </div>
@@ -491,7 +496,8 @@ async function showPriceHistory(id){
     const dir=(oldp==null)?'':(newp>oldp?'ph-up':(newp<oldp?'ph-down':''));
     const change=(oldp==null)?'ตั้งราคาเริ่มต้น':`${fmt(oldp)} → <b>${fmt(newp)}</b>`;
     const who=h.changed_by?`<div class="ph-date">โดย ${esc(h.changed_by)}</div>`:'';
-    return `<div class="ph-row"><div><div class="ph-date">${dt}</div>${who}</div><div class="ph-price ${dir}">${change} ${unit}</div></div>`;
+    const note=h.note?`<div class="ph-date" style="color:#334155;white-space:pre-wrap;margin-top:2px">📝 ${esc(h.note)}</div>`:'';
+    return `<div class="ph-row"><div><div class="ph-date">${dt}</div>${who}${note}</div><div class="ph-price ${dir}">${change} ${unit}</div></div>`;
   }).join('');
 }
 
@@ -651,11 +657,11 @@ function showTab(t){
 ======================================================================== */
 let HISTORY_ALL=[];
 async function loadHistory(){
-  const tb=$('hist-rows'); if(tb) tb.innerHTML='<tr><td colspan="7" class="muted" style="padding:14px">กำลังโหลด…</td></tr>';
+  const tb=$('hist-rows'); if(tb) tb.innerHTML='<tr><td colspan="8" class="muted" style="padding:14px">กำลังโหลด…</td></tr>';
   const {data,error}=await sb.from('sku_price_history').select('*').order('changed_at',{ascending:false}).limit(3000);
   if(error){
     HISTORY_ALL=[];
-    if(tb) tb.innerHTML=`<tr><td colspan="7" class="muted" style="padding:14px">ยังโหลดประวัติไม่ได้: ${esc(error.message)}<br>ถ้ายังไม่ได้สร้างตาราง <b>sku_price_history</b> ให้รันไฟล์ add_price_history.sql ก่อนครับ</td></tr>`;
+    if(tb) tb.innerHTML=`<tr><td colspan="8" class="muted" style="padding:14px">ยังโหลดประวัติไม่ได้: ${esc(error.message)}<br>ถ้ายังไม่ได้สร้างตาราง <b>sku_price_history</b> ให้รันไฟล์ add_price_history.sql ก่อนครับ</td></tr>`;
     $('hist-info').textContent=''; return;
   }
   HISTORY_ALL=data||[]; renderHistory();
@@ -664,7 +670,7 @@ function filterHistory(){
   const q=($('hist-search').value||'').trim().toLowerCase();
   const range=$('hist-range').value, dir=$('hist-dir').value, now=Date.now();
   return HISTORY_ALL.filter(h=>{
-    if(q){ const hay=((h.sku||'')+' '+(h.supplier||'')+' '+(h.changed_by||'')).toLowerCase(); if(!hay.includes(q)) return false; }
+    if(q){ const hay=((h.sku||'')+' '+(h.supplier||'')+' '+(h.changed_by||'')+' '+(h.note||'')).toLowerCase(); if(!hay.includes(q)) return false; }
     if(range!=='all' && (now-new Date(h.changed_at).getTime() > (+range)*864e5)) return false;
     const o=h.old_price, n=Number(h.new_price);
     if(dir==='new' && o!=null) return false;
@@ -675,7 +681,7 @@ function filterHistory(){
 }
 function renderHistory(){
   const rows=filterHistory(); const tb=$('hist-rows');
-  if(!rows.length){ tb.innerHTML='<tr><td colspan="7" class="muted" style="padding:14px">— ไม่มีข้อมูลตามเงื่อนไข —</td></tr>'; $('hist-info').textContent=''; return; }
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="8" class="muted" style="padding:14px">— ไม่มีข้อมูลตามเงื่อนไข —</td></tr>'; $('hist-info').textContent=''; return; }
   tb.innerHTML=rows.map(h=>{
     const dt=new Date(h.changed_at).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'});
     const o=(h.old_price==null)?null:Number(h.old_price), n=Number(h.new_price);
@@ -687,7 +693,9 @@ function renderHistory(){
     return `<tr><td style="white-space:nowrap">${dt}</td><td><b>${esc(h.sku||'')}</b></td><td>${esc(h.supplier||'')}</td>
       <td class="right">${o==null?'<span class="muted">-</span>':fmt(o)}</td>
       <td class="right"><b>${fmt(n)}</b></td>
-      <td class="right ${cls}">${chg}</td><td>${esc(h.changed_by||'')||'<span class="muted">-</span>'}</td></tr>`;
+      <td class="right ${cls}">${chg}</td><td>${esc(h.changed_by||'')||'<span class="muted">-</span>'}</td>
+      <td style="white-space:pre-wrap;line-height:1.6">${h.note?esc(h.note)
+        :'<span class="muted">—</span>'}</td></tr>`;
   }).join('');
   $('hist-info').textContent='แสดง '+rows.length+' รายการ (ทั้งหมด '+HISTORY_ALL.length+')';
 }
@@ -700,10 +708,11 @@ function exportHistory(){
     'ราคาเดิม': h.old_price==null?'':Number(h.old_price),
     'ราคาใหม่': Number(h.new_price),
     'เปลี่ยน(¥)': h.old_price==null?'':(Number(h.new_price)-Number(h.old_price)),
-    'โดย': h.changed_by||''
+    'โดย': h.changed_by||'',
+    'หมายเหตุ': h.note||''
   }));
   const ws=XLSX.utils.json_to_sheet(out);
-  ws['!cols']=[{wch:20},{wch:16},{wch:18},{wch:12},{wch:12},{wch:12},{wch:22}];
+  ws['!cols']=[{wch:20},{wch:16},{wch:18},{wch:12},{wch:12},{wch:12},{wch:22},{wch:40}];
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'price_history');
   XLSX.writeFile(wb,'MASARU_ประวัติการอัพเดตราคา.xlsx'); toast('ส่งออกแล้ว 📥');
 }
@@ -736,11 +745,13 @@ function renderMaster(){
     <td class="m-sup">${r.supplier?esc(r.supplier):'<span class="muted">-</span>'}</td>
     <td class="right m-price">${fmt(r.standard_price)}</td>
     <td class="m-cur">${r.currency==='THB'?'฿ THB':'¥ CNY'}</td>
+    <td class="m-note" style="font-size:12.5px;color:#475569;white-space:pre-wrap;line-height:1.55">${
+      r.price_note?esc(r.price_note):'<span class="muted">—</span>'}</td>
     <td style="white-space:nowrap;padding-right:14px">
       <button class="btn sm ghost" onclick="showPriceHistory('${r.id}')">📈 ประวัติ</button>
       <button class="btn sm ghost" style="margin-left:5px" onclick="editMasterRow('${r.id}')">✏️ แก้ไข</button>
       <button class="btn sm" style="background:var(--red);margin-left:5px" onclick="delSkuById('${r.id}')">ลบ</button>
-    </td></tr>`).join('') || `<tr><td colspan="6" class="muted" style="text-align:center;padding:18px">— ไม่พบรายการที่ค้นหา —</td></tr>`;
+    </td></tr>`).join('') || `<tr><td colspan="7" class="muted" style="text-align:center;padding:18px">— ไม่พบรายการที่ค้นหา —</td></tr>`;
 }
 function editMasterRow(id){
   if(!requireEditor())return;
@@ -753,6 +764,12 @@ function editMasterRow(id){
       <option value="CNY" ${(r.currency||'CNY')!=='THB'?'selected':''}>¥ CNY</option>
       <option value="THB" ${r.currency==='THB'?'selected':''}>฿ THB</option>
     </select>`;
+  /* หมายเหตุเริ่มว่างทุกครั้ง ไม่เอาของครั้งก่อนมาใส่ให้ —
+     ไม่งั้นคนกดบันทึกผ่าน ๆ แล้วประวัติจะได้เหตุผลของการแก้ครั้งก่อนติดมาผิด ๆ */
+  tr.querySelector('.m-note').innerHTML=`<input class="ed-note" value="" maxlength="200"
+      placeholder="ทำไมราคาเปลี่ยน…" title="บันทึกลงประวัติราคา — ใส่เมื่อแก้ราคา"
+      style="width:100%;min-width:140px;padding:5px 7px;border:1px solid var(--line);border-radius:6px;font-size:12.5px"/>
+    ${r.price_note?`<div class="muted" style="font-size:11px;margin-top:3px">ครั้งก่อน: ${esc(r.price_note)}</div>`:''}`;
   tr.lastElementChild.innerHTML=`
     <button class="btn sm" onclick="saveMasterRow('${id}')">💾 บันทึก</button>
     <button class="btn sm ghost" style="margin-left:5px" onclick="renderMaster()">ยกเลิก</button>`;
@@ -760,16 +777,33 @@ function editMasterRow(id){
 async function saveMasterRow(id){
   if(!requireEditor())return;
   const tr=document.querySelector(`#master-rows tr[data-id="${id}"]`); if(!tr)return;
-  const curEl=tr.querySelector('.ed-cur');
+  const curEl=tr.querySelector('.ed-cur'), noteEl=tr.querySelector('.ed-note');
+  const old=MASTER_ALL.find(x=>String(x.id)===String(id))||{};
+  const newPrice=parseFloat(tr.querySelector('.ed-price').value)||0;
+  const note=noteEl?noteEl.value.trim():'';
+  /* ราคาเปลี่ยนแต่ไม่ใส่เหตุผล = ประวัติจะมีแถวที่อธิบายตัวเองไม่ได้
+     เตือนครั้งเดียว ไม่บังคับ เพราะบางทีก็แค่แก้พิมพ์ผิด */
+  const priceChanged=(+old.standard_price||0)!==newPrice;
+  if(priceChanged && !note &&
+     !confirm('ราคาเปลี่ยนจาก '+fmt(old.standard_price||0)+' → '+fmt(newPrice)+'\n\n'
+       +'ยังไม่ได้ใส่หมายเหตุว่าทำไมราคาเปลี่ยน\n'
+       +'ประวัติจะไม่มีเหตุผลกำกับ — บันทึกต่อไหม?'))return;
   const upd={
     product_name: tr.querySelector('.ed-name').value.trim(),
     supplier: tr.querySelector('.ed-sup').value.trim(),   // ว่าง = '' (ตรงกับ constraint)
-    standard_price: parseFloat(tr.querySelector('.ed-price').value)||0,
-    currency: curEl ? curEl.value : 'CNY'
+    standard_price: newPrice,
+    currency: curEl ? curEl.value : 'CNY',
+    /* ส่งทุกครั้ง (null เมื่อว่าง) — ไม่ให้หมายเหตุครั้งก่อนค้างไปติดประวัติครั้งนี้ */
+    price_note: note || null
   };
   const {error}=await sb.from('sku_master').update(upd).eq('id',id);
-  if(error){toast('บันทึกไม่ได้: '+error.message,true);return;}
-  toast('บันทึกแล้ว ✅'); await loadMaster();
+  if(error){
+    toast('บันทึกไม่ได้: '+error.message
+      +(/price_note/.test(error.message)?' — ยังไม่ได้รันไฟล์ sku_price_note.sql':''),true);
+    return;
+  }
+  toast(priceChanged?('บันทึกแล้ว ✅'+(note?' · เก็บหมายเหตุลงประวัติ 📝':'')):'บันทึกแล้ว ✅');
+  await loadMaster();
 }
 function mEntry(sku, supplier){
   const list=MASTER[sku]; if(!list||!list.length) return null;
@@ -784,11 +818,15 @@ async function saveSku(){
   if(!requireEditor())return;
   const row={ sku:$('m-sku').value.trim(), product_name:$('m-name').value.trim(),
     supplier:$('m-sup').value.trim(), standard_price:parseFloat($('m-price').value)||0,
-    currency: $('m-cur') ? $('m-cur').value : 'CNY' };
+    currency: $('m-cur') ? $('m-cur').value : 'CNY',
+    price_note: ($('m-note') ? $('m-note').value.trim() : '') || null };
   if(!row.sku){toast('ใส่รหัสสินค้าก่อน',true);return;}
   const {error}=await sb.from('sku_master').upsert(row,{onConflict:'sku,supplier'});
-  if(error){toast(error.message,true);return;}
-  ['m-sku','m-name','m-sup','m-price'].forEach(i=>$(i).value='');
+  if(error){
+    toast(error.message+(/price_note/.test(error.message)?' — ยังไม่ได้รันไฟล์ sku_price_note.sql':''),true);
+    return;
+  }
+  ['m-sku','m-name','m-sup','m-price','m-note'].forEach(i=>{if($(i))$(i).value='';});
   if($('m-cur')) $('m-cur').value='CNY';
   toast('บันทึก SKU แล้ว'); loadMaster();
 }
