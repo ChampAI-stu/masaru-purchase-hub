@@ -111,7 +111,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-45</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-46</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -2616,7 +2616,7 @@ const REM_DEF = [1440, 120];
            แลกกับ event เพิ่มไม่เกิน 4 อันต่อคำขอ
    false = แบบเดิม ใช้ reminder ของ event (เด้งคนเดียว ปฏิทินสะอาด) */
 const REM_EVENTS = true;
-let REMID_WARNED = false;
+let REMID_WARNED = false, GS3_WARNED = false;
 
 function calCfg(){
   let c={}; try{ c=JSON.parse(localStorage.getItem(CAL_KEY)||'{}'); }catch(e){}
@@ -2737,6 +2737,18 @@ async function calPush(r,silent){
       reminders: REM_EVENTS?[]:rem,
       remEvents: REM_EVENTS?rem:[],
       remIds: Array.isArray(r.cal_rem_ids)?r.cal_rem_ids:[]});
+    /* สคริปต์เก่าไม่คืน remIds กลับมา = ยังไม่ได้ Deploy cal-v3
+       เคสนี้อันตรายที่สุด: ใบหลักก็ไม่มี reminder (เราส่ง [] ไป) และ event เตือนก็ไม่ถูกสร้าง
+       → เงียบสนิททั้งระบบ ต้องตะโกนบอกทันที ไม่ใช่ปล่อยให้ค้นเอง */
+    if(REM_EVENTS && rem.length && !Array.isArray(j.remIds) && !GS3_WARNED){
+      GS3_WARNED=true;
+      alert('⚠️ การเตือนยังไม่ทำงาน\n\n'
+        +'calendar.gs ที่ Deploy อยู่ยังเป็นเวอร์ชันเก่า (ต้องเป็น cal-v3)\n'
+        +'ตอนนี้ event ขึ้นปฏิทินได้ แต่จะไม่มีอะไรเตือนเลย\n\n'
+        +'แก้: Apps Script → วาง calendar.gs ตัวใหม่ →\n'
+        +'Deploy → Manage deployments → ✏️ → Version: New version → Deploy\n\n'
+        +'แล้วกด ⚙️ ตั้งค่า → ↻ ซิงก์ย้อนหลัง อีกครั้ง');
+    }
     const up={
       /* ลิงก์ตรงที่ event · สร้างไม่ได้ก็ใช้ลิงก์วันนั้นแทน ดีกว่าไม่มีลิงก์เลย */
       cal_event_id:j.eventId||null, cal_link:j.link||j.dayLink||null,
@@ -2791,8 +2803,17 @@ async function calTest(){
   $('cal_stat').textContent='กำลังทดสอบ…';
   try{
     const j=await gasCall({action:'calPing',calendarId:id});
+    /* เวอร์ชันไฟล์ปฏิทินที่ Deploy อยู่จริง — ถ้าไม่ใช่ cal-v3 การเตือนจะไม่ทำงาน
+       ในโหมด event เตือนแยก เพราะสคริปต์เก่าไม่รู้จักคำสั่ง remEvents */
+    const v=String(j.version||''), v3=/^cal-v([3-9]|\d\d)/.test(v);
     $('cal_stat').innerHTML='<b style="color:#1E7145">✅ '+esc(j.msg||'เชื่อมต่อสำเร็จ')+'</b>'
-      +(j.calendar?'<br><span class="muted">ปฏิทิน: '+esc(j.calendar)+' · เขตเวลา '+esc(j.tz||'')+'</span>':'');
+      +(j.calendar?'<br><span class="muted">ปฏิทิน: '+esc(j.calendar)+' · เขตเวลา '+esc(j.tz||'')+'</span>':'')
+      +'<br><span class="muted">ไฟล์ปฏิทินที่ Deploy อยู่: <b>'+esc(v||'เก่ากว่า cal-v2 (ไม่ได้บอกเวอร์ชัน)')+'</b></span>'
+      +((REM_EVENTS&&!v3)
+        ? '<br><b style="color:#D0212B">⚠️ ต้องเป็น cal-v3 ขึ้นไป</b>'
+          +'<span class="muted"> — ตอนนี้การเตือนจะไม่ทำงานเลย '
+          +'ให้วาง calendar.gs ตัวใหม่ แล้ว Deploy → Manage deployments → ✏️ → New version</span>'
+        : '');
   }catch(e){
     $('cal_stat').innerHTML='<b style="color:#D0212B">❌ '+esc(e.message)+'</b>'
       +'<br><span class="muted">ยังไม่ได้วางไฟล์ <code>calendar.gs</code> + <code>Code.gs</code> ตัวใหม่ '
