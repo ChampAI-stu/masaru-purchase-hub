@@ -62,6 +62,8 @@ tr:nth-child(even) td{background:#F8FAFD}
 .modal{background:#fff;border-radius:14px;padding:20px 22px;width:100%;max-width:680px;max-height:calc(100vh - 48px);display:flex;flex-direction:column;position:relative}
 .modal .scroll{overflow:auto;flex:1 1 auto;min-height:0}
 .modal.wide{max-width:calc(100vw - 28px)!important}
+/* กล่องที่กำลังลากไฟล์มาวาง */
+.modal-bg.dropping .modal{outline:3px dashed var(--green);outline-offset:-6px}
 /* กันเนื้อหาข้างในดันกล่องให้กว้างเกินจอ (canvas/ตาราง/ช่องกรอกยาว ๆ) แล้วปุ่มล่างหลุดขอบ */
 .modal>*{min-width:0}
 .modal img,.modal canvas{max-width:100%}
@@ -120,7 +122,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-55</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-56</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -474,7 +476,8 @@ tr:nth-child(even) td{background:#F8FAFD}
       แนบได้ทั้ง <b>รูป</b> (JPG/PNG) และ <b>PDF</b> — หลายไฟล์ในครั้งเดียว · <b>แนบได้ทุกสถานะ</b><br>
       ตอนยื่น → แนบใบเสนอราคา / Invoice / ใบแจ้งหนี้ &nbsp;·&nbsp; ตอนโอนแล้ว → แนบสลิป<br>
       ไฟล์เก็บที่ <b>Google Drive</b> ของบริษัท ไม่เก็บลงฐานข้อมูล จึงไม่กิน Egress
-      <span class="muted">(สูงสุด 10 MB/ไฟล์)</span>
+      <span class="muted">(สูงสุด 10 MB/ไฟล์)</span><br>
+      📋 <b>แคปหน้าจอแล้วกด Ctrl+V วางที่นี่ได้เลย</b> — หรือลากไฟล์มาวางในกล่องนี้
     </div>
 
     <div class="grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -2979,12 +2982,14 @@ function openProof(id){
   PF_ITEMS=JSON.parse(JSON.stringify(proofList(r)));
   $('pfTitle').innerHTML='📎 หลักฐาน / เอกสารแนบ — '+esc(r.req_no||'')
     +' '+stPill(r.status)
-    +' <span class="muted" style="font-size:12.5px;font-weight:400">'+money2(r.total_thb)+' ฿</span>';
+    +' <span class="muted" style="font-size:12.5px;font-weight:400">'+calAmt(r)
+    +(calNoRate(r)?' (ยังไม่ใส่เรท)':'')+'</span>';
   $('pf_note').value=r.proof_note||'';
   $('pf_url').value=''; $('pf_file').value='';
   $('pf_prog').style.display='none'; $('pf_stat').textContent='';
   $('pf_savepaid').style.display=(r.status==='approved'&&(IS_MGR||IS_EXEC||IS_BUYER))?'':'none';
   renderPfList();
+  pfPasteInit();                 /* ผูกวาง/ลากไฟล์ (ผูกครั้งเดียว เรียกซ้ำไม่เป็นไร) */
   $('proofBg').style.display='flex';
 }
 function renderPfList(){
@@ -3020,8 +3025,9 @@ function pfAddLink(){
 function pfDel(i){ PF_ITEMS.splice(i,1); renderPfList(); }
 
 /* ---------- อัปโหลด ---------- */
-async function pfUpload(){
-  const files=[...$('pf_file').files]; if(!files.length)return;
+async function pfUpload(fileList){
+  const files=fileList&&fileList.length?[].slice.call(fileList):[...$('pf_file').files];
+  if(!files.length)return;
   const r=REQS.find(x=>String(x.id)===String(PF_ID))||{};
   const big=files.filter(f=>f.size>MAX_PF_MB*1024*1024);
   if(big.length)alert('ข้ามไฟล์ที่ใหญ่เกิน '+MAX_PF_MB+' MB:\n'+big.map(f=>'· '+f.name).join('\n'));
@@ -3043,6 +3049,64 @@ async function pfUpload(){
     ? '<b style="color:#B45309">อัปสำเร็จ '+ok+'/'+list.length+' — กดบันทึกเพื่อผูกกับคำขอนี้</b>'
       +'<div style="color:#D0212B;font-size:11.5px;margin-top:3px">'+fail.map(esc).join('<br>')+'</div>'
     : '<b style="color:#1E7145">✅ อัปโหลดครบ '+ok+' ไฟล์ — กดบันทึกเพื่อผูกกับคำขอนี้</b>';
+}
+/* ═══════════════════════════════════════════════════════════════
+   วางรูปจากคลิปบอร์ด (Ctrl+V) และลากไฟล์มาวาง
+   ───────────────────────────────────────────────────────────────
+   เดิมแคปหน้าจอสลิปแล้วต้องเซฟเป็นไฟล์ก่อน ค่อยกดเลือกไฟล์ = เสียเวลาทุกใบ
+   ตอนนี้ก๊อป (Ctrl+C / แคปหน้าจอ) แล้วกด Ctrl+V ในกล่องนี้ได้เลย
+   ═══════════════════════════════════════════════════════════════ */
+/* ดึงไฟล์ออกจาก clipboardData / dataTransfer — รองรับทั้งวางและลาก */
+function clipFiles(dt){
+  const out=[];
+  if(!dt)return out;
+  try{ if(dt.files&&dt.files.length)[].slice.call(dt.files).forEach(function(f){ if(f)out.push(f); }); }catch(e){}
+  if(!out.length&&dt.items){
+    try{
+      [].slice.call(dt.items).forEach(function(it){
+        if(it.kind!=='file')return;
+        const f=it.getAsFile(); if(f)out.push(f);
+      });
+    }catch(e){}
+  }
+  return out.filter(function(f){
+    return /^image\//.test(f.type||'')||/pdf$/i.test(f.type||'')||/\.pdf$/i.test(f.name||'');
+  });
+}
+/* ไฟล์จากคลิปบอร์ดชื่อ "image.png" ทุกใบ → ตั้งชื่อใหม่ไม่ให้ชนกันใน Drive */
+function pasteName(f,i){
+  if(f&&f.name&&!/^image\.(png|jpe?g)$/i.test(f.name))return f;
+  const ext=(String((f&&f.type)||'').split('/')[1]||'png').replace('jpeg','jpg');
+  const d=new Date(), p=n=>String(n).padStart(2,'0');
+  const nm='paste-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'
+    +p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())+(i?('-'+(i+1)):'')+'.'+ext;
+  try{ return new File([f],nm,{type:f.type}); }catch(e){ return f; }
+}
+/* ผูกการวาง/ลาก เข้ากับกล่องหนึ่งกล่อง
+   bgId  = โมดัลชั้นนอก (ใช้เช็คว่าเปิดอยู่ไหม — ไม่งั้นวางในหน้าอื่นก็เด้งเข้ามา)
+   onFiles = ฟังก์ชันรับ array ของไฟล์ไปอัปโหลด */
+function bindPaste(bgId,onFiles){
+  const bg=document.getElementById(bgId);
+  if(!bg||bg.dataset.pasteBound)return;
+  bg.dataset.pasteBound='1';
+  const open=()=>bg.style.display&&bg.style.display!=='none';
+  document.addEventListener('paste',function(e){
+    if(!open())return;
+    const fs=clipFiles(e.clipboardData);
+    if(!fs.length)return;
+    e.preventDefault();
+    onFiles(fs.map(pasteName));
+  });
+  /* ลากไฟล์มาวางในกล่อง */
+  bg.addEventListener('dragover',function(e){ e.preventDefault(); bg.classList.add('dropping'); });
+  bg.addEventListener('dragleave',function(e){
+    if(e.target===bg)bg.classList.remove('dropping');
+  });
+  bg.addEventListener('drop',function(e){
+    e.preventDefault(); bg.classList.remove('dropping');
+    const fs=clipFiles(e.dataTransfer);
+    if(fs.length)onFiles(fs.map(pasteName));
+  });
 }
 /* Drive ก่อน — ไม่ได้ค่อยถอยไป Supabase Storage */
 async function pfUploadOne(f,r){
@@ -3143,6 +3207,9 @@ function pfKv(id,val,locked){
   /* .kv ตั้ง display:none ไว้ใน CSS → ต้องใส่ค่าจริง ไม่ใช่ '' ไม่งั้นกลับไปซ่อนตามคลาส */
   box.style.display=locked?'block':'none';
   box.textContent=val||'—'; box.title=val||'';
+}
+function pfPasteInit(){
+  bindPaste('proofBg',function(fs){ pfUpload(fs); });
 }
 function openPfCfg(){
   const c=gasCfg(), lock=gasLocked();
