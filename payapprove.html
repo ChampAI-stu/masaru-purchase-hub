@@ -111,7 +111,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-47</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-48</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -1516,8 +1516,14 @@ function calHint(r){
       +'แต่ยังไม่ขึ้น Google Calendar (ตั้งค่าที่ ⚙️ ท้ายหน้ารายการคำขอ)';
     return;
   }
-  const rem=remTxt(remGet());
+  const list=remGet(), rem=remTxt(list);
   const who=REM_EVENTS?' (ทุกคนที่เห็นปฏิทินเด้งพร้อมกัน)':'';
+  if(!list.length){
+    el.innerHTML='<span style="color:#B45309">⚠️ ยังไม่ได้ตั้งเวลาเตือน</span> — '
+      +'ใบนี้จะขึ้นปฏิทินแต่<b>ไม่มีอะไรเตือน</b> · '
+      +'ใส่ตัวเลขแล้วกด <b>➕ เพิ่ม</b> หรือกดปุ่มใส่เร็วด้านบน';
+    return;
+  }
   el.innerHTML = (r&&r.cal_event_id)
     ? '<span style="color:#1E7145">📅 ใบนี้อยู่บนปฏิทินแล้ว</span> — แก้วัน เวลา หรือการเตือน '
       +'แล้วกดบันทึก event จะขยับตาม · ตอนนี้เตือน <b>'+esc(rem)+'</b>'+who
@@ -1793,6 +1799,7 @@ async function nextReqNo(){
   return pre+String(n).padStart(3,'0');
 }
 async function saveReq(mode){
+  remFlush();                      /* เก็บเลขที่ค้างในช่องเตือนก่อน */
   if(!$('r_due').value)  return toast('เลือกวันกำหนดชำระก่อน');
   if(!$('r_dueT').value) return toast('ใส่เวลากำหนดชำระก่อน — ใช้ตั้งเตือนบนปฏิทิน');
   if(!$('r_type').value) return toast('เลือกจ่ายในนามก่อน');
@@ -2668,6 +2675,13 @@ function remPush(m){
   if(REM_LIST.includes(m))    return toast('มี "'+remLabel(m)+'" อยู่แล้ว',true);
   if(REM_LIST.length>=REM_MAX)return toast('ใส่ได้ไม่เกิน '+REM_MAX+' อันต่อใบ — เอาอันเดิมออกก่อน',true);
   REM_LIST.push(m); remDraw();
+}
+/* พิมพ์ตัวเลขไว้แต่ยังไม่กด ➕ เพิ่ม แล้วกดบันทึกเลย — เก็บให้ก่อน ไม่ให้ค่าหลุด
+   ไม่มีตัวนี้ คนพิมพ์ 5 แล้วกดส่งอนุมัติ จะได้ใบที่ "ไม่เตือน" แบบไม่รู้ตัว */
+function remFlush(){
+  const el=$('r_remN'); if(!el)return;
+  const n=parseFloat(el.value);
+  if(!isNaN(n))remAdd();
 }
 function remAdd(){
   const n=parseFloat($('r_remN').value);
