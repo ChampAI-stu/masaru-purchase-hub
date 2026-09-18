@@ -120,7 +120,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-54</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-55</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -1401,23 +1401,22 @@ async function delReq(id){
 
   await addLog(id,'deleted','ลบคำขอ '+(r.req_no||'')+' · ยอด '+calAmt(r)+' · สถานะ '
     +((ST[r.status]||{}).t||r.status));
-  /* ลบ event ก่อนลบแถว — ถ้าลบแถวก่อน จะไม่เหลือ id ให้ตามลบ
-     กลายเป็น event ค้างบนปฏิทินที่ไม่มีคำขอรองรับ */
-  const calGone = await calDrop(r,true);
+  /* ⚠️ เดิมรอลบ event บนปฏิทินให้เสร็จก่อนค่อยลบแถว → กดลบแล้วค้าง 5-15 วิ
+     ✅ ลบแถวก่อน จอหายทันที แล้วค่อยตามเก็บปฏิทินเบื้องหลัง
+        เก็บ snapshot ของแถวไว้แล้ว (r) จึงยังรู้ event id / เลขคำขอ ที่ต้องตามลบ */
   const {error}=await sb.from('pay_requests').delete().eq('id',id);
   if(error)return alert('ลบไม่สำเร็จ: '+error.message);
   $('viewBg').style.display='none';
   reqDrop(id);
-  /* ลบในระบบสำเร็จแต่ปฏิทินไม่สำเร็จ = มีของค้างที่ทีมยังเห็น ต้องบอกให้รู้
-     ไม่ปล่อยเงียบ ไม่งั้นจะมีกำหนดชำระผีอยู่ในปฏิทินโดยไม่มีใครรู้ */
-  if(!calGone){
+  toast('ลบคำขอ '+(r.req_no||'')+' แล้ว 🗑️');
+  /* ลบปฏิทินไม่สำเร็จ = มีของค้างที่ทีมยังเห็น ต้องบอกให้รู้ ไม่ปล่อยเงียบ */
+  calDrop(r,true).then(function(gone){
+    if(gone){ toast('ลบออกจากปฏิทินแล้ว 📅'); return; }
     alert('ลบคำขอ '+(r.req_no||'')+' ในระบบแล้ว ✅\n\n'
       +'แต่ลบรายการบนปฏิทินไม่สำเร็จ ⚠️\n'
       +'กรุณาเปิด Google Calendar แล้วลบรายการที่มีเลข '+(r.req_no||'')+' ด้วยตัวเอง\n'
       +'(ทั้งใบหลักและรายการ 🔔 ที่ขึ้นต้นด้วยกระดิ่ง)');
-    return;
-  }
-  toast('ลบคำขอ '+(r.req_no||'')+' แล้ว 🗑️ · ลบออกจากปฏิทินด้วย 📅');
+  });
 }
 
 /* ==================================================================
@@ -1882,8 +1881,8 @@ async function saveReq(mode){
      ร่างที่ยังไม่เคยส่ง ไม่ขึ้นปฏิทิน เพื่อไม่ให้ปฏิทินรกด้วยใบที่ยังไม่ได้ยื่น */
   const wasOnCal = !!(REQS.find(x=>String(x.id)===String(id))||{}).cal_event_id;
   reqMerge(SAVED_ROW);
-  if(mode==='submitted'||wasOnCal)await calAfter(id,true,SAVED_ROW);
-  fillTypeFilter(); renderAll();
+  fillTypeFilter(); renderAll();                    /* จอขยับก่อน */
+  if(mode==='submitted'||wasOnCal)calBg(calAfter(id,true,SAVED_ROW));
   toast(mode==='submitted'
     ? ('ส่งอนุมัติแล้ว 📤'+(calOn()?' · ลงปฏิทินแล้ว 📅':''))
     : 'บันทึกร่างแล้ว 💾');
@@ -2060,8 +2059,8 @@ async function act(id,to){
   await addLog(id,{submitted:'submitted',approved:'approved',paid:'paid'}[to],label);
   $('viewBg').style.display='none';
   reqMerge(row);
-  await calAfter(id,true,row);  // หัวข้อ event เปลี่ยนตามสถานะ (⏳ → ✅ → 💸) พร้อมเปลี่ยนสี
   fillTypeFilter(); renderAll();
+  calBg(calAfter(id,true,row));  // หัวข้อ event เปลี่ยนตามสถานะ (⏳ → ✅ → 💸) พร้อมเปลี่ยนสี
   toast(label+'แล้ว ✅');
 }
 
@@ -2091,9 +2090,9 @@ async function doReject(){
   /* ไม่ลบ event ทิ้ง — ติดป้าย ↩️ แดงไว้ ให้เห็นบนปฏิทินว่ายังมีของค้างที่ต้องแก้
      ถ้าลบทิ้ง กำหนดชำระจะหายจากสายตาทั้งทีม */
   reqMerge(row);
-  await calAfter(REJ_ID,true,row);
   fillTypeFilter(); renderAll();
   toast('ตีกลับแล้ว ↩️');
+  calBg(calAfter(REJ_ID,true,row));
 }
 
 /* ==================================================================
@@ -2852,6 +2851,16 @@ async function calPush(r,silent){
   }
 }
 /* ลบ event — ใช้ตอนลบคำขอ */
+/* ═══ ปฏิทินทำงานเบื้องหลัง ไม่ขวางการกด ═══
+   การคุยกับ Apps Script ใช้เวลา 2–10 วิ (ยิ่ง cal-v3.2 ที่กวาดปฏิทินตามเลขคำขอ ยิ่งนาน)
+   เดิม await ไว้ก่อนวาดจอ → ทุกการกด บันทึก/อนุมัติ/ตีกลับ/ลบ ช้าตามไปด้วยทั้งหมด
+   ✅ ยิงแล้วปล่อย — จอขยับทันที พอปฏิทินเสร็จค่อยวาดใหม่อีกรอบให้เห็นลิงก์ 📅 */
+function calBg(p){
+  Promise.resolve(p)
+    .then(function(){ fillTypeFilter(); renderAll(); })
+    .catch(function(e){ console.warn('[calendar]',e&&e.message); });
+}
+
 /* คืน true = ปฏิทินสะอาดแล้ว · false = ลบไม่สำเร็จ ผู้เรียกต้องบอกผู้ใช้
    ส่ง reqNo + date ไปด้วย เพื่อให้ฝั่งสคริปต์กวาดตามเลขคำขอได้
    ไม่พึ่ง id อย่างเดียว — id หายก็ยังต้องลบให้ถูกใบ */
