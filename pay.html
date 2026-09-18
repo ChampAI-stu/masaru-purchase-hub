@@ -250,6 +250,8 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   max-height:calc(100vh - 48px);display:flex;flex-direction:column;position:relative}
 .modal>h3{flex:0 0 auto}
 /* กล่องที่มีตารางยาว → เลื่อนในตัวเอง ไม่ดันหน้าต่างจนล้นจอ */
+/* กล่องที่กำลังลากไฟล์มาวาง */
+.modal-bg.dropping .modal{outline:3px dashed var(--green);outline-offset:-6px}
 .modal .scroll{overflow:auto;flex:1 1 auto;min-height:0}
 /* ปุ่มขยายเต็มจอ */
 .modal .expand-btn{position:absolute;top:14px;right:16px;background:#EEF2F7;border:1px solid var(--line);
@@ -276,7 +278,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-92</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-93</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -826,6 +828,8 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
 <div class="modal-bg" id="slipBg">
   <div class="modal" style="max-width:620px">
     <h3>📎 หลักฐานการโอนเงิน</h3>
+    <div class="muted" style="font-size:12px;margin:-4px 0 8px">
+      📋 <b>แคปหน้าจอแล้วกด Ctrl+V วางที่นี่ได้เลย</b> — หรือลากไฟล์มาวางในกล่องนี้</div>
     <div class="fld"><label>อัปโหลดไฟล์ — เลือกได้หลายไฟล์พร้อมกัน (รูป / PDF · ไฟล์ละไม่เกิน 10 MB)</label>
       <input type="file" id="sl_file" accept="image/*,application/pdf" multiple onchange="uploadSlip()"></div>
     <div class="fld"><label>หรือวางลิงก์ Google Drive / ลิงก์ไฟล์ (กด Enter เพื่อเพิ่ม)</label>
@@ -1179,7 +1183,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v09-92';
+const PAY_VERSION='v09-93';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -5738,7 +5742,7 @@ function openSlip(pid){
   SLIP_ITEMS=JSON.parse(JSON.stringify(slipList(p)));
   $('sl_note').value=p.slip_note||''; $('sl_url').value=''; $('sl_file').value='';
   $('sl_stat').textContent=''; $('sl_prog').style.display='none';
-  renderSlipList(); $('slipBg').style.display='flex';
+  renderSlipList(); slipPasteInit(); $('slipBg').style.display='flex';
 }
 function renderSlipList(){
   $('sl_count').textContent=SLIP_ITEMS.length?`(${SLIP_ITEMS.length} ไฟล์)`:'';
@@ -5831,8 +5835,61 @@ async function testGas(){
 }
 
 /* ---------- อัปโหลดหลายไฟล์ ---------- */
-async function uploadSlip(){
-  const files=[...$('sl_file').files]; if(!files.length)return;
+/* ═══════════════════════════════════════════════════════════════
+   วางรูปจากคลิปบอร์ด (Ctrl+V) และลากไฟล์มาวาง — กล่องแนบสลิป
+   ───────────────────────────────────────────────────────────────
+   เดิมแคปสลิปแล้วต้องเซฟเป็นไฟล์ก่อน ค่อยกดเลือกไฟล์ = เสียเวลาทุกงวด
+   (แท็บใบเสนอราคามีของนี้อยู่แล้วที่ bindQuotPaste — อันนี้ของกล่องสลิป)
+   ═══════════════════════════════════════════════════════════════ */
+function clipFiles(dt){
+  const out=[];
+  if(!dt)return out;
+  try{ if(dt.files&&dt.files.length)[].slice.call(dt.files).forEach(function(f){ if(f)out.push(f); }); }catch(e){}
+  if(!out.length&&dt.items){
+    try{
+      [].slice.call(dt.items).forEach(function(it){
+        if(it.kind!=='file')return;
+        const f=it.getAsFile(); if(f)out.push(f);
+      });
+    }catch(e){}
+  }
+  return out.filter(function(f){
+    return /^image\//.test(f.type||'')||/pdf$/i.test(f.type||'')||/\.pdf$/i.test(f.name||'');
+  });
+}
+/* ไฟล์จากคลิปบอร์ดชื่อ "image.png" ทุกใบ → ตั้งชื่อใหม่ไม่ให้ชนกันใน Drive */
+function pasteName(f,i){
+  if(f&&f.name&&!/^image\.(png|jpe?g)$/i.test(f.name))return f;
+  const ext=(String((f&&f.type)||'').split('/')[1]||'png').replace('jpeg','jpg');
+  const d=new Date(), p=n=>String(n).padStart(2,'0');
+  const nm='paste-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'
+    +p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())+(i?('-'+(i+1)):'')+'.'+ext;
+  try{ return new File([f],nm,{type:f.type}); }catch(e){ return f; }
+}
+function bindPaste(bgId,onFiles){
+  const bg=document.getElementById(bgId);
+  if(!bg||bg.dataset.pasteBound)return;
+  bg.dataset.pasteBound='1';
+  const open=()=>bg.style.display&&bg.style.display!=='none';
+  document.addEventListener('paste',function(e){
+    if(!open())return;
+    const fs=clipFiles(e.clipboardData);
+    if(!fs.length)return;
+    e.preventDefault();
+    onFiles(fs.map(pasteName));
+  });
+  bg.addEventListener('dragover',function(e){ e.preventDefault(); bg.classList.add('dropping'); });
+  bg.addEventListener('dragleave',function(e){ if(e.target===bg)bg.classList.remove('dropping'); });
+  bg.addEventListener('drop',function(e){
+    e.preventDefault(); bg.classList.remove('dropping');
+    const fs=clipFiles(e.dataTransfer);
+    if(fs.length)onFiles(fs.map(pasteName));
+  });
+}
+function slipPasteInit(){ bindPaste('slipBg',function(fs){ uploadSlip(fs); }); }
+async function uploadSlip(fileList){
+  const files=fileList&&fileList.length?[].slice.call(fileList):[...$('sl_file').files];
+  if(!files.length)return;
   const p=PAYS.find(x=>String(x.id)===String(SLIP_PID))||{}, b=billOf(p.bill_id)||{};
   const big=files.filter(f=>f.size>MAX_SLIP_MB*1024*1024);
   if(big.length)alert(`ข้ามไฟล์ที่ใหญ่เกิน ${MAX_SLIP_MB} MB:\n`+big.map(f=>'· '+f.name).join('\n'));
