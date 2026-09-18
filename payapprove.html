@@ -105,10 +105,43 @@ tr:nth-child(even) td{background:#F8FAFD}
 .sign-box{flex:1;text-align:center}
 .sign-line{border-top:1px dotted #333;margin:40px 10px 6px}
 .sign-sub{color:#555;font-size:11px}
+/* ===== แผ่นพิมพ์หลักฐานแนบ ===== */
+.pp{background:#fff;color:#111;width:780px;max-width:100%;margin:0 auto}
+.pp-head{border:1px solid #333;padding:12px 16px;margin-bottom:10px}
+.pp-head h1{font-size:17px;font-weight:800;text-align:center;margin:0 0 2px}
+.pp-head .no{text-align:center;font-size:13px;color:#333;margin-bottom:9px}
+.pp-head table{width:100%;border-collapse:collapse;font-size:12px}
+.pp-head td{border:1px solid #666;padding:5px 8px;color:#000}
+.pp-head td.k{background:#EFEFEF;font-weight:700;width:118px;white-space:nowrap}
+.pp-note{border:1px solid #666;border-top:0;padding:6px 8px;font-size:12px;line-height:1.7;white-space:pre-wrap}
+.pp-page{page-break-inside:avoid;break-inside:avoid}
+.pp-page+.pp-page{page-break-before:always;break-before:page;margin-top:14px}
+.pp-grid{display:grid;gap:8px}
+.pp-cell{border:1px solid #999;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;background:#fff}
+.pp-cap{font-size:11px;padding:4px 7px;background:#F0F0F0;border-bottom:1px solid #999;
+  color:#000;word-break:break-all;line-height:1.45}
+.pp-box{flex:1;display:flex;align-items:center;justify-content:center;padding:5px;min-height:60px}
+.pp-box img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.pp-miss{font-size:12px;color:#555;text-align:center;line-height:1.7;padding:14px 8px}
+/* ความสูงของช่องรูป — ให้เต็มหน้า A4 พอดีตามจำนวนรูปต่อหน้า */
+.pp-1 .pp-grid{grid-template-columns:1fr}
+.pp-1 .pp-box{height:232mm}
+.pp-2 .pp-grid{grid-template-columns:1fr}
+.pp-2 .pp-box{height:112mm}
+.pp-4 .pp-grid{grid-template-columns:1fr 1fr}
+.pp-4 .pp-box{height:110mm}
+/* หน้าแรกมีหัวเอกสาร → ช่องรูปเตี้ยลง ไม่ให้ดันตกหน้า */
+.pp-1 .pp-first .pp-box{height:170mm}
+.pp-2 .pp-first .pp-box{height:82mm}
+.pp-4 .pp-first .pp-box{height:80mm}
 @media print{
   body.printing *{visibility:hidden}
   body.printing #docPaper,body.printing #docPaper *{visibility:visible}
   body.printing #docPaper{position:absolute;left:0;top:0;width:100%!important;max-width:none!important;padding:0!important;border:0}
+  body.ppprint *{visibility:hidden}
+  body.ppprint #ppPaper,body.ppprint #ppPaper *{visibility:visible}
+  body.ppprint #ppPaper{position:absolute;left:0;top:0;width:100%!important;max-width:none!important;padding:0!important;border:0}
+  body.ppprint,body.ppprint *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   body.printing,body.printing *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   @page{size:A4 portrait;margin:12mm}
 }
@@ -122,7 +155,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-56</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-57</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -406,6 +439,27 @@ tr:nth-child(even) td{background:#F8FAFD}
 </div>
 
 <!-- ============ MODAL: เอกสารพิมพ์ ============ -->
+<!-- ============ MODAL: พิมพ์หลักฐานแนบทั้งชุด ============ -->
+<div class="modal-bg" id="ppBg" style="z-index:78">
+  <div class="modal" id="ppModal" style="max-width:min(960px,calc(100vw - 28px))">
+    <button class="expand-btn" onclick="toggleWide('ppModal',this)">⛶ ขยายเต็มจอ</button>
+    <h3 id="ppTitle">🖨️ พิมพ์หลักฐานแนบ</h3>
+    <div class="row" style="flex-wrap:wrap;gap:8px">
+      <span class="muted" style="font-size:12px">จำนวนรูปต่อหน้า</span>
+      <button class="btn mini" id="ppP1" onclick="ppSetPer(1)">1 รูป</button>
+      <button class="btn mini ghost" id="ppP2" onclick="ppSetPer(2)">2 รูป</button>
+      <button class="btn mini ghost" id="ppP4" onclick="ppSetPer(4)">4 รูป</button>
+      <span class="muted" id="ppInfo" style="font-size:11.5px;margin-left:4px"></span>
+    </div>
+    <div class="scroll" style="background:#F4F6FA;padding:12px;border-radius:9px;margin-top:8px">
+      <div id="ppPaper"></div></div>
+    <div class="modal-foot">
+      <button class="btn ghost" onclick="$('ppBg').style.display='none'">ปิด</button>
+      <button class="btn" id="ppBtn" onclick="ppPrint()">🖨️ พิมพ์ / บันทึก PDF</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="printBg" style="z-index:70">
   <div class="modal" id="printModal" style="max-width:900px">
     <button class="expand-btn" onclick="toggleWide('printModal',this)">⛶ ขยายเต็มจอ</button>
@@ -490,6 +544,9 @@ tr:nth-child(even) td{background:#F8FAFD}
     <div class="row" style="margin:-4px 0 10px">
       <button class="btn mini ghost" onclick="pfAddLink()">＋ เพิ่มลิงก์</button>
       <button class="btn mini ghost" onclick="openPfCfg()">⚙️ ที่เก็บไฟล์</button>
+      <div style="flex:1"></div>
+      <button class="btn mini ghost" id="pf_print" onclick="printProofs(PF_ID)"
+        title="พิมพ์เอกสารแนบทั้งชุดในครั้งเดียว">🖨️ พิมพ์หลักฐาน</button>
     </div>
 
     <div id="pf_prog" style="display:none;margin-bottom:10px">
@@ -2014,6 +2071,8 @@ function viewReq(id){
   // ปุ่มตามสถานะ + บทบาท
   let btns=`<button class="btn ghost" onclick="$('viewBg').style.display='none'">ปิด</button>
     <button class="btn ghost" onclick="printReq('${r.id}')">🖨️ พิมพ์ใบขออนุมัติ</button>`;
+  if(proofList(r).length)btns+=`<button class="btn ghost" onclick="printProofs('${r.id}')"
+    title="พิมพ์เอกสารแนบทั้งชุด">🖨️ พิมพ์หลักฐาน (${proofList(r).length})</button>`;
   if(canEditReq(r))btns+=`<button class="btn ghost" onclick="$('viewBg').style.display='none';openReq('${r.id}')">✏️ แก้ไข</button>`;
   if(canDelReq(r))btns+=`<button class="btn ghost red" onclick="delReq('${r.id}')">🗑️ ลบคำขอ</button>`;
   if(r.status==='draft'&&r.requester===ME)
@@ -2994,6 +3053,8 @@ function openProof(id){
 }
 function renderPfList(){
   $('pf_clear').style.display=PF_ITEMS.length?'':'none';
+  /* พิมพ์ได้เฉพาะไฟล์ที่บันทึกแล้ว — ไฟล์ที่เพิ่งอัปแต่ยังไม่กดบันทึก ยังไม่อยู่ในคำขอ */
+  if($('pf_print'))$('pf_print').style.display=PF_ITEMS.length?'':'none';
   if(!PF_ITEMS.length){
     $('pf_list').innerHTML='<div class="empty" style="padding:18px">ยังไม่มีไฟล์ — กด “เลือกไฟล์จากเครื่อง” หรือวางลิงก์ Drive</div>';
     return;
@@ -3131,6 +3192,125 @@ async function pfUploadOne(f,r){
     ? 'อัปขึ้น Drive ไม่ได้ และยังไม่มี bucket "slips" ในระบบ' : error.message);
   const {data}=sb.storage.from(PF_BUCKET).getPublicUrl(path);
   return {url:data.publicUrl,open:data.publicUrl,id:'',name:f.name,mime:f.type||'',src:'supabase'};
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   พิมพ์หลักฐานแนบทั้งชุดในครั้งเดียว
+   ───────────────────────────────────────────────────────────────
+   เดิมต้องเปิดดูทีละไฟล์แล้วสั่งพิมพ์ทีละใบ — ใบที่มี 7-8 สลิปคือ 8 รอบ
+   ✅ รวมทุกไฟล์ของคำขอนั้นเป็นเอกสารชุดเดียว มีหัวเอกสารบอกว่าเป็นของใบไหน
+      เลือกได้ว่าจะเอา 1 / 2 / 4 รูปต่อหน้า (สลิปสูงแคบใช้ 2 · ใบ Invoice ใช้ 1)
+   ⚠️ รูปดึงจาก Google Drive ต้องรอโหลดให้ครบก่อนสั่งพิมพ์
+      ไม่งั้นได้กระดาษเปล่า — ปุ่มพิมพ์จึงล็อกไว้จนโหลดเสร็จ
+   ═══════════════════════════════════════════════════════════════ */
+let PP_ID=null, PP_PER=1;
+const PP_KEY='masaru_pa_ppper';
+function printProofs(id){
+  const r=REQS.find(x=>String(x.id)===String(id)); if(!r)return toast('ไม่พบคำขอนี้',true);
+  if(!proofList(r).length)return toast('ใบนี้ยังไม่มีเอกสารแนบ',true);
+  PP_ID=id;
+  try{ PP_PER=+(localStorage.getItem(PP_KEY)||1)||1; }catch(e){ PP_PER=1; }
+  if([1,2,4].indexOf(PP_PER)<0)PP_PER=1;
+  $('ppTitle').textContent='🖨️ พิมพ์หลักฐานแนบ — '+(r.req_no||'');
+  ppDraw();
+  $('ppBg').style.display='flex';
+}
+function ppSetPer(n){
+  PP_PER=[1,2,4].indexOf(+n)>=0?+n:1;
+  try{ localStorage.setItem(PP_KEY,String(PP_PER)); }catch(e){}
+  ppDraw();
+}
+function ppDraw(){
+  const r=REQS.find(x=>String(x.id)===String(PP_ID))||{};
+  const list=proofList(r);
+  [1,2,4].forEach(function(n){
+    const b=$('ppP'+n); if(b)b.className='btn mini'+(PP_PER===n?'':' ghost');
+  });
+  /* หัวเอกสาร — ให้คนที่ถือกระดาษรู้ว่าเป็นหลักฐานของคำขอใบไหน ยอดเท่าไหร่ */
+  let h='<div class="pp pp-'+PP_PER+'">'
+    +'<div class="pp-page pp-first">'
+    +'<div class="pp-head"><h1>หลักฐาน / เอกสารแนบ</h1>'
+    +'<div class="no">'+esc(r.req_no||'')+'</div>'
+    +'<table><tbody>'
+    +'<tr><td class="k">ยอดที่ต้องโอน</td><td>'+esc(calAmt(r))
+      +(calNoRate(r)?' (ยังไม่ใส่เรท)':'')+'</td>'
+      +'<td class="k">สถานะ</td><td>'+esc((ST[r.status]||{}).t||r.status||'-')+'</td></tr>'
+    +'<tr><td class="k">จ่ายในนาม</td><td>'+esc(coFull(r.pay_type))+'</td>'
+      +'<td class="k">ช่องทางการโอน</td><td>'+esc(r.channel||'-')+'</td></tr>'
+    +'<tr><td class="k">กำหนดชำระ</td><td>'+esc(thDate(r.due_date))
+      +(r.due_time?(' เวลา '+esc(r.due_time)+' น.'):'')+'</td>'
+      +'<td class="k">ผู้ยื่น</td><td>'+esc(r.requester_name||r.requester||'-')+'</td></tr>'
+    +'<tr><td class="k">จำนวนไฟล์</td><td>'+list.length+' ไฟล์</td>'
+      +'<td class="k">พิมพ์เมื่อ</td><td>'+esc(new Date().toLocaleString('th-TH'))+'</td></tr>'
+    +'</tbody></table></div>'
+    +(r.proof_note?('<div class="pp-note"><b>หมายเหตุเอกสารแนบ:</b> '+esc(r.proof_note)+'</div>'):'');
+
+  /* แบ่งหน้า — หน้าแรกมีหัวเอกสารอยู่แล้ว ใส่รูปได้น้อยกว่า 1 ช่อง */
+  const first=Math.max(1,PP_PER-(PP_PER>1?1:0));
+  const pages=[]; let i=0;
+  pages.push(list.slice(0,first)); i=first;
+  while(i<list.length){ pages.push(list.slice(i,i+PP_PER)); i+=PP_PER; }
+
+  pages.forEach(function(pg,pi){
+    if(pi>0)h+='<div class="pp-page">';
+    h+='<div class="pp-grid">';
+    pg.forEach(function(it){
+      const n=list.indexOf(it)+1, th=pfThumb(it), pdf=isPdf(it);
+      h+='<div class="pp-cell"><div class="pp-cap"><b>'+n+'/'+list.length+'</b> · '
+        +esc(it.name||('ไฟล์ '+n))+(pdf?' <b>(PDF — พิมพ์ได้หน้าแรก)</b>':'')+'</div>'
+        +'<div class="pp-box">'
+        +(th
+          ? '<img src="'+esc(th.replace(/sz=w\d+/,'sz=w1600'))+'" alt="" data-pp="1"'
+            +' onerror="ppErr(this)">'
+          : '<div class="pp-miss">เปิดรูปไม่ได้จากที่นี่<br>'+esc(it.url||'')+'</div>')
+        +'</div></div>';
+    });
+    h+='</div>';
+    if(pi>0)h+='</div>';
+  });
+  h+='</div></div>';
+  $('ppPaper').innerHTML=h;
+  ppWatch();
+}
+function ppErr(img){
+  img.outerHTML='<div class="pp-miss">โหลดรูปไม่สำเร็จ — เปิดสิทธิ์ไฟล์ใน Drive '
+    +'เป็น “ผู้ที่มีลิงก์ดูได้” แล้วลองใหม่</div>';
+  ppWatch();
+}
+/* รอรูปโหลดให้ครบก่อนปล่อยให้กดพิมพ์ — กันได้กระดาษเปล่า */
+function ppWatch(){
+  const imgs=[].slice.call($('ppPaper').querySelectorAll('img[data-pp]'));
+  const done=()=>imgs.filter(function(im){ return im.complete&&im.naturalWidth>0; }).length;
+  const upd=function(){
+    const d=done(), n=imgs.length;
+    const ready=(d>=n);
+    $('ppBtn').disabled=!ready;
+    $('ppBtn').style.opacity=ready?'':'.55';
+    $('ppInfo').textContent = n
+      ? (ready?('พร้อมพิมพ์ · '+n+' รูป'):('กำลังโหลดรูป '+d+'/'+n+' …'))
+      : 'ไม่มีรูปให้พิมพ์';
+  };
+  imgs.forEach(function(im){
+    if(im.dataset.bound)return; im.dataset.bound='1';
+    im.addEventListener('load',upd); im.addEventListener('error',upd);
+  });
+  upd();
+  /* กันเคสรูปค้างนาน — 12 วิแล้วปล่อยให้กดได้ พร้อมเตือนว่ายังโหลดไม่ครบ */
+  clearTimeout(window.PP_T);
+  window.PP_T=setTimeout(function(){
+    if(!$('ppBtn').disabled)return;
+    $('ppBtn').disabled=false; $('ppBtn').style.opacity='';
+    $('ppInfo').textContent='โหลดรูปไม่ครบ — พิมพ์ได้ แต่รูปที่ยังไม่ขึ้นจะเป็นช่องว่าง';
+  },12000);
+}
+function ppPrint(){
+  document.body.classList.add('ppprint');
+  const done=function(){
+    document.body.classList.remove('ppprint');
+    window.removeEventListener('afterprint',done);
+  };
+  window.addEventListener('afterprint',done);
+  setTimeout(function(){ window.print(); setTimeout(done,1200); },60);
 }
 
 /* ---------- บันทึก / ลบ ---------- */
