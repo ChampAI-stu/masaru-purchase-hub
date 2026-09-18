@@ -105,7 +105,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-39</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-40</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -778,6 +778,95 @@ async function loadAll(){
   fillTypeFilter();
   renderAll();
 }
+/* ==================================================================
+   แก้เฉพาะแถวที่เปลี่ยน — ไม่โหลดใหม่ทั้งระบบ
+   ------------------------------------------------------------------
+   loadAll() = อ่าน 5 ตารางทั้งหมดกลับมา (หลักร้อย KB ต่อครั้ง)
+   เดิมทุกการกด บันทึก/อนุมัติ/ตีกลับ/แนบหลักฐาน เรียก loadAll() 1 รอบ
+   ✅ ใหม่: PostgREST คืนแถวที่เพิ่งเขียนมาให้ฟรีในคำขอเดิม (.select())
+      → เอาแถวนั้นแปะทับในหน่วยความจำแล้ววาดจอใหม่ = egress ~1-2 KB
+   ================================================================== */
+const reqSort=()=>REQS.sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+function reqMerge(row){                      /* แปะในหน่วยความจำ ยังไม่วาดจอ */
+  if(!row||!row.id)return false;
+  const i=REQS.findIndex(r=>String(r.id)===String(row.id));
+  if(i>=0)REQS[i]=row; else{ REQS.unshift(row); reqSort(); }
+  return true;
+}
+function reqPut(row){ if(reqMerge(row)){ fillTypeFilter(); renderAll(); } }
+function reqDrop(id){
+  const n=REQS.length;
+  REQS=REQS.filter(r=>String(r.id)!==String(id));
+  if(REQS.length!==n){ fillTypeFilter(); renderAll(); }
+}
+function logPut(row){ if(row&&row.id&&!LOGS.some(l=>String(l.id)===String(row.id)))LOGS.push(row); }
+
+/* ===== คนอื่นแก้ข้อมูล → ขึ้นเองไม่ต้องกดรีโหลด =====
+   realtime บอกแค่ id ที่เปลี่ยน (ตัว realtime กินแค่ 0.9% ของ egress)
+   → ดึงกลับมาเฉพาะแถวนั้น ~1-2 KB แทนการอ่านทั้ง 5 ตาราง
+   • รวมเหตุการณ์ที่มารัว ๆ 1.2 วิ ยิงรอบเดียว (อนุมัติรวดเดียวหลายใบ)
+   • แท็บที่ไม่ได้เปิดดูอยู่ "ไม่ดึง" — เก็บ id ไว้ก่อน ค่อยดึงตอนกลับมาดู
+     (ต้นทางของ egress บานคือแท็บทิ้งไว้เป็นสิบที่ไม่มีคนดู) */
+let LIVE_UP=new Set(), LIVE_DEL=new Set(), LIVE_T=null;
+function liveEvent(p){
+  const ev=String(p&&(p.eventType||p.type)||'').toUpperCase();
+  const id=(p&&p.new&&p.new.id)||(p&&p.old&&p.old.id);
+  if(!id)return;
+  if(ev==='DELETE'){ LIVE_DEL.add(String(id)); LIVE_UP.delete(String(id)); }
+  else LIVE_UP.add(String(id));
+  clearTimeout(LIVE_T);
+  if(document.hidden)return;                 /* ไม่ได้ดูอยู่ → ยังไม่ต้องดึง */
+  LIVE_T=setTimeout(liveFlush,1200);
+}
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&(LIVE_UP.size||LIVE_DEL.size)){ clearTimeout(LIVE_T); LIVE_T=setTimeout(liveFlush,250); }
+});
+async function liveFlush(){
+  const ids=[...LIVE_UP], dels=[...LIVE_DEL];
+  LIVE_UP=new Set(); LIVE_DEL=new Set();
+  if(!ids.length&&!dels.length)return;
+  let changed=false;
+  const cut=list=>{ const n=REQS.length; REQS=REQS.filter(r=>!list.includes(String(r.id)));
+                    if(REQS.length!==n)changed=true; };
+  if(dels.length)cut(dels);
+  if(ids.length){
+    const {data,error}=await sb.from('pay_requests').select('*').in('id',ids);
+    if(error){ newsPing('pay_requests'); return; }   /* ดึงไม่ได้ → ค่อยให้กดโหลดเอง */
+    (data||[]).forEach(row=>{ if(reqMerge(row))changed=true; });
+    /* ขอไปแล้วไม่กลับมา = ถูกลบ หรือสิทธิ์มองไม่เห็น → เอาออกจากจอ */
+    const got=new Set((data||[]).map(r=>String(r.id)));
+    const miss=ids.filter(x=>!got.has(x));
+    if(miss.length)cut(miss);
+    await liveRefs(data||[]);
+  }
+  if(changed){
+    reqSort(); fillTypeFilter(); renderAll();
+    /* ใบที่กำลังเปิดดูอยู่ ถ้าคนอื่นแก้ ให้วาดใหม่ในที่ — ไม่งั้นเห็นของเก่าค้าง
+       แล้วกดอนุมัติจากข้อมูลที่ไม่ใช่ของจริง */
+    if(VIEW_ID&&$('viewBg').style.display==='flex'
+       &&(ids.includes(String(VIEW_ID))||dels.includes(String(VIEW_ID)))){
+      REQS.some(r=>String(r.id)===String(VIEW_ID))
+        ? viewReq(VIEW_ID)
+        : ($('viewBg').style.display='none', toast('คำขอที่เปิดดูถูกลบไปแล้ว',true));
+    }
+  }
+}
+/* งวดจ่าย/บิลที่คำขอใหม่อ้างถึงแต่เครื่องนี้ยังไม่มี — ดึงเฉพาะที่ขาด
+   ไม่ดึง จอจะโชว์สกุลเงิน/ยอดต้นทางว่าง เพราะหาต้นทางไม่เจอ */
+async function liveRefs(rows){
+  const needP=new Set();
+  rows.forEach(r=>(Array.isArray(r.items)?r.items:[]).forEach(i=>{
+    if(i&&i.pay_id&&!payOf(i.pay_id))needP.add(i.pay_id); }));
+  if(!needP.size)return;
+  const {data:ps}=await sb.from('pay_payments').select('*').in('id',[...needP]);
+  (ps||[]).forEach(p=>{ if(!payOf(p.id))PAYS.push(p); });
+  const needB=new Set();
+  (ps||[]).forEach(p=>{ if(p.bill_id&&!BILLS.some(b=>String(b.id)===String(p.bill_id)))needB.add(p.bill_id); });
+  if(!needB.size)return;
+  const {data:bs}=await sb.from('pay_bills').select('*').in('id',[...needB]);
+  (bs||[]).forEach(b=>{ if(!BILLS.some(x=>String(x.id)===String(b.id)))BILLS.push(b); });
+}
+
 /* ⚠️ เดิม: ทุก event = โหลดใหม่ทั้ง 5 ตาราง ทันที
       อนุมัติทีเดียวหลายรายการ → โหลดซ้ำหลายสิบครั้ง × ทุกเบราว์เซอร์
    ✅ ใหม่: รวมเหตุการณ์ 2.5 วิ · แท็บพื้นหลังไม่โหลด (รอกลับมาดู) */
@@ -818,7 +907,7 @@ function newsClear(){
 function newsReload(){ loadAll(); }
 function subscribe(){
   sb.channel('pa-live')
-    .on('postgres_changes',{event:'*',schema:'public',table:'pay_requests'},()=>newsPing('pay_requests'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'pay_requests'},liveEvent)
     .subscribe();
 }
 const billOf=id=>BILLS.find(b=>String(b.id)===String(id))||{};
@@ -1289,7 +1378,7 @@ async function delReq(id){
   const {error}=await sb.from('pay_requests').delete().eq('id',id);
   if(error)return alert('ลบไม่สำเร็จ: '+error.message);
   $('viewBg').style.display='none';
-  await loadAll();
+  reqDrop(id);
   toast('ลบคำขอ '+(r.req_no||'')+' แล้ว 🗑️');
 }
 
@@ -1713,19 +1802,21 @@ async function saveReq(mode){
     total_amount:+tAmt.toFixed(2), total_thb:+tThb.toFixed(2), total_fee:+tFee.toFixed(2),
     status:mode, updated_at:new Date().toISOString()
   };
-  let id=EDIT_ID;
+  let id=EDIT_ID, SAVED_ROW=null;
   if(EDIT_ID){
     const old=REQS.find(x=>String(x.id)===String(EDIT_ID))||{};
     if(old.status==='rejected'&&mode==='submitted'){ rec.reject_note=null;rec.reject_by=null;rec.reject_at=null; }
-    const {error}=await sb.from('pay_requests').update(rec).eq('id',EDIT_ID);
+    /* .select() = ได้แถวหลังบันทึกกลับมาในคำขอเดิม ไม่ต้องอ่านทั้งตารางใหม่ */
+    const {data,error}=await sb.from('pay_requests').update(rec).eq('id',EDIT_ID).select().single();
     if(error)return alert('บันทึกไม่สำเร็จ: '+error.message);
+    SAVED_ROW=data;
   }else{
     rec.req_no=await nextReqNo();
     rec.requester=ME; rec.requester_name=MY_NAME;
-    const {data,error}=await sb.from('pay_requests').insert(rec).select('id').single();
+    const {data,error}=await sb.from('pay_requests').insert(rec).select().single();
     if(error)return alert('บันทึกไม่สำเร็จ: '+error.message
       +(/does not exist/i.test(error.message)?'\n\nยังไม่ได้สร้างตาราง — รันไฟล์ payapprove.sql ก่อน':''));
-    id=data.id;
+    id=data.id; SAVED_ROW=data;
   }
   await addLog(id, EDIT_ID?(mode==='submitted'?'submitted':'updated'):'created',
     mode==='submitted'?'ส่งอนุมัติ':'บันทึกร่าง');
@@ -1733,14 +1824,19 @@ async function saveReq(mode){
   /* ปฏิทิน: สร้าง event ตอนส่งอนุมัติ · ใบที่อยู่บนปฏิทินแล้วก็อัปเดตทุกครั้งที่บันทึก
      ร่างที่ยังไม่เคยส่ง ไม่ขึ้นปฏิทิน เพื่อไม่ให้ปฏิทินรกด้วยใบที่ยังไม่ได้ยื่น */
   const wasOnCal = !!(REQS.find(x=>String(x.id)===String(id))||{}).cal_event_id;
-  if(mode==='submitted'||wasOnCal)await calAfter(id,true);
-  await loadAll();
+  reqMerge(SAVED_ROW);
+  if(mode==='submitted'||wasOnCal)await calAfter(id,true,SAVED_ROW);
+  fillTypeFilter(); renderAll();
   toast(mode==='submitted'
     ? ('ส่งอนุมัติแล้ว 📤'+(calOn()?' · ลงปฏิทินแล้ว 📅':''))
     : 'บันทึกร่างแล้ว 💾');
 }
 async function addLog(reqId,action,note){
-  try{ await sb.from('pay_request_logs').insert({req_id:reqId,action,actor:ME,note:note||null}); }
+  /* .select() = ได้แถวที่เพิ่งเขียนกลับมาในคำขอเดิม ไม่คิด egress เพิ่ม
+     เก็บเข้า LOGS เลย สายอนุมัติในใบจึงขึ้นครบไม่ต้องโหลดตารางใหม่ */
+  try{ const {data}=await sb.from('pay_request_logs')
+         .insert({req_id:reqId,action,actor:ME,note:note||null}).select().single();
+       logPut(data); }
   catch(e){ console.warn('[log]',e.message); }
 }
 
@@ -1884,11 +1980,11 @@ async function fixReqCur(id,should){
   if(!confirm('แก้หน่วยเงินของ '+(r.req_no||'')+'\n\n'
     +'จาก '+(r.currency||'-')+'  →  '+should+'\n\n'
     +'ยอด '+money2(r.total_amount)+' ไม่เปลี่ยน เปลี่ยนแค่หน่วยที่แสดง'))return;
-  const {error}=await sb.from('pay_requests')
-    .update({currency:should,updated_at:new Date().toISOString()}).eq('id',id);
+  const {data:up,error}=await sb.from('pay_requests')
+    .update({currency:should,updated_at:new Date().toISOString()}).eq('id',id).select().single();
   if(error)return alert('แก้ไม่สำเร็จ: '+error.message);
   await addLog(id,'updated','แก้หน่วยเงิน '+(r.currency||'-')+' → '+should+' (ตามบิลใน Purchase Board)');
-  await loadAll();
+  reqPut(up);
   viewReq(id);                      // เปิดใบเดิมค้างไว้ ให้เห็นผลทันที
   toast('แก้หน่วยเงินเป็น '+should+' แล้ว ✅');
 }
@@ -1901,12 +1997,13 @@ async function act(id,to){
   const now=new Date().toISOString();
   if(to==='approved'){up.approved_by=ME;up.approved_at=now;}
   if(to==='paid'){up.paid_by=ME;up.paid_at=now;}
-  const {error}=await sb.from('pay_requests').update(up).eq('id',id);
+  const {data:row,error}=await sb.from('pay_requests').update(up).eq('id',id).select().single();
   if(error)return alert('ไม่สำเร็จ: '+error.message);
   await addLog(id,{submitted:'submitted',approved:'approved',paid:'paid'}[to],label);
   $('viewBg').style.display='none';
-  await calAfter(id,true);      // หัวข้อ event เปลี่ยนตามสถานะ (⏳ → ✅ → 💸) พร้อมเปลี่ยนสี
-  await loadAll();
+  reqMerge(row);
+  await calAfter(id,true,row);  // หัวข้อ event เปลี่ยนตามสถานะ (⏳ → ✅ → 💸) พร้อมเปลี่ยนสี
+  fillTypeFilter(); renderAll();
   toast(label+'แล้ว ✅');
 }
 
@@ -1927,16 +2024,18 @@ function rejAdd(t){
 async function doReject(){
   const note=$('rejNote').value.trim();
   if(!note)return toast('ใส่เหตุผลที่ตีกลับก่อน');
-  const {error}=await sb.from('pay_requests')
+  const {data:row,error}=await sb.from('pay_requests')
     .update({status:'rejected',reject_note:note,reject_by:ME,reject_at:new Date().toISOString(),
-             updated_at:new Date().toISOString()}).eq('id',REJ_ID);
+             updated_at:new Date().toISOString()}).eq('id',REJ_ID).select().single();
   if(error)return alert('ไม่สำเร็จ: '+error.message);
   await addLog(REJ_ID,'rejected',note);
   $('rejBg').style.display='none';$('viewBg').style.display='none';
   /* ไม่ลบ event ทิ้ง — ติดป้าย ↩️ แดงไว้ ให้เห็นบนปฏิทินว่ายังมีของค้างที่ต้องแก้
      ถ้าลบทิ้ง กำหนดชำระจะหายจากสายตาทั้งทีม */
-  await calAfter(REJ_ID,true);
-  await loadAll();toast('ตีกลับแล้ว ↩️');
+  reqMerge(row);
+  await calAfter(REJ_ID,true,row);
+  fillTypeFilter(); renderAll();
+  toast('ตีกลับแล้ว ↩️');
 }
 
 /* ==================================================================
@@ -2514,10 +2613,11 @@ async function calPush(r,silent){
       eventId:r.cal_event_id||'', date:r.due_date, time:r.due_time||'10:00',
       minutes:60, title:calTitle(r), desc:calDesc(r),
       reminders:calRem(), emailRemind:!!c.mail, color:r.status});
-    await sb.from('pay_requests').update({
+    const {data:up}=await sb.from('pay_requests').update({
       /* ลิงก์ตรงที่ event · สร้างไม่ได้ก็ใช้ลิงก์วันนั้นแทน ดีกว่าไม่มีลิงก์เลย */
       cal_event_id:j.eventId||null, cal_link:j.link||j.dayLink||null,
-      cal_synced_at:new Date().toISOString()}).eq('id',r.id);
+      cal_synced_at:new Date().toISOString()}).eq('id',r.id).select().single();
+    reqMerge(up);        /* แปะในหน่วยความจำ ผู้เรียกวาดจอรอบเดียวตอนจบ */
     if(!silent)toast('ลงปฏิทินแล้ว 📅');
     return true;
   }catch(e){
@@ -2535,11 +2635,13 @@ async function calDrop(r,silent){
 }
 /* เรียกหลังบันทึก/เปลี่ยนสถานะ — อ่านค่าล่าสุดจากฐานข้อมูลก่อน
    เพราะหัวข้อ event ต้องสะท้อนสถานะและยอดที่เพิ่งเขียนลงไป */
-async function calAfter(id,silent){
+async function calAfter(id,silent,row){
   if(!calOn())return;
   try{
-    const {data}=await sb.from('pay_requests').select('*').eq('id',id).single();
-    if(data)await calPush(data,silent);
+    /* มีแถวล่าสุดอยู่ในมือแล้ว (จาก .select() ตอนบันทึก) → ไม่ต้องอ่านซ้ำ */
+    let d=row&&String(row.id)===String(id)?row:null;
+    if(!d){ const {data}=await sb.from('pay_requests').select('*').eq('id',id).single(); d=data; }
+    if(d)await calPush(d,silent);
   }catch(e){ console.warn('[calendar]',e.message); }
 }
 
@@ -2574,7 +2676,7 @@ async function calBackfill(){
   }
   $('cal_stat').innerHTML='<b style="color:'+(bad?'#B45309':'#1E7145')+'">'
     +(bad?'⚠️':'✅')+' ส่งขึ้นปฏิทินแล้ว '+ok+' ใบ'+(bad?(' · ไม่สำเร็จ '+bad+' ใบ'):'')+'</b>';
-  await loadAll();
+  fillTypeFilter(); renderAll();
 }
 
 const fileToB64=f=>new Promise((res,rej)=>{
@@ -2700,13 +2802,13 @@ async function pfSave(alsoPaid){
             proof_at:first?new Date().toISOString():null, proof_by:first?ME:null,
             updated_at:new Date().toISOString()};
   if(alsoPaid){ up.status='paid'; up.paid_by=ME; up.paid_at=new Date().toISOString(); }
-  const {error}=await sb.from('pay_requests').update(up).eq('id',PF_ID);
+  const {data:row,error}=await sb.from('pay_requests').update(up).eq('id',PF_ID).select().single();
   if(error)return alert(/proof|column/i.test(error.message)
     ? 'ยังไม่ได้เพิ่มคอลัมน์หลักฐาน\n\nกรุณารันไฟล์ payapprove_xfer.sql บน Supabase ก่อน\n\nรายละเอียด: '+error.message
     : 'บันทึกไม่สำเร็จ: '+error.message);
   await addLog(PF_ID,'proof','แนบเอกสาร '+PF_ITEMS.length+' ไฟล์'+(alsoPaid?' + ยืนยันจ่ายแล้ว':''));
   $('proofBg').style.display='none'; $('viewBg').style.display='none';
-  await loadAll();
+  reqPut(row);
   toast('บันทึกหลักฐาน '+PF_ITEMS.length+' ไฟล์แล้ว ✅');
 }
 async function pfRemoveAll(){
@@ -2718,11 +2820,11 @@ async function pfRemoveAll(){
     }
   }
   PF_ITEMS=[]; renderPfList();
-  const {error}=await sb.from('pay_requests')
+  const {data:row,error}=await sb.from('pay_requests')
     .update({proofs:[],proof_note:null,proof_at:null,proof_by:null,
-             updated_at:new Date().toISOString()}).eq('id',PF_ID);
+             updated_at:new Date().toISOString()}).eq('id',PF_ID).select().single();
   if(error)return alert('ลบไม่สำเร็จ: '+error.message);
-  await loadAll(); toast('ลบหลักฐานแล้ว');
+  reqPut(row); toast('ลบหลักฐานแล้ว');
 }
 
 /* ---------- ดูแบบแกลเลอรี ---------- */
