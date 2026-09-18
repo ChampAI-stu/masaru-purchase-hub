@@ -70,6 +70,15 @@ tr:nth-child(even) td{background:#F8FAFD}
 .kv{display:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;
   color:#334155;background:#F4F6FA;border:1px solid var(--line);border-radius:7px;padding:7px 10px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ปุ่มเลือกช่วงเวลาเตือน — เลือกแล้วเขียว · เทา = ช่วงนั้นใช้ไม่ได้กับกำหนดชำระที่ตั้งไว้ */
+.rem-op{border:1px solid var(--line);background:#fff;color:#334155;border-radius:16px;
+  padding:5px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;
+  line-height:1.4;transition:background .12s,border-color .12s}
+.rem-op:hover:not(:disabled){border-color:#94A3B8;background:#F8FAFC}
+.rem-op.on{background:#EAF3DE;border-color:#7FA855;color:#2F5D1E}
+.rem-op:disabled{background:#F1F5F9;border-color:#E2E8F0;color:#94A3B8;
+  cursor:not-allowed;text-decoration:line-through}
+.rem-op.extra{border-style:dashed}
 .lockpill{display:none;font-size:11px;font-weight:700;color:#7A5A10;background:#FDF3DC;
   border:1px solid #E6D08A;border-radius:12px;padding:2px 9px;margin-left:7px;vertical-align:middle}
 .modal-foot{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center;
@@ -111,7 +120,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-50</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-52</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -203,32 +212,16 @@ tr:nth-child(even) td{background:#F8FAFD}
         <div class="fld"><label>วันที่ยื่น</label><input type="date" id="r_date"></div>
         <div class="fld"><label>กำหนดชำระ ★ <span class="muted" style="font-weight:400">— วันและเวลา</span></label>
           <div style="display:flex;gap:6px">
-            <input type="date" id="r_due" style="flex:1 1 auto;min-width:0">
+            <input type="date" id="r_due" style="flex:1 1 auto;min-width:0"
+                   onchange="calHint(curReq())">
             <input type="time" id="r_dueT" step="900" style="flex:0 0 105px;width:105px"
-                   title="เวลาที่ต้องโอน — ใช้ตั้งเตือนบนปฏิทิน">
+                   title="เวลาที่ต้องโอน — ใช้ตั้งเตือนบนปฏิทิน"
+                   onchange="calHint(curReq())" oninput="calHint(curReq())">
           </div>
           <div style="margin:8px 0 0">
-            <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
-              <span class="muted" style="font-size:11.5px;padding-top:5px;flex:0 0 auto">🔔 เตือนล่วงหน้า</span>
-              <div id="r_remChips" style="display:flex;flex-wrap:wrap;gap:6px;flex:1 1 200px;min-width:0"></div>
-            </div>
-            <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center">
-              <input type="number" id="r_remN" min="0" step="0.5" placeholder="30"
-                     title="ใส่ตัวเลข เช่น 30 นาที · 1.5 ชั่วโมง · 2 วัน"
-                     style="flex:0 0 72px;width:72px;padding:5px 7px;font-size:12.5px"
-                     onkeydown="if(event.key==='Enter'){event.preventDefault();remAdd();}">
-              <select id="r_remU" style="flex:0 0 92px;width:92px;padding:5px 7px;font-size:12.5px">
-                <option value="1">นาที</option>
-                <option value="60">ชั่วโมง</option>
-                <option value="1440">วัน</option>
-              </select>
-              <button class="btn mini" type="button" onclick="remAdd()">➕ เพิ่ม</button>
-              <span class="muted" style="font-size:11px;margin-left:4px">ใส่เร็ว</span>
-              <button class="btn mini ghost" type="button" onclick="remQuick(30)">30 นาที</button>
-              <button class="btn mini ghost" type="button" onclick="remQuick(120)">2 ชม.</button>
-              <button class="btn mini ghost" type="button" onclick="remQuick(1440)">1 วัน</button>
-              <button class="btn mini ghost" type="button" onclick="remQuick(4320)">3 วัน</button>
-            </div>
+            <div class="muted" style="font-size:11.5px;margin-bottom:5px">🔔 เตือนล่วงหน้า
+              <span style="font-size:11px">— เลือกได้ไม่เกิน 4 · กดซ้ำเพื่อเอาออก</span></div>
+            <div id="r_remChips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
           </div>
           <div id="r_calHint" class="muted" style="font-size:11px;margin-top:3px"></div></div>
         <div class="fld"><label>ความเร่งด่วน</label>
@@ -1529,14 +1522,14 @@ function calHint(r){
   const who=REM_EVENTS?' (ทุกคนที่เห็นปฏิทินเด้งพร้อมกัน)':'';
   if(!list.length){
     el.innerHTML='<span style="color:#B45309">⚠️ ยังไม่ได้ตั้งเวลาเตือน</span> — '
-      +'ใบนี้จะขึ้นปฏิทินแต่<b>ไม่มีอะไรเตือน</b> · '
-      +'ใส่ตัวเลขแล้วกด <b>➕ เพิ่ม</b> หรือกดปุ่มใส่เร็วด้านบน';
+      +'ใบนี้จะขึ้นปฏิทินแต่<b>ไม่มีอะไรเตือน</b> · กดปุ่มช่วงเวลาด้านบนเพื่อเลือก';
     return;
   }
-  el.innerHTML = (r&&r.cal_event_id)
+  el.innerHTML = ((r&&r.cal_event_id)
     ? '<span style="color:#1E7145">📅 ใบนี้อยู่บนปฏิทินแล้ว</span> — แก้วัน เวลา หรือการเตือน '
       +'แล้วกดบันทึก event จะขยับตาม · ตอนนี้เตือน <b>'+esc(rem)+'</b>'+who
-    : '📅 กด <b>ส่งอนุมัติ</b> แล้วจะขึ้นปฏิทินให้เอง · เตือน <b>'+esc(rem)+'</b>'+who;
+    : '📅 กด <b>ส่งอนุมัติ</b> แล้วจะขึ้นปฏิทินให้เอง · เตือน <b>'+esc(rem)+'</b>'+who)
+    + remNotes();
 }
 function addManual(){
   ITEMS.push({pay_id:'',po:'',sku:'',inst:'',src_amount:0,src_cur:$('r_cur').value,
@@ -1808,7 +1801,6 @@ async function nextReqNo(){
   return pre+String(n).padStart(3,'0');
 }
 async function saveReq(mode){
-  remFlush();                      /* เก็บเลขที่ค้างในช่องเตือนก่อน */
   if(!$('r_due').value)  return toast('เลือกวันกำหนดชำระก่อน');
   if(!$('r_dueT').value) return toast('ใส่เวลากำหนดชำระก่อน — ใช้ตั้งเตือนบนปฏิทิน');
   if(!$('r_type').value) return toast('เลือกจ่ายในนามก่อน');
@@ -2647,12 +2639,15 @@ const calRem=()=>REM_DEF.map(Number).filter(x=>x>0&&x<=40320);
    คนอื่นเปิดใบเดียวกันได้การเตือนไม่เหมือนกัน และใบด่วนกับใบปกติแยกกันไม่ได้
    ✅ ย้ายมาเก็บที่ตัวคำขอ (cal_remind) → ติดไปกับใบ ทุกคนเห็นตรงกัน
       ค่าในกล่อง ⚙️ เหลือหน้าที่เป็น "ค่าที่ติ๊กมาให้" ตอนสร้างใบใหม่เท่านั้น */
-/* ตั้งเวลาเตือนได้อิสระ — นาที/ชั่วโมง/วัน ใส่เท่าไหร่ก็ได้ เช่น 30 นาทีก่อน
-   เก็บเป็น "จำนวนนาทีก่อนถึงกำหนด" ทั้งหมด เพราะ Google รับหน่วยนาทีเดียว
+/* ═══ ช่วงเวลาเตือน — ฟิกเป็นตัวเลือก ไม่ให้ใส่อิสระอีก ═══
+   เดิมใส่กี่นาทีก็ได้ → ใส่ 1-5 นาทีได้ ซึ่ง "ไม่การันตีว่าเด้ง"
+   เพราะ Google Calendar ตั้งนาฬิกาปลุกจากข้อมูลที่ซิงก์ลงเครื่องแล้วเท่านั้น
+   สร้าง event ก่อนเวลาเตือนไม่กี่นาที เครื่องอาจซิงก์ไม่ทัน แล้วข้ามไปเลย
+   → ตัวเลือกทั้งหมดนี้ต่ำสุด 30 นาที ซึ่งเผื่อเวลาซิงก์ไว้พอแน่นอน
    REM_CAP 40320 นาที = 28 วัน คือเพดานของ Google Calendar
-   REM_MAX 4 อัน/ใบ — ตรงกับ constraint ในไฟล์ payapprove_remind.sql
-   (Google รับได้ 5 แต่ตั้งเพดานให้ตรงกับฐานข้อมูล ไม่ให้บันทึกแล้วเด้ง error) */
+   REM_MAX 4 อัน/ใบ — ตรงกับ constraint ในไฟล์ payapprove_remind.sql */
 const REM_CAP=40320, REM_MAX=4;
+const REM_OPTS=[4320,1440,480,240,120,60,30];   /* 3 วัน · 1 วัน · 8 ชม. · 4 ชม. · 2 ชม. · 1 ชม. · 30 นาที */
 let REM_LIST=[];
 const curReq=()=>EDIT_ID?(REQS.find(x=>String(x.id)===String(EDIT_ID))||null):null;
 /* 1470 → "1 วัน 30 นาที" — อ่านรู้เรื่องกว่าเลขนาทีดิบ */
@@ -2665,41 +2660,74 @@ function remLabel(m){
 const remTxt=a=>(a&&a.length)
   ? a.slice().sort((x,y)=>y-x).map(remLabel).join(' · ')+(a.some(x=>+x>0)?' ก่อนถึงกำหนด':'')
   : 'ไม่เตือน';
+/* ═══ เตือนที่ใช้ไม่ได้จริง — ต้องบอกก่อนกดบันทึก ไม่ใช่ให้ไปงงว่าทำไมเงียบ ═══
+   ① เลยเวลาไปแล้ว → ระบบข้าม ไม่สร้างรายการเตือน (เตือนย้อนหลังไม่มีประโยชน์)
+   ② ใกล้เกินไป → มือถืออาจซิงก์ event ใหม่ไม่ทันเวลาเตือน แล้วจะไม่เด้ง
+      Google Calendar ตั้งนาฬิกาปลุกจากข้อมูลที่ "ซิงก์ลงเครื่องแล้ว" เท่านั้น
+      ถ้าเวลาเตือนมาถึงก่อนเครื่องซิงก์ทัน มันจะข้ามไปเลย ไม่เด้งย้อนหลังให้ */
+const REM_SYNC_MIN = 10;
+function remDueAt(){
+  const d=($('r_due')&&$('r_due').value)||'', t=($('r_dueT')&&$('r_dueT').value)||'';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||!/^\d{1,2}:\d{2}$/.test(t))return null;
+  const x=new Date(d+'T'+(t.length===4?('0'+t):t)+':00');
+  return isNaN(x.getTime())?null:x;
+}
+function remNotes(){
+  const due=remDueAt(); if(!due)return '';
+  const now=Date.now(), past=[], soon=[];
+  remGet().forEach(function(m){
+    const at=due.getTime()-m*60000;
+    if(at<=now)past.push(remLabel(m));
+    else if(at-now<REM_SYNC_MIN*60000)soon.push(remLabel(m));
+  });
+  let h='';
+  if(past.length)h+='<br><span style="color:#B45309">⚠️ <b>'+esc(past.join(' · '))
+    +'</b> เลยเวลาไปแล้ว — จะไม่สร้างรายการเตือนให้</span>';
+  if(soon.length)h+='<br><span style="color:#B45309">⚠️ <b>'+esc(soon.join(' · '))
+    +'</b> ใกล้เกินไป — มือถืออาจซิงก์ไม่ทันแล้วไม่เด้ง ควรเผื่ออย่างน้อย '
+    +REM_SYNC_MIN+' นาที</span>';
+  return h;
+}
+/* ช่วงเวลานี้ใช้ได้กับกำหนดชำระที่ตั้งไว้ไหม
+   คืน '' = ใช้ได้ · ข้อความ = เหตุผลที่ใช้ไม่ได้ (เอาไปใส่ title ของปุ่ม) */
+function remWhyNot(m){
+  const due=remDueAt(); if(!due)return '';
+  const at=due.getTime()-m*60000, now=Date.now();
+  if(at<=now)      return 'เวลาเตือน '+remLabel(m)+'ก่อน เลยไปแล้ว — ตั้งไม่ได้';
+  if(at-now<REM_SYNC_MIN*60000)
+    return 'เหลือเวลาไม่ถึง '+REM_SYNC_MIN+' นาที — มือถืออาจซิงก์ไม่ทัน ตั้งไม่ได้';
+  return '';
+}
 function remDraw(){
   const box=$('r_remChips'); if(!box)return;
   REM_LIST.sort((a,b)=>b-a);
-  box.innerHTML = REM_LIST.length
-    ? REM_LIST.map((m,i)=>`<span style="display:inline-flex;align-items:center;gap:6px;background:#EAF3DE;
-        border:1px solid #BFD9A0;color:#2F5D1E;border-radius:14px;padding:3px 6px 3px 11px;
-        font-size:12px;font-weight:700">${esc(remLabel(m))}
-        <b onclick="remDel(${i})" title="เอาออก" style="cursor:pointer;color:#7B8B6B;
-          font-weight:800;padding:0 3px">✕</b></span>`).join('')
-    : '<span class="muted" style="font-size:11.5px;padding-top:4px">— ไม่เตือน —</span>';
+  /* ค่าที่บันทึกไว้แต่ไม่อยู่ในตัวเลือก (ใบเก่าที่ตั้งแบบอิสระไว้) — โชว์ต่อท้ายเป็นเส้นประ
+     ไม่ซ่อนทิ้ง ไม่งั้นเปิดแก้ใบเก่าแล้วค่าหายเงียบ ๆ */
+  const extra=REM_LIST.filter(m=>REM_OPTS.indexOf(m)<0).sort((a,b)=>b-a);
+  const list=REM_OPTS.concat(extra);
+  box.innerHTML=list.map(function(m){
+    const on=REM_LIST.indexOf(m)>=0, why=on?'':remWhyNot(m);
+    const ex=REM_OPTS.indexOf(m)<0;
+    return '<button type="button" class="rem-op'+(on?' on':'')+(ex?' extra':'')+'"'
+      +(why?' disabled':'')
+      +' title="'+esc(why||(on?'กดเพื่อเอาออก':'กดเพื่อเลือก')
+          +(ex?' · ค่าเดิมของใบนี้ ไม่อยู่ในตัวเลือกมาตรฐาน':''))+'"'
+      +' onclick="remToggle('+m+')">'+(on?'✓ ':'')+esc(remLabel(m))+'</button>';
+  }).join('')
+  +(REM_LIST.length?'':'<span class="muted" style="font-size:11.5px;padding:6px 4px">'
+      +'← ยังไม่เลือก = ไม่เตือน</span>');
   calHint(curReq());
 }
-function remPush(m){
+function remToggle(m){
   m=Math.round(+m||0);
-  if(!(m>=0))                 return toast('ใส่ตัวเลขก่อน เช่น 30 นาที',true);
-  if(m>REM_CAP)               return toast('Google เตือนล่วงหน้าได้ไม่เกิน 28 วัน',true);
-  if(REM_LIST.includes(m))    return toast('มี "'+remLabel(m)+'" อยู่แล้ว',true);
-  if(REM_LIST.length>=REM_MAX)return toast('ใส่ได้ไม่เกิน '+REM_MAX+' อันต่อใบ — เอาอันเดิมออกก่อน',true);
+  const i=REM_LIST.indexOf(m);
+  if(i>=0){ REM_LIST.splice(i,1); remDraw(); return; }
+  const why=remWhyNot(m);
+  if(why)return toast(why,true);
+  if(REM_LIST.length>=REM_MAX)
+    return toast('เลือกได้ไม่เกิน '+REM_MAX+' ช่วง — กดเอาอันเดิมออกก่อน',true);
   REM_LIST.push(m); remDraw();
 }
-/* พิมพ์ตัวเลขไว้แต่ยังไม่กด ➕ เพิ่ม แล้วกดบันทึกเลย — เก็บให้ก่อน ไม่ให้ค่าหลุด
-   ไม่มีตัวนี้ คนพิมพ์ 5 แล้วกดส่งอนุมัติ จะได้ใบที่ "ไม่เตือน" แบบไม่รู้ตัว */
-function remFlush(){
-  const el=$('r_remN'); if(!el)return;
-  const n=parseFloat(el.value);
-  if(!isNaN(n))remAdd();
-}
-function remAdd(){
-  const n=parseFloat($('r_remN').value);
-  if(isNaN(n))return toast('ใส่ตัวเลขก่อน เช่น 30 นาที',true);
-  remPush(n*(+$('r_remU').value||1));
-  $('r_remN').value='';
-}
-const remQuick=m=>remPush(m);
-function remDel(i){ REM_LIST.splice(i,1); remDraw(); }
 function remSet(arr){
   /* null/undefined = ใบใหม่ หรือใบเก่าที่บันทึกก่อนมีฟีเจอร์นี้ → ใช้ค่าตั้งต้น
      [] = ตั้งไว้ว่า "ไม่เตือน" ต้องเคารพ ห้ามเอาค่าตั้งต้นมาทับ */
