@@ -120,7 +120,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-53</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-54</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -1377,23 +1377,29 @@ function canDelReq(r){
 async function delReq(id){
   const r=REQS.find(x=>String(x.id)===String(id)); if(!r)return;
   if(!canDelReq(r))return alert('คุณไม่มีสิทธิ์ลบคำขอสถานะนี้');
+  /* ⚠️ เดิมใบที่อนุมัติ/จ่ายแล้วต้อง "พิมพ์เลขคำขอให้ตรง" ก่อนลบ
+     → ลบยากเกินจำเป็น ทั้งที่ระบบเก็บ log ว่าใครลบอะไรไว้อยู่แล้ว
+     ✅ เหลือกล่องยืนยันกล่องเดียว แต่บอกให้ครบว่ากำลังลบอะไร */
   const hard=['approved','paid'].includes(r.status);
-  const info=(r.req_no||'')+'\nยอด '+money2(r.total_thb)+' ฿'
-    +'\nสถานะ '+((ST[r.status]||{}).t||r.status);
-  if(hard){
-    const typed=prompt('⛔ ใบนี้'+(r.status==='paid'?'จ่ายเงินไปแล้ว':'อนุมัติจ่ายแล้ว')
-      +' — เป็นหลักฐานทางการเงิน\n\n'+info
-      +'\n\nถ้ายืนยันจะลบ ให้พิมพ์เลขคำขอให้ตรง:');
-    if(typed===null)return;
-    if(String(typed).trim()!==String(r.req_no||'').trim())return alert('เลขคำขอไม่ตรง — ยกเลิกการลบ');
-  }else{
-    if(!confirm('ลบคำขอนี้?\n\n'+info+'\n\nลบแล้วกู้คืนไม่ได้'))return;
-  }
   const np=proofList(r).length;
-  if(np&&!confirm('ใบนี้มีเอกสารแนบ '+np+' ไฟล์\n\n'
-    +'ไฟล์ใน Google Drive จะยังอยู่ (ไม่ถูกลบ) แต่จะไม่ผูกกับคำขอใดอีก\n\nลบต่อไหม?'))return;
+  /* ยอดใช้ calAmt — ใบที่ยังไม่ใส่เรทมี total_thb = 0 ถ้าโชว์ "0.00 ฿"
+     คนอ่านจะเข้าใจว่าใบนี้ไม่มียอด แล้วกดลบทิ้งง่ายเกินไป */
+  const lines=[
+    (r.req_no||''),
+    'ยอด '+calAmt(r)+(calNoRate(r)?' (ยังไม่ใส่เรท)':''),
+    'สถานะ '+((ST[r.status]||{}).t||r.status),
+    'จ่ายในนาม '+coShort(r.pay_type),
+    'กำหนดชำระ '+thDate(r.due_date)
+  ];
+  if(np)lines.push('📎 มีเอกสารแนบ '+np+' ไฟล์ — ไฟล์ใน Google Drive จะยังอยู่ แต่จะไม่ผูกกับคำขอใดอีก');
+  if(!confirm((hard
+      ? ('⛔ ใบนี้'+(r.status==='paid'?'จ่ายเงินไปแล้ว':'อนุมัติจ่ายแล้ว')
+         +' — เป็นหลักฐานทางการเงิน\n\n')
+      : 'ลบคำขอนี้?\n\n')
+    +lines.join('\n')
+    +'\n\nลบแล้วกู้คืนไม่ได้ · ระบบบันทึกไว้ว่าใครลบ\n\nยืนยันลบ?'))return;
 
-  await addLog(id,'deleted','ลบคำขอ '+(r.req_no||'')+' · ยอด '+money2(r.total_thb)+' ฿ · สถานะ '
+  await addLog(id,'deleted','ลบคำขอ '+(r.req_no||'')+' · ยอด '+calAmt(r)+' · สถานะ '
     +((ST[r.status]||{}).t||r.status));
   /* ลบ event ก่อนลบแถว — ถ้าลบแถวก่อน จะไม่เหลือ id ให้ตามลบ
      กลายเป็น event ค้างบนปฏิทินที่ไม่มีคำขอรองรับ */
