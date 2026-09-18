@@ -99,7 +99,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-34</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-35</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -2371,7 +2371,8 @@ async function gasCall(payload){
       ส่งขึ้นปฏิทินไม่ได้ ก็ต้องบันทึก/ส่งอนุมัติ/อนุมัติ สำเร็จอยู่ดี
       ทุกจุดที่เรียกจึงจับ error ไว้เอง แล้วแค่เตือน ไม่ throw ออกไป
    ══════════════════════════════════════════════════════════════════ */
-const CAL_ID  = '';                       /* ⭐ วาง Calendar ID ที่นี่ แล้วทุกเครื่องใช้ร่วมกัน */
+const CAL_ID  = 'deec4e0a220a4d8378030044b39ac23d0808ec41b8998f5b952a9244299fca75@group.calendar.google.com';   /* ⭐ ปฏิทินกลาง: MASARU — กำหนดชำระเงิน (จัดซื้อ)
+                                             ตั้งไว้ในไฟล์ = ทุกเครื่องใช้ร่วมกัน ไม่ต้องให้แต่ละคนไปตั้งเอง */
 const CAL_KEY = 'masaru_pa_cal';
 const CAL_DEF = {rem3d:false, rem1d:true, rem2h:true, mail:false};   /* ค่าตั้งต้นของการเตือน */
 
