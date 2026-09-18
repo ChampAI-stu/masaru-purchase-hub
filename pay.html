@@ -2994,6 +2994,16 @@ function showPending(day){
   $('pendBg').style.display='flex';
 }
 
+/* เซลล์ยอดในตารางสรุป — บาทบรรทัดบน สกุลต้นทาง (¥ / $ / ฿) บรรทัดล่าง
+   ขอมาให้เห็นทั้งสองสกุลในตารางเลย ไม่ต้องไปเปิด Excel เทียบ
+   ใช้ srcChips ตัวเดียวกับ KPI และ Export → ตัวเลขตรงกันทุกที่แน่นอน */
+function moCell(arr){
+  if(!arr||!arr.length)return '-';
+  const thb=arr.reduce((s,p)=>s+thbOf(p),0), src=srcChips(arr,' · ');
+  return '<b>'+money(thb)+'</b>'
+    +(src?('<div style="font-size:11px;font-weight:700;color:#8a6d1f;margin-top:1px">'
+           +esc(src)+'</div>'):'');
+}
 function renderMonth(){
   if(!$('moMonth'))return;
   if(!$('moMonth').value)$('moMonth').value=monthStr();
@@ -3015,24 +3025,41 @@ function renderMonth(){
   if(!rows.length){$('moBody').innerHTML='<div class="empty">ช่วงที่เลือกยังไม่มีข้อมูล — '
     +esc(P.head)+'</div>';return;}
   const days=[...new Set(rows.map(p=>p.pay_date))].sort();
-  let h='<h2>รายวัน</h2><table><thead><tr><th>วันที่</th><th class="right">งวดจ่ายแล้ว</th><th class="right">บาท (จ่ายแล้ว)</th><th class="right">งวดค้างแผน</th><th class="right">บาท (แผน)</th></tr></thead><tbody>';
+  let h='<h2>รายวัน <span class="muted" style="font-size:11.5px;font-weight:400">'
+    +'— ตัวเลขบนคือบาท ตัวเลขล่างคือสกุลต้นทาง (¥ / $ / ฿)</span></h2>'
+    +'<table><thead><tr><th>วันที่</th><th class="right">งวดจ่ายแล้ว</th>'
+    +'<th class="right">จ่ายแล้ว (บาท / สกุลต้นทาง)</th><th class="right">งวดค้างแผน</th>'
+    +'<th class="right">ค้างแผน (บาท / สกุลต้นทาง)</th>'
+    +'<th class="right">รวมวันนั้น (บาท / สกุลต้นทาง)</th></tr></thead><tbody>';
   days.forEach(d=>{const dp=paid.filter(p=>p.pay_date===d),dl=planned.filter(p=>p.pay_date===d);
-    h+=`<tr><td><b>${esc(d)}</b></td><td class="right">${dp.length||'-'}</td><td class="right">${dp.length?money(sumThb(dp)):'-'}</td>
+    const da=dp.concat(dl);
+    h+=`<tr><td><b>${esc(d)}</b></td><td class="right">${dp.length||'-'}</td><td class="right">${moCell(dp)}</td>
       <td class="right">${dl.length?`<button class="btn mini ghost" onclick="showPending('${esc(d)}')" title="ดูรายการงวดค้างของวันนี้">${dl.length} 🔎</button>`:'-'}</td>
-      <td class="right">${dl.length?money(sumThb(dl)):'-'}</td></tr>`;});
-  h+=`<tr style="background:#FFF7DF;font-weight:800"><td>${esc(P.tot)}</td><td class="right">${paid.length}</td><td class="right">${money(sumThb(paid))}</td>
-    <td class="right">${planned.length?`<button class="btn mini" onclick="showPending()" title="ดูงวดค้างทั้งช่วงที่เลือก">${planned.length} 🔎</button>`:'0'}</td><td class="right">${money(sumThb(planned))}</td></tr></tbody></table>`;
+      <td class="right">${moCell(dl)}</td>
+      <td class="right">${moCell(da)}</td></tr>`;});
+  h+=`<tr style="background:#FFF7DF;font-weight:800"><td>${esc(P.tot)}</td><td class="right">${paid.length}</td>
+    <td class="right">${moCell(paid)}</td>
+    <td class="right">${planned.length?`<button class="btn mini" onclick="showPending()" title="ดูงวดค้างทั้งช่วงที่เลือก">${planned.length} 🔎</button>`:'0'}</td>
+    <td class="right">${moCell(planned)}</td>
+    <td class="right">${moCell(paid.concat(planned))}</td></tr></tbody></table>`;
   /* ⚠️ ตัดตาราง "รายบริษัท" ออกแล้ว (v09-88)
      เหตุผล: มันแบ่งด้วยบริษัทของบิล ซึ่งเป็นคำถามคนละข้อกับ "เงินออกในนามใคร"
      ยอดรวมเท่ากันแต่หั่นคนละแบบ วางคู่กันแล้วคนอ่านสับสนว่าอันไหนจริง
      บริษัทของบิลยังใช้อยู่ที่แท็บ Tracking บิล และหัวใบปะหน้า จึงยังเตือนเรื่องบิลที่ไม่ระบุไว้ */
   const pts=[...new Set(rows.map(p=>p.pay_type||'(ยังไม่ระบุ)'))];
-  h+='<h2 style="margin-top:16px">จ่ายในนาม</h2><table><thead><tr><th>จ่ายในนาม</th><th class="right">จ่ายแล้ว (บาท)</th><th class="right">ค้างแผน (บาท)</th><th class="right">รวม (บาท)</th><th class="right">รวมสกุลต้นทาง</th><th class="right">งวด</th></tr></thead><tbody>';
+  h+='<h2 style="margin-top:16px">จ่ายในนาม <span class="muted" style="font-size:11.5px;font-weight:400">'
+    +'— ตัวเลขบนคือบาท ตัวเลขล่างคือสกุลต้นทาง (¥ / $ / ฿)</span></h2>'
+    +'<table><thead><tr><th>จ่ายในนาม</th><th class="right">จ่ายแล้ว</th>'
+    +'<th class="right">ค้างแผน</th><th class="right">รวม</th><th class="right">งวด</th></tr></thead><tbody>';
   pts.forEach(pt=>{const g=p=>((p.pay_type||'(ยังไม่ระบุ)')===pt);
-    const a=sumThb(paid.filter(g)),b2=sumThb(planned.filter(g));
-    h+=`<tr><td><b>${esc(pt)}</b></td><td class="right">${money(a)}</td><td class="right">${money(b2)}</td><td class="right"><b>${money(a+b2)}</b></td>`
-      +`<td class="right" style="color:#8a6d1f;font-weight:700">${esc(srcChips(rows.filter(g),' · '))||'-'}</td>`
-      +`<td class="right">${rows.filter(g).length}</td></tr>`;});
+    const gp=paid.filter(g), gl=planned.filter(g), ga=rows.filter(g);
+    h+=`<tr><td><b>${esc(pt)}</b></td><td class="right">${moCell(gp)}</td>`
+      +`<td class="right">${moCell(gl)}</td><td class="right">${moCell(ga)}</td>`
+      +`<td class="right">${ga.length}</td></tr>`;});
+  /* แถวรวม — เดิมไม่มี ต้องเลื่อนบวกเอง ทั้งที่เป็นเลขที่ใช้บ่อยสุด */
+  h+=`<tr style="background:#FFF7DF;font-weight:800"><td>${esc(P.tot)}</td>`
+    +`<td class="right">${moCell(paid)}</td><td class="right">${moCell(planned)}</td>`
+    +`<td class="right">${moCell(rows)}</td><td class="right">${rows.length}</td></tr>`;
   h+='</tbody></table>';
   /* บริษัทของบิลไม่มีตารางสรุปแล้ว แต่ยังโชว์ในแท็บ Tracking บิล และใช้เป็นชื่อบนหัวใบปะหน้า
      บิลที่ปล่อยว่างจึงยังเป็นปัญหาจริง ต้องเห็นและซ่อมได้ */
