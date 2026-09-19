@@ -696,10 +696,11 @@ body.price-on .sl-price{display:block}
         title="ดึงเฉพาะเดือนที่เลือก — ประหยัดโควตาฐานข้อมูล">
       <select class="filter-sel" id="arrDue" onchange="arrSetDue(this.value)" style="max-width:170px"
         title="ค้างที่ขนส่งเกินกี่วันถึงเตือน">
-        <option value="2">เตือนเมื่อค้างเกิน 2 วัน</option>
-        <option value="3" selected>เตือนเมื่อค้างเกิน 3 วัน</option>
+        <option value="3">เตือนเมื่อค้างเกิน 3 วัน</option>
         <option value="5">เตือนเมื่อค้างเกิน 5 วัน</option>
-        <option value="7">เตือนเมื่อค้างเกิน 7 วัน</option>
+        <option value="7" selected>เตือนเมื่อค้างเกิน 7 วัน</option>
+        <option value="10">เตือนเมื่อค้างเกิน 10 วัน</option>
+        <option value="14">เตือนเมื่อค้างเกิน 14 วัน</option>
       </select>
       <select class="filter-sel" id="arrStatus" onchange="renderArr()" style="max-width:185px">
         <option value="">— ทุกสถานะ —</option>
@@ -3423,20 +3424,23 @@ function subscribeArrival(){
    ค่าตั้งต้น 3 วัน · เปลี่ยนได้ที่กล่องเลือกด้านบน (จำไว้ในเครื่อง)
    2 ระดับ: ถึงเกณฑ์ = 🟠 เตือน · เกินเกณฑ์ 2 เท่าหรือ ≥7 วัน = 🔴 ด่วน */
 const ARR_DUE_KEY = 'masaru_arr_due';
-let ARR_DUE = 3;
+let ARR_DUE = 7;                     // ★ เกณฑ์ตั้งต้น 7 วัน (เปลี่ยนได้ที่กล่องเลือกในหน้า)
+const ARR_DUE_OPT = [3,5,7,10,14];   // ตัวเลือกเกณฑ์ที่ยอมรับ
 /* ผลนับตอนเปิดหน้า (ทุกเดือน) — ใช้บอกว่ามีของค้างเกินกำหนดในเดือนอื่นอีกกี่ใบ
    เดือนที่กำลังดูอยู่ใช้ข้อมูลสด (ARR) แทน ค่านี้จึงไม่ค้างไม่ตรง */
 let ARR_BOOT = null;
 function arrDueLoad(){
-  try{ const v=+localStorage.getItem(ARR_DUE_KEY); if([2,3,5,7].includes(v)) ARR_DUE=v; }catch(e){}
+  try{ const v=+localStorage.getItem(ARR_DUE_KEY); if(ARR_DUE_OPT.includes(v)) ARR_DUE=v; }catch(e){}
   if($('arrDue')) $('arrDue').value = String(ARR_DUE);
 }
 function arrSetDue(v){
-  ARR_DUE = [2,3,5,7].includes(+v) ? +v : 3;
+  ARR_DUE = ARR_DUE_OPT.includes(+v) ? +v : 7;
   try{ localStorage.setItem(ARR_DUE_KEY, String(ARR_DUE)); }catch(e){}
   renderArr();
 }
-const arrHotDays = () => Math.max(ARR_DUE*2, 7);   // ระดับ 🔴 ด่วน
+/* ระดับ 🔴 ด่วน = เกินเกณฑ์ไปอีก 3 วัน (เกณฑ์ 7 → 🔴 ที่ 10 วัน)
+   เดิมใช้ 2 เท่าของเกณฑ์ ซึ่งพอเกณฑ์เป็น 7 จะกลายเป็น 14 วัน ช้าเกินจะตามของ */
+const arrHotDays = () => ARR_DUE + 3;
 
 /* ใบที่ค้างเกินกำหนด เรียงค้างนานสุดก่อน */
 function arrOverdue(groups){
