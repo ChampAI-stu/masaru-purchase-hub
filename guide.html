@@ -161,7 +161,7 @@ code{background:#F1F5F9;padding:1px 5px;border-radius:4px;font-size:11.5px;overf
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v01-10</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v01-11</span>
   <button class="hp-btn o" onclick="window.print()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF">🖨️ พิมพ์คู่มือ</button>
   <a href="index.html" class="pill-top">🏠 หน้ารวม</a>
 </div>
@@ -1414,10 +1414,12 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
       <td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
     <tr><td>💰 ต้นทุนสินค้า</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
       <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
+    <tr><td>📐 ตรวจค่าขนส่ง ตปท.</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
     <tr><td>💾 สำรองข้อมูล</td><td class="hp-chk">✔</td><td class="hp-x">✕</td><td class="hp-x">✕</td>
       <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
     <tr><td>📖 คู่มือ (หน้านี้)</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
-      <td class="hp-chk">✔</td><td class="hp-chk">✔</td></tr>
+      <td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
   </tbody></table></div>
   <div class="hp-info">ℹ️ การ์ดในหน้ารวมขึ้นตามตาราง <code>portal_apps</code> — ถ้าควรเห็นแต่ไม่เห็น
     ให้ผู้ดูแลตรวจว่าแถวของระบบนั้นใส่บทบาทครบไหม (ไม่ใช่ปัญหาของตัวระบบ)</div>
@@ -1464,11 +1466,16 @@ const $=i=>document.getElementById(i);
 const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ═══ ตรวจสิทธิ์ ═══
-   คู่มือให้ทุกบทบาทที่เข้าหน้ารวมได้อ่านได้ — ปิดกั้นคู่มือไม่ช่วยอะไร
-   คนที่เข้าระบบไม่ได้ก็ไม่ต้องอ่าน คนที่เข้าได้ยิ่งต้องอ่าน */
+   คู่มือเล่มนี้เปิดให้ 4 บทบาทเท่านั้น: จัดซื้อ · หัวหน้าจัดซื้อ · ผู้บริหาร · ขนส่ง
+   ⚠️ การตลาด (marketing) ไม่อยู่ในรายชื่อ — เข้าหน้ารวมได้ (ดู Purchase Board)
+      แต่คู่มือมีขั้นตอนภายในของฝ่ายจัดซื้อทั้งเล่ม จึงไม่เปิดให้
+   ⚠️ ต้องแก้ 2 ที่ให้ตรงกันเสมอ ไม่งั้นการ์ดขึ้นแต่กดเข้าไปแล้วโดนปฏิเสธ
+      ① ตัวแปร ALLOWED ในไฟล์นี้  (ตัวกั้นจริง)
+      ② roles ของแถว guide ในตาราง portal_apps (ตัวคุมว่าการ์ดจะโชว์ไหม)
+         → รันไฟล์ portal_add_guide.sql ทับ */
 const ROLE_LABEL={purchase:'จัดซื้อ',pr_manager:'หัวหน้าจัดซื้อ',pr_exec:'ผู้บริหาร',
                   executive:'ผู้บริหาร',marketing:'การตลาด',shipping:'ขนส่ง'};
-const ALLOWED=['purchase','marketing','pr_manager','pr_exec','executive','shipping'];
+const ALLOWED=['purchase','pr_manager','pr_exec','executive','shipping'];
 function getRoles(s){
   const m=(s&&s.user&&s.user.app_metadata)||{};
   if(Array.isArray(m.user_roles)&&m.user_roles.length)return m.user_roles;
@@ -1490,8 +1497,10 @@ async function gate(){
   if(!s){ denied('ต้องเข้าสู่ระบบก่อนอ่านคู่มือ',true); return false; }
   const roles=getRoles(s);
   if(!roles.some(r=>ALLOWED.includes(r))){
-    denied('บัญชีนี้ยังไม่มีสิทธิ์เข้าระบบฝ่ายจัดซื้อ<br><span style="font-size:13px">'
-      +esc(s.user.email||'')+'</span>');
+    denied('คู่มือเล่มนี้เปิดให้เฉพาะ <b>จัดซื้อ · หัวหน้าจัดซื้อ · ผู้บริหาร · ขนส่ง</b>'
+      +'<br><span style="font-size:13px">'+esc(s.user.email||'')
+      +(roles.length?(' · บทบาท: '+roles.map(r=>esc(ROLE_LABEL[r]||r)).join(' · ')):'')
+      +'</span>');
     return false;
   }
   $('whoami').textContent=roles.map(r=>ROLE_LABEL[r]||r).join(' · ');
