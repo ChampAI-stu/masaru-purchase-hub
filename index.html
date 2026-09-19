@@ -165,9 +165,10 @@ const APPS_FALLBACK = [
   { key:'backup', icon:'💾', title:'สำรองข้อมูล',
     desc:'ดึงข้อมูลทุกตารางเก็บไว้ในเครื่อง (JSON / Excel)',
     url:'backup.html', roles:['purchase'] },
+  /* คู่มือเปิดให้ 4 บทบาท ไม่รวมการตลาด — ต้องตรงกับ ALLOWED ในไฟล์ guide.html */
   { key:'guide', icon:'📖', title:'คู่มือระบบฝ่ายจัดซื้อ',
     desc:'คู่มือทุกระบบรวมที่เดียว — โฟลว์ ปุ่ม สิทธิ์ สูตรคำนวณ และกับดักที่พลาดบ่อย',
-    url:'guide.html', roles:['purchase','marketing','pr_manager','pr_exec','executive','shipping'] },
+    url:'guide.html', roles:['purchase','pr_manager','pr_exec','executive','shipping'] },
 ];
 
 // ดึงรายการเว็บจากตาราง portal_apps (ถ้าไม่ได้ → ใช้ค่าสำรอง)
