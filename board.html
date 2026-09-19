@@ -253,6 +253,22 @@
     color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px}
   .tab-btn:hover{color:var(--navy)}
   .tab-btn.active{color:var(--navy);border-bottom-color:var(--gold)}
+  /* ป้ายเลขบนแท็บ — เห็นของค้างเกินกำหนดโดยไม่ต้องกดเข้าแท็บ */
+  .tab-bdg{display:none;margin-left:6px;background:var(--red);color:#fff;font-size:11px;
+    font-weight:800;padding:2px 7px;border-radius:999px;vertical-align:1px}
+  .tab-bdg.on{display:inline-block}
+  .tab-bdg.warn{background:var(--orange)}
+  /* กล่องแจ้งเตือนของค้างที่ขนส่งเกินกำหนด */
+  .arr-alert{border-radius:12px;padding:13px 16px;margin:14px 0 0;border:1px solid}
+  .arr-alert.red{background:var(--red-bg);border-color:#f3c6c9}
+  .arr-alert.amber{background:var(--orange-bg);border-color:#f7d9b5}
+  .arr-alert h4{font-size:14px;font-weight:800;color:var(--navy);margin-bottom:3px}
+  .arr-al-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;
+    border:1px solid var(--line);border-radius:9px;padding:8px 11px;margin-top:7px;font-size:12.5px}
+  .arr-al-day{font-weight:800;padding:3px 9px;border-radius:7px;white-space:nowrap}
+  .arr-al-day.r{background:var(--red-bg);color:var(--red)}
+  .arr-al-day.a{background:var(--orange-bg);color:var(--orange)}
+  .arr-hot{box-shadow:inset 4px 0 0 var(--red)}
 
   /* ===== แผนรับสินค้า (ตาราง) ===== */
   .plan-day{margin-bottom:24px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
@@ -428,7 +444,7 @@ body.price-on .sl-price{display:block}
 
   <div class="tabbar">
     <button class="tab-btn active" id="tabBoard">📋 Purchase Board</button>
-    <button class="tab-btn" id="tabArr">📦 แจ้งสินค้าขาเข้า</button>
+    <button class="tab-btn" id="tabArr">📦 แจ้งสินค้าขาเข้า<span class="tab-bdg" id="arrBadge"></span></button>
     <button class="tab-btn" id="tabPlan">🚚 แผนรับสินค้า</button>
     <button class="tab-btn" id="tabRep">📈 รายงาน On-Time</button>
     <button class="tab-btn" id="tabUp">📜 ประวัติการอัพโหลด</button>
@@ -587,6 +603,7 @@ body.price-on .sl-price{display:block}
      แท็บนี้ตอบคำถามเดียว: "จะมีของเข้าคลังอีกกี่ลัง กี่คิว กี่กิโล และค้างอยู่ที่ไหน" -->
 <div id="viewArr" style="display:none">
   <div class="container">
+    <div id="arrAlert"></div>
     <div class="summary" style="margin-top:14px">
       <div class="sum-card"><div class="sum-label">📦 ค้างที่ขนส่ง (ยังไม่เข้าคลัง)</div>
         <div class="sum-val" id="arrWaitBox">0</div>
@@ -609,8 +626,16 @@ body.price-on .sl-price{display:block}
       </div>
       <input type="month" class="filter-sel" id="arrMonth" onchange="loadArr()" style="max-width:150px"
         title="ดึงเฉพาะเดือนที่เลือก — ประหยัดโควตาฐานข้อมูล">
+      <select class="filter-sel" id="arrDue" onchange="arrSetDue(this.value)" style="max-width:170px"
+        title="ค้างที่ขนส่งเกินกี่วันถึงเตือน">
+        <option value="2">เตือนเมื่อค้างเกิน 2 วัน</option>
+        <option value="3" selected>เตือนเมื่อค้างเกิน 3 วัน</option>
+        <option value="5">เตือนเมื่อค้างเกิน 5 วัน</option>
+        <option value="7">เตือนเมื่อค้างเกิน 7 วัน</option>
+      </select>
       <select class="filter-sel" id="arrStatus" onchange="renderArr()" style="max-width:185px">
         <option value="">— ทุกสถานะ —</option>
+        <option value="over">🔴 ค้างเกินกำหนด</option>
         <option value="waiting">🟠 ค้างที่ขนส่ง</option>
         <option value="partial">🟡 เข้าคลังบางส่วน</option>
         <option value="done">✅ เข้าคลังครบ</option>
@@ -1249,6 +1274,7 @@ function enterApp(session){
   if($('priceHead')) $('priceHead').style.display = canSeePrice ? '' : 'none';
   if(canSeePrice) document.body.classList.add('price-on');
   captureMe();
+  if(currentRole==='purchase') arrBadgeBoot();   // ⏰ ป้ายของค้างเกินกำหนดบนแท็บ 📦
   if(canSeePrice) loadMasterPrices();
   loadOrders();
   loadPlan();
@@ -3052,6 +3078,130 @@ function arrCalcStatus(n, items){
 }
 const arrDaysWait = d => Math.floor((new Date(arrToday()) - new Date(d))/86400000);
 
+/* ══════════ ⏰ แจ้งเตือนของค้างที่ขนส่งเกินกำหนด ══════════
+   "ของถึงไทยแล้วแต่ยังไม่เข้าคลัง" เกิน N วัน = ต้องโทรตามขนส่ง
+   ค่าตั้งต้น 3 วัน · เปลี่ยนได้ที่กล่องเลือกด้านบน (จำไว้ในเครื่อง)
+   2 ระดับ: ถึงเกณฑ์ = 🟠 เตือน · เกินเกณฑ์ 2 เท่าหรือ ≥7 วัน = 🔴 ด่วน */
+const ARR_DUE_KEY = 'masaru_arr_due';
+let ARR_DUE = 3;
+/* ผลนับตอนเปิดหน้า (ทุกเดือน) — ใช้บอกว่ามีของค้างเกินกำหนดในเดือนอื่นอีกกี่ใบ
+   เดือนที่กำลังดูอยู่ใช้ข้อมูลสด (ARR) แทน ค่านี้จึงไม่ค้างไม่ตรง */
+let ARR_BOOT = null;
+function arrDueLoad(){
+  try{ const v=+localStorage.getItem(ARR_DUE_KEY); if([2,3,5,7].includes(v)) ARR_DUE=v; }catch(e){}
+  if($('arrDue')) $('arrDue').value = String(ARR_DUE);
+}
+function arrSetDue(v){
+  ARR_DUE = [2,3,5,7].includes(+v) ? +v : 3;
+  try{ localStorage.setItem(ARR_DUE_KEY, String(ARR_DUE)); }catch(e){}
+  renderArr();
+}
+const arrHotDays = () => Math.max(ARR_DUE*2, 7);   // ระดับ 🔴 ด่วน
+
+/* ใบที่ค้างเกินกำหนด เรียงค้างนานสุดก่อน */
+function arrOverdue(groups){
+  return groups.filter(g => g.st!=='cancel' && g.st!=='done' && g.t.boxWait>0.0001
+                            && arrDaysWait(g.n.notice_date) >= ARR_DUE)
+               .map(g => ({...g, days: arrDaysWait(g.n.notice_date)}))
+               .sort((a,b) => b.days - a.days);
+}
+
+/* ใบค้างเกินกำหนดที่อยู่เดือนอื่น (ไม่ใช่เดือนที่กรองอยู่) */
+function arrOtherDue(){
+  if(!ARR_BOOT) return [];
+  const mo = $('arrMonth').value || arrMonthNow();
+  return ARR_BOOT.filter(p => p.month!==mo && p.wait>0.0001 && p.date
+                              && arrDaysWait(p.date) >= ARR_DUE);
+}
+
+/* กล่องแจ้งเตือนบนหัวแท็บ */
+function renderArrAlert(groups){
+  const box = $('arrAlert'); if(!box) return;
+  const due = arrOverdue(groups);
+  const other = arrOtherDue();
+  const otherLine = other.length
+    ? `<div style="font-size:12.5px;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line)">
+         📅 มีของค้างเกิน ${ARR_DUE} วันใน<b>เดือนอื่น</b>อีก <b>${other.length}</b> ใบ
+         (รวม ${arrInt(other.reduce((a,p)=>a+p.wait,0))} ลัง) — เปลี่ยนตัวกรองเดือนเพื่อดู</div>`
+    : '';
+  if(!due.length){
+    if(other.length){
+      box.innerHTML = `<div class="arr-alert amber"><h4>🟠 เดือนนี้ไม่มีของค้างเกิน ${ARR_DUE} วัน</h4>${otherLine}</div>`;
+      return;
+    }
+    box.innerHTML = groups.some(g=>g.t.boxWait>0)
+      ? `<div class="arr-alert amber" style="background:var(--green-bg);border-color:#cfe3c2">
+           <h4>✅ ไม่มีของค้างที่ขนส่งเกิน ${ARR_DUE} วัน</h4>
+           <div style="font-size:12.5px;color:var(--muted)">ยังมีของค้างอยู่ แต่ยังไม่เกินกำหนดที่ตั้งไว้</div></div>`
+      : '';
+    return;
+  }
+  const hot = due.filter(g => g.days >= arrHotDays());
+  const boxW = due.reduce((a,g)=>a+g.t.boxWait,0);
+  const cbmW = due.reduce((a,g)=>a+g.t.cbmWait,0);
+  const kgW  = due.reduce((a,g)=>a+g.t.kgWait,0);
+  box.innerHTML = `<div class="arr-alert ${hot.length?'red':'amber'}">
+    <h4>${hot.length?'🔴':'🟠'} มีของค้างที่ขนส่งเกิน ${ARR_DUE} วัน — ${due.length} ใบแจ้ง
+      · ${arrInt(boxW)} ลัง · ${arrMoney(cbmW)} คิว · ${arrInt(kgW)} กก.</h4>
+    <div style="font-size:12.5px;color:var(--muted)">
+      ${hot.length?`<b style="color:var(--red)">ค้างเกิน ${arrHotDays()} วัน ${hot.length} ใบ — ควรโทรตามขนส่งวันนี้</b> · `:''}
+      แจ้งคลังให้เตรียมพื้นที่ไว้ก่อนได้เลย</div>
+    ${due.slice(0,6).map(g => `<div class="arr-al-row">
+      <span class="arr-al-day ${g.days>=arrHotDays()?'r':'a'}">ค้าง ${g.days} วัน</span>
+      <b>${esc(g.n.carrier||'-')}</b>
+      <span style="color:var(--muted)">แจ้ง ${fmtDate(g.n.notice_date)}${g.n.notice_no?' · '+esc(g.n.notice_no):''}</span>
+      <span>ค้าง <b>${arrInt(g.t.boxWait)}</b> ลัง · ${arrMoney(g.t.cbmWait)} คิว${g.t.kgWait?' · '+arrInt(g.t.kgWait)+' กก.':''}</span>
+      <div style="flex:1"></div>
+      ${currentRole==='purchase'?`<button class="arr-mini go" onclick="openArrIn('${g.n.id}')">🚚 ตัดเข้าคลัง</button>`:''}
+      <button class="arr-mini" onclick="arrJump('${g.n.id}')">🔎 ดูในตาราง</button>
+    </div>`).join('')}
+    ${due.length>6?`<div style="font-size:12px;color:var(--muted);margin-top:7px">
+      และอีก ${due.length-6} ใบ — เลือก <b>🔴 ค้างเกินกำหนด</b> ในช่องสถานะเพื่อดูทั้งหมด</div>`:''}
+    ${otherLine}
+  </div>`;
+}
+
+/* ป้ายเลขบนแท็บ — จำนวนใบที่ค้างเกินกำหนด */
+function arrSetBadge(nDue, nHot){
+  const b = $('arrBadge'); if(!b) return;
+  b.className = 'tab-bdg' + (nDue?' on':'') + (nHot?'':' warn');
+  b.textContent = nDue || '';
+  b.title = nDue ? ('ค้างที่ขนส่งเกิน '+ARR_DUE+' วัน '+nDue+' ใบแจ้ง') : '';
+}
+
+/* เลื่อนไปที่ใบนั้นในตาราง + ไฮไลต์ให้เห็น */
+function arrJump(id){
+  const st=$('arrStatus'); if(st.value==='over'){ /* อยู่ในตัวกรองนี้แล้ว */ } else if(st.value){ st.value=''; renderArr(); }
+  const row = document.querySelector(`#arrTb .arr-head[data-nid="${id}"]`);
+  if(!row) return toast('ไม่พบใบนี้ในตาราง — ลองล้างตัวกรอง');
+  row.scrollIntoView({behavior:'smooth', block:'center'});
+  row.classList.add('arr-hot');
+  setTimeout(()=>row.classList.remove('arr-hot'), 2600);
+}
+
+/* นับของค้างเกินกำหนดตอนเปิดหน้า — ไม่ต้องกดเข้าแท็บก่อน
+   ดึงครั้งเดียว เฉพาะใบที่ยังไม่ครบ (waiting/partial) และเอาแค่คอลัมน์ที่ใช้คิด */
+async function arrBadgeBoot(){
+  try{
+    arrDueLoad();
+    const { data, error } = await sb.from('arrival_items')
+      .select('boxes,boxes_in,is_extra,notice_id,arrival_notices!inner(notice_date,notice_month,status)')
+      .in('arrival_notices.status', ['waiting','partial']);
+    if(error || !data) return;            // ยังไม่ได้รัน SQL / ไม่มีสิทธิ์ → เงียบไว้
+    const byN = {};
+    data.forEach(r => {
+      if(r.is_extra) return;
+      const k = r.notice_id;
+      const nn = r.arrival_notices || {};
+      const p = byN[k] || (byN[k] = {wait:0, date:nn.notice_date, month:nn.notice_month});
+      p.wait += (+r.boxes||0) - (+r.boxes_in||0);
+    });
+    ARR_BOOT = Object.values(byN);
+    const list = ARR_BOOT.filter(p => p.wait>0.0001 && p.date && arrDaysWait(p.date) >= ARR_DUE);
+    arrSetBadge(list.length, list.filter(p => arrDaysWait(p.date) >= arrHotDays()).length);
+  }catch(e){ /* ไม่ให้กระทบหน้าอื่น */ }
+}
+
 /* ข้อความกลางตาราง (กำลังโหลด / ว่าง / error) — เขียนลงทั้งตาราง
    เพราะ renderArr เขียน thead+tbody ทับทั้งก้อน อ้าง tbody เดิมไม่ได้ */
 function arrMsg(html){
@@ -3095,7 +3245,11 @@ function renderArr(){
 
   let rows = ARR.map(n => ({ n, items: arrItemsOf(n.id) }))
                 .map(g => ({ ...g, st: arrCalcStatus(g.n, g.items), t: arrTotals(g.items) }));
-  if(st) rows = rows.filter(g => g.st===st);
+  if(st==='over'){
+    const ids = arrOverdue(rows).map(g=>String(g.n.id));
+    rows = rows.filter(g => ids.includes(String(g.n.id)));
+  }
+  else if(st) rows = rows.filter(g => g.st===st);
   if(q) rows = rows.filter(g =>
     ((g.n.notice_no||'')+' '+(g.n.carrier||'')+' '+(g.n.truck||'')+' '+(g.n.note||'')+' '
      + g.items.map(i=>(i.line_ref||'')+' '+(i.po_number||'')+' '+(i.sku||'')+' '+(i.note||'')).join(' ')
@@ -3113,13 +3267,23 @@ function renderArr(){
   const oldest = unfinished.filter(g=>g.t.boxWait>0)
     .sort((a,b)=>String(a.n.notice_date||'').localeCompare(String(b.n.notice_date||'')))[0];
 
+  /* ⏰ แจ้งเตือน + ป้ายบนแท็บ — คิดจากทุกใบในเดือน ไม่ขึ้นกับตัวกรอง */
+  arrDueLoad();
+  renderArrAlert(all);
+  const dueList = arrOverdue(all), otherList = arrOtherDue();
+  arrSetBadge(dueList.length + otherList.length,
+    dueList.filter(g=>g.days>=arrHotDays()).length
+    + otherList.filter(p=>arrDaysWait(p.date)>=arrHotDays()).length);
+
   $('arrWaitBox').textContent = arrInt(sum.boxWait) + ' ลัง';
   $('arrWaitSub').textContent = arrMoney(sum.cbmWait) + ' คิว · ' + arrInt(sum.kgWait) + ' กก.';
   $('arrInBox').textContent   = arrInt(sum.boxIn) + ' ลัง';
   $('arrInSub').textContent   = 'จากที่แจ้งมา ' + arrInt(sum.boxes) + ' ลัง';
   $('arrNotice').textContent  = ARR.length;
   $('arrNoticeSub').textContent = 'ยังไม่ครบ ' + unfinished.length + ' ใบ';
-  $('arrOld').textContent    = oldest ? (arrDaysWait(oldest.n.notice_date) + ' วัน') : '-';
+  const oldDays = oldest ? arrDaysWait(oldest.n.notice_date) : 0;
+  $('arrOld').textContent    = oldest ? (oldDays + ' วัน') : '-';
+  $('arrOld').style.color    = (oldest && oldDays>=ARR_DUE) ? 'var(--red)' : '';
   $('arrOldSub').textContent = oldest
     ? (esc(oldest.n.carrier||'-') + ' · แจ้ง ' + fmtDate(oldest.n.notice_date) + ' · ค้าง ' + arrInt(oldest.t.boxWait) + ' ลัง')
     : 'ไม่มีของค้างที่ขนส่ง 🎉';
@@ -3141,12 +3305,14 @@ function renderArr(){
   rows.forEach(g => {
     const n=g.n, t=g.t, S=ARR_ST[g.st]||ARR_ST.waiting;
     const days = arrDaysWait(n.notice_date);
-    h += `<tr class="arr-head"><td colspan="4">
+    const dwarn = (g.st!=='done'&&g.st!=='cancel'&&t.boxWait>0&&days>=ARR_DUE);
+    h += `<tr class="arr-head${dwarn?' arr-hot':''}" data-nid="${n.id}"><td colspan="4">
         <div class="arr-date">📅 ${fmtDate(n.notice_date)}${n.notice_no?' · '+esc(n.notice_no):''}</div>
         <div style="font-size:11.5px;color:var(--muted);font-weight:400;margin-top:2px">
           🚛 ${esc(n.carrier||'-')}${n.truck?' · รถนำส่ง '+esc(n.truck):''}
           ${n.eta_date?' · คาดเข้าคลัง '+fmtDate(n.eta_date):''}
-          ${g.st!=='done'&&g.st!=='cancel'&&days>0?` · <span class="arr-wait">ค้างมา ${days} วัน</span>`:''}
+          ${g.st!=='done'&&g.st!=='cancel'&&days>0?` · <span class="arr-wait"${dwarn?' style="color:var(--red)"':''}>${
+            dwarn?(days>=arrHotDays()?'🔴 ':'🟠 '):''}ค้างมา ${days} วัน${dwarn?' (เกิน '+ARR_DUE+' วัน)':''}</span>`:''}
           ${n.note?'<br>📝 '+esc(n.note):''}</div></td>
       <td class="n">${t.n} รายการ</td>
       <td class="n"><b>${arrInt(t.boxes)}</b></td>
@@ -3154,7 +3320,8 @@ function renderArr(){
       <td class="n"><b>${arrMoney(t.cbm)}</b></td>
       <td class="n">${t.kg?arrInt(t.kg):'-'}</td>
       <td class="n ${t.boxIn?'arr-done':''}">${arrInt(t.boxIn)}</td>
-      <td class="n ${t.boxWait>0?'arr-wait':''}">${t.boxWait>0?arrInt(t.boxWait):'—'}</td>
+      <td class="n ${t.boxWait>0&&g.st!=='cancel'?'arr-wait':''}">${
+        g.st==='cancel'?'—':(t.boxWait>0?arrInt(t.boxWait):'—')}</td>
       <td><span class="arr-st ${S.c}">${S.t}</span>
         ${canEdit?`<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
           ${g.st!=='cancel'&&t.boxWait>0?`<button class="arr-mini go" onclick="openArrIn('${n.id}')" title="บันทึกว่าของเข้าคลังแล้วกี่ลัง">🚚 ตัดเข้าคลัง</button>`:''}
@@ -3175,7 +3342,8 @@ function renderArr(){
         <td class="n">${x.cbm?arrMoney(x.cbm):'-'}</td>
         <td class="n">${x.weight_kg?arrInt(x.weight_kg):'-'}</td>
         <td class="n ${bi?'arr-done':''}">${bi?arrInt(bi):'-'}${x.in_date?`<div style="font-size:10px;color:var(--muted);font-weight:400">${fmtDate(x.in_date)}</div>`:''}</td>
-        <td class="n ${left>0&&!x.is_extra?'arr-wait':''}">${x.is_extra?'▸':(left>0?arrInt(left):'—')}</td>
+        <td class="n ${left>0&&!x.is_extra&&g.st!=='cancel'?'arr-wait':''}">${
+          x.is_extra?'▸':(g.st==='cancel'?'—':(left>0?arrInt(left):'—'))}</td>
         <td style="font-size:11.5px;color:var(--muted)">${esc(x.note||'')}</td></tr>`;
     });
   });
