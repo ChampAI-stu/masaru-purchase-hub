@@ -259,6 +259,296 @@
   .msg.err{color:#b7192a;background:#fff0f2;border:1px solid #ffd3d8}
   .msg.ok{color:#0d754b;background:#eafaf3;border:1px solid #c5efdd}
 
+  /* Animated login experience */
+  .login-wrap{overflow:auto;animation:login-sky 12s ease-in-out infinite alternate}
+  .login-wrap::before{animation:floor-grid 13s linear infinite}
+  .login-wrap::after{animation:ring-breathe 7s ease-in-out infinite}
+  @keyframes login-sky{
+    0%{background-position:0% 0%,100% 100%,0 0}
+    100%{background-position:9% 5%,91% 94%,0 0}
+  }
+  @keyframes floor-grid{to{background-position:0 64px,64px 0}}
+  @keyframes ring-breathe{50%{transform:scale(1.08);opacity:.72}}
+  .auth-stage{
+    position:relative;
+    z-index:1;
+    width:min(1180px,100%);
+    min-height:680px;
+    display:grid;
+    grid-template-columns:minmax(0,1.25fr) minmax(390px,.75fr);
+    align-items:stretch;
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:34px;
+    background:rgba(7,18,33,.56);
+    box-shadow:0 50px 130px rgba(0,0,0,.48),inset 0 1px 0 rgba(255,255,255,.08);
+    backdrop-filter:blur(18px);
+    overflow:hidden;
+    animation:stage-in .75s cubic-bezier(.18,.8,.2,1) both;
+  }
+  @keyframes stage-in{from{opacity:0;transform:translateY(24px) scale(.985)}to{opacity:1;transform:none}}
+  .auth-stage::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    background:linear-gradient(120deg,rgba(255,255,255,.06),transparent 22%,transparent 78%,rgba(227,31,50,.08));
+  }
+  .auth-stage .auth-card{
+    align-self:center;
+    width:calc(100% - 42px);
+    margin:32px 30px 32px 12px;
+    z-index:3;
+  }
+  .login-art{
+    position:relative;
+    min-height:680px;
+    display:flex;
+    align-items:flex-end;
+    padding:42px 50px;
+    color:#fff;
+    overflow:hidden;
+    isolation:isolate;
+  }
+  .login-art::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    z-index:-3;
+    background:
+      radial-gradient(circle at 49% 38%,rgba(59,116,202,.34),transparent 30%),
+      radial-gradient(circle at 76% 19%,rgba(227,31,50,.22),transparent 25%),
+      linear-gradient(145deg,rgba(8,20,38,.14),rgba(11,30,52,.72));
+  }
+  .login-art::after{
+    content:"";
+    position:absolute;
+    z-index:-2;
+    inset:-50%;
+    background:conic-gradient(from 30deg,transparent 0 28%,rgba(39,92,172,.14) 34%,transparent 40% 67%,rgba(227,31,50,.10) 73%,transparent 80%);
+    animation:aurora-turn 24s linear infinite;
+  }
+  @keyframes aurora-turn{to{transform:rotate(360deg)}}
+  .art-grid{
+    position:absolute;
+    inset:0;
+    z-index:-1;
+    opacity:.19;
+    background-image:
+      linear-gradient(rgba(116,157,219,.28) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(116,157,219,.28) 1px,transparent 1px);
+    background-size:46px 46px;
+    mask-image:radial-gradient(circle at 48% 38%,black 5%,transparent 68%);
+    animation:grid-drift 15s linear infinite;
+  }
+  @keyframes grid-drift{to{background-position:46px 46px}}
+  .art-scan{
+    position:absolute;
+    left:0;
+    right:0;
+    top:-22%;
+    height:120px;
+    background:linear-gradient(transparent,rgba(88,153,255,.10),rgba(255,255,255,.10),transparent);
+    filter:blur(1px);
+    animation:scan-down 6.5s ease-in-out infinite;
+  }
+  @keyframes scan-down{0%,10%{transform:translateY(0);opacity:0}22%{opacity:1}78%{opacity:.8}100%{transform:translateY(680px);opacity:0}}
+  .nexus{
+    position:absolute;
+    left:50%;
+    top:42%;
+    width:270px;
+    height:270px;
+    transform:translate(-50%,-50%);
+    display:grid;
+    place-items:center;
+  }
+  .orbit{
+    position:absolute;
+    inset:0;
+    border:1px solid rgba(126,176,255,.26);
+    border-radius:50%;
+    animation:orbit-turn 14s linear infinite;
+  }
+  .orbit::before,.orbit::after{
+    content:"";
+    position:absolute;
+    width:9px;
+    height:9px;
+    border-radius:50%;
+    background:#7db4ff;
+    box-shadow:0 0 8px #7db4ff,0 0 22px #3575d4;
+  }
+  .orbit::before{top:17%;left:9%}
+  .orbit::after{right:8%;bottom:19%;background:#ff5364;box-shadow:0 0 8px #ff5364,0 0 22px #e31f32}
+  .orbit-b{inset:34px;animation-duration:9s;animation-direction:reverse;border-style:dashed;border-color:rgba(255,255,255,.18)}
+  .orbit-b::before{top:auto;left:18%;bottom:3%;width:6px;height:6px}
+  .orbit-b::after{display:none}
+  .orbit-c{inset:67px;animation-duration:6s;border-color:rgba(227,31,50,.38)}
+  .orbit-c::before{top:45%;left:-4px;background:#fff;box-shadow:0 0 13px #fff,0 0 25px #e31f32}
+  .orbit-c::after{display:none}
+  @keyframes orbit-turn{to{transform:rotate(360deg)}}
+  .core-mark{
+    position:relative;
+    width:104px;
+    height:104px;
+    display:grid;
+    place-items:center;
+    border:1px solid rgba(255,255,255,.34);
+    border-radius:27px;
+    font-size:3.25rem;
+    font-weight:700;
+    line-height:1;
+    letter-spacing:-.08em;
+    color:#fff;
+    background:linear-gradient(145deg,rgba(33,74,126,.96),rgba(8,24,44,.97));
+    box-shadow:0 0 0 10px rgba(255,255,255,.025),0 0 55px rgba(56,123,224,.45),inset 0 1px 0 rgba(255,255,255,.2);
+    animation:core-float 4s ease-in-out infinite;
+  }
+  .core-mark::before{
+    content:"";
+    position:absolute;
+    width:43px;
+    height:4px;
+    bottom:21px;
+    border-radius:4px;
+    background:var(--brand-red);
+    box-shadow:0 0 16px var(--brand-red);
+    animation:core-line 2.4s ease-in-out infinite;
+  }
+  .core-mark::after{
+    content:"";
+    position:absolute;
+    inset:-13px;
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:34px;
+    animation:core-pulse 2.8s ease-out infinite;
+  }
+  @keyframes core-float{50%{transform:translateY(-8px);box-shadow:0 0 0 13px rgba(255,255,255,.02),0 0 75px rgba(56,123,224,.54),inset 0 1px 0 rgba(255,255,255,.2)}}
+  @keyframes core-line{50%{width:60px;filter:brightness(1.3)}}
+  @keyframes core-pulse{0%{transform:scale(.92);opacity:0}35%{opacity:.55}100%{transform:scale(1.32);opacity:0}}
+  .flow-node{
+    position:absolute;
+    z-index:2;
+    min-width:92px;
+    padding:10px 12px;
+    display:flex;
+    align-items:center;
+    gap:9px;
+    border:1px solid rgba(150,188,241,.25);
+    border-radius:13px;
+    color:#c8d8eb;
+    font-size:.68rem;
+    font-weight:700;
+    letter-spacing:.09em;
+    background:rgba(8,23,42,.72);
+    box-shadow:0 10px 28px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.07);
+    backdrop-filter:blur(10px);
+    animation:node-float 5s ease-in-out infinite;
+  }
+  .flow-node .node-icon{font-size:1.2rem;filter:drop-shadow(0 3px 8px rgba(0,0,0,.35))}
+  .node-pr{left:8%;top:22%;animation-delay:-.6s}
+  .node-po{right:7%;top:18%;animation-delay:-2.1s}
+  .node-ship{right:5%;top:55%;animation-delay:-3.4s}
+  .node-cost{left:7%;top:58%;animation-delay:-1.5s}
+  @keyframes node-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+  .route-line{
+    position:absolute;
+    left:18%;
+    top:38%;
+    width:64%;
+    height:1px;
+    background:linear-gradient(90deg,transparent,rgba(102,158,240,.72),rgba(227,31,50,.75),transparent);
+    transform:rotate(-19deg);
+    opacity:.52;
+    box-shadow:0 0 14px rgba(75,136,225,.62);
+  }
+  .route-line::after{
+    content:"";
+    position:absolute;
+    top:-3px;
+    left:0;
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:#fff;
+    box-shadow:0 0 8px #fff,0 0 20px #518ee9;
+    animation:route-travel 3.8s ease-in-out infinite;
+  }
+  .route-b{top:47%;transform:rotate(24deg);opacity:.30}
+  .route-b::after{animation-delay:-1.9s;background:#ff6978}
+  @keyframes route-travel{0%{left:0;opacity:0}12%{opacity:1}88%{opacity:1}100%{left:100%;opacity:0}}
+  .spark{
+    position:absolute;
+    width:3px;
+    height:3px;
+    border-radius:50%;
+    background:#b9d7ff;
+    box-shadow:0 0 10px #7aafff;
+    animation:spark-rise 7s linear infinite;
+    opacity:0;
+  }
+  .s1{left:15%;bottom:4%;animation-delay:-1s}.s2{left:29%;bottom:-3%;animation-delay:-4.5s}.s3{left:46%;bottom:2%;animation-delay:-2.7s}.s4{left:62%;bottom:-6%;animation-delay:-6s}.s5{left:78%;bottom:3%;animation-delay:-3.5s}.s6{left:90%;bottom:-2%;animation-delay:-5.2s}
+  @keyframes spark-rise{0%{transform:translateY(0) scale(.7);opacity:0}18%{opacity:.75}82%{opacity:.35}100%{transform:translateY(-650px) scale(1.6);opacity:0}}
+  .art-copy{position:relative;z-index:3;max-width:510px;text-shadow:0 3px 18px rgba(0,0,0,.42)}
+  .art-kicker{display:flex;align-items:center;gap:10px;margin-bottom:10px;color:#ff7e8c;font-size:.75rem;font-weight:700;letter-spacing:.24em}
+  .art-kicker::before{content:"";width:30px;height:2px;background:var(--brand-red);box-shadow:0 0 10px var(--brand-red)}
+  .art-copy h1{max-width:500px;margin:0 0 10px;font-size:clamp(2.35rem,4.2vw,4.2rem);line-height:1.04;letter-spacing:-.045em}
+  .art-copy p{max-width:460px;color:#aebed2;font-size:.98rem;line-height:1.7}
+  .system-strip{
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    height:31px;
+    overflow:hidden;
+    border-top:1px solid rgba(255,255,255,.07);
+    background:rgba(3,11,21,.62);
+  }
+  .system-strip span{
+    position:absolute;
+    top:7px;
+    left:0;
+    width:max-content;
+    color:rgba(181,207,241,.42);
+    font-size:.66rem;
+    font-weight:700;
+    letter-spacing:.22em;
+    white-space:nowrap;
+    animation:strip-move 20s linear infinite;
+  }
+  @keyframes strip-move{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+  @media (max-width:1040px){
+    .auth-stage{grid-template-columns:minmax(0,1fr) 410px}
+    .login-art{padding:38px 34px}
+    .nexus{width:235px;height:235px}
+    .flow-node{transform:scale(.9)}
+  }
+  @media (max-width:860px){
+    .login-wrap{overflow:auto}
+    .auth-stage{width:min(520px,100%);min-height:auto;grid-template-columns:1fr}
+    .login-art{min-height:250px;align-items:flex-end;padding:26px 30px 34px}
+    .nexus{width:190px;height:190px;left:72%;top:42%}
+    .core-mark{width:78px;height:78px;border-radius:21px;font-size:2.35rem}
+    .core-mark::before{bottom:15px;width:34px;height:3px}
+    .flow-node,.route-line{display:none}
+    .art-copy{max-width:260px}
+    .art-copy h1{font-size:2.1rem}
+    .art-copy p{display:none}
+    .auth-stage .auth-card{width:calc(100% - 32px);margin:16px;padding-top:31px}
+  }
+  @media (max-width:480px){
+    .auth-stage{border-radius:23px}
+    .login-art{min-height:180px;padding:22px 23px 27px}
+    .nexus{width:144px;height:144px;left:76%;top:44%}
+    .orbit-b{inset:24px}.orbit-c{inset:46px}
+    .core-mark{width:60px;height:60px;border-radius:16px;font-size:1.8rem}
+    .core-mark::before{bottom:11px;width:25px}
+    .art-kicker{font-size:.62rem;letter-spacing:.17em}
+    .art-copy h1{max-width:210px;font-size:1.55rem}
+    .auth-stage .auth-card{width:calc(100% - 20px);margin:10px;padding:24px 20px}
+  }
+
   /* Hub header */
   #hubScreen{min-height:100svh;position:relative}
   #hubScreen::before{
@@ -513,38 +803,64 @@
 
 <!-- ===== LOGIN / SIGNUP ===== -->
 <div id="authScreen" class="login-wrap hide">
-  <div class="auth-card">
-    <div class="logo-plate"><span class="masaru-logo"></span></div>
-    <div class="sub-brand">PROCUREMENT HUB</div>
-    <p class="sub-desc">ศูนย์รวมระบบฝ่ายจัดซื้อ</p>
-
-    <!-- login -->
-    <div id="loginBox">
-      <div class="fld"><label>อีเมล</label><input id="email" type="email" placeholder="name@masaru.co.th" autocomplete="username"></div>
-      <div class="fld"><label>รหัสผ่าน</label><input id="password" type="password" autocomplete="current-password"></div>
-      <button class="btn-primary" id="loginBtn">เข้าสู่ระบบ</button>
-      <div class="msg err hide" id="loginErr"></div>
-      <div class="switch-line">ยังไม่มีบัญชี? <span class="link" id="toSignup">สมัครสมาชิก</span></div>
-    </div>
-
-    <!-- signup -->
-    <div id="signupBox" class="hide">
-      <div class="fld"><label>อีเมล</label><input id="suEmail" type="email" placeholder="name@masaru.co.th"></div>
-      <div class="fld"><label>รหัสผ่าน (อย่างน้อย 6 ตัว)</label><input id="suPassword" type="password"></div>
-      <div class="fld"><label>บทบาท</label>
-        <select id="suRole">
-          <option value="purchase">จัดซื้อ</option>
-          <option value="marketing">การตลาด</option>
-          <option value="head_purchase">หัวหน้าจัดซื้อ</option>
-          <option value="shipping">ขนส่ง (Shipping)</option>
-          <option value="executive">ผู้บริหาร</option>
-        </select>
+  <div class="auth-stage">
+    <section class="login-art" aria-hidden="true">
+      <div class="art-grid"></div>
+      <div class="art-scan"></div>
+      <div class="route-line"></div>
+      <div class="route-line route-b"></div>
+      <div class="nexus">
+        <div class="orbit orbit-a"></div>
+        <div class="orbit orbit-b"></div>
+        <div class="orbit orbit-c"></div>
+        <div class="core-mark">M</div>
       </div>
-      <div class="fld"><label>รหัสเชิญ</label><input id="suInvite" placeholder="ขอจากแอดมิน"></div>
-      <button class="btn-primary" id="signupBtn">สมัครสมาชิก</button>
-      <div class="msg err hide" id="signupErr"></div>
-      <div class="msg ok hide" id="signupOk"></div>
-      <div class="switch-line">มีบัญชีแล้ว? <span class="link" id="toLogin">เข้าสู่ระบบ</span></div>
+      <div class="flow-node node-pr"><span class="node-icon">📋</span><span>REQUEST</span></div>
+      <div class="flow-node node-po"><span class="node-icon">📦</span><span>ORDER</span></div>
+      <div class="flow-node node-ship"><span class="node-icon">🚢</span><span>SHIPMENT</span></div>
+      <div class="flow-node node-cost"><span class="node-icon">◈</span><span>COST</span></div>
+      <span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span>
+      <span class="spark s4"></span><span class="spark s5"></span><span class="spark s6"></span>
+      <div class="art-copy">
+        <div class="art-kicker">MASARU DIGITAL WORKSPACE</div>
+        <h1>Control every move.</h1>
+        <p>เชื่อมทุกขั้นตอนของงานจัดซื้อ ตั้งแต่คำขอซื้อ การสั่งสินค้า การขนส่ง ไปจนถึงการควบคุมต้นทุน</p>
+      </div>
+      <div class="system-strip"><span>PROCUREMENT &nbsp;•&nbsp; PURCHASE ORDER &nbsp;•&nbsp; SHIPMENT &nbsp;•&nbsp; COST CONTROL &nbsp;•&nbsp; PROCUREMENT &nbsp;•&nbsp; PURCHASE ORDER &nbsp;•&nbsp; SHIPMENT &nbsp;•&nbsp; COST CONTROL &nbsp;•&nbsp;</span></div>
+    </section>
+    <div class="auth-card">
+      <div class="logo-plate"><span class="masaru-logo"></span></div>
+      <div class="sub-brand">PROCUREMENT HUB</div>
+      <p class="sub-desc">ศูนย์รวมระบบฝ่ายจัดซื้อ</p>
+
+      <!-- login -->
+      <div id="loginBox">
+        <div class="fld"><label>อีเมล</label><input id="email" type="email" placeholder="name@masaru.co.th" autocomplete="username"></div>
+        <div class="fld"><label>รหัสผ่าน</label><input id="password" type="password" autocomplete="current-password"></div>
+        <button class="btn-primary" id="loginBtn">เข้าสู่ระบบ</button>
+        <div class="msg err hide" id="loginErr"></div>
+        <div class="switch-line">ยังไม่มีบัญชี? <span class="link" id="toSignup">สมัครสมาชิก</span></div>
+      </div>
+
+      <!-- signup -->
+      <div id="signupBox" class="hide">
+        <div class="fld"><label>อีเมล</label><input id="suEmail" type="email" placeholder="name@masaru.co.th"></div>
+        <div class="fld"><label>รหัสผ่าน (อย่างน้อย 6 ตัว)</label><input id="suPassword" type="password"></div>
+        <div class="fld"><label>บทบาท</label>
+          <select id="suRole">
+            <option value="purchase">จัดซื้อ</option>
+            <option value="marketing">การตลาด</option>
+            <option value="head_purchase">หัวหน้าจัดซื้อ</option>
+            <option value="shipping">ขนส่ง (Shipping)</option>
+            <option value="executive">ผู้บริหาร</option>
+          </select>
+        </div>
+        <div class="fld"><label>รหัสเชิญ</label><input id="suInvite" placeholder="ขอจากแอดมิน"></div>
+        <button class="btn-primary" id="signupBtn">สมัครสมาชิก</button>
+        <div class="msg err hide" id="signupErr"></div>
+        <div class="msg ok hide" id="signupOk"></div>
+        <div class="switch-line">มีบัญชีแล้ว? <span class="link" id="toLogin">เข้าสู่ระบบ</span></div>
+      </div>
     </div>
   </div>
 </div>
