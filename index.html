@@ -272,17 +272,17 @@
   .auth-stage{
     position:relative;
     z-index:1;
-    width:min(1180px,100%);
-    min-height:680px;
+    width:min(1340px,100%);
+    min-height:720px;
     display:grid;
-    grid-template-columns:minmax(0,1.25fr) minmax(390px,.75fr);
+    grid-template-columns:minmax(0,1fr) 500px;
     align-items:stretch;
-    border:1px solid rgba(255,255,255,.14);
-    border-radius:34px;
-    background:rgba(7,18,33,.56);
-    box-shadow:0 50px 130px rgba(0,0,0,.48),inset 0 1px 0 rgba(255,255,255,.08);
-    backdrop-filter:blur(18px);
-    overflow:hidden;
+    border:0;
+    border-radius:0;
+    background:transparent;
+    box-shadow:none;
+    backdrop-filter:none;
+    overflow:visible;
     animation:stage-in .75s cubic-bezier(.18,.8,.2,1) both;
   }
   @keyframes stage-in{from{opacity:0;transform:translateY(24px) scale(.985)}to{opacity:1;transform:none}}
@@ -291,17 +291,18 @@
     position:absolute;
     inset:0;
     pointer-events:none;
-    background:linear-gradient(120deg,rgba(255,255,255,.06),transparent 22%,transparent 78%,rgba(227,31,50,.08));
+    background:radial-gradient(circle at 72% 50%,rgba(227,31,50,.07),transparent 28%);
   }
   .auth-stage .auth-card{
     align-self:center;
-    width:calc(100% - 42px);
-    margin:32px 30px 32px 12px;
+    width:min(460px,calc(100% - 26px));
+    margin:32px 0 32px auto;
     z-index:3;
+    box-shadow:0 34px 90px rgba(0,0,0,.42),0 0 0 1px rgba(255,255,255,.16),inset 0 1px 0 #fff;
   }
   .login-art{
     position:relative;
-    min-height:680px;
+    min-height:720px;
     display:flex;
     align-items:flex-end;
     padding:42px 50px;
@@ -519,14 +520,14 @@
   @keyframes strip-move{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 
   @media (max-width:1040px){
-    .auth-stage{grid-template-columns:minmax(0,1fr) 410px}
+    .auth-stage{grid-template-columns:minmax(0,1fr) 430px}
     .login-art{padding:38px 34px}
     .nexus{width:235px;height:235px}
     .flow-node{transform:scale(.9)}
   }
   @media (max-width:860px){
     .login-wrap{overflow:auto}
-    .auth-stage{width:min(520px,100%);min-height:auto;grid-template-columns:1fr}
+    .auth-stage{width:min(520px,100%);min-height:auto;grid-template-columns:1fr;border:0;border-radius:0;background:transparent;box-shadow:none}
     .login-art{min-height:250px;align-items:flex-end;padding:26px 30px 34px}
     .nexus{width:190px;height:190px;left:72%;top:42%}
     .core-mark{width:78px;height:78px;border-radius:21px;font-size:2.35rem}
@@ -535,10 +536,10 @@
     .art-copy{max-width:260px}
     .art-copy h1{font-size:2.1rem}
     .art-copy p{display:none}
-    .auth-stage .auth-card{width:calc(100% - 32px);margin:16px;padding-top:31px}
+    .auth-stage .auth-card{width:calc(100% - 32px);margin:-18px 16px 16px;padding-top:31px}
   }
   @media (max-width:480px){
-    .auth-stage{border-radius:23px}
+    .auth-stage{border-radius:0}
     .login-art{min-height:180px;padding:22px 23px 27px}
     .nexus{width:144px;height:144px;left:76%;top:44%}
     .orbit-b{inset:24px}.orbit-c{inset:46px}
@@ -546,7 +547,7 @@
     .core-mark::before{bottom:11px;width:25px}
     .art-kicker{font-size:.62rem;letter-spacing:.17em}
     .art-copy h1{max-width:210px;font-size:1.55rem}
-    .auth-stage .auth-card{width:calc(100% - 20px);margin:10px;padding:24px 20px}
+    .auth-stage .auth-card{width:calc(100% - 20px);margin:-14px 10px 10px;padding:24px 20px}
   }
 
   /* Hub header */
