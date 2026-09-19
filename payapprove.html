@@ -161,7 +161,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-59</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-60</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -1211,6 +1211,56 @@ function rateReset(){
    เก็บ 2 ยอดแยกกัน: ที่ขอให้เติม กับ ที่เติมจริง (มักไม่ตรงกัน)
    ═══════════════════════════════════════════════════════════════ */
 const isKsher=ch=>/Ksher/i.test(String(ch||''));
+/* ยอดที่เจ้านาย "ต้องโอนจริง" ของคำขอนี้ (บาท) — ตัวเดียวใช้ทุกที่
+   Ksher  → ยอดเติม (เติมจริง > ที่ขอให้เติม > ยอดรวมคำขอ)
+   อื่น ๆ → ยอดรวมบาทตามคำขอ
+   ⚠️ บั๊กเดิม: ตาราง/KPI/กล่องยืนยันอนุมัติ อ่าน total_thb ตรง ๆ
+      คำขอ Ksher ที่ยังไม่ใส่เรทมี total_thb = 0 → เจ้านายเห็น "รวมบาท 0"
+      ทั้งที่ในใบระบุยอดเติมไว้แล้ว ต้องกด 👁 ดู ทีละใบถึงจะเห็น */
+function payThb(r){
+  if(!r)return 0;
+  if(isKsher(r.channel)){
+    const act=+r.topup_actual||0, want=+r.topup_amount||0;
+    if(act>0)return act;
+    if(want>0)return want;
+  }
+  return +r.total_thb||0;
+}
+/* ที่มาของยอด — ไว้ติดป้ายเล็กใต้ตัวเลข: act=เติมจริง want=ที่ขอให้เติม none=ยังไม่ระบุ */
+function payThbSrc(r){
+  if(!isKsher(r&&r.channel))return '';
+  if(+r.topup_actual>0)return 'act';
+  if(+r.topup_amount>0)return 'want';
+  return 'none';
+}
+/* ช่อง "รวมบาท" ในตารางรายการ / รออนุมัติ / ของฉัน */
+function thbCell(r){
+  const v=payThb(r);
+  if(isKsher(r.channel)){
+    const src=payThbSrc(r);
+    const tag=src==='act' ?'💰 เติมจริง ✓'
+            :src==='want'?'💰 ยอดเติม Ksher'
+            :'⚠️ ยังไม่ใส่ยอดเติม';
+    const col=src==='none'?'var(--red)':'#B45309';
+    return (v>0?`<b>${money(v)}</b>`:`<b style="color:var(--red)">-</b>`)
+      +`<div style="font-size:10px;color:${col};font-weight:700;white-space:nowrap" title="${
+        src==='none'?'Ksher ต้องระบุยอดที่จะให้เติม — กด ✏️ แก้ไข แล้วใส่ในกล่อง 💰':'ยอดที่เจ้านายต้องเติมเข้าระบบ Ksher'}">${tag}</div>`;
+  }
+  if(!(v>0)&&(+r.total_amount||0)>0&&String(r.currency||'')!=='THB')
+    return `<span style="color:var(--red);font-weight:700;font-size:11.5px" title="ยังไม่ใส่เรทแปลง — ยอดบาทคำนวณไม่ได้">⚠️ ยังไม่ใส่เรท</span>`;
+  return `<b>${money(v)}</b>`;
+}
+/* ข้อความยอดในกล่องยืนยันอนุมัติ / ตีกลับ */
+function payThbLabel(r){
+  if(isKsher(r.channel)){
+    const src=payThbSrc(r);
+    if(src!=='none')return 'ยอดที่ต้องเติม Ksher '+money2(payThb(r))+' ฿';
+    return (payThb(r)>0?'ยอดรวม '+money2(payThb(r))+' ฿ · ':'')+'⚠️ Ksher ยังไม่ระบุยอดที่ต้องเติม';
+  }
+  if(calNoRate(r))   // ยังไม่มีเรท → โชว์ยอดสกุลจริง ไม่ใช่ "0.00 ฿"
+    return 'ยอดรวม '+money2(r.total_amount)+' '+String(r.currency||'')+' ⚠️ ยังไม่ใส่เรท';
+  return 'ยอดรวม '+money2(payThb(r))+' ฿';
+}
 function topupShow(){
   const box=$('topupBox'); if(!box)return;
   box.style.display = isKsher($('r_ch').value) ? 'block' : 'none';
@@ -1412,7 +1462,7 @@ function renderKpi(){
   const mine=REQS.filter(r=>r.requester===ME);
   const myOpen=mine.filter(r=>r.status==='draft'||r.status==='rejected').length;
   const pending=REQS.filter(r=>r.status==='submitted'||r.status==='mgr_approved');
-  const sumThb=pending.reduce((s,r)=>s+(+r.total_thb||0),0);
+  const sumThb=pending.reduce((s,r)=>s+payThb(r),0);   // Ksher นับยอดเติม ไม่ใช่ total_thb (=0 ถ้าไม่มีเรท)
   const urgent=pending.filter(r=>r.urgency==='urgent').length;
   const today=todayStr();
   const late=pending.filter(r=>r.due_date&&r.due_date<=today).length;
@@ -1458,7 +1508,7 @@ function reqTable(rows,opts){
   let h=`<table><thead><tr><th>เลขคำขอ</th><th>วันที่ยื่น</th><th>กำหนดชำระ</th>
     <th>จ่ายในนาม</th><th>ช่องทาง</th><th class="num">รายการ</th>
     <th style="width:78px">สกุลเงิน</th><th class="num">ยอด</th>
-    <th class="num">รวมบาท</th><th>สถานะ</th><th>ผู้ยื่น</th><th style="width:130px"></th></tr></thead><tbody>`;
+    <th class="num" title="ยอดที่ต้องโอนจริงเป็นบาท — Ksher = ยอดเติมเข้าระบบ">รวมบาท</th><th>สถานะ</th><th>ผู้ยื่น</th><th style="width:130px"></th></tr></thead><tbody>`;
   rows.forEach(r=>{
     const late=r.due_date&&r.due_date<=today&&r.status!=='paid'&&r.status!=='approved';
     h+=`<tr>
@@ -1474,7 +1524,7 @@ function reqTable(rows,opts){
         r.src_currency?`<div class="muted" style="font-size:10px">← ${esc(r.src_currency)}</div>`:''}</td>
       <td class="num">${money(r.total_amount)} ${curSym(r.currency)}${
         curMismatch(r)?` <span title="หน่วยเงินไม่ตรงกับบิล — ควรเป็น ${esc(curMismatch(r))}" style="color:var(--red);font-weight:800">⚠</span>`:''}</td>
-      <td class="num"><b>${money(r.total_thb)}</b></td>
+      <td class="num">${thbCell(r)}</td>
       <td>${stPill(r.status)}</td>
       <td style="font-size:11.5px">${esc(r.requester_name||r.requester||'-')}</td>
       <td style="white-space:nowrap">
@@ -1539,7 +1589,7 @@ async function delReq(id){
      คนอ่านจะเข้าใจว่าใบนี้ไม่มียอด แล้วกดลบทิ้งง่ายเกินไป */
   const lines=[
     (r.req_no||''),
-    'ยอด '+calAmt(r)+(calNoRate(r)?' (ยังไม่ใส่เรท)':''),
+    'ยอด '+calAmt(r)+calNoRateTag(r),
     'สถานะ '+((ST[r.status]||{}).t||r.status),
     'จ่ายในนาม '+coShort(r.pay_type),
     'กำหนดชำระ '+thDate(r.due_date)
@@ -2252,7 +2302,7 @@ async function fixReqCur(id,should){
 async function act(id,to){
   const r=REQS.find(x=>String(x.id)===String(id)); if(!r)return;
   const label={submitted:'ส่งอนุมัติ',approved:'อนุมัติจ่าย',paid:'ยืนยันจ่ายแล้ว'}[to];
-  if(!confirm(label+' คำขอ '+(r.req_no||'')+' ?\n\nยอดรวม '+money2(r.total_thb)+' ฿'))return;
+  if(!confirm(label+' คำขอ '+(r.req_no||'')+' ?\n\n'+payThbLabel(r)))return;
   const up={status:to,updated_at:new Date().toISOString()};
   const now=new Date().toISOString();
   if(to==='approved'){up.approved_by=ME;up.approved_at=now;}
@@ -2270,7 +2320,7 @@ async function act(id,to){
 function openReject(id){
   REJ_ID=id;
   const r=REQS.find(x=>String(x.id)===String(id))||{};
-  $('rejInfo').innerHTML=`คำขอ <b>${esc(r.req_no||'')}</b> · ยอดรวม <b>${money2(r.total_thb)} ฿</b>
+  $('rejInfo').innerHTML=`คำขอ <b>${esc(r.req_no||'')}</b> · <b>${esc(payThbLabel(r))}</b>
     · ผู้ยื่น ${esc(r.requester_name||r.requester||'')}`;
   $('rejNote').value=r.reject_note||'';
   $('rejBg').style.display='flex';
@@ -2660,7 +2710,8 @@ function xfRender(){
       +xfIn('thb','ยอดเติมเงินเข้าระบบ (บาท)',{type:'num'})
       +`<div class="row" style="margin:-4px 0 10px"><button class="btn mini ghost" onclick="xfKsDeduct()"
           title="ยอดรวม − ยอดเดิมในระบบ">− หักยอดเดิมในระบบ</button>
-          <span class="muted" style="font-size:11.5px">ยอดรวมคำขอ ${money2(r.total_thb)} ฿</span></div>`
+          <span class="muted" style="font-size:11.5px">ยอดรวมคำขอ ${money2(r.total_thb)} ฿${
+            +r.topup_amount>0?` · <b style="color:#B45309">ขอให้เติม ${money2(r.topup_amount)} ฿</b>`:''}</span></div>`
       +xfIn('ks_prev','มียอดเดิมในระบบ (บาท)',{type:'num'})
       +xfIn('ks_rate','เรทแลกเปลี่ยน',{type:'num'})
       +xfIn('ks_user','หมายเหตุ / ชื่อผู้ใช้ Ksher',{type:'area'})
@@ -2978,15 +3029,18 @@ const CAL_MARK={draft:'📝 ร่าง',submitted:'⏳ รออนุมั�
    → ยังไม่มียอดบาท ให้โชว์ยอดสกุลจริงไปก่อน + ติดป้ายว่ายังไม่ใส่เรท */
 const CUR_SIGN={CNY:'¥',USD:'$',THB:'฿'};
 function calAmt(r){
-  const thb=+r.total_thb||0, amt=+r.total_amount||0, cur=String(r.currency||'');
-  if(thb>0)return money2(thb)+' ฿';
+  /* Ksher → ยอดเติม (payThb) ไม่ใช่ total_thb ที่เป็น 0 เมื่อไม่มีเรท */
+  const thb=payThb(r), amt=+r.total_amount||0, cur=String(r.currency||'');
+  if(thb>0)return money2(thb)+' ฿'+(isKsher(r.channel)&&payThbSrc(r)!=='none'?' (เติม Ksher)':'');
   if(amt>0)return money2(amt)+' '+(CUR_SIGN[cur]||cur||'');
   return '-';
 }
-const calNoRate=r=>!(+r.total_thb>0)&&(+r.total_amount>0);
+const calNoRate=r=>!(payThb(r)>0)&&(+r.total_amount>0);
+/* ป้ายท้ายยอด: ปกติ = ยังไม่ใส่เรท · Ksher = ยังไม่ใส่ยอดเติม (เรทไม่ใช่ประเด็นของ Ksher) */
+const calNoRateTag=r=>!calNoRate(r)?'':(isKsher(r.channel)?' (ยังไม่ใส่ยอดเติม)':' (ยังไม่ใส่เรท)');
 function calTitle(r){
   return (CAL_MARK[r.status]||'')+' '+(r.req_no||'')
-    +' · '+calAmt(r)+(calNoRate(r)?' (ยังไม่ใส่เรท)':'')
+    +' · '+calAmt(r)+calNoRateTag(r)
     +' · '+coShort(r.pay_type)
     +(r.urgency==='urgent'?' 🔥':'');
 }
@@ -2997,7 +3051,13 @@ function calDesc(r){
   L.push('ยอดที่ต้องโอน: '+money2(r.total_amount)+' '+(r.currency||'')
         +((String(r.currency||'')!=='THB'&&+r.total_thb>0)
           ?('  (≈ '+money2(r.total_thb)+' ฿)'):''));
-  if(calNoRate(r))L.push('⚠️ ยังไม่ได้ใส่เรทแปลง — ยอดบาทยังคำนวณไม่ได้ '
+  if(isKsher(r.channel)){
+    /* Ksher: ยอดที่เจ้านายต้องโอนคือยอดเติม ไม่ใช่ยอดคำขอ */
+    if(+r.topup_amount>0)L.push('💰 ยอดที่ต้องเติมเข้าระบบ Ksher: '+money2(r.topup_amount)+' ฿'
+      +(+r.topup_actual>0?('  (เติมจริง '+money2(r.topup_actual)+' ฿)'):''));
+    else L.push('⚠️ Ksher ยังไม่ได้ระบุยอดที่ต้องเติม — เปิดใบในระบบแล้วใส่ก่อนอนุมัติ');
+  }
+  else if(calNoRate(r))L.push('⚠️ ยังไม่ได้ใส่เรทแปลง — ยอดบาทยังคำนวณไม่ได้ '
     +'(เปิดใบในระบบแล้วใส่เรทก่อนอนุมัติ)');
   if(r.src_currency)L.push('แปลงจาก: '+money2(r.total_src)+' '+r.src_currency+' × '+r.fx_rate);
   L.push('จ่ายในนาม: '+coFull(r.pay_type));
@@ -3200,7 +3260,7 @@ function openProof(id){
   $('pfTitle').innerHTML='📎 หลักฐาน / เอกสารแนบ — '+esc(r.req_no||'')
     +' '+stPill(r.status)
     +' <span class="muted" style="font-size:12.5px;font-weight:400">'+calAmt(r)
-    +(calNoRate(r)?' (ยังไม่ใส่เรท)':'')+'</span>';
+    +calNoRateTag(r)+'</span>';
   $('pf_note').value=r.proof_note||'';
   $('pf_url').value=''; $('pf_file').value='';
   $('pf_prog').style.display='none'; $('pf_stat').textContent='';
@@ -3336,7 +3396,7 @@ async function pfUploadOne(f,r){
         filename:(r.req_no||'REQ')+'_'+(po||'PO')+'_'+f.name,
         folder:'หลักฐานการโอน/'+String(r.req_no||'ไม่ระบุเลขคำขอ').replace(/[\\/:*?"<>|]/g,'-'),
         mime:f.type||'application/octet-stream', data:await fileToB64(f),
-        payDate:r.due_date||'', po:po, installment:'', amount:r.total_thb||'',
+        payDate:r.due_date||'', po:po, installment:'', amount:payThb(r)||'',   // Ksher = ยอดเติม
         currency:'THB', channel:r.channel||'', payType:r.pay_type||'', payee:'', actor:ME||''});
       return {url:j.openUrl||j.viewUrl||'',open:j.openUrl||'',id:j.fileId||'',
               name:f.name,mime:f.type||'',src:'drive'};
@@ -3391,7 +3451,7 @@ function ppDraw(){
     +'<div class="no">'+esc(r.req_no||'')+'</div>'
     +'<table><tbody>'
     +'<tr><td class="k">ยอดที่ต้องโอน</td><td>'+esc(calAmt(r))
-      +(calNoRate(r)?' (ยังไม่ใส่เรท)':'')+'</td>'
+      +calNoRateTag(r)+'</td>'
       +'<td class="k">สถานะ</td><td>'+esc((ST[r.status]||{}).t||r.status||'-')+'</td></tr>'
     +'<tr><td class="k">จ่ายในนาม</td><td>'+esc(coFull(r.pay_type))+'</td>'
       +'<td class="k">ช่องทางการโอน</td><td>'+esc(r.channel||'-')+'</td></tr>'
@@ -3605,9 +3665,9 @@ function renderReport(){
   rows.forEach(r=>{
     byStatus[r.status]=(byStatus[r.status]||0)+1;
     const t=coFull(r.pay_type)||'(ไม่ระบุ)';
-    (byType[t]=byType[t]||{n:0,thb:0}); byType[t].n++; byType[t].thb+=+r.total_thb||0;
+    (byType[t]=byType[t]||{n:0,thb:0}); byType[t].n++; byType[t].thb+=payThb(r);
     const u=r.requester_name||r.requester||'(ไม่ระบุ)';
-    (byUser[u]=byUser[u]||{n:0,thb:0}); byUser[u].n++; byUser[u].thb+=+r.total_thb||0;
+    (byUser[u]=byUser[u]||{n:0,thb:0}); byUser[u].n++; byUser[u].thb+=payThb(r);
   });
   const done=rows.filter(r=>['approved','paid'].includes(r.status));
   const avgDays=(()=>{
@@ -3633,8 +3693,8 @@ function renderReport(){
       <div class="kpi"><div class="lbl">คำขอทั้งเดือน</div><div class="val">${rows.length}</div></div>
       <div class="kpi green"><div class="lbl">อนุมัติ/จ่ายแล้ว</div><div class="val">${done.length}</div></div>
       <div class="kpi red"><div class="lbl">ถูกตีกลับ</div><div class="val">${byStatus.rejected||0}</div></div>
-      <div class="kpi gold"><div class="lbl">ยอดรวมที่อนุมัติ (บาท)</div>
-        <div class="val" style="font-size:19px">${money(done.reduce((s,r)=>s+(+r.total_thb||0),0))}</div></div>
+      <div class="kpi gold"><div class="lbl" title="Ksher นับยอดเติมเข้าระบบ">ยอดรวมที่อนุมัติ (บาท)</div>
+        <div class="val" style="font-size:19px">${money(done.reduce((s,r)=>s+payThb(r),0))}</div></div>
       <div class="kpi blue"><div class="lbl">เวลาอนุมัติเฉลี่ย</div><div class="val">${avgDays}<span style="font-size:.5em"> วัน</span></div></div>
     </div>
     <div class="card" style="box-shadow:none;border:1px solid var(--line)">
@@ -3651,15 +3711,19 @@ function exportReport(){
   const rows=REQS.filter(r=>String(r.req_date||'').slice(0,7)===mo);
   if(!rows.length)return toast('เดือนนี้ไม่มีข้อมูล');
   const out=[['เลขคำขอ','วันที่ยื่น','กำหนดชำระ','เวลา','จ่ายในนาม','ช่องทาง','ช่องทางการชำระเงิน','เลขบัญชีที่จ่าย','สกุลต้นทาง','ยอดต้นทาง','เรทแปลง','สกุล','ยอด','ค่าธรรมเนียม','รวมบาท',
+              'ยอดเติม Ksher (ขอ)','ยอดเติม Ksher (จริง)','ยอดที่ต้องโอน (บาท)',
               'สถานะ','ด่วน','ผู้ยื่น','หัวหน้าอนุมัติ (ใบเก่า)','ผู้บริหารอนุมัติ','เหตุผล','หมายเหตุ','เหตุผลที่ตีกลับ']];
   rows.forEach(r=>out.push([r.req_no||'',r.req_date||'',r.due_date||'',r.due_time||'',coFull(r.pay_type),r.channel||'',
     r.pay_method||'', r.pay_acct||'',
     r.src_currency||'', r.src_currency?(+r.total_src||0):'', r.src_currency?(+r.fx_rate||0):'',
-    r.currency||'',+r.total_amount||0,+r.total_fee||0,+r.total_thb||0,(ST[r.status]||{}).t||r.status,
+    r.currency||'',+r.total_amount||0,+r.total_fee||0,+r.total_thb||0,
+    isKsher(r.channel)?(+r.topup_amount||0):'', isKsher(r.channel)?(+r.topup_actual||0):'', payThb(r),
+    (ST[r.status]||{}).t||r.status,
     r.urgency==='urgent'?'ด่วน':'',r.requester_name||r.requester||'',r.checked_by||'',r.approved_by||'',
     r.reason||'',r.note||'',r.reject_note||'']));
   const ws=XLSX.utils.aoa_to_sheet(out),wb=XLSX.utils.book_new();
   ws['!cols']=[{wch:17},{wch:11},{wch:11},{wch:7},{wch:12},{wch:20},{wch:24},{wch:30},{wch:9},{wch:13},{wch:10},{wch:7},{wch:13},{wch:11},{wch:13},
+               {wch:16},{wch:16},{wch:16},
                {wch:18},{wch:7},{wch:18},{wch:22},{wch:22},{wch:32},{wch:26},{wch:32}];
   XLSX.utils.book_append_sheet(wb,ws,'คำขออนุมัติ');
   XLSX.writeFile(wb,'คำขออนุมัติชำระเงิน_'+mo+'.xlsx');
