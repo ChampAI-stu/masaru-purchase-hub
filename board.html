@@ -282,6 +282,46 @@
   .trip-line{display:grid;grid-template-columns:56px 96px 1fr 54px 44px 58px 50px 58px 130px 26px;gap:6px;margin-bottom:8px;align-items:center}
   .trip-line input{width:100%;padding:9px 7px;border:1px solid var(--line);border-radius:8px}
   .trip-line input:focus{outline:none;border-color:var(--navy-light);box-shadow:0 0 0 3px #2E75B622}
+  /* ===== 📦 แจ้งสินค้าขาเข้า =====
+     ตารางเลียนแบบชีทเดิมของทีม (วันแจ้งเข้า · เลขที่รายการ · PO · SKU · ชิ้น/ลัง · ลัง
+     · ชิ้น · คิว · น้ำหนัก · เข้าคลังแล้ว · ค้าง · หมายเหตุ)
+     แถวหัวสีเข้ม = 1 ใบแจ้งจากขนส่ง · แถวขาวใต้ลงมา = รายการในใบนั้น */
+  .arr-wrap{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .arr-tb{width:100%;border-collapse:collapse;font-size:12.5px;min-width:1180px}
+  .arr-tb th{background:var(--navy);color:#fff;font-weight:600;padding:9px 8px;text-align:left;white-space:nowrap}
+  .arr-tb td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+  .arr-tb td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .arr-head td{background:#EEF3FA;border-top:2px solid var(--navy-light);font-weight:600}
+  .arr-head .arr-date{font-size:13px;color:var(--navy);font-weight:800}
+  .arr-extra td{background:#FAFCFF;color:var(--muted)}
+  .arr-extra .arr-sku::before{content:"▸ ";color:var(--navy-light)}
+  .arr-sum td{background:#F8FAFC;font-weight:700;border-bottom:2px solid var(--line)}
+  .arr-wait{color:var(--orange);font-weight:800}
+  .arr-done{color:var(--green);font-weight:700}
+  .arr-st{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;
+    padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .arr-st.w{background:var(--orange-bg);color:var(--orange)}
+  .arr-st.p{background:var(--amber-bg);color:var(--amber)}
+  .arr-st.d{background:var(--green-bg);color:var(--green)}
+  .arr-st.c{background:#EEF2F7;color:var(--muted)}
+  .arr-mini{padding:4px 8px;font-size:11px;border:1px solid var(--line);background:#fff;
+    border-radius:7px;color:var(--navy);font-weight:600;white-space:nowrap}
+  .arr-mini:hover{background:#F1F5F9}
+  .arr-mini.go{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .arr-mini.rd{color:var(--red);border-color:#f3c6c9}
+  /* แถวกรอกในฟอร์มใบแจ้ง — คอลัมน์เดียวกับตารางหน้าจอ */
+  .arr-lh,.arr-ln{display:grid;gap:5px;align-items:center;
+    grid-template-columns:86px 66px 1fr 50px 48px 58px 62px 58px 110px 24px}
+  .arr-lh{font-size:10.5px;color:var(--muted);margin-bottom:5px;padding:0 2px}
+  .arr-ln{margin-bottom:6px}
+  .arr-ln input{width:100%;padding:8px 6px;border:1px solid var(--line);border-radius:7px;font-size:12px}
+  .arr-ln input:focus{outline:none;border-color:var(--navy-light);box-shadow:0 0 0 3px #2E75B622}
+  .arr-ln.ex input{background:#FAFCFF}
+  .arr-paste{background:var(--blue-bg);border:1px solid #cfe0f3;border-radius:10px;padding:12px;margin-top:10px}
+  .arr-paste textarea{width:100%;font-family:ui-monospace,monospace;font-size:11.5px;
+    border:1px solid var(--line);border-radius:8px;padding:8px}
+  @media(max-width:700px){ .arr-lh{display:none} .arr-ln{grid-template-columns:1fr 1fr;gap:6px} }
+
   /* แถบเลื่อนสัปดาห์ */
   .week-nav{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
   .wk-btn{width:40px;height:40px;border:1px solid var(--line);background:#fff;border-radius:10px;
@@ -388,6 +428,7 @@ body.price-on .sl-price{display:block}
 
   <div class="tabbar">
     <button class="tab-btn active" id="tabBoard">📋 Purchase Board</button>
+    <button class="tab-btn" id="tabArr">📦 แจ้งสินค้าขาเข้า</button>
     <button class="tab-btn" id="tabPlan">🚚 แผนรับสินค้า</button>
     <button class="tab-btn" id="tabRep">📈 รายงาน On-Time</button>
     <button class="tab-btn" id="tabUp">📜 ประวัติการอัพโหลด</button>
@@ -538,6 +579,139 @@ body.price-on .sl-price{display:block}
       <button class="wk-btn" onclick="loadUploads()">🔄 รีเฟรช</button>
     </div>
     <div id="upBody" style="overflow-x:auto"></div>
+  </div>
+</div>
+
+<!-- ════════════ แท็บ 📦 แจ้งสินค้าขาเข้า ════════════
+     ของถึงไทยแล้วแต่ยังไม่เข้าคลังเรา — บางส่วนค้างที่ขนส่งหลายวัน / แบ่งตู้มาเป็นรอบ
+     แท็บนี้ตอบคำถามเดียว: "จะมีของเข้าคลังอีกกี่ลัง กี่คิว กี่กิโล และค้างอยู่ที่ไหน" -->
+<div id="viewArr" style="display:none">
+  <div class="container">
+    <div class="summary" style="margin-top:14px">
+      <div class="sum-card"><div class="sum-label">📦 ค้างที่ขนส่ง (ยังไม่เข้าคลัง)</div>
+        <div class="sum-val" id="arrWaitBox">0</div>
+        <div class="sum-sub" id="arrWaitSub">0 คิว · 0 กก.</div></div>
+      <div class="sum-card"><div class="sum-label">✅ เข้าคลังแล้ว (เดือนที่เลือก)</div>
+        <div class="sum-val" id="arrInBox">0</div>
+        <div class="sum-sub" id="arrInSub">จากที่แจ้งมา 0 ลัง</div></div>
+      <div class="sum-card"><div class="sum-label">📋 ใบแจ้งในเดือน</div>
+        <div class="sum-val" id="arrNotice">0</div>
+        <div class="sum-sub" id="arrNoticeSub">ยังไม่ครบ 0 ใบ</div></div>
+      <div class="sum-card"><div class="sum-label">⏳ ค้างนานสุด</div>
+        <div class="sum-val" id="arrOld">-</div>
+        <div class="sum-sub" id="arrOldSub">—</div></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-wrap">
+        <span class="search-ico">🔍</span>
+        <input type="text" id="arrSearch" placeholder="ค้นหา เลขที่รายการ, PO, SKU, ขนส่ง, หมายเหตุ..." oninput="renderArr()">
+      </div>
+      <input type="month" class="filter-sel" id="arrMonth" onchange="loadArr()" style="max-width:150px"
+        title="ดึงเฉพาะเดือนที่เลือก — ประหยัดโควตาฐานข้อมูล">
+      <select class="filter-sel" id="arrStatus" onchange="renderArr()" style="max-width:185px">
+        <option value="">— ทุกสถานะ —</option>
+        <option value="waiting">🟠 ค้างที่ขนส่ง</option>
+        <option value="partial">🟡 เข้าคลังบางส่วน</option>
+        <option value="done">✅ เข้าคลังครบ</option>
+        <option value="cancel">⚪ ยกเลิก</option>
+      </select>
+      <button class="add-btn" onclick="exportArr()" style="background:#1E7145">📥 Export Excel</button>
+      <button class="add-btn" id="arrAddBtn" onclick="openArr()" style="display:none">+ เพิ่มใบแจ้ง</button>
+      <button class="wk-btn" onclick="loadArr()" title="โหลดใหม่">🔄</button>
+    </div>
+
+    <div class="arr-wrap"><div style="overflow-x:auto"><table class="arr-tb" id="arrTb"><tbody>
+      <tr><td style="padding:26px;text-align:center;color:var(--muted)">เปิดแท็บนี้แล้วระบบจะโหลดให้</td></tr>
+    </tbody></table></div></div>
+    <div style="font-size:11.5px;color:var(--muted);margin:8px 2px 20px">
+      ▸ = บรรทัดพ่วง (SKU ที่แถมมาในลังเดียวกับบรรทัดบน) — นับแค่จำนวนชิ้น ไม่นับลัง/คิว/น้ำหนักซ้ำ
+    </div>
+  </div>
+</div>
+
+<!-- ============ Modal เพิ่ม/แก้ไขใบแจ้งสินค้าขาเข้า ============ -->
+<div class="modal-bg" id="arrBg">
+  <div class="modal" style="max-width:1120px">
+    <div class="modal-head">
+      <h2 id="arrTitle">เพิ่มใบแจ้งสินค้าขาเข้า</h2>
+      <button class="modal-close" onclick="closeArr()">&times;</button>
+    </div>
+    <input type="hidden" id="arrId">
+    <div class="m-row">
+      <div class="m-field"><label>วันแจ้งเข้า (ของถึงไทย) *</label><input type="date" id="ar_date"></div>
+      <div class="m-field"><label>เลขที่แจ้ง</label><input type="text" id="ar_no" placeholder="เช่น 0912-9004"></div>
+    </div>
+    <div class="m-row">
+      <div class="m-field"><label>บริษัทขนส่ง *</label>
+        <input type="text" id="ar_carrier" list="arrCarrierList" placeholder="เช่น 168 EXPRESS / สาย 2 / 6303">
+        <datalist id="arrCarrierList"></datalist></div>
+      <div class="m-field"><label>รถนำส่ง</label><input type="text" id="ar_truck" placeholder="ใส่ทีหลังได้ ตอนขนส่งนัดวันส่ง"></div>
+    </div>
+    <div class="m-row">
+      <div class="m-field"><label>วันที่คาดว่าจะเข้าคลัง</label><input type="date" id="ar_eta"></div>
+      <div class="m-field"><label>หมายเหตุใบแจ้ง</label><input type="text" id="ar_note" placeholder="เช่น ขนส่งแบ่งตู้ ทยอยส่ง 3 รอบ"></div>
+    </div>
+
+    <div class="sku-section-label">รายการในใบแจ้งนี้</div>
+    <div class="arr-lh">
+      <span>เลขที่รายการ</span><span>PO</span><span>SKU</span><span>ชิ้น/ลัง</span><span>ลัง</span>
+      <span>ชิ้น</span><span>คิว</span><span>น้ำหนัก กก.</span><span>หมายเหตุ</span><span></span>
+    </div>
+    <div id="arrLines"></div>
+    <button type="button" class="add-sku-btn" onclick="arrAddLine()">+ เพิ่มรายการ</button>
+    <button type="button" class="add-sku-btn" onclick="arrAddLine(null,true)"
+      style="background:#F8FAFC;color:var(--navy-light)" title="SKU ที่แถมมาในลังเดียวกับบรรทัดบน">+ บรรทัดพ่วง (▸)</button>
+    <button type="button" class="arr-mini" onclick="arrPasteOpen()" style="margin-left:6px"
+      title="ก็อปตารางจาก Excel มาวางทีเดียวหลายบรรทัด">📋 วางจากตาราง Excel</button>
+
+    <div class="arr-paste" id="arrPasteBox" style="display:none">
+      <div style="font-weight:700;font-size:12.5px;margin-bottom:4px">📋 วางข้อมูลจากชีทเดิม</div>
+      <div style="font-size:11.5px;color:var(--muted);line-height:1.6;margin-bottom:7px">
+        ลากคลุมตารางใน Excel → คัดลอก → วางที่นี่ · 1 บรรทัด = 1 รายการ
+        <br>ลำดับคอลัมน์: <b>เลขที่รายการ · PO · SKU · ชิ้น/ลัง · ลัง · ชิ้น · คิว · น้ำหนัก · หมายเหตุ</b>
+        (ขาดท้าย ๆ ได้ · แถวที่ไม่มีลัง = บรรทัดพ่วง ▸ ให้เอง)
+      </div>
+      <textarea id="arrPasteTxt" rows="5" placeholder="8055339	19759	SSCS-100	50	80	4000	6.4192	984	ขนส่งแบ่งตู้ อีก 220 ลัง"></textarea>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+        <button type="button" class="arr-mini" onclick="$('arrPasteBox').style.display='none'">ปิด</button>
+        <button type="button" class="arr-mini go" onclick="arrPasteCommit()">⤵ เพิ่มเข้าตาราง</button>
+      </div>
+    </div>
+
+    <div id="arrLineSum" style="margin-top:12px;background:#F8FAFC;border:1px solid var(--line);
+      border-radius:9px;padding:10px 13px;font-size:12.5px;font-weight:600"></div>
+
+    <div class="modal-foot">
+      <button class="btn-cancel" id="arrDelBtn" onclick="delArr()"
+        style="display:none;color:var(--red);border-color:#f3c6c9">🗑️ ลบใบแจ้ง</button>
+      <div style="flex:1"></div>
+      <button class="btn-cancel" onclick="closeArr()">ยกเลิก</button>
+      <button class="btn-save" id="arrSaveBtn" onclick="saveArr()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Modal ตัดเข้าคลัง ============ -->
+<div class="modal-bg" id="arrInBg">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-head">
+      <h2>🚚 ตัดเข้าคลัง</h2>
+      <button class="modal-close" onclick="$('arrInBg').style.display='none'">&times;</button>
+    </div>
+    <div id="arrInHead" style="font-size:12.5px;color:var(--muted);margin-bottom:10px"></div>
+    <div class="m-row" style="align-items:end">
+      <div class="m-field"><label>วันที่เข้าคลัง</label><input type="date" id="ar_indate"></div>
+      <div class="m-field"><label>&nbsp;</label>
+        <button type="button" class="arr-mini" onclick="arrInAll()" style="width:100%;padding:11px">
+          ✅ เข้าครบทั้งใบ (เติมลังที่ค้างให้ทุกแถว)</button></div>
+    </div>
+    <div id="arrInBody"></div>
+    <div class="modal-foot">
+      <div style="flex:1"></div>
+      <button class="btn-cancel" onclick="$('arrInBg').style.display='none'">ยกเลิก</button>
+      <button class="btn-save" id="arrInSaveBtn" onclick="saveArrIn()">บันทึก</button>
+    </div>
   </div>
 </div>
 
@@ -1051,6 +1225,7 @@ function enterApp(session){
   // 🔒 รายงาน On-Time + ประวัติการอัพโหลด = ข้อมูลภายในฝ่ายจัดซื้อ ไม่ให้การตลาดเห็น
   const inner = (currentRole === 'purchase');
   $('tabRep').style.display = inner ? '' : 'none';
+  $('tabArr').style.display = inner ? '' : 'none';   // 📦 แจ้งสินค้าขาเข้า = ข้อมูลภายใน
   $('tabUp').style.display  = inner ? '' : 'none';
   // role UI
   if(currentRole === 'purchase'){
@@ -1062,6 +1237,7 @@ function enterApp(session){
     $('bulkModeBtn').style.display='block';
     $('editAnnounceBtn').style.display='block';
     $('addTripBtn').style.display='block';
+    $('arrAddBtn').style.display='block';
     $('delOldBtn').style.display='block';
   } else if(currentRole === 'manager'){
     $('rolePill').textContent = '🧑‍💼 หัวหน้า';
@@ -2375,22 +2551,26 @@ let allTrips = [];   // [{...trip, items:[...]}]
 
 // ---- แท็บ ----
 $('tabBoard').addEventListener('click', () => switchTab('board'));
+$('tabArr').addEventListener('click',  () => switchTab('arr'));
 $('tabPlan').addEventListener('click', () => switchTab('plan'));
 $('tabUp').addEventListener('click',   () => switchTab('up'));
 $('tabRep').addEventListener('click',  () => switchTab('rep'));
 function switchTab(t){
-  // การตลาดเข้า 2 แท็บนี้ไม่ได้ แม้จะเรียกฟังก์ชันตรงๆ
-  if((t==='rep'||t==='up') && currentRole!=='purchase') t='board';
+  // การตลาดเข้า 3 แท็บนี้ไม่ได้ แม้จะเรียกฟังก์ชันตรงๆ (ข้อมูลภายในฝ่ายจัดซื้อ)
+  if((t==='rep'||t==='up'||t==='arr') && currentRole!=='purchase') t='board';
   $('viewBoard').style.display = t==='board' ? 'block' : 'none';
+  $('viewArr').style.display   = t==='arr'   ? 'block' : 'none';
   $('viewPlan').style.display  = t==='plan'  ? 'block' : 'none';
   $('viewUp').style.display    = t==='up'    ? 'block' : 'none';
   $('viewRep').style.display   = t==='rep'   ? 'block' : 'none';
   $('tabBoard').classList.toggle('active', t==='board');
+  $('tabArr').classList.toggle('active',   t==='arr');
   $('tabPlan').classList.toggle('active',  t==='plan');
   $('tabUp').classList.toggle('active',    t==='up');
   $('tabRep').classList.toggle('active',   t==='rep');
   if(t==='rep')renderReport();
   if(t==='up')loadUploads();
+  if(t==='arr' && !ARR_LOADED)loadArr();   // โหลดครั้งแรกที่เปิดแท็บ ไม่ดึงทิ้งตอนเปิดหน้า
 }
 
 // ---- โหลดข้อมูลแผน ----
@@ -2812,6 +2992,506 @@ sb.auth.onAuthStateChange((event, session) => {
     location.replace('index.html');   // ออกจากระบบแล้ว → กลับหน้ารวม HUB ทุกแท็บ
   }
 });
+
+
+/* ══════════════════════════════════════════════════════════════════
+   📦 แจ้งสินค้าขาเข้า  (arrival_notices + arrival_items)
+
+   ปัญหาเดิม: ขนส่งแจ้งว่าของถึงไทยแล้ว แต่ของจริงยังค้างที่ขนส่งหลายวัน
+              บางทีแบ่งตู้มาเป็นรอบ (แจ้ง 620 ลัง มาจริง 230 อีก 390 ตามมา)
+              คลังไม่รู้ล่วงหน้าว่าจะมีของเข้าอีกเท่าไหร่ → เตรียมที่/คนไม่ทัน
+   แท็บนี้เก็บ: ใบแจ้ง 1 ใบ = 1 ครั้งที่ขนส่งแจ้ง · ในใบมีหลายรายการ
+              ทุกรายการมี "ลังที่แจ้งมา" กับ "ลังที่เข้าคลังแล้ว" → ค้าง = ผลต่าง
+              คิว/น้ำหนักส่วนที่ค้าง เทียบสัดส่วนจากจำนวนลัง
+
+   ประหยัดโควตา: ดึงเฉพาะเดือนที่เลือก · โหลดครั้งแรกตอนเปิดแท็บเท่านั้น
+                 บันทึกแล้วอัปเดตในหน่วยความจำ ไม่โหลดทั้งเดือนใหม่
+   ══════════════════════════════════════════════════════════════════ */
+let ARR = [];            // ใบแจ้งของเดือนที่เลือก
+let ARR_IT = [];         // รายการของใบแจ้งเหล่านั้น
+let ARR_LOADED = false;  // โหลดแล้วหรือยัง (กันดึงซ้ำตอนสลับแท็บ)
+let ARR_ID = null;       // ใบที่กำลังแก้ในโมดัล
+let ARR_IN_ID = null;    // ใบที่กำลังตัดเข้าคลัง
+
+const arrNum = v => { const n = parseFloat(String(v==null?'':v).replace(/,/g,'')); return isNaN(n)?null:n; };
+const arrMoney = n => Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:4});
+const arrInt = n => Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:0});
+const arrMonthNow = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); };
+const arrToday = () => new Date().toISOString().slice(0,10);
+const ARR_ST = { waiting:{c:'w',t:'🟠 ค้างที่ขนส่ง'}, partial:{c:'p',t:'🟡 เข้าบางส่วน'},
+                 done:{c:'d',t:'✅ เข้าคลังครบ'}, cancel:{c:'c',t:'⚪ ยกเลิก'} };
+
+/* รายการของใบแจ้งนั้น เรียงตามลำดับที่กรอก */
+const arrItemsOf = id => ARR_IT.filter(x => String(x.notice_id)===String(id))
+                               .sort((a,b)=>(a.seq||0)-(b.seq||0));
+
+/* ── ยอดรวมของใบแจ้ง ──
+   ★ บรรทัดพ่วง (is_extra) นับแค่จำนวนชิ้น ไม่นับลัง/คิว/น้ำหนัก
+     ไม่งั้น SKU ที่แถมมาในลังเดียวกันจะทำให้ลัง/คิวบวกซ้ำ */
+function arrTotals(items){
+  const t = {boxes:0, boxIn:0, pcs:0, cbm:0, kg:0, cbmWait:0, kgWait:0, n:items.length};
+  items.forEach(x => {
+    t.pcs += +x.pcs||0;
+    if(x.is_extra) return;
+    const bx = +x.boxes||0, bi = Math.min(+x.boxes_in||0, bx||Infinity)||0;
+    t.boxes += bx; t.boxIn += bi;
+    t.cbm += +x.cbm||0; t.kg += +x.weight_kg||0;
+    /* คิว/กก. ของส่วนที่ยังค้าง — เทียบสัดส่วนจำนวนลัง (ขนส่งไม่ได้แจ้งคิวรายรอบ) */
+    const left = bx>0 ? (bx-bi)/bx : (bi>0?0:1);
+    t.cbmWait += (+x.cbm||0)*left; t.kgWait += (+x.weight_kg||0)*left;
+  });
+  t.boxWait = t.boxes - t.boxIn;
+  return t;
+}
+/* สถานะคิดจากของจริง ไม่ต้องกดเปลี่ยนเอง (ยกเลิกเท่านั้นที่ตั้งมือ) */
+function arrCalcStatus(n, items){
+  if(n.status==='cancel') return 'cancel';
+  const t = arrTotals(items);
+  if(t.boxIn<=0) return 'waiting';
+  return t.boxWait>0.0001 ? 'partial' : 'done';
+}
+const arrDaysWait = d => Math.floor((new Date(arrToday()) - new Date(d))/86400000);
+
+/* ข้อความกลางตาราง (กำลังโหลด / ว่าง / error) — เขียนลงทั้งตาราง
+   เพราะ renderArr เขียน thead+tbody ทับทั้งก้อน อ้าง tbody เดิมไม่ได้ */
+function arrMsg(html){
+  $('arrTb').innerHTML = `<tbody><tr><td style="padding:26px;text-align:center;color:var(--muted)">${html}</td></tr></tbody>`;
+}
+
+/* ── โหลดข้อมูล (เดือนเดียว) ── */
+async function loadArr(){
+  if(!$('arrMonth').value) $('arrMonth').value = arrMonthNow();
+  const mo = $('arrMonth').value;
+  arrMsg('กำลังโหลด...');
+  const { data:ns, error:e1 } = await sb.from('arrival_notices').select('*')
+    .eq('notice_month', mo).order('notice_date',{ascending:false}).order('created_at',{ascending:false});
+  if(e1){
+    arrMsg(`<span style="color:var(--red)">โหลดไม่สำเร็จ: ${esc(e1.message)}</span>
+      <div style="color:var(--muted);font-size:12px;margin-top:6px">ถ้าเพิ่งเพิ่มระบบนี้ ต้องรัน <b>arrival_notices.sql</b> ใน Supabase ก่อน</div>`);
+    return;
+  }
+  ARR = ns || [];
+  if(ARR.length){
+    const ids = ARR.map(x=>x.id);
+    const { data:its, error:e2 } = await sb.from('arrival_items').select('*').in('notice_id', ids);
+    if(e2){ toast('โหลดรายการไม่สำเร็จ: '+e2.message); ARR_IT=[]; } else ARR_IT = its || [];
+  } else ARR_IT = [];
+  ARR_LOADED = true;
+  arrFillCarriers();
+  renderArr();
+}
+
+/* รายชื่อขนส่งที่เคยใช้ — ไว้เลือกซ้ำได้เร็ว */
+function arrFillCarriers(){
+  const names = [...new Set(ARR.map(x=>x.carrier).filter(Boolean))].sort();
+  $('arrCarrierList').innerHTML = names.map(n=>`<option value="${esc(n)}">`).join('');
+}
+
+/* ── ตาราง ── */
+function renderArr(){
+  const q  = ($('arrSearch').value||'').toLowerCase().trim();
+  const st = $('arrStatus').value;
+  const canEdit = currentRole==='purchase';
+
+  let rows = ARR.map(n => ({ n, items: arrItemsOf(n.id) }))
+                .map(g => ({ ...g, st: arrCalcStatus(g.n, g.items), t: arrTotals(g.items) }));
+  if(st) rows = rows.filter(g => g.st===st);
+  if(q) rows = rows.filter(g =>
+    ((g.n.notice_no||'')+' '+(g.n.carrier||'')+' '+(g.n.truck||'')+' '+(g.n.note||'')+' '
+     + g.items.map(i=>(i.line_ref||'')+' '+(i.po_number||'')+' '+(i.sku||'')+' '+(i.note||'')).join(' ')
+    ).toLowerCase().includes(q));
+
+  /* KPI — คิดจากทุกใบในเดือน ไม่ขึ้นกับตัวกรอง (ตัวเลขภาพรวมต้องนิ่ง) */
+  const all = ARR.map(n => ({ n, items: arrItemsOf(n.id) }))
+                 .map(g => ({ ...g, st: arrCalcStatus(g.n, g.items), t: arrTotals(g.items) }))
+                 .filter(g => g.st!=='cancel');
+  const sum = all.reduce((a,g) => ({
+    boxWait:a.boxWait+g.t.boxWait, cbmWait:a.cbmWait+g.t.cbmWait, kgWait:a.kgWait+g.t.kgWait,
+    boxIn:a.boxIn+g.t.boxIn, boxes:a.boxes+g.t.boxes
+  }), {boxWait:0,cbmWait:0,kgWait:0,boxIn:0,boxes:0});
+  const unfinished = all.filter(g => g.st!=='done');
+  const oldest = unfinished.filter(g=>g.t.boxWait>0)
+    .sort((a,b)=>String(a.n.notice_date||'').localeCompare(String(b.n.notice_date||'')))[0];
+
+  $('arrWaitBox').textContent = arrInt(sum.boxWait) + ' ลัง';
+  $('arrWaitSub').textContent = arrMoney(sum.cbmWait) + ' คิว · ' + arrInt(sum.kgWait) + ' กก.';
+  $('arrInBox').textContent   = arrInt(sum.boxIn) + ' ลัง';
+  $('arrInSub').textContent   = 'จากที่แจ้งมา ' + arrInt(sum.boxes) + ' ลัง';
+  $('arrNotice').textContent  = ARR.length;
+  $('arrNoticeSub').textContent = 'ยังไม่ครบ ' + unfinished.length + ' ใบ';
+  $('arrOld').textContent    = oldest ? (arrDaysWait(oldest.n.notice_date) + ' วัน') : '-';
+  $('arrOldSub').textContent = oldest
+    ? (esc(oldest.n.carrier||'-') + ' · แจ้ง ' + fmtDate(oldest.n.notice_date) + ' · ค้าง ' + arrInt(oldest.t.boxWait) + ' ลัง')
+    : 'ไม่มีของค้างที่ขนส่ง 🎉';
+
+  if(!rows.length){
+    arrMsg(ARR.length ? 'ไม่มีใบแจ้งที่ตรงกับตัวกรอง'
+      : 'เดือนนี้ยังไม่มีใบแจ้งสินค้าขาเข้า'+(canEdit?' — กด <b>+ เพิ่มใบแจ้ง</b>':''));
+    return;
+  }
+
+  let h = `<thead><tr>
+    <th style="width:112px">วันแจ้งเข้า</th><th style="width:96px">เลขที่รายการ</th><th style="width:62px">PO</th>
+    <th>SKU</th><th class="n" style="width:62px">ชิ้น/ลัง</th><th class="n" style="width:56px">ลัง</th>
+    <th class="n" style="width:68px">ชิ้น</th><th class="n" style="width:72px">คิว</th>
+    <th class="n" style="width:76px">น้ำหนัก</th><th class="n" style="width:74px">เข้าคลัง</th>
+    <th class="n" style="width:62px">ค้าง</th><th style="width:200px">หมายเหตุ / จัดการ</th>
+  </tr></thead><tbody>`;
+
+  rows.forEach(g => {
+    const n=g.n, t=g.t, S=ARR_ST[g.st]||ARR_ST.waiting;
+    const days = arrDaysWait(n.notice_date);
+    h += `<tr class="arr-head"><td colspan="4">
+        <div class="arr-date">📅 ${fmtDate(n.notice_date)}${n.notice_no?' · '+esc(n.notice_no):''}</div>
+        <div style="font-size:11.5px;color:var(--muted);font-weight:400;margin-top:2px">
+          🚛 ${esc(n.carrier||'-')}${n.truck?' · รถนำส่ง '+esc(n.truck):''}
+          ${n.eta_date?' · คาดเข้าคลัง '+fmtDate(n.eta_date):''}
+          ${g.st!=='done'&&g.st!=='cancel'&&days>0?` · <span class="arr-wait">ค้างมา ${days} วัน</span>`:''}
+          ${n.note?'<br>📝 '+esc(n.note):''}</div></td>
+      <td class="n">${t.n} รายการ</td>
+      <td class="n"><b>${arrInt(t.boxes)}</b></td>
+      <td class="n">${arrInt(t.pcs)}</td>
+      <td class="n"><b>${arrMoney(t.cbm)}</b></td>
+      <td class="n">${t.kg?arrInt(t.kg):'-'}</td>
+      <td class="n ${t.boxIn?'arr-done':''}">${arrInt(t.boxIn)}</td>
+      <td class="n ${t.boxWait>0?'arr-wait':''}">${t.boxWait>0?arrInt(t.boxWait):'—'}</td>
+      <td><span class="arr-st ${S.c}">${S.t}</span>
+        ${canEdit?`<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
+          ${g.st!=='cancel'&&t.boxWait>0?`<button class="arr-mini go" onclick="openArrIn('${n.id}')" title="บันทึกว่าของเข้าคลังแล้วกี่ลัง">🚚 ตัดเข้าคลัง</button>`:''}
+          <button class="arr-mini" onclick="openArr('${n.id}')">✏️</button>
+          <button class="arr-mini" onclick="arrToFreight('${n.id}')" title="ส่งรายการเข้าระบบตรวจสอบค่าขนส่ง เพื่อให้คลังใส่ขนาดกล่องแล้วเทียบกับที่ขนส่งคิด">⤵ freight</button>
+        </div>`:''}</td></tr>`;
+
+    g.items.forEach(x => {
+      const bx=+x.boxes||0, bi=+x.boxes_in||0, left=bx-bi;
+      h += `<tr class="${x.is_extra?'arr-extra':''}">
+        <td></td>
+        <td>${esc(x.line_ref||'-')}</td>
+        <td>${esc(x.po_number||'-')}</td>
+        <td class="arr-sku">${esc(x.sku||'-')}</td>
+        <td class="n">${x.pcs_per_box?arrInt(x.pcs_per_box):'-'}</td>
+        <td class="n">${bx?arrInt(bx):'-'}</td>
+        <td class="n">${x.pcs?arrInt(x.pcs):'-'}</td>
+        <td class="n">${x.cbm?arrMoney(x.cbm):'-'}</td>
+        <td class="n">${x.weight_kg?arrInt(x.weight_kg):'-'}</td>
+        <td class="n ${bi?'arr-done':''}">${bi?arrInt(bi):'-'}${x.in_date?`<div style="font-size:10px;color:var(--muted);font-weight:400">${fmtDate(x.in_date)}</div>`:''}</td>
+        <td class="n ${left>0&&!x.is_extra?'arr-wait':''}">${x.is_extra?'▸':(left>0?arrInt(left):'—')}</td>
+        <td style="font-size:11.5px;color:var(--muted)">${esc(x.note||'')}</td></tr>`;
+    });
+  });
+
+  /* แถวรวมท้ายตาราง — เทียบกับชีทเดิมได้ตรง ๆ */
+  const gt = rows.reduce((a,g)=>({boxes:a.boxes+g.t.boxes,pcs:a.pcs+g.t.pcs,cbm:a.cbm+g.t.cbm,
+    kg:a.kg+g.t.kg,boxIn:a.boxIn+g.t.boxIn,boxWait:a.boxWait+g.t.boxWait}),
+    {boxes:0,pcs:0,cbm:0,kg:0,boxIn:0,boxWait:0});
+  h += `<tr class="arr-sum"><td colspan="5">รวม ${rows.length} ใบแจ้ง</td>
+    <td class="n">${arrInt(gt.boxes)}</td><td class="n">${arrInt(gt.pcs)}</td>
+    <td class="n">${arrMoney(gt.cbm)}</td><td class="n">${arrInt(gt.kg)}</td>
+    <td class="n">${arrInt(gt.boxIn)}</td><td class="n">${arrInt(gt.boxWait)}</td><td></td></tr></tbody>`;
+  $('arrTb').innerHTML = h;
+}
+
+/* ══════════ ฟอร์มใบแจ้ง ══════════ */
+function openArr(id){
+  if(currentRole!=='purchase') return;
+  ARR_ID = id || null;
+  const n = id ? ARR.find(x=>String(x.id)===String(id)) : null;
+  $('arrTitle').textContent = n ? 'แก้ไขใบแจ้งสินค้าขาเข้า' : 'เพิ่มใบแจ้งสินค้าขาเข้า';
+  $('arrId').value      = id || '';
+  $('ar_date').value    = n ? (n.notice_date||'') : arrToday();
+  $('ar_no').value      = n ? (n.notice_no||'')   : '';
+  $('ar_carrier').value = n ? (n.carrier||'')     : '';
+  $('ar_truck').value   = n ? (n.truck||'')       : '';
+  $('ar_eta').value     = n ? (n.eta_date||'')    : '';
+  $('ar_note').value    = n ? (n.note||'')        : '';
+  $('arrDelBtn').style.display = n ? 'inline-flex' : 'none';
+  $('arrPasteBox').style.display = 'none';
+  $('arrPasteTxt').value = '';
+  $('arrLines').innerHTML = '';
+  const its = id ? arrItemsOf(id) : [];
+  if(its.length) its.forEach(x => arrAddLine(x));
+  else { arrAddLine(); arrAddLine(); }
+  arrLineSum();
+  $('arrBg').style.display='flex';
+  setTimeout(()=>$('ar_date').focus(),60);
+}
+function closeArr(){ $('arrBg').style.display='none'; }
+
+function arrAddLine(x, extra){
+  const d = document.createElement('div');
+  d.className = 'arr-ln' + ((x&&x.is_extra)||extra ? ' ex' : '');
+  d.dataset.extra = ((x&&x.is_extra)||extra) ? '1' : '';
+  const v = (k,dflt) => x && x[k]!=null && x[k]!=='' ? String(x[k]) : (dflt||'');
+  d.innerHTML = `
+    <input class="al-ref"  value="${esc(v('line_ref'))}"    placeholder="${d.dataset.extra?'(พ่วง)':'5010655'}">
+    <input class="al-po"   value="${esc(v('po_number'))}"   placeholder="19923">
+    <input class="al-sku"  value="${esc(v('sku'))}"         placeholder="DR30-MASARUBLR">
+    <input class="al-ppb"  value="${esc(v('pcs_per_box'))}" inputmode="decimal" placeholder="10">
+    <input class="al-box"  value="${esc(v('boxes'))}"       inputmode="decimal" placeholder="${d.dataset.extra?'—':'230'}" ${d.dataset.extra?'disabled':''}>
+    <input class="al-pcs"  value="${esc(v('pcs'))}"         inputmode="decimal" placeholder="2300">
+    <input class="al-cbm"  value="${esc(v('cbm'))}"         inputmode="decimal" placeholder="14.3161" ${d.dataset.extra?'disabled':''}>
+    <input class="al-kg"   value="${esc(v('weight_kg'))}"   inputmode="decimal" placeholder="984" ${d.dataset.extra?'disabled':''}>
+    <input class="al-note" value="${esc(v('note'))}"        placeholder="หมายเหตุ">
+    <button type="button" class="arr-mini rd" style="padding:6px 8px" title="ลบบรรทัด"
+      onclick="this.parentNode.remove();arrLineSum()">×</button>`;
+  $('arrLines').appendChild(d);
+  /* ชิ้น/ลัง × ลัง = ชิ้น เติมให้เอง ถ้าช่องชิ้นยังว่าง (แก้ทับได้) */
+  const ppb=d.querySelector('.al-ppb'), box=d.querySelector('.al-box'), pcs=d.querySelector('.al-pcs');
+  const autoPcs = () => {
+    const a=arrNum(ppb.value), b=arrNum(box.value);
+    if(a>0 && b>0 && !pcs.dataset.touched) pcs.value = Math.round(a*b);
+    arrLineSum();
+  };
+  ppb.addEventListener('input', autoPcs);
+  box.addEventListener('input', autoPcs);
+  pcs.addEventListener('input', ()=>{ pcs.dataset.touched='1'; arrLineSum(); });
+  d.querySelectorAll('.al-cbm,.al-kg').forEach(el=>el.addEventListener('input',arrLineSum));
+  return d;
+}
+
+function arrCollect(){
+  return [...$('arrLines').querySelectorAll('.arr-ln')].map((l,i)=>{
+    const g = c => l.querySelector(c) ? l.querySelector(c).value.trim() : '';
+    const ex = l.dataset.extra==='1';
+    return {
+      line_ref: g('.al-ref')||null, po_number: g('.al-po')||null, sku: g('.al-sku')||null,
+      pcs_per_box: arrNum(g('.al-ppb')), boxes: ex?null:arrNum(g('.al-box')),
+      pcs: arrNum(g('.al-pcs')), cbm: ex?null:arrNum(g('.al-cbm')),
+      weight_kg: ex?null:arrNum(g('.al-kg')),
+      is_extra: ex, note: g('.al-note')||null, seq: i
+    };
+  }).filter(x => x.line_ref || x.sku || x.po_number || x.boxes);
+}
+function arrLineSum(){
+  const t = arrTotals(arrCollect().map(x=>({...x,boxes_in:0})));
+  $('arrLineSum').innerHTML = `รวม ${t.n} รายการ · <b>${arrInt(t.boxes)}</b> ลัง ·
+    ${arrInt(t.pcs)} ชิ้น · <b>${arrMoney(t.cbm)}</b> คิว · ${arrInt(t.kg)} กก.
+    <span style="color:var(--muted);font-weight:400">(บรรทัดพ่วง ▸ นับแค่จำนวนชิ้น)</span>`;
+}
+
+/* ── วางจากตาราง Excel ──
+   ลำดับคอลัมน์ตามชีทเดิม: เลขที่รายการ · PO · SKU · ชิ้น/ลัง · ลัง · ชิ้น · คิว · น้ำหนัก · หมายเหตุ
+   แถวที่ไม่มีจำนวนลัง = บรรทัดพ่วง (SKU แถมในลังเดียวกับบรรทัดบน) ตั้งให้เอง */
+function arrPasteOpen(){ $('arrPasteBox').style.display='block'; setTimeout(()=>$('arrPasteTxt').focus(),50); }
+function arrPasteCommit(){
+  const txt = $('arrPasteTxt').value || '';
+  const lines = txt.split(/\r?\n/).map(s=>s.replace(/\s+$/,'')).filter(s=>s.trim()!=='');
+  if(!lines.length) return toast('ยังไม่ได้วางข้อมูล');
+  let added = 0;
+  lines.forEach(raw => {
+    const c = raw.split(/\t|\s{2,}/).map(s=>s.trim());
+    if(!c.length) return;
+    /* ข้ามแถวหัวตาราง */
+    if(/เลขที่รายการ|จำนวนลัง|จำนวนคิว/.test(raw)) return;
+    const o = { line_ref:c[0]||'', po_number:c[1]||'', sku:c[2]||'',
+      pcs_per_box:c[3]||'', boxes:c[4]||'', pcs:c[5]||'', cbm:c[6]||'', weight_kg:c[7]||'',
+      note:c.slice(8).join(' ')||'' };
+    ['po_number','line_ref'].forEach(k=>{ if(o[k]==='-'||o[k]==='–') o[k]=''; });
+    if(!o.line_ref && !o.sku && !o.po_number) return;
+    o.is_extra = !(arrNum(o.boxes)>0);
+    arrAddLine(o, o.is_extra);
+    added++;
+  });
+  $('arrPasteTxt').value=''; $('arrPasteBox').style.display='none';
+  arrLineSum();
+  toast(added ? ('เพิ่มเข้าตาราง '+added+' บรรทัด — ตรวจแล้วกดบันทึก') : 'อ่านข้อมูลไม่ออก ลองวางใหม่');
+}
+
+/* ── บันทึกใบแจ้ง ── */
+async function saveArr(){
+  const date = $('ar_date').value, carrier = $('ar_carrier').value.trim();
+  if(!date)    return toast('ใส่วันแจ้งเข้าก่อน');
+  if(!carrier) return toast('ใส่บริษัทขนส่งก่อน');
+  const lines = arrCollect();
+  if(!lines.length) return toast('ใส่อย่างน้อย 1 รายการ');
+
+  const email = (await sb.auth.getUser()).data.user?.email || 'purchase';
+  const rec = {
+    notice_no: $('ar_no').value.trim() || null,
+    notice_date: date, notice_month: date.slice(0,7),
+    carrier, truck: $('ar_truck').value.trim() || null,
+    eta_date: $('ar_eta').value || null,
+    note: $('ar_note').value.trim() || null,
+    updated_by: email, updated_at: new Date().toISOString()
+  };
+  const btn = $('arrSaveBtn'); btn.disabled=true; btn.textContent='กำลังบันทึก...';
+
+  /* ลังที่เข้าคลังแล้วต้องไม่หายตอนแก้ใบ → จำค่าเดิมไว้ตามเลขที่รายการ+SKU */
+  const keep = {};
+  if(ARR_ID) arrItemsOf(ARR_ID).forEach(x =>
+    keep[(x.line_ref||'')+'|'+(x.sku||'')] = {boxes_in:x.boxes_in, in_date:x.in_date});
+
+  let id = ARR_ID, err = null, saved = null;
+  if(ARR_ID){
+    const r = await sb.from('arrival_notices').update(rec).eq('id',ARR_ID).select().single();
+    err = r.error; saved = r.data;
+    if(!err) await sb.from('arrival_items').delete().eq('notice_id',ARR_ID);
+  }else{
+    const r = await sb.from('arrival_notices').insert({...rec, created_by:email}).select().single();
+    err = r.error; saved = r.data; id = saved && saved.id;
+  }
+  let items = [];
+  if(!err && id){
+    const rows = lines.map(l => {
+      const k = keep[(l.line_ref||'')+'|'+(l.sku||'')] || {};
+      const bi = Math.min(+k.boxes_in||0, l.boxes==null?0:l.boxes);
+      return {...l, notice_id:id, boxes_in:bi||0, in_date:bi?(k.in_date||null):null};
+    });
+    const r = await sb.from('arrival_items').insert(rows).select();
+    err = r.error; items = r.data || [];
+  }
+  btn.disabled=false; btn.textContent='บันทึก';
+  if(err) return toast('บันทึกไม่สำเร็จ: '+err.message);
+
+  /* อัปเดตในหน่วยความจำ — ไม่ดึงทั้งเดือนใหม่ */
+  const mo = $('arrMonth').value;
+  ARR_IT = ARR_IT.filter(x => String(x.notice_id)!==String(id));
+  ARR    = ARR.filter(x => String(x.id)!==String(id));
+  if(saved && saved.notice_month===mo){ ARR.unshift(saved); ARR_IT = ARR_IT.concat(items); }
+  ARR.sort((a,b)=>String(b.notice_date||'').localeCompare(String(a.notice_date||'')));
+  await arrSyncStatus(id, items);
+  closeArr(); arrFillCarriers(); renderArr();
+  toast(ARR_ID ? 'แก้ไขใบแจ้งเรียบร้อย' : 'เพิ่มใบแจ้งเรียบร้อย');
+  if(saved && saved.notice_month!==mo) toast('ใบนี้อยู่เดือน '+saved.notice_month+' — เปลี่ยนตัวกรองเดือนเพื่อดู');
+}
+
+/* สถานะในฐานข้อมูลให้ตรงกับของจริง (ไว้ให้ตัวกรอง/รายงานใช้) */
+async function arrSyncStatus(id, items){
+  const n = ARR.find(x=>String(x.id)===String(id)); if(!n) return;
+  const st = arrCalcStatus(n, items || arrItemsOf(id));
+  if(n.status === st) return;
+  const r = await sb.from('arrival_notices').update({status:st}).eq('id',id).select().single();
+  if(!r.error && r.data){ n.status = r.data.status; }
+}
+
+async function delArr(){
+  if(!ARR_ID) return;
+  const n = ARR.find(x=>String(x.id)===String(ARR_ID))||{};
+  if(!confirm('ลบใบแจ้งนี้?\n\n'+(n.notice_no||'')+' '+(n.carrier||'')+'\nรายการในใบจะถูกลบทั้งหมด'))return;
+  const { error } = await sb.from('arrival_notices').delete().eq('id',ARR_ID);
+  if(error) return toast('ลบไม่สำเร็จ: '+error.message);
+  ARR    = ARR.filter(x=>String(x.id)!==String(ARR_ID));
+  ARR_IT = ARR_IT.filter(x=>String(x.notice_id)!==String(ARR_ID));
+  closeArr(); renderArr(); toast('ลบใบแจ้งแล้ว');
+}
+
+/* ══════════ ตัดเข้าคลัง (ทีละรอบได้) ══════════ */
+function openArrIn(id){
+  if(currentRole!=='purchase') return;
+  ARR_IN_ID = id;
+  const n = ARR.find(x=>String(x.id)===String(id))||{};
+  const its = arrItemsOf(id).filter(x=>!x.is_extra);
+  $('ar_indate').value = arrToday();
+  $('arrInHead').innerHTML = `📅 ${fmtDate(n.notice_date)} · 🚛 ${esc(n.carrier||'-')}
+    ${n.notice_no?' · '+esc(n.notice_no):''} — ใส่จำนวนลังที่<b>เข้าคลังรอบนี้</b> (ที่ค้างไว้ก่อนไม่ต้องใส่ซ้ำ)`;
+  $('arrInBody').innerHTML = its.map(x => {
+    const bx=+x.boxes||0, bi=+x.boxes_in||0, left=bx-bi;
+    return `<div class="arr-ln" data-id="${x.id}" style="grid-template-columns:1fr 70px 70px 90px;gap:8px">
+      <div style="font-size:12px;line-height:1.5">
+        <b>${esc(x.sku||'-')}</b>
+        <div style="color:var(--muted);font-size:11px">${esc(x.line_ref||'')}${x.po_number?' · PO '+esc(x.po_number):''}</div></div>
+      <div style="font-size:11.5px;text-align:right">แจ้ง<br><b>${arrInt(bx)}</b></div>
+      <div style="font-size:11.5px;text-align:right">ค้าง<br><b class="${left>0?'arr-wait':''}">${arrInt(left)}</b></div>
+      <input class="ai-in" inputmode="decimal" value="" placeholder="0" data-left="${left}"
+        title="ลังที่เข้าคลังรอบนี้ (ไม่เกิน ${arrInt(left)})">
+    </div>`;
+  }).join('') || '<div style="color:var(--muted);padding:10px">ไม่มีรายการที่ต้องตัด</div>';
+  $('arrInBg').style.display='flex';
+}
+function arrInAll(){
+  $('arrInBody').querySelectorAll('.ai-in').forEach(el => { el.value = el.dataset.left; });
+}
+async function saveArrIn(){
+  if(!ARR_IN_ID) return;
+  const d = $('ar_indate').value || arrToday();
+  const ups = [];
+  let bad = '';
+  $('arrInBody').querySelectorAll('.arr-ln').forEach(l => {
+    const el = l.querySelector('.ai-in'); const add = arrNum(el.value);
+    if(!(add>0)) return;
+    const left = +el.dataset.left||0;
+    if(add>left+0.0001){ bad = 'ใส่เกินจำนวนที่ค้าง ('+arrInt(left)+' ลัง)'; return; }
+    const it = ARR_IT.find(x=>String(x.id)===String(l.dataset.id));
+    ups.push({ id:l.dataset.id, boxes_in:(+it.boxes_in||0)+add, in_date:d });
+  });
+  if(bad) return toast(bad);
+  if(!ups.length) return toast('ยังไม่ได้ใส่จำนวนลังที่เข้าคลัง');
+  const btn=$('arrInSaveBtn'); btn.disabled=true; btn.textContent='กำลังบันทึก...';
+  for(const u of ups){
+    const r = await sb.from('arrival_items').update({boxes_in:u.boxes_in, in_date:u.in_date}).eq('id',u.id).select().single();
+    if(r.error){ btn.disabled=false; btn.textContent='บันทึก'; return toast('บันทึกไม่สำเร็จ: '+r.error.message); }
+    const i = ARR_IT.findIndex(x=>String(x.id)===String(u.id));
+    if(i>=0) ARR_IT[i] = r.data;
+  }
+  btn.disabled=false; btn.textContent='บันทึก';
+  await arrSyncStatus(ARR_IN_ID);
+  $('arrInBg').style.display='none'; renderArr();
+  toast('บันทึกของเข้าคลังแล้ว ✅');
+}
+
+/* ══════════ ส่งต่อเข้าระบบตรวจสอบค่าขนส่ง (freight.html) ══════════
+   เลขที่รายการ/PO/SKU/ลัง/ชิ้น เป็นข้อมูลชุดเดียวกับที่ freight ใช้
+   ส่งไปเป็น "โครงแถว" ให้คลังไปใส่ขนาดกล่องที่วัดจริงต่อ
+   น้ำหนักรวม → หารจำนวนลัง = กก./กล่อง ตามที่ freight เก็บ
+   คิวที่ขนส่งแจ้ง ใส่ไว้ในหมายเหตุ (freight คิดคิวจากขนาดกล่องเอง) */
+async function arrToFreight(id){
+  if(currentRole!=='purchase') return;
+  const n = ARR.find(x=>String(x.id)===String(id)); if(!n) return;
+  const its = arrItemsOf(id).filter(x => !x.is_extra && (+x.boxes||0)>0);
+  if(!its.length) return toast('ใบนี้ไม่มีรายการที่มีจำนวนลัง');
+  if(!confirm('ส่ง '+its.length+' รายการเข้าระบบตรวจสอบค่าขนส่ง?\n\n'
+    +'ระบบจะสร้างแถวรอไว้ให้ (ขนส่ง '+(n.carrier||'')+' · วันแจ้งเข้า '+n.notice_date+')\n'
+    +'แล้วให้คลังไปใส่ขนาดกล่อง ก×ย×ส ที่วัดจริงในเมนู 📐 ตรวจสอบค่าขนส่งระหว่างประเทศ'))return;
+
+  const email = (await sb.auth.getUser()).data.user?.email || 'purchase';
+  const rows = its.map(x => {
+    const bx = +x.boxes||0, kg = +x.weight_kg||0;
+    const note = ['จากใบแจ้งสินค้าขาเข้า '+(n.notice_no||n.notice_date)];
+    if(+x.cbm) note.push('คิวที่ขนส่งแจ้ง '+x.cbm);
+    if(x.note) note.push(x.note);
+    return {
+      gr_month: String(n.notice_date||'').slice(0,7), carrier: n.carrier,
+      arrive_date: n.notice_date, item_no: x.line_ref||null, po_number: x.po_number||null,
+      sku: x.sku||null, qty_pcs: +x.pcs||null, boxes: bx,
+      weight_wh: (kg>0&&bx>0) ? Math.round(kg/bx*1000)/1000 : null,
+      recv_status: 'ถึงคลังแล้ว', claim_status: 'none',
+      note: note.join(' · '), created_by: email
+    };
+  });
+  const { data, error } = await sb.from('freight_items').insert(rows).select('id');
+  if(error) return toast('ส่งเข้า freight ไม่สำเร็จ: '+error.message
+    + (/relation .*freight_items/.test(error.message) ? ' — ต้องรัน freight_audit.sql ก่อน' : ''));
+  toast('ส่งเข้าระบบตรวจค่าขนส่งแล้ว '+(data?data.length:rows.length)+' รายการ ✅ เปิดเมนู 📐 เพื่อใส่ขนาดกล่อง');
+}
+
+/* ══════════ Export Excel ══════════ */
+function exportArr(){
+  const mo = $('arrMonth').value || arrMonthNow();
+  const groups = ARR.map(n=>({n, items:arrItemsOf(n.id)}));
+  if(!groups.length) return toast('เดือนนี้ไม่มีข้อมูล');
+  const aoa = [['วันแจ้งเข้า','เลขที่แจ้ง','ขนส่ง','รถนำส่ง','คาดเข้าคลัง','สถานะ',
+    'เลขที่รายการ','PO','SKU','ชิ้น/ลัง','จำนวนลัง','จำนวนชิ้น','จำนวนคิว','น้ำหนัก (กก.)',
+    'เข้าคลังแล้ว (ลัง)','ค้างที่ขนส่ง (ลัง)','วันที่เข้าคลัง','บรรทัดพ่วง','หมายเหตุรายการ','หมายเหตุใบแจ้ง']];
+  groups.forEach(g => {
+    const st = (ARR_ST[arrCalcStatus(g.n,g.items)]||{}).t||'';
+    g.items.forEach(x => {
+      const bx=+x.boxes||0, bi=+x.boxes_in||0;
+      aoa.push([g.n.notice_date||'', g.n.notice_no||'', g.n.carrier||'', g.n.truck||'', g.n.eta_date||'', st,
+        x.line_ref||'', x.po_number||'', x.sku||'', +x.pcs_per_box||'', bx||'', +x.pcs||'',
+        +x.cbm||'', +x.weight_kg||'', bi||'', x.is_extra?'':(bx-bi), x.in_date||'',
+        x.is_extra?'พ่วง':'', x.note||'', g.n.note||'']);
+    });
+  });
+  const t = arrTotals(groups.flatMap(g=>g.items));
+  aoa.push([]);
+  aoa.push(['รวม','','','','','','','','','', t.boxes, t.pcs, +t.cbm.toFixed(4), t.kg, t.boxIn, t.boxWait]);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=[{wch:12},{wch:12},{wch:16},{wch:12},{wch:12},{wch:16},{wch:14},{wch:9},{wch:24},
+               {wch:9},{wch:10},{wch:11},{wch:11},{wch:12},{wch:14},{wch:15},{wch:12},{wch:9},{wch:26},{wch:26}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'แจ้งสินค้าขาเข้า');
+  XLSX.writeFile(wb, 'แจ้งสินค้าขาเข้า_'+mo+'.xlsx');
+}
 
 (async () => {
   const { data } = await sb.auth.getSession();
