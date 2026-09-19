@@ -162,7 +162,7 @@ tr.round td{background:#FFFCF4!important}
   <div class="sp"></div>
   <span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง"
     style="background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px"
-    id="verBadge">v01-10</span>
+    id="verBadge">v01-11</span>
   <div class="pill-top" id="rolePill">…</div>
   <button class="btn-top" onclick="location.href='index.html'">🏠 หน้ารวม</button>
   <button class="btn-top" onclick="doLogout()">ออกจากระบบ</button>
@@ -324,8 +324,8 @@ tr.round td{background:#FFFCF4!important}
       </div>
       <div class="row">
         <div style="flex:1"></div>
+        <span class="muted" style="font-size:11.5px">ตารางนี้อ่านอย่างเดียว — กด ✏️ ในแถวเพื่อแก้</span>
         <button class="btn mini ghost" onclick="addCarrierRow()">➕ เพิ่มบริษัทขนส่ง</button>
-        <button class="btn mini" onclick="saveCarriers()">💾 บันทึกการตั้งค่า</button>
       </div>
       <div class="scroll" style="max-height:none"><div id="cfBody"></div></div>
     </div>
@@ -340,8 +340,8 @@ tr.round td{background:#FFFCF4!important}
         <br>ประเภทบริการต้องพิมพ์ให้<b>ตรงกับที่ขนส่งพิมพ์ในบิล</b> เช่น <code>A/SEA</code> — ระบบเทียบแบบไม่สนตัวพิมพ์เล็ก-ใหญ่</div>
       <div class="row">
         <div style="flex:1"></div>
+        <span class="muted" style="font-size:11.5px">ตารางนี้อ่านอย่างเดียว — กด ✏️ ในแถวเพื่อแก้</span>
         <button class="btn mini ghost" onclick="addRateRow()">➕ เพิ่มเรท</button>
-        <button class="btn mini" onclick="saveRates()">💾 บันทึกเรท</button>
       </div>
       <div class="scroll" style="max-height:none"><div id="rtBody"></div></div>
     </div>
@@ -555,7 +555,7 @@ const SUPABASE_KEY='sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์โหลดไฟล์ใหม่แล้วหรือยัง
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ (ทั้งในป้ายด้านบนและตัวแปรนี้) */
-const FR_VERSION='v01-10';
+const FR_VERSION='v01-11';
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -645,6 +645,7 @@ async function loadCarriers(){
   const {data,error}=await sb.from('freight_carriers').select('*').order('sort_order');
   if(error){ toast('โหลดรายชื่อขนส่งไม่ได้: '+error.message); CARRIERS=[]; }
   else CARRIERS=data||[];
+  CF_EDIT=-1; cfBak();      // โหลดใหม่ = ออกจากโหมดแก้ และอัปเดตค่าที่ใช้คืนเมื่อกดยกเลิก
   fillCarrierSelects();
 }
 function fillCarrierSelects(){
@@ -1262,57 +1263,116 @@ function renderSum(){
 /* ═══════════════════════════════════════════════════════════════
    แท็บตั้งค่า
    ═══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   ⚙️ ตั้งค่าขนส่ง & เรท — "อ่านอย่างเดียว" เป็นค่าตั้งต้น
+   เดิมทุกช่องเป็นกล่องกรอกเปิดไว้ทั้งตาราง → เผลอคลิก/พิมพ์ทับเรทได้ง่าย
+   และเรทผิดหนึ่งตัวทำให้ยอดตรวจทั้งเดือนเพี้ยน
+   ✅ ตอนนี้แถวเป็นข้อความธรรมดา ต้องกด ✏️ ก่อนถึงแก้ได้ ทีละแถว
+      แก้เสร็จกด ✔ บันทึก (เขียนแถวนั้นแถวเดียว) หรือ ✖ ยกเลิก (คืนค่าเดิม)
+   ═══════════════════════════════════════════════════════════════ */
+let CF_EDIT = -1;          // แถวขนส่งที่กำลังแก้ (-1 = ไม่มี)
+let CF_BAK  = null;        // สำเนาค่าที่บันทึกไว้ล่าสุด ใช้คืนค่าเมื่อกดยกเลิก
+const cfBak = () => { CF_BAK = JSON.parse(JSON.stringify(CARRIERS)); };
+const cfShow = v => (v==null||v==='') ? '<span class="muted">—</span>' : money2(v);
+
 function renderCfg(){
-  let h='<table><thead><tr><th>บริษัทขนส่ง</th><th class="num" style="width:150px">เรท/คิว (บาท)</th>'
-    +'<th class="num" style="width:150px">เรท/กก. (บาท)</th>'
-    +'<th class="num" style="width:150px">ยอมได้ ซม./ด้าน</th><th class="num" style="width:150px">หรือคิวรวมเกิน %<br><span style="font-weight:400;font-size:10.5px">(ว่าง = ไม่ใช้)</span></th>'
-    +'<th style="width:90px">ใช้งาน</th><th style="width:220px">หมายเหตุ</th></tr></thead><tbody>';
+  if(!CF_BAK) cfBak();
+  let h='<table><thead><tr><th>บริษัทขนส่ง</th><th class="num" style="width:130px">เรท/คิว (บาท)</th>'
+    +'<th class="num" style="width:130px">เรท/กก. (บาท)</th>'
+    +'<th class="num" style="width:130px">ยอมได้ ซม./ด้าน</th>'
+    +'<th class="num" style="width:130px">หรือคิวรวมเกิน %<br><span style="font-weight:400;font-size:10.5px">(ว่าง = ไม่ใช้)</span></th>'
+    +'<th style="width:80px">ใช้งาน</th><th style="width:200px">หมายเหตุ</th>'
+    +'<th style="width:118px"></th></tr></thead><tbody>';
   CARRIERS.forEach(function(c,i){
-    h+='<tr>'
-      +'<td><input data-k="name" data-i="'+i+'" value="'+esc(c.name||'')+'" style="max-width:200px"></td>'
-      +'<td class="num"><input data-k="rate_cbm" data-i="'+i+'" inputmode="decimal" value="'+(c.rate_cbm??'')+'"></td>'
-      +'<td class="num"><input data-k="rate_kg" data-i="'+i+'" inputmode="decimal" value="'+(c.rate_kg??'')+'"></td>'
-      +'<td class="num"><input data-k="tol_cm" data-i="'+i+'" inputmode="decimal" value="'+(c.tol_cm??1)+'"></td>'
-      +'<td class="num"><input data-k="tol_pct" data-i="'+i+'" inputmode="decimal" value="'+(c.tol_pct??'')+'"></td>'
-      +'<td><input type="checkbox" data-k="active" data-i="'+i+'" '+(c.active!==false?'checked':'')
-        +' style="width:auto"></td>'
-      +'<td><input data-k="note" data-i="'+i+'" value="'+esc(c.note||'')+'" style="max-width:210px"></td>'
-      +'</tr>';
+    if(CF_EDIT===i){
+      /* ── โหมดแก้ไข: แถวนี้แถวเดียว ── */
+      h+='<tr style="background:#FFF8EC">'
+        +'<td><input data-k="name" data-i="'+i+'" value="'+esc(c.name||'')+'" style="max-width:200px"></td>'
+        +'<td class="num"><input data-k="rate_cbm" data-i="'+i+'" inputmode="decimal" value="'+(c.rate_cbm??'')+'"></td>'
+        +'<td class="num"><input data-k="rate_kg" data-i="'+i+'" inputmode="decimal" value="'+(c.rate_kg??'')+'"></td>'
+        +'<td class="num"><input data-k="tol_cm" data-i="'+i+'" inputmode="decimal" value="'+(c.tol_cm??1)+'"></td>'
+        +'<td class="num"><input data-k="tol_pct" data-i="'+i+'" inputmode="decimal" value="'+(c.tol_pct??'')+'"></td>'
+        +'<td><input type="checkbox" data-k="active" data-i="'+i+'" '+(c.active!==false?'checked':'')+' style="width:auto"></td>'
+        +'<td><input data-k="note" data-i="'+i+'" value="'+esc(c.note||'')+'" style="max-width:190px"></td>'
+        +'<td style="white-space:nowrap">'
+          +'<button class="btn mini" onclick="cfSave('+i+')">✔ บันทึก</button> '
+          +'<button class="btn mini ghost" onclick="cfCancel()">✖</button></td>'
+        +'</tr>';
+    }else{
+      /* ── โหมดอ่าน: ไม่มีกล่องกรอก กันมือลั่น ── */
+      const dim = (c.active===false) ? ' style="opacity:.55"' : '';
+      h+='<tr'+dim+'>'
+        +'<td><b>'+esc(c.name||'—')+'</b></td>'
+        +'<td class="num">'+cfShow(c.rate_cbm)+'</td>'
+        +'<td class="num">'+cfShow(c.rate_kg)+'</td>'
+        +'<td class="num">'+(c.tol_cm==null?'1':money2(c.tol_cm))+'</td>'
+        +'<td class="num">'+(c.tol_pct==null||c.tol_pct===''?'<span class="muted">ไม่ใช้</span>':money2(c.tol_pct)+'%')+'</td>'
+        +'<td>'+(c.active!==false?'<span class="pill" style="background:#EAF3DE;color:#1E7145">✅ ใช้งาน</span>'
+                                 :'<span class="pill" style="background:#EEF2F7;color:#64748B">⛔ ปิด</span>')+'</td>'
+        +'<td style="font-size:11.5px;color:var(--muted)">'+esc(c.note||'')+'</td>'
+        +'<td><button class="btn mini ghost" onclick="cfEdit('+i+')" title="แก้ไขแถวนี้">✏️ แก้ไข</button></td>'
+        +'</tr>';
+    }
   });
   $('cfBody').innerHTML=h+'</tbody></table>';
 }
-function addCarrierRow(){
-  CARRIERS.push({name:'',rate_cbm:null,rate_kg:null,tol_cm:1,tol_pct:null,active:true,
-                 sort_order:(CARRIERS.length+1)*10});
-  renderCfg();
+
+function cfEdit(i){
+  if(CF_EDIT>=0 && CF_EDIT!==i){
+    /* กำลังแก้แถวอื่นค้างอยู่ → คืนค่าแถวนั้นก่อน ไม่ให้ค่าที่พิมพ์ไว้ค้างแบบไม่ได้บันทึก */
+    cfRestore(); }
+  CF_EDIT=i; renderCfg();
+  const el=document.querySelector('#cfBody input[data-k="name"]'); if(el)el.focus();
 }
-async function saveCarriers(){
-  /* อ่านค่าจากช่องกรอกกลับเข้า CARRIERS ก่อน */
-  document.querySelectorAll('#cfBody input').forEach(function(el){
-    const i=+el.dataset.i, k=el.dataset.k;
-    if(!CARRIERS[i])return;
+function cfRestore(){
+  if(CF_EDIT<0) return;
+  const c=CARRIERS[CF_EDIT];
+  if(c && !c.id) CARRIERS.splice(CF_EDIT,1);                      // แถวใหม่ที่ยังไม่เคยบันทึก → เอาออก
+  else if(c && CF_BAK){
+    const o=CF_BAK.find(x=>String(x.id)===String(c.id));
+    if(o) Object.assign(c,JSON.parse(JSON.stringify(o)));         // คืนค่าที่บันทึกไว้ล่าสุด
+  }
+  CF_EDIT=-1;
+}
+function cfCancel(){ cfRestore(); renderCfg(); }
+
+/* อ่านค่าจากช่องกรอกของแถวที่กำลังแก้ กลับเข้า CARRIERS */
+function cfRead(i){
+  document.querySelectorAll('#cfBody [data-k][data-i="'+i+'"]').forEach(function(el){
+    const k=el.dataset.k; if(!CARRIERS[i])return;
     CARRIERS[i][k] = (k==='active') ? el.checked
                    : (k==='name'||k==='note') ? el.value.trim()
                    : num(el.value);
   });
-  const bad=CARRIERS.filter(c=>!c.name);
-  if(bad.length)return toast('มีแถวที่ยังไม่ใส่ชื่อบริษัทขนส่ง');
-  const names=CARRIERS.map(c=>c.name);
-  if(new Set(names).size!==names.length)return toast('ชื่อบริษัทขนส่งซ้ำกัน — ต้องไม่ซ้ำ');
+}
 
-  let ok=0, fail=[];
-  for(const c of CARRIERS){
-    const row={name:c.name, rate_cbm:c.rate_cbm, rate_kg:c.rate_kg,
-      tol_cm:(c.tol_cm==null?1:c.tol_cm), tol_pct:c.tol_pct,   /* ว่างได้ = ไม่ใช้เกณฑ์ % */
-      active:c.active!==false, sort_order:c.sort_order??100, note:c.note||null};
-    const r = c.id
-      ? await sb.from('freight_carriers').update(row).eq('id',c.id).select().single()
-      : await sb.from('freight_carriers').insert(row).select().single();
-    if(r.error)fail.push(c.name+' — '+r.error.message); else { Object.assign(c,r.data); ok++; }
-  }
+async function cfSave(i){
+  cfRead(i);
+  const c=CARRIERS[i]; if(!c)return;
+  if(!c.name) return toast('ยังไม่ใส่ชื่อบริษัทขนส่ง');
+  if(CARRIERS.some((x,j)=>j!==i && String(x.name||'').trim()===c.name))
+    return toast('ชื่อบริษัทขนส่งซ้ำกับแถวอื่น — ต้องไม่ซ้ำ');
+
+  const row={name:c.name, rate_cbm:c.rate_cbm, rate_kg:c.rate_kg,
+    tol_cm:(c.tol_cm==null?1:c.tol_cm), tol_pct:c.tol_pct,   /* ว่างได้ = ไม่ใช้เกณฑ์ % */
+    active:c.active!==false, sort_order:c.sort_order??100, note:c.note||null};
+  const r = c.id
+    ? await sb.from('freight_carriers').update(row).eq('id',c.id).select().single()
+    : await sb.from('freight_carriers').insert(row).select().single();
+  if(r.error) return toast('บันทึกไม่สำเร็จ: '+r.error.message);
+  Object.assign(c, r.data);
+  CF_EDIT=-1; cfBak();
   fillCarrierSelects(); renderCfg(); afterChange();
-  toast(fail.length?('บันทึก '+ok+' รายการ · ไม่สำเร็จ '+fail.length):'บันทึกการตั้งค่าแล้ว');
-  if(fail.length)console.warn('[carriers]',fail);
+  toast('บันทึก '+c.name+' แล้ว ✅');
+}
+
+function addCarrierRow(){
+  if(CF_EDIT>=0) cfRestore();
+  CARRIERS.push({name:'',rate_cbm:null,rate_kg:null,tol_cm:1,tol_pct:null,active:true,
+                 sort_order:(CARRIERS.length+1)*10});
+  CF_EDIT=CARRIERS.length-1;
+  renderCfg();
+  const el=document.querySelector('#cfBody input[data-k="name"]'); if(el)el.focus();
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1582,6 +1642,7 @@ function sixSummary(au){
 async function loadRates(){
   const {data,error}=await sb.from('freight_rates').select('*').order('carrier').order('svc');
   RATES=error?[]:(data||[]);
+  RT_EDIT=-1; rtBak();      // โหลดใหม่ = ออกจากโหมดแก้ + อัปเดตค่าที่ใช้คืนเมื่อกดยกเลิก
   if(error&&!/does not exist/i.test(error.message))console.warn('[rates]',error.message);
 }
 async function loadRefIndex(){
@@ -2057,46 +2118,107 @@ function pasteCommit(){
 /* ═══════════════════════════════════════════════════════════════
    ⚙️ ตารางเรทตามประเภทบริการ (ในแท็บตั้งค่า)
    ═══════════════════════════════════════════════════════════════ */
+/* ── 💱 เรทตามประเภทบริการ — อ่านอย่างเดียวเป็นค่าตั้งต้น เหมือนตารางขนส่ง ── */
+let RT_EDIT = -1;
+let RT_BAK  = null;
+const rtBak = () => { RT_BAK = JSON.parse(JSON.stringify(RATES)); };
+const RT_UNIT = { cbm:'ต่อคิว', container:'เหมาตู้' };
+
 function renderRates(){
   const el=$('rtBody'); if(!el)return;
+  if(!RT_BAK) rtBak();
   let h='<table><thead><tr><th style="width:170px">บริษัทขนส่ง</th><th style="width:140px">ประเภทบริการ</th>'
-    +'<th style="width:120px">หน่วย</th><th class="num" style="width:130px">เรท (บาท)</th><th style="width:80px">ใช้งาน</th><th>หมายเหตุ</th><th style="width:40px"></th></tr></thead><tbody>';
+    +'<th style="width:110px">หน่วย</th><th class="num" style="width:120px">เรท (บาท)</th>'
+    +'<th style="width:80px">ใช้งาน</th><th>หมายเหตุ</th><th style="width:150px"></th></tr></thead><tbody>';
   RATES.forEach(function(r,i){
-    h+='<tr><td><select data-k="carrier" data-i="'+i+'">'+CARRIERS.map(c=>'<option'+(c.name===r.carrier?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></td>'
-      +'<td><input data-k="svc" data-i="'+i+'" value="'+esc(r.svc||'')+'" placeholder="ว่าง = ตั้งต้น" style="max-width:130px"></td>'
-      +'<td><select data-k="unit" data-i="'+i+'"><option value="cbm"'+((r.unit||'cbm')==='cbm'?' selected':'')+'>ต่อคิว</option>'
-        +'<option value="container"'+(r.unit==='container'?' selected':'')+'>เหมาตู้</option></select></td>'
-      +'<td class="num"><input data-k="rate" data-i="'+i+'" inputmode="decimal" value="'+(r.rate??'')+'" style="max-width:120px"></td>'
-      +'<td><input type="checkbox" data-k="active" data-i="'+i+'" '+(r.active!==false?'checked':'')+' style="width:auto"></td>'
-      +'<td><input data-k="note" data-i="'+i+'" value="'+esc(r.note||'')+'"></td>'
-      +'<td><button class="btn mini red" onclick="delRate('+i+')">✕</button></td></tr>';
+    if(RT_EDIT===i){
+      h+='<tr style="background:#FFF8EC">'
+        +'<td><select data-k="carrier" data-i="'+i+'">'
+          +CARRIERS.map(c=>'<option'+(c.name===r.carrier?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></td>'
+        +'<td><input data-k="svc" data-i="'+i+'" value="'+esc(r.svc||'')+'" placeholder="ว่าง = ตั้งต้น" style="max-width:130px"></td>'
+        +'<td><select data-k="unit" data-i="'+i+'"><option value="cbm"'+((r.unit||'cbm')==='cbm'?' selected':'')+'>ต่อคิว</option>'
+          +'<option value="container"'+(r.unit==='container'?' selected':'')+'>เหมาตู้</option></select></td>'
+        +'<td class="num"><input data-k="rate" data-i="'+i+'" inputmode="decimal" value="'+(r.rate??'')+'" style="max-width:110px"></td>'
+        +'<td><input type="checkbox" data-k="active" data-i="'+i+'" '+(r.active!==false?'checked':'')+' style="width:auto"></td>'
+        +'<td><input data-k="note" data-i="'+i+'" value="'+esc(r.note||'')+'"></td>'
+        +'<td style="white-space:nowrap">'
+          +'<button class="btn mini" onclick="rtSave('+i+')">✔ บันทึก</button> '
+          +'<button class="btn mini ghost" onclick="rtCancel()">✖</button> '
+          +'<button class="btn mini red" onclick="delRate('+i+')" title="ลบเรทนี้">🗑️</button></td>'
+        +'</tr>';
+    }else{
+      const dim = (r.active===false) ? ' style="opacity:.55"' : '';
+      h+='<tr'+dim+'>'
+        +'<td><b>'+esc(r.carrier||'—')+'</b></td>'
+        +'<td>'+(r.svc?('<code>'+esc(r.svc)+'</code>'):'<span class="muted">ตั้งต้น</span>')+'</td>'
+        +'<td>'+(RT_UNIT[r.unit||'cbm']||esc(r.unit))+'</td>'
+        +'<td class="num">'+(r.rate==null||r.rate===''?'<span class="muted">—</span>':'<b>'+money2(r.rate)+'</b>')+'</td>'
+        +'<td>'+(r.active!==false?'<span class="pill" style="background:#EAF3DE;color:#1E7145">✅</span>'
+                                 :'<span class="pill" style="background:#EEF2F7;color:#64748B">⛔</span>')+'</td>'
+        +'<td style="font-size:11.5px;color:var(--muted)">'+esc(r.note||'')+'</td>'
+        +'<td><button class="btn mini ghost" onclick="rtEdit('+i+')" title="แก้ไขแถวนี้">✏️ แก้ไข</button></td>'
+        +'</tr>';
+    }
   });
   el.innerHTML=h+'</tbody></table>';
 }
-function addRateRow(){ RATES.push({carrier:(CARRIERS[0]||{}).name||'',svc:'',unit:'cbm',rate:null,active:true,note:''}); renderRates(); }
+
+function rtEdit(i){
+  if(RT_EDIT>=0 && RT_EDIT!==i) rtRestore();
+  RT_EDIT=i; renderRates();
+  const el=document.querySelector('#rtBody input[data-k="svc"]'); if(el)el.focus();
+}
+function rtRestore(){
+  if(RT_EDIT<0) return;
+  const r=RATES[RT_EDIT];
+  if(r && !r.id) RATES.splice(RT_EDIT,1);
+  else if(r && RT_BAK){
+    const o=RT_BAK.find(x=>String(x.id)===String(r.id));
+    if(o) Object.assign(r,JSON.parse(JSON.stringify(o)));
+  }
+  RT_EDIT=-1;
+}
+function rtCancel(){ rtRestore(); renderRates(); }
+
+function rtRead(i){
+  document.querySelectorAll('#rtBody [data-k][data-i="'+i+'"]').forEach(function(el){
+    const k=el.dataset.k; if(!RATES[i])return;
+    RATES[i][k]=(k==='active')?el.checked:(k==='rate'?num(el.value):el.value.trim());
+  });
+}
+
+function addRateRow(){
+  if(RT_EDIT>=0) rtRestore();
+  RATES.push({carrier:(CARRIERS[0]||{}).name||'',svc:'',unit:'cbm',rate:null,active:true,note:''});
+  RT_EDIT=RATES.length-1;
+  renderRates();
+  const el=document.querySelector('#rtBody input[data-k="svc"]'); if(el)el.focus();
+}
+
 async function delRate(i){
   const r=RATES[i]; if(!r)return;
   if(!confirm('ลบเรท '+r.carrier+' / '+(r.svc||'ตั้งต้น')+' ?'))return;
   if(r.id){ const {error}=await sb.from('freight_rates').delete().eq('id',r.id); if(error)return toast('ลบไม่สำเร็จ: '+error.message); }
-  RATES.splice(i,1); renderRates(); toast('ลบเรทแล้ว');
+  RATES.splice(i,1); RT_EDIT=-1; rtBak(); renderRates(); if(BILLS.length)renderBills();
+  toast('ลบเรทแล้ว');
 }
-async function saveRates(){
-  document.querySelectorAll('#rtBody [data-k]').forEach(function(el){
-    const i=+el.dataset.i, k=el.dataset.k; if(!RATES[i])return;
-    RATES[i][k]=(k==='active')?el.checked:(k==='rate'?num(el.value):el.value.trim());
-  });
-  const keys=RATES.map(r=>r.carrier+'|'+String(r.svc||'').toUpperCase());
-  if(new Set(keys).size!==keys.length)return toast('มี (ขนส่ง, ประเภทบริการ) ซ้ำกัน — รวมเป็นแถวเดียว');
-  let ok=0, fail=[];
-  for(const r of RATES){
-    const row={carrier:r.carrier,svc:String(r.svc||''),unit:r.unit||'cbm',rate:r.rate,active:r.active!==false,note:r.note||null};
-    const q=r.id?await sb.from('freight_rates').update(row).eq('id',r.id).select().single()
-                :await sb.from('freight_rates').insert(row).select().single();
-    if(q.error)fail.push(r.carrier+'/'+r.svc+' — '+q.error.message); else{ Object.assign(r,q.data); ok++; }
-  }
+
+async function rtSave(i){
+  rtRead(i);
+  const r=RATES[i]; if(!r)return;
+  if(!r.carrier) return toast('เลือกบริษัทขนส่งก่อน');
+  const key = r.carrier+'|'+String(r.svc||'').toUpperCase();
+  if(RATES.some((x,j)=>j!==i && (x.carrier+'|'+String(x.svc||'').toUpperCase())===key))
+    return toast('มี (ขนส่ง, ประเภทบริการ) นี้อยู่แล้ว — แก้แถวเดิมแทน');
+  const row={carrier:r.carrier,svc:String(r.svc||''),unit:r.unit||'cbm',rate:r.rate,
+             active:r.active!==false,note:r.note||null};
+  const q = r.id ? await sb.from('freight_rates').update(row).eq('id',r.id).select().single()
+                 : await sb.from('freight_rates').insert(row).select().single();
+  if(q.error) return toast('บันทึกไม่สำเร็จ: '+q.error.message);
+  Object.assign(r,q.data);
+  RT_EDIT=-1; rtBak();
   renderRates(); if(BILLS.length)renderBills();
-  toast(fail.length?('บันทึก '+ok+' · ไม่สำเร็จ '+fail.length):'บันทึกเรทแล้ว');
-  if(fail.length)console.warn('[rates]',fail);
+  toast('บันทึกเรท '+r.carrier+(r.svc?(' / '+r.svc):'')+' แล้ว ✅');
 }
 
 /* ═══════════════════════════════════════════════════════════════
