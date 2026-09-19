@@ -306,8 +306,8 @@
      เพราะเส้นซ้ายสงวนไว้ให้สีของบริษัทขนส่ง */
   .arr-hot td{background:#FFF1F2!important}
   /* ชิปชื่อขนส่ง — สีประจำเจ้า ทำให้กวาดตาแยกออกทันทีว่าใบไหนของใคร */
-  .arr-car{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:800;
-    padding:2px 9px;border-radius:999px;white-space:nowrap}
+  .arr-car{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:800;
+    padding:1px 7px;border-radius:999px;white-space:nowrap;vertical-align:middle}
   /* แถบสรุปรายขนส่ง — กดเพื่อกรองเฉพาะเจ้านั้น */
   .arr-strip{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0}
   .arr-chip{display:flex;flex-direction:column;gap:2px;border:1px solid var(--line);
@@ -358,19 +358,26 @@
      · ชิ้น · คิว · น้ำหนัก · เข้าคลังแล้ว · ค้าง · หมายเหตุ)
      แถวหัวสีเข้ม = 1 ใบแจ้งจากขนส่ง · แถวขาวใต้ลงมา = รายการในใบนั้น */
   .arr-wrap{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-  .arr-tb{width:100%;border-collapse:collapse;font-size:12.5px;min-width:1180px}
-  .arr-tb th{background:var(--navy);color:#fff;font-weight:600;padding:9px 8px;text-align:left;white-space:nowrap}
-  .arr-tb td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+  /* ★ ตารางนี้บีบให้แน่นเป็นพิเศษ — 1 ใบแจ้งมีหลายรายการ ถ้าแถวสูงจะอ่านยาก
+     (ย่อเฉพาะ .arr-* ตารางอื่นในหน้านี้ไม่เปลี่ยน) */
+  .arr-tb{width:100%;border-collapse:collapse;font-size:11.5px;min-width:1040px;line-height:1.35}
+  .arr-tb th{background:var(--navy);color:#fff;font-weight:600;padding:6px 6px;text-align:left;
+    white-space:nowrap;font-size:10.5px}
+  .arr-tb td{padding:4px 6px;border-bottom:1px solid #EFF3F8;vertical-align:middle}
   .arr-tb td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
-  .arr-head td{background:#EEF3FA;border-top:2px solid var(--navy-light);font-weight:600}
-  .arr-head .arr-date{font-size:13px;color:var(--navy);font-weight:800}
+  .arr-head td{background:#EEF3FA;border-top:2px solid var(--navy-light);font-weight:600;padding:5px 6px}
+  .arr-head .arr-date{font-size:12px;color:var(--navy);font-weight:800}
+  .arr-head .arr-sub{font-size:10.5px;color:var(--muted);font-weight:400}
+  /* ปุ่มในแถวหัวใบ — ไอคอนเดียว เรียงแถวเดียว ไม่ให้แถวสูงขึ้น */
+  .arr-act{display:inline-flex;gap:3px;white-space:nowrap;vertical-align:middle}
+  .arr-act .arr-mini{padding:2px 6px;font-size:11px;line-height:1.5}
   .arr-extra td{background:#FAFCFF;color:var(--muted)}
   .arr-extra .arr-sku::before{content:"▸ ";color:var(--navy-light)}
   .arr-sum td{background:#F8FAFC;font-weight:700;border-bottom:2px solid var(--line)}
   .arr-wait{color:var(--orange);font-weight:800}
   .arr-done{color:var(--green);font-weight:700}
-  .arr-st{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;
-    padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .arr-st{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;
+    padding:2px 7px;border-radius:999px;white-space:nowrap;vertical-align:middle}
   .arr-st.w{background:var(--orange-bg);color:var(--orange)}
   .arr-st.p{background:var(--amber-bg);color:var(--amber)}
   .arr-st.d{background:var(--green-bg);color:var(--green)}
@@ -3745,11 +3752,11 @@ function renderArr(){
   }
 
   let h = `<thead><tr>
-    <th style="width:112px">วันแจ้งเข้า</th><th style="width:96px">เลขที่รายการ</th><th style="width:62px">PO</th>
-    <th>SKU</th><th class="n" style="width:62px">ชิ้น/ลัง</th><th class="n" style="width:56px">ลัง</th>
-    <th class="n" style="width:68px">ชิ้น</th><th class="n" style="width:72px">คิว</th>
-    <th class="n" style="width:76px">น้ำหนัก</th><th class="n" style="width:74px">เข้าคลัง</th>
-    <th class="n" style="width:62px">ค้าง</th><th style="width:200px">หมายเหตุ / จัดการ</th>
+    <th style="width:84px">วันแจ้งเข้า</th><th style="width:84px">เลขที่รายการ</th><th style="width:52px">PO</th>
+    <th>SKU</th><th class="n" style="width:50px">ชิ้น/ลัง</th><th class="n" style="width:44px">ลัง</th>
+    <th class="n" style="width:58px">ชิ้น</th><th class="n" style="width:62px">คิว</th>
+    <th class="n" style="width:60px">น้ำหนัก</th><th class="n" style="width:58px">เข้าคลัง</th>
+    <th class="n" style="width:48px">ค้าง</th><th style="width:134px">หมายเหตุ</th>
   </tr></thead><tbody>`;
 
   rows.forEach(g => {
@@ -3757,16 +3764,22 @@ function renderArr(){
     const days = arrDaysWait(n.notice_date);
     const dwarn = (g.st!=='done'&&g.st!=='cancel'&&t.boxWait>0&&days>=ARR_DUE);
     const col = arrColor(n.carrier);        // 🎨 สีประจำบริษัทขนส่ง
+    /* ข้อมูลใบแจ้งอยู่บรรทัดเดียว + ปุ่มไอคอนต่อท้าย — แถวหัวใบเตี้ยลงเกินครึ่ง */
     h += `<tr class="arr-head${dwarn?' arr-hot':''}" data-nid="${n.id}"
       style="box-shadow:inset 7px 0 0 ${col}"><td colspan="4">
-        <div class="arr-date">📅 ${fmtDate(n.notice_date)}${n.notice_no?' · '+esc(n.notice_no):''}</div>
-        <div style="font-size:11.5px;color:var(--muted);font-weight:400;margin-top:2px">
-          ${arrCarChip(n.carrier)}${n.truck?' · รถนำส่ง '+esc(n.truck):''}
-          ${n.eta_date?' · คาดเข้าคลัง '+fmtDate(n.eta_date):''}
-          ${g.st!=='done'&&g.st!=='cancel'&&days>0?` · <span class="arr-wait"${dwarn?' style="color:var(--red)"':''}>${
-            dwarn?(days>=arrHotDays()?'🔴 ':'🟠 '):''}ค้างมา ${days} วัน${dwarn?' (เกิน '+ARR_DUE+' วัน)':''}</span>`:''}
-          ${n.note?'<br>📝 '+esc(n.note):''}</div></td>
-      <td class="n">${t.n} รายการ</td>
+        <span class="arr-date">📅 ${fmtDate(n.notice_date)}</span>
+        ${arrCarChip(n.carrier)}<span class="arr-st ${S.c}">${S.t}</span>
+        <span class="arr-sub">${n.notice_no?esc(n.notice_no)+' · ':''}${t.n} รายการ${
+          n.truck?' · รถ '+esc(n.truck):''}${n.eta_date?' · คาดเข้า '+fmtDate(n.eta_date):''}</span>
+        ${g.st!=='done'&&g.st!=='cancel'&&days>0?`<span class="arr-wait"${dwarn?' style="color:var(--red)"':''}>${
+          dwarn?(days>=arrHotDays()?'🔴 ':'🟠 '):''}ค้าง ${days} ว.${dwarn?' (เกิน '+ARR_DUE+')':''}</span>`:''}
+        ${canEdit?`<span class="arr-act">
+          ${g.st!=='cancel'&&t.boxWait>0?`<button class="arr-mini go" onclick="openArrIn('${n.id}')" title="ตัดเข้าคลัง — บันทึกว่าของเข้าคลังแล้วกี่ลัง">🚚</button>`:''}
+          <button class="arr-mini" onclick="openArr('${n.id}')" title="แก้ไขใบแจ้ง">✏️</button>
+          <button class="arr-mini" onclick="arrToFreight('${n.id}')" title="ส่งรายการเข้าระบบตรวจสอบค่าขนส่ง เพื่อให้คลังใส่ขนาดกล่องแล้วเทียบกับที่ขนส่งคิด">⤵</button>
+        </span>`:''}
+        ${n.note?`<div class="arr-sub">📝 ${esc(n.note)}</div>`:''}</td>
+      <td class="n"></td>
       <td class="n"><b>${arrInt(t.boxes)}</b></td>
       <td class="n">${arrInt(t.pcs)}</td>
       <td class="n"><b>${arrMoney(t.cbm)}</b></td>
@@ -3774,12 +3787,7 @@ function renderArr(){
       <td class="n ${t.boxIn?'arr-done':''}">${arrInt(t.boxIn)}</td>
       <td class="n ${t.boxWait>0&&g.st!=='cancel'?'arr-wait':''}">${
         g.st==='cancel'?'—':(t.boxWait>0?arrInt(t.boxWait):'—')}</td>
-      <td><span class="arr-st ${S.c}">${S.t}</span>
-        ${canEdit?`<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
-          ${g.st!=='cancel'&&t.boxWait>0?`<button class="arr-mini go" onclick="openArrIn('${n.id}')" title="บันทึกว่าของเข้าคลังแล้วกี่ลัง">🚚 ตัดเข้าคลัง</button>`:''}
-          <button class="arr-mini" onclick="openArr('${n.id}')">✏️</button>
-          <button class="arr-mini" onclick="arrToFreight('${n.id}')" title="ส่งรายการเข้าระบบตรวจสอบค่าขนส่ง เพื่อให้คลังใส่ขนาดกล่องแล้วเทียบกับที่ขนส่งคิด">⤵ freight</button>
-        </div>`:''}</td></tr>`;
+      <td></td></tr>`;
 
     g.items.forEach(x => {
       const bx=+x.boxes||0, bi=+x.boxes_in||0, left=bx-bi;
@@ -3793,7 +3801,8 @@ function renderArr(){
         <td class="n">${x.pcs?arrInt(x.pcs):'-'}</td>
         <td class="n">${x.cbm?arrMoney(x.cbm):'-'}</td>
         <td class="n">${x.weight_kg?arrInt(x.weight_kg):'-'}</td>
-        <td class="n ${bi?'arr-done':''}">${bi?arrInt(bi):'-'}${x.in_date?`<div style="font-size:10px;color:var(--muted);font-weight:400">${fmtDate(x.in_date)}</div>`:''}</td>
+        <td class="n ${bi?'arr-done':''}" ${x.in_date?`title="เข้าคลัง ${fmtDate(x.in_date)}"`:''}>${
+          bi?arrInt(bi):'-'}</td>
         <td class="n ${left>0&&!x.is_extra&&g.st!=='cancel'?'arr-wait':''}">${
           x.is_extra?'▸':(g.st==='cancel'?'—':(left>0?arrInt(left):'—'))}</td>
         <td style="font-size:11.5px;color:var(--muted)">${esc(x.note||'')}</td></tr>`;
