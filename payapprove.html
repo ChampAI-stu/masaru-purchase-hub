@@ -161,7 +161,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-58</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-59</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -276,7 +276,7 @@ tr:nth-child(even) td{background:#F8FAFD}
             <option value="นามบุคคล">นามบุคคล</option>
           </select></div>
         <div class="fld"><label>ช่องทางการโอน ★</label>
-          <select id="r_ch"><option value="">— เลือก —</option>
+          <select id="r_ch" onchange="topupShow()"><option value="">— เลือก —</option>
             <option>JMF CARGO</option><option>Ksher Payment Co.Ltd.</option><option>ธนาคาร (SWIFT Code)</option></select></div>
         <div class="fld"><label>ช่องทางการชำระเงิน</label>
           <input id="r_method" list="methodList" onchange="methodPicked()" placeholder="เช่น โอนบัญชีบริษัท SCB / เงินสด / เช็ค"
@@ -339,6 +339,37 @@ tr:nth-child(even) td{background:#F8FAFD}
         <div class="muted" style="font-size:11.5px;margin-top:6px" id="rb_hint"></div>
       </div>
       <div class="scroll"><div id="r_items"></div></div>
+
+      <!-- ══ เติมเงินเข้าระบบ Ksher — ขึ้นเฉพาะช่องทางการโอน = Ksher ══
+           Ksher เป็นกระเป๋าเงินเติมล่วงหน้า ยอดที่เจ้านายต้องโอนเข้าไป
+           "ไม่เท่า" ยอดตามใบปะหน้า เพราะระบบคิดยอดคร่าว ๆ ให้เติมแล้วค่อยตัดจ่ายทีละ PO
+           → ต้องมีช่องนี้บนคำขอ เจ้านายจะได้เห็นตัวเลขตอนกดอนุมัติ -->
+      <div id="topupBox" style="display:none;background:#FFF8EC;border:1px solid #EBCF97;
+           border-radius:11px;padding:12px 14px;margin-top:12px">
+        <div style="font-weight:800;font-size:13.5px;color:#7C4A03;margin-bottom:2px">
+          💰 เติมเงินเข้าระบบ Ksher</div>
+        <div class="muted" style="font-size:11.5px;line-height:1.65;margin-bottom:9px">
+          Ksher เติมเงินล่วงหน้าแล้วค่อยตัดจ่ายทีละ PO — <b>ยอดที่ต้องเติมไม่เท่ากับยอดคำขอ</b>
+          ใส่ยอดที่จะให้เจ้านายเติมจริงตรงนี้ เจ้านายจะเห็นตอนกดอนุมัติ</div>
+        <div class="grid3">
+          <div class="fld" style="margin:0"><label>ยอดที่ขอให้เติม (บาท)</label>
+            <input id="r_topup" type="number" step="0.01" placeholder="เช่น 1,050,000"
+                   oninput="topupDiff()"></div>
+          <div class="fld" style="margin:0"><label>ยอดที่เติมจริง (บาท)
+              <span class="muted" style="font-weight:400">— ใส่ทีหลังได้</span></label>
+            <input id="r_topup_act" type="number" step="0.01" placeholder="กรอกหลังเจ้านายเติมแล้ว"
+                   oninput="topupDiff()"></div>
+          <div class="fld" style="margin:0"><label>หมายเหตุยอดเติม</label>
+            <input id="r_topup_note" placeholder="เช่น เติมเผื่อไว้ / หักยอดคงเหลือเดิมแล้ว"></div>
+        </div>
+        <div class="row" style="margin:9px 0 0;align-items:center">
+          <button class="btn mini ghost" onclick="topupCalc()"
+            title="คิดจากยอดคำขอ × เรท → บาท แล้วเติมลงช่อง ยอดที่ขอให้เติม (แก้ทับได้)">
+            🧮 คำนวณจากยอดคำขอ</button>
+          <div style="flex:1"></div>
+          <span id="topupDiff" class="muted" style="font-size:12px"></span>
+        </div>
+      </div>
 
       <div class="fld" style="margin-top:10px"><label>เหตุผลการขออนุมัติ ★</label>
         <textarea id="r_reason" rows="3" placeholder="เช่น มัดจำงวดที่ 2 ตามสัญญา ครบกำหนด 15/09/2026"></textarea></div>
@@ -1169,6 +1200,62 @@ function rateReset(){
   applyFx();
   toast('คืนเรทตามระบบแล้ว');
 }
+/* ═══════════════════════════════════════════════════════════════
+   💰 เติมเงินเข้าระบบ Ksher
+   ───────────────────────────────────────────────────────────────
+   Ksher เป็นกระเป๋าเงินเติมล่วงหน้า — เติมเข้าไปก้อนหนึ่ง แล้วค่อยตัดจ่ายทีละ PO
+   ยอดที่เจ้านายต้องโอนเข้าไปจึง "ไม่เท่า" ยอดตามใบปะหน้า/งวดจ่ายของคำขอ
+   (ระบบ Ksher คำนวณยอดคร่าว ๆ ให้เติม มักปัดขึ้นหรือเติมเผื่อ)
+   ⚠️ เดิมช่องยอดเติมมีแต่ในกล่อง 📢 แจ้งโอนเงิน ซึ่งเปิด "หลังอนุมัติ"
+      เจ้านายจึงไม่เห็นตัวเลขนี้ตอนกดอนุมัติ → ย้ายมาไว้บนคำขอ
+   เก็บ 2 ยอดแยกกัน: ที่ขอให้เติม กับ ที่เติมจริง (มักไม่ตรงกัน)
+   ═══════════════════════════════════════════════════════════════ */
+const isKsher=ch=>/Ksher/i.test(String(ch||''));
+function topupShow(){
+  const box=$('topupBox'); if(!box)return;
+  box.style.display = isKsher($('r_ch').value) ? 'block' : 'none';
+  if(box.style.display==='block')topupDiff();
+}
+/* ยอดรวมของคำขอเป็นบาท — ใช้ตัวเดียวกับที่ saveReq คิด ผลจึงตรงกันเสมอ */
+function reqThb(){
+  return ITEMS.reduce((s,x)=>s+num(x.thb),0)+ITEMS.reduce((s,x)=>s+num(x.fee),0);
+}
+function topupCalc(){
+  if(!ITEMS.length)return toast('ยังไม่มีรายการในคำขอ');
+  const thb=reqThb();
+  let v=0, how='';
+  if(thb>0){ v=thb; how='ยอดรวมเป็นบาทของคำขอ'; }
+  else{
+    /* ไม่มีเรท → คิดเป็นบาทไม่ได้ (เคสในภาพ: คำขอเป็น ¥ แต่ยังไม่ใส่เรท) */
+    const amt=ITEMS.reduce((s,x)=>s+num(x.amount),0);
+    const rt=num($('r_rate').value);
+    if(!(amt>0&&rt>0))
+      return toast('ยังไม่มีเรท → บาท จึงคิดยอดเป็นบาทไม่ได้ — ใส่เรทก่อน หรือพิมพ์ยอดเติมเอง',true);
+    v=amt*rt; how='ยอด '+money2(amt)+' '+$('r_cur').value+' × เรท '+rt;
+  }
+  $('r_topup').value=Math.round(v*100)/100;
+  topupDiff();
+  toast('คำนวณจาก '+how+' — แก้ทับได้');
+}
+function topupDiff(){
+  const el=$('topupDiff'); if(!el)return;
+  const want=num($('r_topup').value), act=num($('r_topup_act').value), thb=reqThb();
+  const bits=[];
+  if(thb>0)bits.push('ยอดคำขอ '+money2(thb)+' ฿');
+  if(want>0&&thb>0){
+    const d=want-thb;
+    if(Math.abs(d)>=0.005)
+      bits.push('ขอเติม'+(d>0?'มากกว่า':'น้อยกว่า')+'ยอดคำขอ '+money2(Math.abs(d))+' ฿');
+  }
+  if(want>0&&act>0){
+    const d=act-want;
+    bits.push(Math.abs(d)<0.005 ? '✅ เติมจริงตรงกับที่ขอ'
+      : ('⚠️ เติมจริง'+(d>0?'เกิน':'ขาด')+' '+money2(Math.abs(d))+' ฿'));
+  }else if(want>0&&!act) bits.push('⏳ ยังไม่ได้บันทึกยอดที่เติมจริง');
+  el.innerHTML=bits.join(' · ');
+  el.style.color = (want>0&&act>0&&Math.abs(act-want)>=0.005) ? 'var(--red)' : '';
+}
+
 function drawRateBar(){
   const bar=$('rateBar'); if(!bar)return;
   const dst=$('r_cur').value;
@@ -1565,6 +1652,10 @@ function openReq(id){
   $('r_rate').value='';            // drawRateBar จะเติมให้เองถ้าทุกแถวใช้เรทเดียวกัน
   $('r_reason').value=(r&&r.reason)||'';
   $('r_note').value=(r&&r.note)||'';
+  $('r_topup').value      = (r&&r.topup_amount!=null)?r.topup_amount:'';
+  $('r_topup_act').value  = (r&&r.topup_actual!=null)?r.topup_actual:'';
+  $('r_topup_note').value = (r&&r.topup_note)||'';
+  topupShow();
   ITEMS=(r&&Array.isArray(r.items))?JSON.parse(JSON.stringify(r.items)):[];
   /* ⭐ ใบเก่าที่บันทึกไว้ก่อนมีระบบ xf_* — เติมยอดปลายทางจากระบบวางแผนจ่ายเงินให้
         ใบที่เคยเอายอดหยวนมาใส่เป็นดอลลาร์ เปิดแก้แล้วบันทึกใหม่จะถูกต้องทันที */
@@ -1906,6 +1997,10 @@ async function saveReq(mode){
     note:$('r_note').value.trim()||null,
     items:ITEMS, payment_ids:ITEMS.map(i=>i.pay_id).filter(Boolean),
     cal_remind:remGet(),
+    /* ยอดเติม Ksher — ช่องทางอื่นเคลียร์เป็น null ไม่ให้ค่าค้างเวลาเปลี่ยนช่องทาง */
+    topup_amount: isKsher($('r_ch').value) ? num($('r_topup').value)     : null,
+    topup_actual: isKsher($('r_ch').value) ? num($('r_topup_act').value) : null,
+    topup_note:   isKsher($('r_ch').value) ? ($('r_topup_note').value.trim()||null) : null,
     src_currency:(sc0&&sc0!==dst0)?sc0:null,        // สกุลต้นทาง เก็บเมื่อมีการแปลงจริง
     fx_rate:(sc0&&sc0!==dst0)?fx0:null,             // เรทแปลง ต้นทาง→ปลายทาง
     total_src:+tSrc.toFixed(2),                     // ยอดรวมสกุลต้นทาง
@@ -1921,12 +2016,21 @@ async function saveReq(mode){
     toast('บันทึกแล้ว แต่ยังตั้งเตือนรายใบไม่ได้ — รันไฟล์ payapprove_remind.sql ก่อน',true);
     return true;
   };
+  /* ยังไม่ได้รัน payapprove_topup.sql → อย่าให้ทั้งใบที่พิมพ์มาหลุด
+     ตัดเฉพาะ 3 ฟิลด์ยอดเติมออกแล้วบันทึกซ้ำ พร้อมบอกว่าต้องไปรันไฟล์ไหน */
+  const topFall=msg=>{
+    if(!/topup_/i.test(msg||''))return false;
+    delete rec.topup_amount; delete rec.topup_actual; delete rec.topup_note;
+    toast('บันทึกแล้ว แต่ยังเก็บยอดเติม Ksher ไม่ได้ — รันไฟล์ payapprove_topup.sql ก่อน',true);
+    return true;
+  };
+  const anyFall=msg=>{ const a=remFall(msg), b=topFall(msg); return a||b; };
   if(EDIT_ID){
     const old=REQS.find(x=>String(x.id)===String(EDIT_ID))||{};
     if(old.status==='rejected'&&mode==='submitted'){ rec.reject_note=null;rec.reject_by=null;rec.reject_at=null; }
     /* .select() = ได้แถวหลังบันทึกกลับมาในคำขอเดิม ไม่ต้องอ่านทั้งตารางใหม่ */
     let q=await sb.from('pay_requests').update(rec).eq('id',EDIT_ID).select().single();
-    if(q.error&&remFall(q.error.message))
+    if(q.error&&anyFall(q.error.message))
       q=await sb.from('pay_requests').update(rec).eq('id',EDIT_ID).select().single();
     if(q.error)return alert('บันทึกไม่สำเร็จ: '+q.error.message);
     SAVED_ROW=q.data;
@@ -1934,7 +2038,7 @@ async function saveReq(mode){
     rec.req_no=await nextReqNo();
     rec.requester=ME; rec.requester_name=MY_NAME;
     let q=await sb.from('pay_requests').insert(rec).select().single();
-    if(q.error&&remFall(q.error.message))
+    if(q.error&&anyFall(q.error.message))
       q=await sb.from('pay_requests').insert(rec).select().single();
     if(q.error)return alert('บันทึกไม่สำเร็จ: '+q.error.message
       +(/does not exist/i.test(q.error.message)?'\n\nยังไม่ได้สร้างตาราง — รันไฟล์ payapprove.sql ก่อน':''));
@@ -2035,6 +2139,37 @@ function viewReq(id){
             : '≈ '+money2(r.total_thb)+' ฿'}</div></div>
       <div><div class="muted" style="font-size:11px">ผู้ยื่น</div><b>${esc(r.requester_name||r.requester||'-')}</b></div>
     </div>
+    ${(function(){
+      /* 💰 Ksher — ยอดที่ต้องเติมเข้าระบบ ไม่เท่ากับยอดคำขอ
+         ต้องโชว์เด่น ๆ ตรงนี้ เพราะเจ้านายดูใบนี้ก่อนกดอนุมัติ */
+      if(!isKsher(r.channel))return '';
+      const want=+r.topup_amount||0, act=+r.topup_actual||0, thb=+r.total_thb||0;
+      if(!want&&!act)
+        return `<div style="background:#FFF8EC;border-left:5px solid #E9C46A;border-radius:9px;
+          padding:11px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.7">
+          <b>💰 เติมเงินเข้าระบบ Ksher</b> — <span style="color:#B45309">ยังไม่ได้ระบุยอดที่ต้องเติม</span>
+          <div class="muted" style="font-size:11.5px">Ksher เติมล่วงหน้าแล้วค่อยตัดจ่ายทีละ PO
+            ยอดที่ต้องเติมไม่เท่ากับยอดคำขอ — กด ✏️ แก้ไข แล้วใส่ยอดที่จะให้เติม</div></div>`;
+      const d=(want&&act)?(act-want):0;
+      return `<div style="background:#FFF8EC;border-left:5px solid #E9C46A;border-radius:9px;
+        padding:11px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.8">
+        <b>💰 เติมเงินเข้าระบบ Ksher</b>
+        <div style="display:flex;gap:26px;flex-wrap:wrap;margin-top:5px">
+          <div><div class="muted" style="font-size:11px">ยอดที่ขอให้เติม</div>
+            <b style="font-size:16px">${money2(want)} ฿</b></div>
+          <div><div class="muted" style="font-size:11px">ยอดที่เติมจริง</div>
+            ${act?`<b style="font-size:16px">${money2(act)} ฿</b>`
+                 :'<b style="color:#B45309">⏳ ยังไม่ได้บันทึก</b>'}</div>
+          ${act?`<div><div class="muted" style="font-size:11px">ส่วนต่าง</div>
+            ${Math.abs(d)<0.005?'<b style="color:var(--green)">✅ ตรงกัน</b>'
+              :`<b style="color:var(--red)">${d>0?'เกิน':'ขาด'} ${money2(Math.abs(d))} ฿</b>`}</div>`:''}
+          ${thb>0?`<div><div class="muted" style="font-size:11px">ยอดคำขอ (อ้างอิง)</div>
+            <b>${money2(thb)} ฿</b></div>`:''}
+        </div>
+        ${r.topup_note?`<div class="muted" style="font-size:11.5px;margin-top:4px">📝 ${esc(r.topup_note)}</div>`:''}
+        <div class="muted" style="font-size:11px;margin-top:3px">
+          ยอดเติมเป็นก้อนที่เติมเข้ากระเป๋า Ksher ไว้ตัดจ่ายทีละ PO — ปกติไม่เท่ากับยอดคำขอ</div></div>`;
+    })()}
     ${(function(){
       /* มีการแปลงสกุล → โชว์ที่มาของยอดให้ตรวจย้อนได้ */
       if(r.src_currency&&+r.fx_rate>0){
@@ -2287,11 +2422,14 @@ function xferDefaults(r){
     kind:xferKind(r.channel),
     date:r.due_date||r.req_date||todayStr(),
     mention:XCFG.mention, po:pos.join(', '), sku:skus.join(', '),
-    thb:+(+r.total_thb||0).toFixed(2),
+    thb: xferKind(r.channel)==='ksher'
+           ? +(+r.topup_actual||+r.topup_amount||+r.total_thb||0).toFixed(2)
+           : +(+r.total_thb||0).toFixed(2),
     /* JMF */
     jmf_bank:XCFG.jmf.bank, jmf_acc:XCFG.jmf.acc, jmf_name:XCFG.jmf.name,
     jmf_po:false, jmf_note:'',
-    /* Ksher */
+    /* Ksher — ยอดเติมเอาจากที่ระบุไว้บนคำขอก่อน (เติมจริง > ที่ขอ > ยอดบาทของคำขอ)
+       เดิมดีฟอลต์เป็น total_thb ซึ่งผิดสำหรับ Ksher และเป็น 0 เมื่อยังไม่ใส่เรท */
     ks_bank:XCFG.ksher.bank, ks_acc:XCFG.ksher.acc, ks_name:XCFG.ksher.name,
     ks_newacc:true, ks_prev:0, ks_rate:rates.length?rates[0]:0,
     ks_user:'', ks_note:'',
