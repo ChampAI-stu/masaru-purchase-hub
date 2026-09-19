@@ -342,10 +342,16 @@
   /* แถวกรอกในฟอร์มเที่ยว */
   .trip-lines-wrap{overflow-x:auto;padding-bottom:4px}
   .trip-lines-head,.trip-line{min-width:780px}
-  .trip-lines-head{display:grid;grid-template-columns:56px 96px 1fr 54px 44px 58px 50px 58px 130px 26px;gap:6px;
+  .trip-lines-head{display:grid;grid-template-columns:78px 80px 1fr 50px 48px 92px 62px 62px 50px 116px 24px;gap:6px;
     font-size:11px;color:var(--muted);margin-bottom:6px;padding:0 2px}
-  .trip-line{display:grid;grid-template-columns:56px 96px 1fr 54px 44px 58px 50px 58px 130px 26px;gap:6px;margin-bottom:8px;align-items:center}
-  .trip-line input{width:100%;padding:9px 7px;border:1px solid var(--line);border-radius:8px}
+  .trip-line{display:grid;grid-template-columns:78px 80px 1fr 50px 48px 92px 62px 62px 50px 116px 24px;gap:6px;margin-bottom:8px;align-items:center}
+  .trip-line input{width:100%;padding:9px 5px;border:1px solid var(--line);border-radius:8px;font-size:13px}
+  .trip-line input[type=number]{font-variant-numeric:tabular-nums}
+  /* ช่องอ่านอย่างเดียว — แจ้งมากี่ลัง / เหลือรับอีกกี่ลัง (มาจากใบแจ้งสินค้าขาเข้า) */
+  .tl-left{font-size:11px;line-height:1.35;text-align:center;color:var(--muted);
+    background:#F8FAFC;border:1px dashed var(--line);border-radius:7px;padding:5px 3px}
+  .tl-left b{color:var(--orange);font-size:12.5px}
+  .tl-left.none{color:#94A3B8;border-style:dotted}
   .trip-line input:focus{outline:none;border-color:var(--navy-light);box-shadow:0 0 0 3px #2E75B622}
   /* ===== 📦 แจ้งสินค้าขาเข้า =====
      ตารางเลียนแบบชีทเดิมของทีม (วันแจ้งเข้า · เลขที่รายการ · PO · SKU · ชิ้น/ลัง · ลัง
@@ -804,7 +810,7 @@ body.price-on .sl-price{display:block}
 
 <!-- ============ Modal เพิ่ม/แก้ไขเที่ยวส่ง ============ -->
 <div class="modal-bg" id="tripBg">
-  <div class="modal" style="max-width:820px">
+  <div class="modal" style="max-width:980px">
     <div class="modal-head">
       <h2 id="tripTitle">เพิ่มเที่ยวส่ง</h2>
       <button class="modal-close" id="tripClose">&times;</button>
@@ -823,13 +829,15 @@ body.price-on .sl-price{display:block}
 
     <div class="sku-section-label">รายการสินค้าในเที่ยวนี้</div>
     <div class="m-field" style="background:var(--blue-bg);border-radius:9px;padding:12px">
-      <label style="font-weight:600">⚡ ดึง SKU จาก PO (จากบอร์ด)</label>
-      <div style="display:flex;gap:8px">
-        <input type="text" id="tpPoLookup" list="tripPoList" placeholder="พิมพ์เลข PO เช่น 18969" style="flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:9px">
-        <button type="button" class="btn-save" id="addPoLinesBtn" style="flex:0 0 auto;padding:0 18px">+ ดึง SKU</button>
+      <label style="font-weight:600">⚡ ดึงรายการจากแท็บ 📦 แจ้งสินค้าขาเข้า</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="tpArrPick" style="flex:1;min-width:240px;padding:10px 12px;border:1px solid var(--line);border-radius:9px"></select>
+        <button type="button" class="btn-save" id="addArrLinesBtn" style="flex:0 0 auto;padding:0 18px">+ ดึงรายการ</button>
       </div>
-      <datalist id="tripPoList"></datalist>
-      <div style="font-size:11.5px;color:var(--muted);margin-top:6px">พิมพ์เลข PO → ดึง SKU ทั้งหมดของ PO นั้นมาให้อัตโนมัติ (กรอกมือเพิ่มด้านล่างก็ได้)</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:6px" id="tpArrHint">
+        เลือกใบแจ้งที่ขนส่งจะส่งเข้าคลังรอบนี้ → ดึงรายการที่<b>ยังค้างที่ขนส่ง</b>มาให้ พร้อมเติม
+        จำนวนลัง/ชิ้น/คิว ตาม<b>จำนวนคงเหลือ</b> (แก้ทับได้ · กรอกมือเพิ่มด้านล่างก็ได้)
+      </div>
     </div>
     <div class="trip-lines-wrap">
     <div class="trip-lines-head">
@@ -838,6 +846,7 @@ body.price-on .sl-price{display:block}
       <span>SKU</span>
       <span>ชิ้น/ลัง</span>
       <span>ลัง</span>
+      <span style="text-align:center">แจ้งมา/คงเหลือ</span>
       <span>ของเข้า</span>
       <span>คิว</span>
       <span>เคลียร์</span>
@@ -2860,24 +2869,134 @@ $('tripClose').addEventListener('click', closeTrip);
 $('tripCancel').addEventListener('click', closeTrip);
 $('tripBg').addEventListener('click', e => { if(e.target===$('tripBg')) closeTrip(); });
 $('addTripLineBtn').addEventListener('click', () => addTripLine());
-$('addPoLinesBtn').addEventListener('click', addPoLines);
-$('tpPoLookup').addEventListener('keypress', e => { if(e.key==='Enter'){ e.preventDefault(); addPoLines(); } });
+$('addArrLinesBtn').addEventListener('click', addArrLines);
 $('tripSave').addEventListener('click', saveTrip);
 
-function addPoLines(){
-  const po = $('tpPoLookup').value.trim();
-  if(!po){ toast('กรอกเลข PO ก่อน'); return; }
-  const matches = allOrders.filter(o => o.po_number === po);
-  if(matches.length === 0){ toast('ไม่พบ PO นี้ในบอร์ด'); return; }
-  // ถ้ามีบรรทัดว่างบรรทัดเดียว ลบทิ้งก่อน
+/* ══════════════════════════════════════════════════════════════════
+   ⚡ ดึงรายการเข้าเที่ยวส่ง จากแท็บ 📦 แจ้งสินค้าขาเข้า
+   (เดิมดึง SKU จาก PO ในบอร์ด — แต่ของที่จะเข้าคลังจริงคือของที่ขนส่งแจ้งมา
+    ไม่ใช่ทุก SKU ในใบ PO จึงเปลี่ยนมาดึงจากใบแจ้งแทน)
+
+   ★ โชว์ 2 ตัวเลขคู่กันเสมอ: "แจ้งมา" (จำนวนเต็ม) กับ "คงเหลือ" (ยังไม่เข้าคลัง)
+     คงเหลือ = แจ้งมา − ที่ตัดเข้าคลังแล้ว  → รู้ทันทีว่ารอบนี้ควรรับอีกกี่ลัง
+   ══════════════════════════════════════════════════════════════════ */
+let ARR_PICK = [];        // [{n:<ใบแจ้ง>, items:[{...,left}], left, boxes}]
+let ARR_PICK_ERR = '';
+
+async function arrPickLoad(){
+  try{
+    const { data, error } = await sb.from('arrival_items')
+      .select('id,notice_id,line_ref,po_number,sku,pcs_per_box,boxes,pcs,cbm,weight_kg,boxes_in,is_extra,seq,'
+             +'arrival_notices!inner(id,notice_no,notice_date,carrier,status)')
+      .in('arrival_notices.status',['waiting','partial']);
+    if(error){ ARR_PICK=[]; ARR_PICK_ERR=error.message; return; }
+    ARR_PICK_ERR='';
+    const by = {};
+    (data||[]).forEach(function(r){
+      if(r.is_extra) return;                       // บรรทัดพ่วงไม่มีลังของตัวเอง
+      const nn = r.arrival_notices || {};
+      const left = (+r.boxes||0) - (+r.boxes_in||0);
+      const g = by[r.notice_id] || (by[r.notice_id] = {n:Object.assign({id:r.notice_id},nn), items:[], left:0, boxes:0});
+      g.items.push(Object.assign({}, r, {left:left}));
+      g.boxes += (+r.boxes||0);
+      if(left>0.0001) g.left += left;
+    });
+    ARR_PICK = Object.values(by)
+      .filter(g => g.left>0.0001)                  // ใบที่เข้าครบแล้วไม่ต้องโชว์
+      .sort((x,y)=>String(x.n.notice_date||'').localeCompare(String(y.n.notice_date||'')));
+    ARR_PICK.forEach(g => g.items.sort((x,y)=>(x.seq||0)-(y.seq||0)));
+  }catch(e){ ARR_PICK=[]; ARR_PICK_ERR=e.message; }
+}
+
+function arrPickFill(){
+  const sel = $('tpArrPick'); if(!sel) return;
+  if(ARR_PICK_ERR){
+    sel.innerHTML = '<option value="">— ยังใช้ไม่ได้ —</option>';
+    $('tpArrHint').innerHTML = 'ดึงข้อมูลใบแจ้งไม่ได้: '+esc(ARR_PICK_ERR)
+      + '<br>ถ้าเพิ่งเพิ่มระบบนี้ ต้องรัน <b>arrival_notices.sql</b> ใน Supabase ก่อน';
+    return;
+  }
+  if(!ARR_PICK.length){
+    sel.innerHTML = '<option value="">— ไม่มีใบแจ้งที่ยังค้างที่ขนส่ง —</option>';
+    $('tpArrHint').innerHTML = 'ไม่มีของค้างที่ขนส่งแล้ว 🎉 — ถ้าจะทำเที่ยวส่งเอง กด <b>+ เพิ่มรายการ</b> ด้านล่างแล้วกรอกมือได้';
+    return;
+  }
+  sel.innerHTML = ARR_PICK.map(function(g){
+    const d = g.n.notice_date ? fmtDate(g.n.notice_date) : '-';
+    const nItems = g.items.filter(x=>x.left>0.0001).length;
+    return '<option value="'+esc(g.n.id)+'">'
+      + esc(d) + ' · ' + esc(g.n.carrier||'-')
+      + (g.n.notice_no?(' · '+esc(g.n.notice_no)):'')
+      + ' — คงเหลือ ' + arrInt(g.left) + ' ลัง (' + nItems + ' รายการ)'
+      + '</option>';
+  }).join('');
+  $('tpArrHint').innerHTML = 'เลือกใบแจ้งที่ขนส่งจะส่งเข้าคลังรอบนี้ → ดึงรายการที่<b>ยังค้างที่ขนส่ง</b>มาให้ พร้อมเติม'
+    + ' จำนวนลัง/ชิ้น/คิว ตาม<b>จำนวนคงเหลือ</b> (แก้ทับได้ · กรอกมือเพิ่มด้านล่างก็ได้)';
+}
+
+/* หาจำนวนแจ้งมา/คงเหลือ ของบรรทัดที่กรอกไว้ (ใช้ตอนเปิดแก้เที่ยวเดิม) */
+function arrFindLeft(lineno, po, sku){
+  const ref = String(lineno||'').trim().toUpperCase().replace(/[\s\-–—_\/]+$/,'');
+  const P = String(po||'').trim(), S = String(sku||'').trim();
+  for(const g of ARR_PICK){
+    for(const it of g.items){
+      const iref = String(it.line_ref||'').trim().toUpperCase().replace(/[\s\-–—_\/]+$/,'');
+      const hit = (ref && iref && iref===ref)
+        || (!ref && P && S && String(it.po_number||'').trim()===P && String(it.sku||'').trim()===S);
+      if(hit) return {full:+it.boxes||0, left:it.left, notice:g.n};
+    }
+  }
+  return null;
+}
+function arrRefreshLeft(){
+  $('tripLines').querySelectorAll('.trip-line').forEach(function(l){
+    const cell = l.querySelector('.tl-left'); if(!cell) return;
+    if(cell.dataset.fixed==='1') return;                    // บรรทัดที่ดึงมาสด ๆ ไม่ต้องคำนวณใหม่
+    const m = arrFindLeft(l.querySelector('.tl-lineno').value,
+                          l.querySelector('.tl-po').value, l.querySelector('.tl-sku').value);
+    tlLeftPaint(cell, m ? m.full : null, m ? m.left : null);
+  });
+}
+function tlLeftPaint(cell, full, left){
+  if(full==null){ cell.className='tl-left none'; cell.innerHTML='—'; cell.title='ไม่พบในใบแจ้งสินค้าขาเข้า (กรอกมือ)'; return; }
+  cell.className='tl-left';
+  cell.innerHTML = 'แจ้ง '+arrInt(full)+'<br>เหลือ <b>'+arrInt(left)+'</b>';
+  cell.title = 'แจ้งมา '+arrInt(full)+' ลัง · เข้าคลังแล้ว '+arrInt(full-left)+' ลัง · เหลือรับ '+arrInt(left)+' ลัง';
+}
+
+function addArrLines(){
+  const id = $('tpArrPick').value;
+  const g = ARR_PICK.find(x=>String(x.n.id)===String(id));
+  if(!g){ toast('เลือกใบแจ้งก่อน'); return; }
+  const list = g.items.filter(x=>x.left>0.0001);
+  if(!list.length){ toast('ใบนี้เข้าคลังครบแล้ว'); return; }
+
+  /* ถ้ามีบรรทัดว่างบรรทัดเดียว ลบทิ้งก่อน */
   const lines = $('tripLines').querySelectorAll('.trip-line');
   if(lines.length === 1){
     const l = lines[0];
     if(!l.querySelector('.tl-po').value && !l.querySelector('.tl-sku').value) l.remove();
   }
-  matches.forEach(o => addTripLine({ po:o.po_number, sku:o.sku, qin:o.quantity, clear:null }));
-  $('tpPoLookup').value='';
-  toast(`ดึง ${matches.length} SKU จาก PO ${po} แล้ว`);
+  /* ขนส่ง/วันที่ยังว่าง → เติมจากใบแจ้งให้ */
+  if(!$('tpCarrier').value.trim()) $('tpCarrier').value = g.n.carrier||'';
+
+  list.forEach(function(it){
+    const full = +it.boxes||0, left = it.left;
+    const ratio = full>0 ? left/full : 1;
+    addTripLine({
+      lineno: it.line_ref||'',
+      po: it.po_number||'',
+      sku: it.sku||'',
+      pcs: it.pcs_per_box!=null?it.pcs_per_box:'',
+      cartons: Math.round(left*1000)/1000,                       // ลังที่ควรรับรอบนี้ = คงเหลือ
+      qin: (+it.pcs>0) ? Math.round((+it.pcs)*ratio) : '',       // ชิ้นตามสัดส่วนที่เหลือ
+      cubic: (+it.cbm>0) ? Math.round((+it.cbm)*ratio*10000)/10000 : '',
+      note: 'ใบแจ้ง '+(g.n.notice_no||fmtDate(g.n.notice_date))
+            + ' · แจ้งมา '+arrInt(full)+' เข้าแล้ว '+arrInt(full-left),
+      full: full, left: left
+    });
+  });
+  toast('ดึง '+list.length+' รายการที่ยังค้าง จากใบแจ้ง '+(g.n.notice_no||fmtDate(g.n.notice_date))+' แล้ว');
 }
 
 function closeTrip(){ $('tripBg').style.display='none'; }
@@ -2891,6 +3010,7 @@ function addTripLine(vals={}){
     <input type="text" class="tl-sku" placeholder="DR30-XXX" value="${vals.sku?esc(vals.sku):''}">
     <input type="number" class="tl-pcs" placeholder="0" min="0" value="${vals.pcs!=null?vals.pcs:''}">
     <input type="number" class="tl-cartons" placeholder="0" min="0" value="${vals.cartons!=null?vals.cartons:''}">
+    <div class="tl-left none">—</div>
     <input type="number" class="tl-in" placeholder="0" min="0" value="${vals.qin!=null?vals.qin:''}">
     <input type="number" class="tl-cubic" placeholder="0" min="0" step="0.01" value="${vals.cubic!=null?vals.cubic:''}">
     <input type="number" class="tl-clear" placeholder="0" min="0" value="${vals.clear!=null?vals.clear:''}">
@@ -2900,33 +3020,34 @@ function addTripLine(vals={}){
     const lines = $('tripLines').querySelectorAll('.trip-line');
     if(lines.length > 1) line.remove(); else toast('ต้องมีอย่างน้อย 1 รายการ');
   });
+  const cell = line.querySelector('.tl-left');
+  if(vals.full!=null){ tlLeftPaint(cell, vals.full, vals.left); cell.dataset.fixed='1'; }
+  /* พิมพ์เลขที่รายการ/PO/SKU เอง → ไปหาจำนวนคงเหลือให้ */
+  ['.tl-lineno','.tl-po','.tl-sku'].forEach(function(sel){
+    line.querySelector(sel).addEventListener('change', function(){
+      cell.dataset.fixed=''; arrRefreshLeft();
+    });
+  });
   $('tripLines').appendChild(line);
 }
 
-function fillTripPoList(){
-  const pos = [...new Set(allOrders.map(o=>o.po_number).filter(Boolean))].sort();
-  $('tripPoList').innerHTML = pos.map(p=>`<option value="${esc(p)}">`).join('');
-}
-
 function openAddTrip(){
-  fillTripPoList();
   $('tripTitle').textContent = 'เพิ่มเที่ยวส่ง';
   $('tripId').value=''; $('tpDate').value=''; $('tpCarrier').value='';
-  $('tpPoLookup').value='';
   $('tripLines').innerHTML=''; addTripLine();
   $('tripBg').style.display='flex';
+  arrPickLoad().then(function(){ arrPickFill(); arrRefreshLeft(); });
 }
 
 window.openEditTrip = function(id){
   const t = allTrips.find(x=>x.id===id); if(!t) return;
-  fillTripPoList();
   $('tripTitle').textContent = 'แก้ไขเที่ยวส่ง';
   $('tripId').value=t.id; $('tpDate').value=t.plan_date||''; $('tpCarrier').value=t.carrier||'';
-  $('tpPoLookup').value='';
   $('tripLines').innerHTML='';
   if(t.items.length) t.items.forEach(i => addTripLine({ lineno:i.line_no, po:i.po_number, sku:i.sku, qin:i.qty_in, clear:i.clear_order, pcs:i.pcs_per_carton, cartons:i.cartons, cubic:i.cubic, note:i.note }));
   else addTripLine();
   $('tripBg').style.display='flex';
+  arrPickLoad().then(function(){ arrPickFill(); arrRefreshLeft(); });
 };
 
 function collectTripLines(){
