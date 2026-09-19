@@ -314,7 +314,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-94</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-95</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -731,7 +731,8 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
         </select>
         <div style="flex:1"></div>
         <button class="btn mini ghost" id="gasBtn" onclick="openGasCfg()">⚙️ ที่เก็บสลิป</button>
-        <button class="btn mini ghost" id="rmPrintBtn" onclick="printRemitAll()">🖨️ พิมพ์สลิปทั้งชุด</button>
+        <button class="btn mini ghost" id="rmPrintBtn" onclick="printRemitAll()"
+          title="พิมพ์รวมทุกงวดตามที่กรองอยู่ พร้อมหน้าสารบัญ">🖨️ พิมพ์รวมทั้งช่วง</button>
         <button class="btn mini" onclick="exportRemit()">📥 Export Excel</button>
       </div>
       <div class="scroll"><div id="rmBody"></div></div>
@@ -882,6 +883,9 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
     <div style="font-weight:700;margin:10px 0 6px;font-size:13px">ไฟล์ที่แนบไว้ <span id="sl_count" class="muted"></span></div>
     <div id="sl_list" class="scroll" style="max-height:230px"></div>
     <div class="row" style="margin-top:12px;justify-content:flex-end">
+      <button class="btn mini ghost" id="sl_print" style="display:none"
+        onclick="printRemitOne(SLIP_PID)" title="พิมพ์หลักฐานของงวดนี้ทั้งหมดในครั้งเดียว">🖨️ พิมพ์หลักฐาน</button>
+      <div style="flex:1"></div>
       <button class="btn ghost" onclick="$('slipBg').style.display='none'">ยกเลิก</button>
       <button class="btn" onclick="saveSlip()">💾 บันทึก</button>
     </div>
@@ -1243,7 +1247,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v09-94';
+const PAY_VERSION='v09-95';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -5763,7 +5767,7 @@ function renderRemit(){
   if(!rows.length){$('rmBody').innerHTML='<div class="empty">ไม่มีงวดจ่ายตามเงื่อนไขที่เลือก</div>';return;}
   let h=`<table><thead><tr><th style="width:96px">วันที่</th><th>PO / Vendor</th><th>งวด</th>
     <th class="right">ยอด</th><th>ช่องทาง / ประเภท</th><th>ข้อมูลผู้รับเงิน</th>
-    <th style="width:190px">สลิป</th>${canEdit?'<th style="width:180px"></th>':''}</tr></thead><tbody>`;
+    <th style="width:190px">สลิป</th><th style="width:${canEdit?260:110}px"></th></tr></thead><tbody>`;
   const _rmTot=rows.length, _rmPages=Math.max(1,Math.ceil(_rmTot/PER));
   if(RM_PAGE>_rmPages)RM_PAGE=_rmPages; if(RM_PAGE<1)RM_PAGE=1;
   rows.slice((RM_PAGE-1)*PER, RM_PAGE*PER).forEach(p=>{
@@ -5776,9 +5780,11 @@ function renderRemit(){
       <td style="font-size:11.5px">${esc(p.channel||'-')}${p.pay_type?`<div><span class="pill" style="background:#EEF2F7;color:#1F3864">${esc(p.pay_type)}</span></div>`:''}</td>
       <td style="font-size:11.5px;white-space:pre-wrap;max-width:220px">${esc(p.payee||'')||'<span class="muted">— ยังไม่ระบุ —</span>'}</td>
       <td>${u?remitThumbs(p):'<span class="pill" style="background:#FCE4E4;color:#B01722">❌ ยังไม่แนบ</span>'}</td>
-      ${canEdit?`<td style="white-space:nowrap">
-        <button class="btn mini green" onclick="openSlip('${p.id}')">${u?'📎 จัดการไฟล์':'📎 แนบสลิป'}</button>
-        ${u?`<button class="btn mini red" onclick="removeSlip('${p.id}')">ลบ</button>`:''}</td>`:''}
+      <td style="white-space:nowrap">
+        ${u?`<button class="btn mini ghost" onclick="printRemitOne('${p.id}')"
+              title="พิมพ์หลักฐานของงวดนี้ทั้งหมดในครั้งเดียว">🖨️ พิมพ์ (${slipCount(p)})</button>`:''}
+        ${canEdit?`<button class="btn mini green" onclick="openSlip('${p.id}')">${u?'📎 จัดการไฟล์':'📎 แนบสลิป'}</button>
+        ${u?`<button class="btn mini red" onclick="removeSlip('${p.id}')">ลบ</button>`:''}`:''}</td>
     </tr>`;});
   $('rmBody').innerHTML=h+'</tbody></table>'+pagerBar(_rmTot,RM_PAGE,'rmGo');
 }
@@ -5806,6 +5812,13 @@ function openSlip(pid){
 }
 function renderSlipList(){
   $('sl_count').textContent=SLIP_ITEMS.length?`(${SLIP_ITEMS.length} ไฟล์)`:'';
+  /* ปุ่มพิมพ์ — โชว์เฉพาะไฟล์ที่ "บันทึกแล้ว" เพราะพิมพ์จากข้อมูลที่ผูกกับงวดจริง */
+  if($('sl_print')){
+    const p=PAYS.find(x=>String(x.id)===String(SLIP_PID))||{};
+    const n=slipCount(p);
+    $('sl_print').style.display=n?'':'none';
+    $('sl_print').textContent='🖨️ พิมพ์หลักฐาน ('+n+')';
+  }
   if(!SLIP_ITEMS.length){$('sl_list').innerHTML='<div class="empty" style="padding:12px">ยังไม่มีไฟล์ — เลือกไฟล์ด้านบนได้เลย</div>';return;}
   $('sl_list').innerHTML=SLIP_ITEMS.map((it,i)=>{
     const t=itemThumb(it);
@@ -6076,7 +6089,7 @@ function exportRemit(){
            ไฟล์ PDF ที่อยู่บน Supabase Storage เรนเดอร์ไม่ได้ → ขึ้นเป็นช่องแจ้ง
            พร้อมรายชื่อ + ลิงก์ให้เปิดพิมพ์แยก (โชว์บนจอ ไม่ติดไปบนกระดาษ)
    ═══════════════════════════════════════════════════════════════ */
-let RP_PER=1, RP_ROWS=[];
+let RP_PER=1, RP_ROWS=[], RP_MODE='one';   /* 'one' = งวดเดียว · 'all' = ทั้งช่วงที่กรอง */
 const RP_KEY='masaru_pay_rpper', RP_WARN_FILES=80;
 
 /* รูปสำหรับพิมพ์ — ใหญ่ขึ้นตามพื้นที่จริงบนกระดาษ ไม่ดึงใหญ่เกินจำเป็น */
@@ -6088,6 +6101,23 @@ function rpImg(it,per){
 }
 function rpIsPdf(it){ return /pdf/i.test(it.mime||'')||/\.pdf(\?|$)/i.test(it.url||''); }
 
+function rpOpen(){
+  try{ RP_PER=+(localStorage.getItem(RP_KEY)||1)||1; }catch(e){ RP_PER=1; }
+  if([1,2,4].indexOf(RP_PER)<0)RP_PER=1;
+  rpDraw();
+  $('rpBg').style.display='flex';
+}
+/* ★ ปุ่มหลัก — พิมพ์หลักฐานของ "งวดนั้น" ทั้งหมดในครั้งเดียว (ปุ่ม 🖨️ ท้ายแถว) */
+function printRemitOne(pid){
+  const p=PAYS.find(x=>String(x.id)===String(pid));
+  if(!p)return toast('ไม่พบงวดนี้');
+  if(!slipCount(p))return toast('งวดนี้ยังไม่มีสลิปแนบ');
+  const b=billOf(p.bill_id);
+  RP_MODE='one'; RP_ROWS=[p];
+  $('rpTitle').textContent='🖨️ พิมพ์หลักฐาน — PO '+(b.po_number||'-')+' · '+(p.installment||'');
+  rpOpen();
+}
+/* พิมพ์รวมทั้งช่วงที่กรองอยู่ (ปุ่มบนแถบเครื่องมือ) — มีหน้าสารบัญนำ */
 function printRemitAll(){
   const rows=remitRows();
   if(!rows.length)return toast('ไม่มีงวดจ่ายตามเงื่อนไขที่เลือก');
@@ -6096,12 +6126,9 @@ function printRemitAll(){
   if(files>RP_WARN_FILES&&!confirm('ช่วงที่กรองอยู่มีสลิป '+files+' ไฟล์\n'
       +'ต้องโหลดรูปจาก Google Drive ทั้งหมดก่อนพิมพ์ — อาจใช้เวลาหลายสิบวินาที\n\n'
       +'จะไปต่อไหม? (ถ้าไม่ ให้แคบช่วงวันที่ลงก่อน)'))return;
-  RP_ROWS=rows;
-  try{ RP_PER=+(localStorage.getItem(RP_KEY)||1)||1; }catch(e){ RP_PER=1; }
-  if([1,2,4].indexOf(RP_PER)<0)RP_PER=1;
-  $('rpTitle').textContent='🖨️ พิมพ์สลิปทั้งชุด'+rmSpanLabel();
-  rpDraw();
-  $('rpBg').style.display='flex';
+  RP_MODE='all'; RP_ROWS=rows;
+  $('rpTitle').textContent='🖨️ พิมพ์รวมทั้งช่วง'+rmSpanLabel();
+  rpOpen();
 }
 function rpSetPer(n){
   RP_PER=[1,2,4].indexOf(+n)>=0?+n:1;
@@ -6125,58 +6152,92 @@ function rpDraw(){
     });
   });
 
-  /* ---------- หน้าสารบัญ ---------- */
   const files=flat.length;
-  const done=rows.filter(p=>slipCount(p)>0).length;
-  const thb=rows.reduce((t,p)=>t+thbOf(p),0);
-  let h='<div class="rp rp-'+RP_PER+'" id="rpSheet">'
-    +'<div class="rp-idxpage">'
-    +'<div class="rp-head"><h1>หลักฐานการชำระเงินร้านค้า</h1>'
-    +'<div class="no">'+esc((rmSpanLabel()||'').replace(/^ · /,'ช่วง ')||'ทุกช่วงวันที่')+'</div>'
-    +'<table><tbody>'
-    +'<tr><td class="k">จำนวนงวด</td><td>'+rows.length+' งวด</td>'
-      +'<td class="k">ยอดรวม (บาท)</td><td>'+money2(thb)+' ฿</td></tr>'
-    +'<tr><td class="k">แนบสลิปแล้ว</td><td>'+done+' งวด · '+files+' ไฟล์</td>'
-      +'<td class="k">ยังไม่แนบ</td><td>'+(rows.length-done)+' งวด</td></tr>'
-    +'<tr><td class="k">พิมพ์เมื่อ</td><td>'+esc(new Date().toLocaleString('th-TH'))+'</td>'
-      +'<td class="k">ผู้พิมพ์</td><td>'+esc(typeof ME!=='undefined'&&ME?ME:'-')+'</td></tr>'
-    +'</tbody></table></div>'
-    +'<table class="rp-idx"><thead><tr>'
-    +'<th style="width:26px">#</th><th style="width:66px">วันที่</th><th style="width:66px">PO</th>'
-    +'<th>Vendor / ผู้รับเงิน</th><th style="width:80px">งวด</th>'
-    +'<th style="width:76px">ยอด</th><th style="width:72px">≈ บาท</th>'
-    +'<th style="width:74px">จ่ายในนาม</th><th style="width:40px">สลิป</th></tr></thead><tbody>';
-  rows.forEach(function(p,i){
-    const b=billOf(p.bill_id), c=slipCount(p);
-    h+='<tr'+(c?'':' class="miss"')+'>'
-      +'<td class="c">'+(i+1)+'</td>'
-      +'<td class="c">'+esc(p.pay_date||'-')+'</td>'
-      +'<td class="c">'+esc(b.po_number||'-')+'</td>'
-      +'<td>'+esc(b.vendor||'')+(p.payee?('<div style="color:#555">'+esc(String(p.payee).split('\n')[0])+'</div>'):'')+'</td>'
-      +'<td>'+esc(p.installment||'-')+'</td>'
-      +'<td class="r">'+money(p.amount)+' '+curSym(b.currency)+'</td>'
-      +'<td class="r">'+money(thbOf(p))+'</td>'
-      +'<td class="c">'+esc(p.pay_type||'-')+'</td>'
-      +'<td class="c">'+(c?('<b>'+c+'</b>'):'✕')+'</td></tr>';
-  });
-  h+='</tbody></table></div>';
+  const one=(RP_MODE==='one');
+  let h='<div class="rp rp-'+RP_PER+'" id="rpSheet">';
 
-  /* ---------- หน้าสลิป ---------- */
+  /* ---------- หัวเอกสาร ----------
+     งวดเดียว  → หัวเอกสารละเอียดของงวดนั้น วางบนหน้าแรกร่วมกับรูป (ไม่เปลืองกระดาษ)
+     ทั้งช่วง  → หน้าสารบัญเช็คลิสต์แยกแผ่น แล้วรูปเริ่มแผ่นใหม่ */
+  let head='';
+  if(one){
+    const p=rows[0], b=billOf(p.bill_id);
+    head='<div class="rp-head"><h1>หลักฐานการชำระเงินร้านค้า</h1>'
+      +'<div class="no">PO '+esc(b.po_number||'-')+' · '+esc(p.installment||'')+'</div>'
+      +'<table><tbody>'
+      +'<tr><td class="k">วันที่จ่าย</td><td>'+esc(p.pay_date||'-')+'</td>'
+        +'<td class="k">สถานะ</td><td>'+(p.status==='paid'?'✅ จ่ายแล้ว':'📤 ส่งยอด')+'</td></tr>'
+      +'<tr><td class="k">PO</td><td>'+esc(b.po_number||'-')+'</td>'
+        +'<td class="k">Vendor</td><td>'+esc(b.vendor||'-')+'</td></tr>'
+      +'<tr><td class="k">งวด</td><td>'+esc(p.installment||'-')+'</td>'
+        +'<td class="k">ยอดที่โอน</td><td><b>'+money2(p.amount)+' '+curSym(b.currency)+'</b>'
+        +'  ≈ '+money2(thbOf(p))+' ฿</td></tr>'
+      +'<tr><td class="k">ช่องทางการโอน</td><td>'+esc(p.channel||'-')+'</td>'
+        +'<td class="k">จ่ายในนาม</td><td>'+esc(p.pay_type||'-')+'</td></tr>'
+      +'<tr><td class="k">จำนวนไฟล์</td><td>'+files+' ไฟล์</td>'
+        +'<td class="k">พิมพ์เมื่อ</td><td>'+esc(new Date().toLocaleString('th-TH'))
+        +(typeof ME!=='undefined'&&ME?(' · '+esc(ME)):'')+'</td></tr>'
+      +(p.payee?('<tr><td class="k">ข้อมูลผู้รับเงิน</td>'
+        +'<td colspan="3" style="white-space:pre-wrap;line-height:1.6">'+esc(p.payee)+'</td></tr>'):'')
+      +(p.slip_note?('<tr><td class="k">หมายเหตุสลิป</td>'
+        +'<td colspan="3" style="white-space:pre-wrap">'+esc(p.slip_note)+'</td></tr>'):'')
+      +'</tbody></table></div>';
+  }else{
+    const done=rows.filter(p=>slipCount(p)>0).length;
+    const thb=rows.reduce((t,p)=>t+thbOf(p),0);
+    h+='<div class="rp-idxpage">'
+      +'<div class="rp-head"><h1>หลักฐานการชำระเงินร้านค้า</h1>'
+      +'<div class="no">'+esc((rmSpanLabel()||'').replace(/^ · /,'ช่วง ')||'ทุกช่วงวันที่')+'</div>'
+      +'<table><tbody>'
+      +'<tr><td class="k">จำนวนงวด</td><td>'+rows.length+' งวด</td>'
+        +'<td class="k">ยอดรวม (บาท)</td><td>'+money2(thb)+' ฿</td></tr>'
+      +'<tr><td class="k">แนบสลิปแล้ว</td><td>'+done+' งวด · '+files+' ไฟล์</td>'
+        +'<td class="k">ยังไม่แนบ</td><td>'+(rows.length-done)+' งวด</td></tr>'
+      +'<tr><td class="k">พิมพ์เมื่อ</td><td>'+esc(new Date().toLocaleString('th-TH'))+'</td>'
+        +'<td class="k">ผู้พิมพ์</td><td>'+esc(typeof ME!=='undefined'&&ME?ME:'-')+'</td></tr>'
+      +'</tbody></table></div>'
+      +'<table class="rp-idx"><thead><tr>'
+      +'<th style="width:26px">#</th><th style="width:66px">วันที่</th><th style="width:66px">PO</th>'
+      +'<th>Vendor / ผู้รับเงิน</th><th style="width:80px">งวด</th>'
+      +'<th style="width:76px">ยอด</th><th style="width:72px">≈ บาท</th>'
+      +'<th style="width:74px">จ่ายในนาม</th><th style="width:40px">สลิป</th></tr></thead><tbody>';
+    rows.forEach(function(p,i){
+      const b=billOf(p.bill_id), c=slipCount(p);
+      h+='<tr'+(c?'':' class="miss"')+'>'
+        +'<td class="c">'+(i+1)+'</td>'
+        +'<td class="c">'+esc(p.pay_date||'-')+'</td>'
+        +'<td class="c">'+esc(b.po_number||'-')+'</td>'
+        +'<td>'+esc(b.vendor||'')+(p.payee?('<div style="color:#555">'+esc(String(p.payee).split('\n')[0])+'</div>'):'')+'</td>'
+        +'<td>'+esc(p.installment||'-')+'</td>'
+        +'<td class="r">'+money(p.amount)+' '+curSym(b.currency)+'</td>'
+        +'<td class="r">'+money(thbOf(p))+'</td>'
+        +'<td class="c">'+esc(p.pay_type||'-')+'</td>'
+        +'<td class="c">'+(c?('<b>'+c+'</b>'):'✕')+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+
+  /* ---------- หน้ารูป ---------- */
   const cols=(RP_PER===4?2:1), pages=[];
   for(let i=0;i<flat.length;i+=RP_PER)pages.push(flat.slice(i,i+RP_PER));
+  if(!pages.length)pages.push([]);
   pages.forEach(function(pg,pi){
     const rws=Math.max(1,Math.ceil(pg.length/cols));
     h+='<div class="rp-page">'
-      +'<div class="rp-cap-pg">หลักฐานการชำระเงินร้านค้า'+esc(rmSpanLabel())
-      +' · แผ่นสลิปที่ '+(pi+1)+'/'+pages.length+'</div>'
+      +(one&&pi===0 ? head : '<div class="rp-cap-pg">'
+          +(one?('หลักฐานการชำระเงินร้านค้า · PO '+esc(billOf(rows[0].bill_id).po_number||'-')
+                 +' · '+esc(rows[0].installment||''))
+                :('หลักฐานการชำระเงินร้านค้า'+esc(rmSpanLabel())))
+          +' · แผ่นที่ '+(pi+1)+'/'+pages.length+'</div>')
       +'<div class="rp-grid" style="grid-template-rows:repeat('+rws+',minmax(0,1fr))">';
     pg.forEach(function(o){
       const n=flat.indexOf(o)+1;
       h+='<div class="rp-cell"><div class="rp-cap">'
-        +'<b>'+n+'/'+flat.length+'</b> · <b>#'+o.ri+'</b> '+esc(o.p.pay_date||'')
+        +'<b>'+n+'/'+flat.length+'</b> · '
+        +(one?'' : '<b>#'+o.ri+'</b> ')
+        +esc(o.p.pay_date||'')
         +' · PO '+esc(o.b.po_number||'-')+' · '+esc(o.p.installment||'')
         +' · '+money(o.p.amount)+' '+curSym(o.b.currency)
-        +(o.fn>1?(' · ไฟล์ '+o.fi+'/'+o.fn):'')
         +'<div style="color:#444">'+esc(o.it.name||'')
         +(o.pdf?(o.src?' <b>(PDF — พิมพ์ได้หน้าแรก)</b>':' <b>(PDF — พิมพ์จากหน้านี้ไม่ได้)</b>'):'')+'</div></div>'
         +'<div class="rp-box">'
@@ -6213,15 +6274,17 @@ function rpErr(img){
 /* รอรูปโหลดให้ครบก่อนปล่อยให้กดพิมพ์ — กันได้กระดาษเปล่า */
 function rpWatch(){
   const imgs=[].slice.call($('rpPaper').querySelectorAll('img[data-rp]'));
-  const pages=$('rpPaper').querySelectorAll('.rp-page').length;
+  const pg=$('rpPaper').querySelectorAll('.rp-page').length;
+  const idx=$('rpPaper').querySelectorAll('.rp-idxpage').length;   /* หน้าสารบัญ (โหมดทั้งช่วง) */
   const upd=function(){
     const d=imgs.filter(im=>im.complete&&im.naturalWidth>0).length, n=imgs.length;
     const ready=(d>=n);
     $('rpBtn').disabled=!ready; $('rpBtn').style.opacity=ready?'':'.55';
     $('rpInfo').textContent = n
-      ? (ready?('พร้อมพิมพ์ · '+n+' รูป · รวม '+(pages+1)+' แผ่น (สารบัญ 1 + สลิป '+pages+')')
+      ? (ready?('พร้อมพิมพ์ · '+n+' รูป · รวม '+(pg+idx)+' แผ่น'
+                +(idx?(' (สารบัญ 1 + รูป '+pg+')'):''))
               :('กำลังโหลดรูปจาก Drive '+d+'/'+n+' …'))
-      : 'ไม่มีรูปให้พิมพ์ — มีแต่สารบัญ 1 แผ่น';
+      : 'ไม่มีรูปให้พิมพ์';
   };
   imgs.forEach(function(im){
     if(im.dataset.bound)return; im.dataset.bound='1';
