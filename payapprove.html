@@ -114,35 +114,41 @@ tr:nth-child(even) td{background:#F8FAFD}
 .pp-head td{border:1px solid #666;padding:5px 8px;color:#000}
 .pp-head td.k{background:#EFEFEF;font-weight:700;width:118px;white-space:nowrap}
 .pp-note{border:1px solid #666;border-top:0;padding:6px 8px;font-size:12px;line-height:1.7;white-space:pre-wrap}
-.pp-page{page-break-inside:avoid;break-inside:avoid}
-.pp-page+.pp-page{page-break-before:always;break-before:page;margin-top:14px}
-.pp-grid{display:grid;gap:8px}
-.pp-cell{border:1px solid #999;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;background:#fff}
-.pp-cap{font-size:11px;padding:4px 7px;background:#F0F0F0;border-bottom:1px solid #999;
+/* ───── หนึ่ง .pp-page = หนึ่งแผ่น A4 พอดี ─────
+   A4 สูง 297mm − ขอบบนล่าง 12mm×2 = 273mm  ใช้ 272mm กันปัดเศษ
+   ไม่ฟิกความสูงช่องรูปเป็น mm อีกแล้ว (เดิมบวกแคปชัน+ขอบ+padding แล้วเกิน → ล้นไปอีกหน้า)
+   ให้หัวเอกสารกินที่เท่าที่ต้องใช้ ส่วนที่เหลือเป็นของกริดรูปทั้งหมด */
+.pp-page{height:272mm;overflow:hidden;display:flex;flex-direction:column}
+.pp-page>.pp-head,.pp-page>.pp-note{flex:0 0 auto}
+.pp-page+.pp-page{page-break-before:always;break-before:page}
+.pp-grid{flex:1 1 auto;min-height:0;display:grid;gap:8px}
+.pp-cell{border:1px solid #999;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;
+  background:#fff;min-height:0;min-width:0}
+.pp-cap{flex:0 0 auto;font-size:11px;padding:4px 7px;background:#F0F0F0;border-bottom:1px solid #999;
   color:#000;word-break:break-all;line-height:1.45}
-.pp-box{flex:1;display:flex;align-items:center;justify-content:center;padding:5px;min-height:60px}
+.pp-box{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;padding:5px}
 .pp-box img{max-width:100%;max-height:100%;object-fit:contain;display:block}
 .pp-miss{font-size:12px;color:#555;text-align:center;line-height:1.7;padding:14px 8px}
-/* ความสูงของช่องรูป — ให้เต็มหน้า A4 พอดีตามจำนวนรูปต่อหน้า */
-.pp-1 .pp-grid{grid-template-columns:1fr}
-.pp-1 .pp-box{height:232mm}
-.pp-2 .pp-grid{grid-template-columns:1fr}
-.pp-2 .pp-box{height:112mm}
-.pp-4 .pp-grid{grid-template-columns:1fr 1fr}
-.pp-4 .pp-box{height:110mm}
-/* หน้าแรกมีหัวเอกสาร → ช่องรูปเตี้ยลง ไม่ให้ดันตกหน้า */
-.pp-1 .pp-first .pp-box{height:170mm}
-.pp-2 .pp-first .pp-box{height:82mm}
-.pp-4 .pp-first .pp-box{height:80mm}
+/* จำนวนช่องต่อหน้า — ช่องแบ่งพื้นที่ที่เหลือเท่า ๆ กันเอง */
+.pp-1 .pp-grid{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+.pp-2 .pp-grid{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
+.pp-4 .pp-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
+/* บนจอ ขีดเส้นคั่นให้เห็นว่าคนละแผ่น — เวลาพิมพ์ไม่มีเส้นนี้ ไม่กินความสูง */
+@media screen{ .pp-page+.pp-page{margin-top:16px;border-top:2px dashed #bbb} }
 @media print{
-  body.printing *{visibility:hidden}
-  body.printing #docPaper,body.printing #docPaper *{visibility:visible}
-  body.printing #docPaper{position:absolute;left:0;top:0;width:100%!important;max-width:none!important;padding:0!important;border:0}
-  body.ppprint *{visibility:hidden}
-  body.ppprint #ppPaper,body.ppprint #ppPaper *{visibility:visible}
-  body.ppprint #ppPaper{position:absolute;left:0;top:0;width:100%!important;max-width:none!important;padding:0!important;border:0}
-  body.ppprint,body.ppprint *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  body.printing,body.printing *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  /* ⚠️ เดิมใช้ visibility:hidden ซ่อนของอื่น — ของที่ซ่อนยัง "กินที่" อยู่
+     และกล่องพิมพ์ถูกวางแบบ absolute อยู่ในโมดัลที่เป็น position:fixed
+     เบราว์เซอร์จะซ้ำองค์ประกอบ fixed ลงทุกหน้า → เอกสาร 1 หน้าออกมา 2 หน้าเหมือนกันเป๊ะ
+     ✅ ใช้ display:none ซ่อนพี่น้องจริง ๆ + ย้ายกล่องพิมพ์มาไว้ใต้ body ก่อนพิมพ์ (printNode)
+        กล่องจึงไหลตามปกติ แบ่งหน้าถูก ไม่ซ้ำ */
+  body.printing>*,body.ppprint>*{display:none!important}
+  body.printing>#docPaper,body.ppprint>#ppPaper{
+    display:block!important;position:static!important;
+    width:auto!important;max-width:none!important;margin:0!important;padding:0!important;border:0}
+  body.printing,body.ppprint{background:#fff!important;padding:0!important}
+  body.printing *,body.ppprint *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .doc,.pp{width:100%!important;max-width:none!important;border:0!important}
   @page{size:A4 portrait;margin:12mm}
 }
 #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 20px;border-radius:9px;font-size:13.5px;display:none;z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.25)}
@@ -155,7 +161,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-57</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-58</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -2211,12 +2217,26 @@ function printReq(id){
   </div>`;
   $('printBg').style.display='flex';
 }
-function doPrint(){
-  document.body.classList.add('printing');
-  const done=()=>{document.body.classList.remove('printing');window.removeEventListener('afterprint',done);};
+/* พิมพ์เฉพาะกล่องที่ระบุ
+   ย้ายกล่องมาไว้ใต้ body ก่อนพิมพ์ แล้วคืนที่เดิมเมื่อพิมพ์เสร็จ
+   ย้ายด้วย appendChild ไม่ใช่ copy innerHTML → รูปที่โหลดไว้แล้วไม่ต้องโหลดใหม่
+   (ถ้า copy HTML รูปจาก Drive จะถูกดึงใหม่ทั้งชุด = ช้าและอาจได้หน้าเปล่า) */
+function printNode(id,cls){
+  const el=document.getElementById(id); if(!el)return;
+  const home=el.parentNode, next=el.nextSibling;
+  document.body.appendChild(el);
+  document.body.classList.add(cls);
+  let back=false;
+  const done=function(){
+    if(back)return; back=true;
+    document.body.classList.remove(cls);
+    if(home){ next?home.insertBefore(el,next):home.appendChild(el); }
+    window.removeEventListener('afterprint',done);
+  };
   window.addEventListener('afterprint',done);
-  setTimeout(()=>{window.print();setTimeout(done,1200);},60);
+  setTimeout(function(){ window.print(); setTimeout(done,1200); },60);
 }
+function doPrint(){ printNode('docPaper','printing'); }
 
 
 /* ==================================================================
@@ -3245,15 +3265,18 @@ function ppDraw(){
     +'</tbody></table></div>'
     +(r.proof_note?('<div class="pp-note"><b>หมายเหตุเอกสารแนบ:</b> '+esc(r.proof_note)+'</div>'):'');
 
-  /* แบ่งหน้า — หน้าแรกมีหัวเอกสารอยู่แล้ว ใส่รูปได้น้อยกว่า 1 ช่อง */
-  const first=Math.max(1,PP_PER-(PP_PER>1?1:0));
+  /* แบ่งหน้า — หน้าแรกมีหัวเอกสารอยู่แล้ว ช่องรูปจะเตี้ยกว่าหน้าอื่นเอง
+     ไม่ต้องหักจำนวนช่องออก เพราะกริดแบ่งพื้นที่ที่เหลือให้เท่า ๆ กันแล้ว */
   const pages=[]; let i=0;
-  pages.push(list.slice(0,first)); i=first;
   while(i<list.length){ pages.push(list.slice(i,i+PP_PER)); i+=PP_PER; }
+  if(!pages.length)pages.push([]);
 
+  const cols=(PP_PER===4?2:1);
   pages.forEach(function(pg,pi){
     if(pi>0)h+='<div class="pp-page">';
-    h+='<div class="pp-grid">';
+    /* หน้าสุดท้ายที่รูปไม่เต็ม → ลดจำนวนแถวลง ให้รูปขยายเต็มหน้า ไม่เหลือที่ว่างเปล่า ๆ */
+    const rows=Math.max(1,Math.ceil(pg.length/cols));
+    h+='<div class="pp-grid" style="grid-template-rows:repeat('+rows+',minmax(0,1fr))">';
     pg.forEach(function(it){
       const n=list.indexOf(it)+1, th=pfThumb(it), pdf=isPdf(it);
       h+='<div class="pp-cell"><div class="pp-cap"><b>'+n+'/'+list.length+'</b> · '
@@ -3266,9 +3289,11 @@ function ppDraw(){
         +'</div></div>';
     });
     h+='</div>';
-    if(pi>0)h+='</div>';
+    h+='</div>';   /* ปิด .pp-page ทุกหน้า (pi=0 คือปิด .pp-first)
+                      ⚠️ เดิมปิดแต่หน้าหลัง ๆ ทำให้หน้า 2-n ซ้อนอยู่ในหน้าแรก
+                         → ตัวคุมความสูง 1 แผ่น/หน้า ไม่ทำงาน แถมแบ่งหน้าเพี้ยน */
   });
-  h+='</div></div>';
+  h+='</div>';
   $('ppPaper').innerHTML=h;
   ppWatch();
 }
@@ -3303,15 +3328,7 @@ function ppWatch(){
     $('ppInfo').textContent='โหลดรูปไม่ครบ — พิมพ์ได้ แต่รูปที่ยังไม่ขึ้นจะเป็นช่องว่าง';
   },12000);
 }
-function ppPrint(){
-  document.body.classList.add('ppprint');
-  const done=function(){
-    document.body.classList.remove('ppprint');
-    window.removeEventListener('afterprint',done);
-  };
-  window.addEventListener('afterprint',done);
-  setTimeout(function(){ window.print(); setTimeout(done,1200); },60);
-}
+function ppPrint(){ printNode('ppPaper','ppprint'); }
 
 /* ---------- บันทึก / ลบ ---------- */
 async function pfSave(alsoPaid){
