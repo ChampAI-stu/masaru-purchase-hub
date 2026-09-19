@@ -66,6 +66,10 @@ th.sort-active{color:var(--gold)}
 .modal-bg{position:fixed;inset:0;background:rgba(15,25,45,.55);display:none;align-items:flex-start;
   justify-content:center;z-index:60;padding:24px 14px;overflow:auto}
 .modal{background:#fff;border-radius:14px;padding:20px 22px;width:100%;max-width:860px}
+#bl_body input{border:1px solid var(--line);border-radius:6px;background:#fff}
+#bl_body input:focus{outline:2px solid #2E75B655}
+#bl_body td{padding:4px 5px}
+#rtBody input,#rtBody select{width:100%;padding:5px 7px;font-size:12.5px}
 .modal>h3{color:var(--navy);margin-bottom:12px}
 .modal>*{min-width:0}
 .fld label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px;font-weight:600}
@@ -158,7 +162,7 @@ tr.round td{background:#FFFCF4!important}
   <div class="sp"></div>
   <span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง"
     style="background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px"
-    id="verBadge">v01-00</span>
+    id="verBadge">v01-10</span>
   <div class="pill-top" id="rolePill">…</div>
   <button class="btn-top" onclick="location.href='index.html'">🏠 หน้ารวม</button>
   <button class="btn-top" onclick="doLogout()">ออกจากระบบ</button>
@@ -167,6 +171,8 @@ tr.round td{background:#FFFCF4!important}
 <div class="tabs">
   <div class="tab on" data-t="list"  onclick="goTab('list')">📋 รายการตรวจสอบ</div>
   <div class="tab"    data-t="over"  onclick="goTab('over')">⚠️ ที่คิดเกิน <span id="tabOverN"></span></div>
+  <div class="tab"    data-t="bills" onclick="goTab('bills')">🧾 ใบวางบิล</div>
+  <div class="tab"    data-t="alerts" onclick="goTab('alerts')">🚨 แจ้งเตือน <span id="tabAlertN"></span></div>
   <div class="tab"    data-t="sum"   onclick="goTab('sum')">📊 สรุปรายเดือน</div>
   <div class="tab"    data-t="cfg"   onclick="goTab('cfg')">⚙️ ขนส่ง &amp; เรท</div>
 </div>
@@ -236,6 +242,50 @@ tr.round td{background:#FFFCF4!important}
     </div>
   </div>
 
+  <!-- ══════════ TAB: ใบวางบิล ══════════ -->
+  <div id="tab-bills" style="display:none">
+    <div class="card">
+      <h2>🧾 ใบวางบิลค่าขนส่ง — ตรวจทีละรอบ</h2>
+      <div class="sub-note">
+        1 ใบวางบิล = 1 รอบที่ขนส่งเรียกเก็บ · ใส่หัวใบ (ยอดตามใบวางบิล + ยอดใบสำคัญเตรียมจ่าย)
+        แล้ววางบรรทัดจาก<b>ใบแจ้งค่าขนส่ง</b>ทีละใบ → ระบบตรวจ <b>6 อย่าง</b> ให้ทันที
+        <br><b>① ค่าขนส่งถูกไหม · ② วางบิลซ้ำไหม · ③ เอกสารครบไหม · ④ เรทถูกไหม · ⑤ มีค่าแฝงไหม · ⑥ กล่องตรงไหม</b>
+      </div>
+      <div id="bKpi" class="kpis"></div>
+      <div class="row" style="flex-wrap:wrap">
+        <input type="month" id="bMonth" onchange="loadBills()" style="max-width:160px">
+        <select id="bCarrier" onchange="renderBills()" style="max-width:180px"></select>
+        <select id="bStatus" onchange="renderBills()" style="max-width:170px">
+          <option value="">— สถานะ: ทั้งหมด —</option>
+          <option value="open">🟡 กำลังตรวจ</option>
+          <option value="disputed">🔴 ทักขนส่งแล้ว</option>
+          <option value="checked">✅ ตรวจผ่าน</option>
+          <option value="approved">👑 อนุมัติจ่าย</option>
+          <option value="paid">💸 จ่ายแล้ว</option>
+        </select>
+        <select id="bFlag" onchange="renderBills()" style="max-width:190px">
+          <option value="">— ผลตรวจ: ทั้งหมด —</option>
+          <option value="red">🔴 มีธงแดง</option>
+          <option value="clean">✅ ไม่มีธง</option>
+        </select>
+        <div style="flex:1"></div>
+        <button class="btn mini ghost" onclick="loadBills()">🔄 โหลดใหม่</button>
+        <button class="btn mini" onclick="openBill()">➕ เพิ่มใบวางบิล</button>
+      </div>
+      <div class="scroll"><div id="bBody"></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════ TAB: แจ้งเตือน ══════════ -->
+  <div id="tab-alerts" style="display:none">
+    <div class="card">
+      <h2>🚨 แจ้งเตือนความผิดปกติ — เดือนที่เลือกในแท็บใบวางบิล</h2>
+      <div class="sub-note">รวมธงจากทุกใบวางบิลในเดือนนั้น จัดกลุ่มตามชนิด · กดที่แถวเพื่อเปิดใบวางบิล</div>
+      <div id="aKpi" class="kpis"></div>
+      <div id="aBody"></div>
+    </div>
+  </div>
+
   <!-- ══════════ TAB: สรุปรายเดือน ══════════ -->
   <div id="tab-sum" style="display:none">
     <div class="card">
@@ -278,6 +328,22 @@ tr.round td{background:#FFFCF4!important}
         <button class="btn mini" onclick="saveCarriers()">💾 บันทึกการตั้งค่า</button>
       </div>
       <div class="scroll" style="max-height:none"><div id="cfBody"></div></div>
+    </div>
+
+    <div class="card">
+      <h2>💱 เรทตามประเภทบริการ — ใช้ตรวจใบวางบิล</h2>
+      <div class="sub-note">
+        ขนส่งรายเดียวมีหลายเรทได้ — <b>168 EXPRESS</b> ทางเรือ 3,500 / ทั่วไป 5,900 ·
+        <b>FCL</b> A/SEA 3,200 · B/SEA 3,400 · <b>JMF</b> เหมาตู้ 179,000
+        <br><b>ประเภทบริการว่าง</b> = เรทตั้งต้นของขนส่งรายนั้น (ใช้แทนช่อง เรท/คิว ด้านบน)
+        · <b>เหมาตู้</b> = ไม่คิดคิว ยอดต่อตู้ต้องเท่าเรทนี้ (ถ้าราคาต่อตู้ไม่คงที่ ปล่อยเรทว่างแล้วใส่รายบรรทัด)
+        <br>ประเภทบริการต้องพิมพ์ให้<b>ตรงกับที่ขนส่งพิมพ์ในบิล</b> เช่น <code>A/SEA</code> — ระบบเทียบแบบไม่สนตัวพิมพ์เล็ก-ใหญ่</div>
+      <div class="row">
+        <div style="flex:1"></div>
+        <button class="btn mini ghost" onclick="addRateRow()">➕ เพิ่มเรท</button>
+        <button class="btn mini" onclick="saveRates()">💾 บันทึกเรท</button>
+      </div>
+      <div class="scroll" style="max-height:none"><div id="rtBody"></div></div>
     </div>
   </div>
 
@@ -371,6 +437,99 @@ tr.round td{background:#FFFCF4!important}
   </div>
 </div>
 
+<!-- ══════════ MODAL: ใบวางบิล ══════════ -->
+<div class="modal-bg" id="billBg">
+  <div class="modal" style="max-width:1280px">
+    <div class="row" style="align-items:center;margin-bottom:6px">
+      <h3 id="billTitle" style="margin:0">➕ เพิ่มใบวางบิล</h3>
+      <div style="flex:1"></div>
+      <span class="muted" style="font-size:12px" id="billMeta"></span>
+    </div>
+
+    <!-- หัวใบ -->
+    <div class="grid3">
+      <div class="fld" style="margin:0"><label>บริษัทขนส่ง *</label>
+        <select id="b_carrier" onchange="billCalc()"></select></div>
+      <div class="fld" style="margin:0"><label>เลขที่ใบวางบิล</label>
+        <input id="b_no" placeholder="ถ้าไม่มีเลข ใส่วันที่/ชื่อเรียกก็ได้"></div>
+      <div class="fld" style="margin:0"><label>วันที่วางบิล *</label>
+        <input type="date" id="b_date" onchange="billCalc()"></div>
+    </div>
+    <div class="grid3" style="margin-top:6px">
+      <div class="fld" style="margin:0"><label>กำหนดชำระ</label><input type="date" id="b_due"></div>
+      <div class="fld" style="margin:0"><label>ยอดตามใบวางบิล (บาท) *
+          <span class="muted" style="font-weight:400">— ที่ขนส่งเรียกเก็บ</span></label>
+        <input id="b_total" inputmode="decimal" oninput="billCalc()" placeholder="เช่น 344,796.68"></div>
+      <div class="fld" style="margin:0"><label>ใบสำคัญเตรียมจ่าย (DPPV) · ยอด</label>
+        <div style="display:flex;gap:6px">
+          <input id="b_dppv" placeholder="DPPV2606009" style="flex:1;min-width:0">
+          <input id="b_dppv_total" inputmode="decimal" oninput="billCalc()" placeholder="ยอด" style="flex:1;min-width:0">
+        </div></div>
+    </div>
+    <div class="grid3" style="margin-top:6px">
+      <div class="fld" style="margin:0"><label>สถานะ</label>
+        <select id="b_status">
+          <option value="open">🟡 กำลังตรวจ</option>
+          <option value="disputed">🔴 ทักขนส่งแล้ว รอแก้</option>
+          <option value="checked">✅ ตรวจผ่าน</option>
+          <option value="approved">👑 อนุมัติจ่าย</option>
+          <option value="paid">💸 จ่ายแล้ว</option>
+        </select></div>
+      <div class="fld" style="margin:0;grid-column:span 2"><label>หมายเหตุ</label>
+        <input id="b_note" placeholder="เช่น ใบวางบิลฉบับที่ 2 ยอดเพิ่ม 120 ค่ากระสอบ"></div>
+    </div>
+    <div id="b_rev" class="muted" style="font-size:11.5px;margin-top:6px"></div>
+
+    <!-- บรรทัด -->
+    <div class="row" style="align-items:center;margin:14px 0 6px">
+      <b style="font-size:13.5px;color:var(--navy)">บรรทัดจากใบแจ้งค่าขนส่ง</b>
+      <span class="muted" id="bl_count" style="font-size:12px"></span>
+      <div style="flex:1"></div>
+      <button class="btn mini ghost" id="dimPushBtn" style="display:none" onclick="dimPush()"
+        title="บิล FCL พิมพ์ ก×ย×ส ต่อกล่องมาให้ — ส่งไปใส่เป็น 'ขนาดที่ขนส่งคิด' ในรายการรับสินค้าที่ยังว่าง จะได้ไม่ต้องพิมพ์ซ้ำ">⤴ ส่งขนาดเข้ารายการรับสินค้า</button>
+      <button class="btn mini ghost" onclick="pasteOpen()" title="ก็อปตารางจาก PDF/Excel มาวางทีเดียวหลายบรรทัด">📋 วางจากตาราง</button>
+      <button class="btn mini ghost" onclick="addLine()">➕ เพิ่มบรรทัด</button>
+    </div>
+    <div class="scroll" style="max-height:min(46vh,520px)"><div id="bl_body"></div></div>
+
+    <!-- กล่องวางจากตาราง -->
+    <div id="pasteBox" style="display:none;background:#F4F6FA;border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px">
+      <div style="font-weight:700;font-size:13px;margin-bottom:4px">📋 วางข้อความจากตารางใบแจ้งค่าขนส่ง</div>
+      <div class="muted" style="font-size:11.5px;line-height:1.6;margin-bottom:8px">
+        ลากคลุมตารางใน PDF (หรือ Excel) → คัดลอก → วางที่นี่ · 1 บรรทัด = 1 รายการ · คอลัมน์แยกด้วย Tab หรือช่องว่างหลายช่อง
+        <br>ระบบเดาคอลัมน์ให้ก่อน แก้ในแถว "คอลัมน์นี้คือ" ให้ถูกแล้วกด เพิ่มเข้าตาราง
+      </div>
+      <textarea id="pasteTxt" rows="6" style="width:100%;font-family:ui-monospace,monospace;font-size:12px"
+        placeholder="5010637	-A	109	2,731.00	16.131690	3,500.00	56,460.92&#10;5010638	角磨机+起子机-A	150	3,375.00	15.391913	3,500.00	53,871.69"
+        oninput="pastePreview()"></textarea>
+      <div class="grid3" style="margin-top:8px">
+        <div class="fld" style="margin:0"><label>เลขใบแจ้งหนี้ (ใช้กับทุกบรรทัดที่วาง)</label>
+          <input id="pasteInv" placeholder="INV202608015 / EK0731 / FW1310"></div>
+        <div class="fld" style="margin:0"><label>ประเภทบริการ (ใช้กับทุกบรรทัด ถ้าตารางไม่มี)</label>
+          <input id="pasteSvc" list="svcList" placeholder="เช่น SEA / A/SEA / ว่าง = ตั้งต้น"></div>
+        <div class="fld" style="margin:0"><label>เรท (ใช้กับทุกบรรทัด ถ้าตารางไม่มี)</label>
+          <input id="pasteRate" inputmode="decimal" placeholder="เช่น 5900"></div>
+      </div>
+      <div id="pastePrev" style="margin-top:8px;overflow:auto"></div>
+      <div class="row" style="margin-top:8px;justify-content:flex-end">
+        <button class="btn mini ghost" onclick="$('pasteBox').style.display='none'">ปิด</button>
+        <button class="btn mini" id="pasteAdd" onclick="pasteCommit()" disabled>⤵ เพิ่มเข้าตาราง</button>
+      </div>
+    </div>
+    <datalist id="svcList"></datalist>
+
+    <!-- ผลตรวจ 6 อย่าง -->
+    <div id="bAudit" style="margin-top:12px"></div>
+
+    <div class="modal-foot">
+      <button class="btn red mini" id="b_del" style="display:none" onclick="delBill()">🗑️ ลบใบวางบิล</button>
+      <div style="flex:1"></div>
+      <button class="btn ghost" onclick="$('billBg').style.display='none'">ปิด</button>
+      <button class="btn" onclick="saveBill()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════ MODAL: ใบทักขนส่ง ══════════ -->
 <div class="modal-bg" id="clBg">
   <div class="modal" style="max-width:1000px">
@@ -396,7 +555,7 @@ const SUPABASE_KEY='sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์โหลดไฟล์ใหม่แล้วหรือยัง
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ (ทั้งในป้ายด้านบนและตัวแปรนี้) */
-const FR_VERSION='v01-00';
+const FR_VERSION='v01-10';
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -460,14 +619,19 @@ async function boot(){
    ═══════════════════════════════════════════════════════════════ */
 function goTab(t){
   TAB=t;
-  ['list','over','sum','cfg'].forEach(function(k){
+  ['list','over','bills','alerts','sum','cfg'].forEach(function(k){
     const el=$('tab-'+k); if(el)el.style.display=(k===t?'':'none');
   });
   document.querySelectorAll('.tab').forEach(function(el){
     el.classList.toggle('on', el.dataset.t===t);
   });
   if(t==='over')renderOver();
-  if(t==='cfg')renderCfg();
+  if(t==='cfg'){ renderCfg(); if(!RATES.length)loadRates().then(renderRates); else renderRates(); }
+  if(t==='bills'||t==='alerts'){
+    if(!$('bMonth').value)$('bMonth').value=$('fMonth').value||monthStr();
+    if(!BILLS.length&&!BILLS._loaded){ BILLS._loaded=true; loadRates().then(loadBills); }
+    else if(t==='alerts')renderAlerts();
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -488,6 +652,7 @@ function fillCarrierSelects(){
   $('fCarrier').innerHTML='<option value="">— ขนส่ง: ทุกราย —</option>'
     +act.map(c=>'<option>'+esc(c.name)+'</option>').join('');
   $('i_carrier').innerHTML=act.map(c=>'<option>'+esc(c.name)+'</option>').join('');
+  if($('b_carrier'))fillBillCarrierSelects();
 }
 function carrierOf(name){ return CARRIERS.find(c=>c.name===name)||{}; }
 
@@ -1232,6 +1397,709 @@ function clPrint(){
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   🧾 ใบวางบิล — ตรวจ 6 อย่างต่อรอบวางบิล
+   ───────────────────────────────────────────────────────────────
+   ① ค่าขนส่งถูกไหม    Σ บรรทัด = ยอดใบวางบิล · ยอดใบวางบิล ≤ Σ(คิว × เรทสัญญา)
+   ② วางบิลซ้ำไหม      เลขที่รายการ (CO/Tracking/ตู้) ห้ามซ้ำในใบ และห้ามเคยวางบิลมาก่อน
+   ③ เอกสารตรงไหม     ทุกบรรทัดมีเลขใบแจ้งหนี้ + เลขที่รายการ · ยอดใบวางบิล = ยอด DPPV
+   ④ เรทถูกไหม        เรทในบิล = เรทสัญญาของ (ขนส่ง, ประเภทบริการ)
+   ⑤ ค่าแฝงไหม        ค่าบริการเพิ่มเติม > 0 หรือ ยอดบรรทัด ≠ คิว × เรท (ค่ากระสอบซ่อนในยอด)
+   ⑥ กล่องตรงไหม      กล่องในบิล = กล่องที่คลังรับ (ผูกกับรายการรับสินค้าด้วย CO/PO)
+
+   สิ่งที่เจอจริงในบิลตัวอย่าง 6 ชุด (ก.ย. 2569) และระบบนี้จับได้:
+   · 168: ใบวางบิล 2 ฉบับ ต่างกัน 120 ฿ = "ค่ากระสอบ" ซ่อนในบรรทัด 5015230   → ⑤ ③
+   · 168: CO "5010638-" กับ "5010638" ยอด/กล่อง/คิว เท่ากันเป๊ะ                → ②
+   · TSD: EK0809 ใบวางบิล 41,718.90 → ฉบับใหม่ 42,338.40 (+619.50)          → ③ ①
+   · FCL: FW1310 ฉบับใหม่เปลี่ยน A/SEA→B/SEA (3,200→3,400) + แก้ขนาดกล่อง     → ④ ①
+   ═══════════════════════════════════════════════════════════════ */
+let BILLS=[], BLINES=[], RATES=[], REFIDX=null, ITEMIDX=[], BILL_ID=null, BL=[];
+const B_ST={ open:['c-pending','🟡 กำลังตรวจ'], disputed:['t-over','🔴 ทักขนส่งแล้ว'],
+             checked:['t-ok','✅ ตรวจผ่าน'], approved:['c-accepted','👑 อนุมัติจ่าย'],
+             paid:['c-refunded','💸 จ่ายแล้ว'] };
+const bSt=s=>{ const t=B_ST[s||'open']||B_ST.open; return '<span class="v-tag '+t[0]+'">'+t[1]+'</span>'; };
+const norm=s=>String(s??'').trim().toUpperCase().replace(/[\s\-–—_\/]+$/,'');   // "5010638-" ≡ "5010638"
+const monthOfDate=d=>String(d||'').slice(0,7);
+const LVL_ICON={red:'🔴',warn:'🟠',info:'🟡'};
+
+/* ── เรทตามสัญญาของ (ขนส่ง, ประเภทบริการ) ──
+   svc ว่าง → แถว svc='' ใน freight_rates → ถ้าไม่มีก็ใช้ rate_cbm ของขนส่ง (ตารางเดิม)
+   svc ระบุ  → ต้องมีแถวตรงเป๊ะ ไม่งั้นถือว่า "ไม่รู้เรท" (ขึ้นธงเหลืองให้ไปตั้ง) */
+function rateFor(carrier,svc){
+  svc=String(svc||'').trim();
+  const hit=RATES.find(r=>r.carrier===carrier&&String(r.svc||'').trim().toUpperCase()===svc.toUpperCase()&&r.active!==false);
+  if(hit)return {rate:num(hit.rate),unit:hit.unit||'cbm'};
+  if(svc)return null;
+  const c=carrierOf(carrier);
+  if(num(c.rate_cbm)>0)return {rate:num(c.rate_cbm),unit:'cbm',fallback:true};
+  return null;
+}
+function svcListFor(carrier){
+  return RATES.filter(r=>r.carrier===carrier&&r.active!==false).map(r=>String(r.svc||'')).filter(Boolean);
+}
+
+/* ── ผูกบรรทัดกับรายการรับสินค้า (⑥) — CO/Tracking ตรงกับ item_no ก่อน · ไม่เจอค่อยใช้ PO ── */
+function matchItem(L,carrier){
+  const ref=norm(L.line_ref), po=String(L.po_number||'').trim();
+  const same=ITEMIDX.filter(it=>!carrier||!it.carrier||it.carrier===carrier);
+  let hit=ref?same.filter(it=>norm(it.item_no)===ref):[];
+  if(!hit.length&&po)hit=same.filter(it=>String(it.po_number||'').trim()===po);
+  if(!hit.length)return null;
+  return {ids:hit.map(h=>h.id), boxes:hit.reduce((s,h)=>s+(num(h.boxes)||0),0),
+          multi:hit.length>1, by:(ref&&norm(hit[0].item_no)===ref)?'ref':'po',
+          hasFw:hit.some(h=>num(h.w_fw)>0), first:hit[0]};
+}
+
+/* ═══ ตรวจทีละบรรทัด ═══ */
+function lineAudit(L,ctx){
+  const carrier=ctx.bill.carrier;
+  const a={flags:[],expected:null,cardRate:null,unit:'cbm',item:null,over:null};
+  const rr=rateFor(carrier,L.svc);
+  if(rr){ a.cardRate=rr.rate; a.unit=rr.unit||'cbm'; }
+  const cbm=num(L.cbm)||0, rate=num(L.rate), amt=num(L.amount)||0, fee=num(L.extra_fee)||0;
+  const F=(c,lvl,m)=>a.flags.push({c:c,lvl:lvl,m:m});
+
+  /* ③ เอกสารครบ */
+  if(!String(L.inv_no||'').trim())F('MISSING','warn','ไม่มีเลขใบแจ้งหนี้');
+  if(!String(L.line_ref||'').trim())F('MISSING','warn','ไม่มีเลขที่รายการ (CO / Tracking / เลขตู้)');
+  if(a.unit==='cbm'&&!(cbm>0))F('MISSING','warn','ไม่มีคิว (CBM)');
+
+  /* ② ซ้ำ — แยก 2 กรณีให้ชัด
+       · เลขเดียวกัน "ในใบแจ้งหนี้เดียวกัน" = แบ่งล็อต (TSD แบ่ง 168 ชิ้นเป็น 84+84 ใน EK0809) → 🟠 เช็กกล่องรวม
+       · เลขเดียวกัน "คนละใบแจ้งหนี้" หรือ "เคยวางบิลมาก่อน" = วางบิลซ้ำ → 🔴 */
+  let splitN=0;
+  if(String(L.line_ref||'').trim()){
+    const key=carrier+'|'+norm(L.line_ref), me=norm(L.line_ref), inv=String(L.inv_no||'').trim().toUpperCase();
+    const same=ctx.lines.filter(x=>x!==L&&norm(x.line_ref)===me);
+    const sameInv=same.filter(x=>String(x.inv_no||'').trim().toUpperCase()===inv);
+    const diffInv=same.filter(x=>String(x.inv_no||'').trim().toUpperCase()!==inv);
+    splitN=sameInv.length;
+    if(diffInv.length)F('DUP','red','เลขที่รายการนี้อยู่ในใบแจ้งหนี้อื่นของใบวางบิลเดียวกันด้วย ('
+      +[...new Set(diffInv.map(x=>x.inv_no||'?'))].join(', ')+') — วางบิลซ้ำ');
+    if(sameInv.length){
+      /* แบ่งล็อตจริง → กล่อง/คิว/ยอด จะไม่เท่ากัน (TSD 84 กล่อง 3.627 คิว กับ 84 กล่อง 3.444 คิว)
+         ถ้าเท่ากันหมดทุกค่า = ไม่ใช่แบ่งล็อต แต่คือบรรทัดเดิมโผล่ 2 ครั้ง (168: "5010638-" กับ "5010638"
+         150 กล่อง 15.391913 คิว 53,871.69 ฿ เป๊ะทั้งคู่) → ต้องแดง */
+      const twin=sameInv.some(x=>Math.abs((num(x.cbm)||0)-cbm)<1e-6&&Math.abs((num(x.amount)||0)-amt)<0.005
+        &&(num(x.boxes)||0)===(num(L.boxes)||0));
+      if(twin)F('DUP','red','มีอีกบรรทัดในใบแจ้งหนี้เดียวกันที่ กล่อง/คิว/ยอด เท่ากันเป๊ะ — น่าจะเป็นรายการเดิมคิดซ้ำ ไม่ใช่แบ่งล็อต');
+      else F('SPLIT','warn','แบ่งเป็น '+(sameInv.length+1)+' บรรทัดในใบแจ้งหนี้เดียวกัน — ระบบรวมกล่องให้แล้วตอนเทียบกับคลัง');
+    }
+    const others=((ctx.refIdx&&ctx.refIdx[key])||[]).filter(x=>String(x.bill_id)!==String(ctx.bill.id||''));
+    if(others.length)F('DUP','red','เคยวางบิลแล้วในใบ '+[...new Set(others.map(o=>o.bill_no||thDate(o.bill_date)))].join(', ')+' — วางบิลซ้ำ');
+  }
+
+  /* ④ เรท */
+  if(rr&&a.unit==='cbm'&&rate!=null&&Math.abs(rate-a.cardRate)>0.5)
+    F('RATE','red','เรท '+money(rate)+' ≠ สัญญา '+money(a.cardRate)+(L.svc?(' ('+L.svc+')'):''));
+  if(!rr&&String(L.svc||'').trim())F('RATE','warn','ไม่มีเรทของประเภท "'+L.svc+'" ในตาราง ⚙️');
+  if(!rr&&!String(L.svc||'').trim()&&rate==null)F('RATE','warn','ไม่รู้เรท — ใส่เรทในบรรทัด หรือตั้งเรทตั้งต้นของขนส่ง');
+
+  /* ① ⑤ ยอดบรรทัด */
+  if(a.unit==='container'){
+    a.expected=(a.cardRate!=null)?a.cardRate:(rate!=null?rate:null);
+    if(a.expected!=null&&Math.abs(amt-fee-a.expected)>1)
+      F('FEE','red','ยอดตู้ '+money2(amt)+' ≠ เหมาตู้ '+money2(a.expected)+' (ต่าง '+money2(amt-fee-a.expected)+')');
+  }else if(cbm>0){
+    /* ไม่มีคิว = ข้อมูลยังไม่ครบ (ธง ③ ขึ้นแล้ว) — อย่าเพิ่งตัดสินว่ายอดผิด/มีค่าแฝง */
+    a.expected=(a.cardRate!=null)?cbm*a.cardRate:(rate!=null?cbm*rate:null);
+    const own=(rate!=null)?cbm*rate:null;
+    if(own!=null&&Math.abs(amt-fee-own)>Math.max(1,own*0.005))
+      F('FEE','red','ยอดบรรทัด '+money2(amt)+' ≠ คิว×เรท '+money2(own)
+        +' — มีค่าแฝง '+money2(amt-fee-own)+' ฿'+(L.extra_note?(' ('+L.extra_note+')'):''));
+  }
+  if(fee>0)F('FEE','red','ค่าธรรมเนียมเพิ่มเติม '+money2(fee)+' ฿'+(L.extra_note?(' — '+L.extra_note):''));
+
+  /* ⑥ กล่อง — ถ้าแบ่งล็อตหลายบรรทัด (เลขเดียวกัน ใบแจ้งหนี้เดียวกัน) รวมกล่องทุกบรรทัดก่อนเทียบ */
+  const it=matchItem(L,carrier);
+  if(it){
+    a.item=it;
+    let billBoxes=num(L.boxes);
+    if(splitN>0){
+      const me=norm(L.line_ref), inv=String(L.inv_no||'').trim().toUpperCase();
+      billBoxes=ctx.lines.filter(x=>norm(x.line_ref)===me&&String(x.inv_no||'').trim().toUpperCase()===inv)
+        .reduce((s,x)=>s+(num(x.boxes)||0),0);
+    }
+    a.billBoxes=billBoxes;
+    if(billBoxes!=null&&Math.abs(billBoxes-it.boxes)>0)
+      F('BOX','red','กล่องในบิล '+money(billBoxes)+(splitN?' (รวม '+(splitN+1)+' บรรทัด)':'')+' ≠ คลังรับ '+money(it.boxes)+(it.multi?' (รวม '+it.ids.length+' รายการ)':''));
+  }else if(String(L.po_number||L.line_ref||'').trim()){
+    F('NOITEM','info','ยังไม่มีในรายการรับสินค้า — เทียบกล่องไม่ได้');
+  }
+  a.over=(a.expected!=null)?(amt-a.expected):null;
+  return a;
+}
+
+/* ═══ ตรวจทั้งใบ ═══ */
+function billAudit(b,lines){
+  const ctx={bill:b,lines:lines,refIdx:REFIDX};
+  const per=lines.map(L=>lineAudit(L,ctx));
+  const sumAmt=lines.reduce((s,L)=>s+(num(L.amount)||0),0);
+  const sumExp=per.reduce((s,a)=>s+(a.expected||0),0);
+  const stated=num(b.stated_total), dppv=num(b.dppv_total);
+  const flags=[];
+  if(stated!=null&&lines.length&&Math.abs(sumAmt-stated)>0.01)
+    flags.push({c:'TOTAL',lvl:'red',m:'Σ บรรทัด '+money2(sumAmt)+' ≠ ยอดใบวางบิล '+money2(stated)
+      +' (ต่าง '+money2(stated-sumAmt)+' ฿)'});
+  if(stated!=null&&dppv!=null&&Math.abs(stated-dppv)>0.01)
+    flags.push({c:'DPPV',lvl:'red',m:'ยอดใบวางบิล '+money2(stated)+' ≠ ใบสำคัญเตรียมจ่าย '+money2(dppv)
+      +' (ต่าง '+money2(stated-dppv)+' ฿) — ขนส่งส่งใบวางบิลฉบับใหม่มาหรือเปล่า'});
+  /* "ควรเป็น" นับเฉพาะบรรทัดที่คิดได้ — ถ้ายังมีบรรทัดที่คิดไม่ได้ (ไม่มีคิว/ไม่รู้เรท) ตัวเลขนี้ยังไม่แน่ */
+  const nNoExp=per.filter(a=>a.expected==null).length;
+  const over=(stated!=null&&sumExp>0)?(stated-sumExp):null;
+  const totalOff=(stated!=null&&lines.length&&Math.abs(sumAmt-stated)>0.01);
+  if(over!=null&&over>1)
+    flags.push({c:'OVER',lvl:'red',m:'ยอดรวมเกินจากที่ควรเป็น '+money2(over)+' ฿ (ควรเป็น '+money2(sumExp)+' ตามคิว×เรทสัญญา)'
+      +(totalOff||nNoExp?(' — ⚠️ บรรทัดยังไม่ครบ/คิดไม่ได้ '+(nNoExp?nNoExp+' บรรทัด ':'')+'ตัวเลขนี้จะแน่เมื่อใส่ครบ'):'')});
+  const counts={};
+  per.forEach(a=>a.flags.forEach(f=>{ counts[f.c]=(counts[f.c]||0)+1; }));
+  flags.forEach(f=>{ counts[f.c]=(counts[f.c]||0)+1; });
+  const nRed=flags.filter(f=>f.lvl==='red').length+per.reduce((s,a)=>s+a.flags.filter(f=>f.lvl==='red').length,0);
+  const nWarn=per.reduce((s,a)=>s+a.flags.filter(f=>f.lvl==='warn').length,0);
+  return {per,flags,counts,sumAmt,sumExp,stated,dppv,over,nRed,nWarn};
+}
+
+/* 6 ข้อ → สรุปเป็นเช็คลิสต์ */
+const SIX=[
+  {k:'price',t:'① ค่าขนส่งถูกไหม',   codes:['TOTAL','OVER'],  d:'Σ บรรทัด = ยอดใบวางบิล · ยอดไม่เกิน คิว×เรทสัญญา'},
+  {k:'dup',  t:'② วางบิลซ้ำไหม',     codes:['DUP','SPLIT'],   d:'เลขที่รายการไม่เคยวางบิลมาก่อน · แบ่งล็อตในใบเดียวกันจะขึ้น 🟠 ให้เช็กกล่องรวม'},
+  {k:'doc',  t:'③ เอกสารตรงไหม',     codes:['MISSING','DPPV'],d:'ครบเลขใบแจ้งหนี้/เลขที่รายการ · ยอดตรงกับใบสำคัญเตรียมจ่าย'},
+  {k:'rate', t:'④ เรทถูกไหม',        codes:['RATE'],          d:'เรทในบิลตรงกับสัญญาของประเภทบริการนั้น'},
+  {k:'fee',  t:'⑤ มีค่าแฝงไหม',      codes:['FEE'],           d:'ไม่มีค่าบริการเพิ่มเติม · ยอดบรรทัด = คิว×เรท'},
+  {k:'box',  t:'⑥ กล่องตรงไหม',      codes:['BOX'],           d:'กล่องในบิล = กล่องที่คลังรับจริง'},
+];
+function sixSummary(au){
+  return SIX.map(function(s){
+    const n=s.codes.reduce((t,c)=>t+(au.counts[c]||0),0);
+    const red=n>0 && (s.codes.some(c=>au.flags.some(f=>f.c===c&&f.lvl==='red'))
+                   || au.per.some(a=>a.flags.some(f=>s.codes.includes(f.c)&&f.lvl==='red')));
+    return Object.assign({n:n,lvl:n?(red?'red':'warn'):'ok'},s);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   โหลด — เฉพาะเดือนที่เลือก + ดัชนีเลขที่รายการทั้งประวัติ (คอลัมน์น้อย ๆ)
+   ═══════════════════════════════════════════════════════════════ */
+async function loadRates(){
+  const {data,error}=await sb.from('freight_rates').select('*').order('carrier').order('svc');
+  RATES=error?[]:(data||[]);
+  if(error&&!/does not exist/i.test(error.message))console.warn('[rates]',error.message);
+}
+async function loadRefIndex(){
+  /* ⚠️ ดึงทั้งตารางแต่แค่ 5 คอลัมน์ — ปีละไม่กี่พันแถว × ~60 byte = ไม่ถึง 1 MB
+     จำเป็นเพราะ "วางบิลซ้ำ" ต้องเช็กข้ามทุกเดือน ไม่ใช่แค่เดือนที่เปิดอยู่ */
+  const {data,error}=await sb.from('freight_bill_lines').select('bill_id,carrier,line_ref');
+  const {data:bs}=await sb.from('freight_bills').select('id,bill_no,bill_date');
+  REFIDX={};
+  if(error)return;
+  const bmap={}; (bs||[]).forEach(b=>{ bmap[b.id]={bill_no:b.bill_no,bill_date:b.bill_date}; });
+  (data||[]).forEach(function(r){
+    if(!r.line_ref)return;
+    const k=r.carrier+'|'+norm(r.line_ref);
+    (REFIDX[k]=REFIDX[k]||[]).push(Object.assign({bill_id:r.bill_id},bmap[r.bill_id]||{}));
+  });
+}
+async function loadItemIndex(mo){
+  /* รายการรับสินค้ารอบ ๆ เดือนบิล (ของอาจถึงคลังก่อน/หลังวางบิล 1-2 เดือน) — คอลัมน์น้อย */
+  const d=new Date((mo||monthStr())+'-01T00:00:00');
+  const mos=[]; for(let i=-3;i<=1;i++){ const x=new Date(d); x.setMonth(x.getMonth()+i);
+    mos.push(x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')); }
+  const {data,error}=await sb.from('freight_items')
+    .select('id,carrier,item_no,po_number,sku,boxes,gr_month,w_fw,l_fw,h_fw').in('gr_month',mos);
+  ITEMIDX=error?[]:(data||[]);
+}
+async function loadBills(){
+  const mo=$('bMonth').value||monthStr();
+  $('bBody').innerHTML='<div class="empty">กำลังโหลด…</div>';
+  const [b,l]=await Promise.all([
+    sb.from('freight_bills').select('*').eq('bill_month',mo).order('bill_date',{ascending:false}),
+    sb.from('freight_bill_lines').select('*').order('seq')
+  ]);
+  if(b.error){
+    BILLS=[]; BLINES=[];
+    $('bBody').innerHTML='<div class="empty">โหลดไม่ได้ — '+esc(b.error.message)
+      +'<br><span class="muted">ยังไม่ได้รันไฟล์ <b>freight_bills.sql</b> ใน Supabase หรือเปล่า</span></div>';
+    return;
+  }
+  BILLS=b.data||[];
+  const ids=new Set(BILLS.map(x=>String(x.id)));
+  BLINES=(l.data||[]).filter(x=>ids.has(String(x.bill_id)));
+  if(!REFIDX)await loadRefIndex();
+  await loadItemIndex(mo);
+  fillBillCarrierSelects();
+  renderBills(); renderAlerts();
+}
+function fillBillCarrierSelects(){
+  const act=CARRIERS.filter(c=>c.active!==false);
+  const cur=$('bCarrier').value;
+  $('bCarrier').innerHTML='<option value="">— ขนส่ง: ทุกราย —</option>'+act.map(c=>'<option>'+esc(c.name)+'</option>').join('');
+  $('bCarrier').value=cur||'';
+  $('b_carrier').innerHTML=act.map(c=>'<option>'+esc(c.name)+'</option>').join('');
+}
+const linesOf=id=>BLINES.filter(x=>String(x.bill_id)===String(id));
+
+/* ═══════════════════════════════════════════════════════════════
+   รายการใบวางบิล
+   ═══════════════════════════════════════════════════════════════ */
+function renderBills(){
+  const car=$('bCarrier').value||'', st=$('bStatus').value||'', fl=$('bFlag').value||'';
+  const rows=BILLS.map(b=>({b:b,au:billAudit(b,linesOf(b.id))}))
+    .filter(x=>(!car||x.b.carrier===car)&&(!st||(x.b.status||'open')===st)
+             &&(!fl||(fl==='red'?x.au.nRed>0:x.au.nRed===0)));
+  /* KPI */
+  const all=BILLS.map(b=>({b:b,au:billAudit(b,linesOf(b.id))}));
+  const tot=all.reduce((s,x)=>s+(num(x.b.stated_total)||0),0);
+  const exp=all.reduce((s,x)=>s+x.au.sumExp,0);
+  const over=all.reduce((s,x)=>s+Math.max(0,x.au.over||0),0);
+  const nRed=all.filter(x=>x.au.nRed>0).length;
+  const nOpen=all.filter(x=>['open','disputed'].includes(x.b.status||'open')).length;
+  $('bKpi').innerHTML=''
+    +'<div class="kpi"><div class="lbl">ใบวางบิลเดือนนี้</div><div class="val">'+all.length+'</div>'
+      +'<div class="sub">'+BLINES.length+' บรรทัด · ยังไม่ปิด '+nOpen+' ใบ</div></div>'
+    +'<div class="kpi gold"><div class="lbl">ยอดที่ขนส่งเรียกเก็บ</div><div class="val">'+money2(tot)+'</div>'
+      +'<div class="sub">ควรเป็น '+money2(exp)+' ฿ ตามคิว×เรทสัญญา</div></div>'
+    +'<div class="kpi '+(over>1?'red':'green')+'"><div class="lbl">'+(over>1?'⚠️ เรียกเก็บเกินที่ควรเป็น':'✅ ไม่เกินที่ควรเป็น')+'</div>'
+      +'<div class="val">'+money2(over)+' ฿</div><div class="sub">'+nRed+' ใบมีธงแดง</div></div>';
+
+  if(!rows.length){ $('bBody').innerHTML='<div class="empty">ไม่มีใบวางบิลตามเงื่อนไข<br><span class="muted">กด ➕ เพิ่มใบวางบิล</span></div>'; return; }
+  let h='<table><thead><tr><th style="width:86px">วันที่</th><th style="width:120px">ขนส่ง</th>'
+    +'<th style="width:120px">เลขที่ใบวางบิล</th><th style="width:110px">DPPV</th>'
+    +'<th class="num" style="width:60px">บรรทัด</th>'
+    +'<th class="num" style="width:120px">ยอดใบวางบิล</th><th class="num" style="width:120px">ควรเป็น</th>'
+    +'<th class="num" style="width:110px">เกิน ฿</th>'
+    +'<th style="min-width:280px">ผลตรวจ 6 ข้อ</th><th style="width:120px">สถานะ</th><th style="width:66px"></th></tr></thead><tbody>';
+  rows.forEach(function(x){
+    const b=x.b, au=x.au, six=sixSummary(au);
+    const cls=au.nRed?' class="over"':(au.nWarn?' class="round"':'');
+    const pills=six.map(s=>'<span class="v-tag '+(s.lvl==='ok'?'t-ok':(s.lvl==='red'?'t-over':'t-round'))
+      +'" title="'+esc(s.t+' — '+s.d)+'" style="margin:1px 2px 1px 0">'+s.t.slice(0,1)+(s.n?(' '+s.n):'')+'</span>').join('');
+    h+='<tr'+cls+'><td>'+esc(thDate(b.bill_date))+'</td>'
+      +'<td style="font-size:12px">'+esc(b.carrier||'-')+'</td>'
+      +'<td>'+esc(b.bill_no||'-')+(b.due_date?'<div class="muted" style="font-size:10.5px">ครบ '+esc(thDate(b.due_date))+'</div>':'')+'</td>'
+      +'<td style="font-size:11.5px">'+esc(b.dppv_no||'-')
+        +(num(b.dppv_total)!=null?'<div class="muted" style="font-size:10.5px">'+money2(b.dppv_total)+'</div>':'')+'</td>'
+      +'<td class="num">'+linesOf(b.id).length+'</td>'
+      +'<td class="num"><b>'+money2(b.stated_total)+'</b></td>'
+      +'<td class="num">'+(au.sumExp>0?money2(au.sumExp):'<span class="muted">—</span>')+'</td>'
+      +'<td class="num">'+(au.over==null?'<span class="muted">—</span>'
+          :(au.over>1?'<b style="color:var(--red)">+'+money2(au.over)+'</b>'
+          :(au.over<-1?'<span style="color:#2E75B6">'+money2(au.over)+'</span>':'<span class="diff-ok">0.00</span>')))+'</td>'
+      +'<td>'+pills+'</td>'
+      +'<td>'+bSt(b.status)+'</td>'
+      +'<td><button class="btn mini ghost" onclick="openBill(\''+b.id+'\')">✏️ เปิด</button></td></tr>';
+  });
+  $('bBody').innerHTML=h+'</tbody></table>';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   แท็บแจ้งเตือน — รวมธงทุกใบในเดือน จัดกลุ่มตามชนิด
+   ═══════════════════════════════════════════════════════════════ */
+const ALERT_NAMES={ DUP:'🔴 Track / เลขที่รายการซ้ำ', TOTAL:'🔴 ยอดใบวางบิลไม่ตรงกับบรรทัด',
+  DPPV:'🔴 ยอดใบวางบิลไม่ตรงใบสำคัญเตรียมจ่าย', BOX:'🔴 จำนวนกล่องไม่ตรง', RATE:'🔴 ใช้เรทผิด / ไม่รู้เรท',
+  FEE:'🔴 มีค่าธรรมเนียมเพิ่มเติม / ค่าแฝง', OVER:'🔴 ยอดรวมเกินจากที่ควรเป็น',
+  MISSING:'🟠 เอกสาร/ข้อมูลไม่ครบ', SPLIT:'🟠 แบ่งล็อตหลายบรรทัด (เลขเดียวกัน ใบแจ้งหนี้เดียวกัน)',
+  NOITEM:'🟡 ยังไม่มีในรายการรับสินค้า' };
+const ALERT_ORDER=['DUP','OVER','TOTAL','DPPV','RATE','FEE','BOX','MISSING','SPLIT','NOITEM'];
+function renderAlerts(){
+  if(!$('aBody'))return;
+  const groups={}; let nRed=0,nWarn=0,nInfo=0;
+  BILLS.forEach(function(b){
+    const lines=linesOf(b.id), au=billAudit(b,lines);
+    au.flags.forEach(f=>{ (groups[f.c]=groups[f.c]||[]).push({b:b,L:null,f:f}); });
+    au.per.forEach((a,i)=>a.flags.forEach(f=>{ (groups[f.c]=groups[f.c]||[]).push({b:b,L:lines[i],f:f}); }));
+  });
+  Object.values(groups).flat().forEach(x=>{ if(x.f.lvl==='red')nRed++; else if(x.f.lvl==='warn')nWarn++; else nInfo++; });
+  if($('tabAlertN'))$('tabAlertN').innerHTML=nRed?('<span class="v-tag t-over" style="margin-left:4px">'+nRed+'</span>'):'';
+  $('aKpi').innerHTML=''
+    +'<div class="kpi '+(nRed?'red':'green')+'"><div class="lbl">🔴 ธงแดง — ต้องจัดการ</div><div class="val">'+nRed+'</div></div>'
+    +'<div class="kpi gold"><div class="lbl">🟠 ข้อมูลไม่ครบ</div><div class="val">'+nWarn+'</div></div>'
+    +'<div class="kpi"><div class="lbl">🟡 ยังไม่ผูกกับรายการรับสินค้า</div><div class="val">'+nInfo+'</div></div>';
+  const keys=ALERT_ORDER.filter(k=>groups[k]);
+  if(!keys.length){ $('aBody').innerHTML='<div class="empty">✅ ไม่พบความผิดปกติในใบวางบิลของเดือนนี้</div>'; return; }
+  let h='';
+  keys.forEach(function(k){
+    const g=groups[k];
+    h+='<div style="margin:14px 0 6px;font-weight:800;font-size:13.5px;color:var(--navy)">'+esc(ALERT_NAMES[k]||k)
+      +' <span class="v-tag '+(g[0].f.lvl==='red'?'t-over':(g[0].f.lvl==='warn'?'t-round':'t-none'))+'">'+g.length+'</span></div>';
+    h+='<div class="scroll" style="max-height:none"><table><thead><tr><th style="width:86px">วันที่</th><th style="width:120px">ขนส่ง</th>'
+      +'<th style="width:120px">ใบวางบิล</th><th style="width:130px">ใบแจ้งหนี้ / เลขที่รายการ</th><th style="width:74px">PO</th>'
+      +'<th>รายละเอียด</th><th style="width:70px"></th></tr></thead><tbody>';
+    g.forEach(function(x){
+      h+='<tr style="cursor:pointer" onclick="openBill(\''+x.b.id+'\')"><td>'+esc(thDate(x.b.bill_date))+'</td>'
+        +'<td style="font-size:12px">'+esc(x.b.carrier)+'</td><td>'+esc(x.b.bill_no||'-')+'</td>'
+        +'<td style="font-size:11.5px">'+(x.L?(esc(x.L.inv_no||'-')+'<div class="muted">'+esc(x.L.line_ref||'')+'</div>'):'<span class="muted">ทั้งใบ</span>')+'</td>'
+        +'<td>'+esc(x.L?(x.L.po_number||'-'):'')+'</td>'
+        +'<td style="font-size:12.5px">'+esc(x.f.m)+'</td>'
+        +'<td><button class="btn mini ghost">เปิด</button></td></tr>';
+    });
+    h+='</tbody></table></div>';
+  });
+  $('aBody').innerHTML=h;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ฟอร์มใบวางบิล
+   ═══════════════════════════════════════════════════════════════ */
+function blankLine(){ return {inv_no:'',inv_date:null,line_ref:'',po_number:'',description:'',svc:'',
+  boxes:null,kg:null,cbm:null,rate:null,amount:null,extra_fee:0,extra_note:'',w:null,l:null,h:null,seq:0}; }
+function curBill(){
+  return { id:BILL_ID, carrier:$('b_carrier').value, bill_no:$('b_no').value.trim()||null,
+    bill_date:$('b_date').value||null, due_date:$('b_due').value||null,
+    stated_total:num($('b_total').value), dppv_no:$('b_dppv').value.trim()||null,
+    dppv_total:num($('b_dppv_total').value), status:$('b_status').value, note:$('b_note').value.trim()||null };
+}
+function openBill(id){
+  BILL_ID=id||null;
+  if(!RATES.length)loadRates();
+  const b=id?BILLS.find(x=>String(x.id)===String(id)):null;
+  $('billTitle').textContent=b?('🧾 ใบวางบิล '+(b.bill_no||thDate(b.bill_date))+' — '+b.carrier):'➕ เพิ่มใบวางบิล';
+  $('b_del').style.display=b?'':'none';
+  const set=(k,v)=>{ $(k).value=(v==null?'':v); };
+  if(b){
+    set('b_carrier',b.carrier); set('b_no',b.bill_no); set('b_date',b.bill_date); set('b_due',b.due_date);
+    set('b_total',b.stated_total); set('b_dppv',b.dppv_no); set('b_dppv_total',b.dppv_total);
+    $('b_status').value=b.status||'open'; set('b_note',b.note);
+    BL=JSON.parse(JSON.stringify(linesOf(b.id)));
+    $('billMeta').textContent=(b.created_by?('สร้างโดย '+b.created_by+' · '):'')+(b.updated_at?('แก้ล่าสุด '+new Date(b.updated_at).toLocaleString('th-TH')):'');
+    const rv=Array.isArray(b.revisions)?b.revisions:[];
+    $('b_rev').innerHTML=rv.length?('📜 ประวัติยอด: '+rv.map(r=>esc(thDate(String(r.at||'').slice(0,10)))+' '+money2(r.from)+' → '+money2(r.to)+(r.note?(' ('+esc(r.note)+')'):'')).join(' · ')):'';
+  }else{
+    const car=$('bCarrier').value; if(car)set('b_carrier',car); else $('b_carrier').selectedIndex=0;
+    set('b_no',''); set('b_date',todayStr()); set('b_due',''); set('b_total',''); set('b_dppv',''); set('b_dppv_total','');
+    $('b_status').value='open'; set('b_note',''); BL=[]; $('billMeta').textContent=''; $('b_rev').innerHTML='';
+  }
+  $('pasteBox').style.display='none'; $('pasteTxt').value=''; $('pastePrev').innerHTML=''; $('pasteAdd').disabled=true;
+  renderLines(); $('billBg').style.display='flex';
+}
+function billCalc(){
+  const car=$('b_carrier').value;
+  $('svcList').innerHTML=svcListFor(car).map(s=>'<option value="'+esc(s)+'">').join('');
+  renderLines();
+}
+function addLine(){ const L=blankLine(); const last=BL[BL.length-1];
+  if(last){ L.inv_no=last.inv_no; L.inv_date=last.inv_date; L.svc=last.svc; L.rate=last.rate; }
+  BL.push(L); renderLines();
+  setTimeout(()=>{ const el=document.querySelector('#bl_body tr:last-child input[data-k="line_ref"]'); if(el)el.focus(); },30);
+}
+function delLine(i){ BL.splice(i,1); renderLines(); }
+function setLine(i,k,v){
+  const L=BL[i]; if(!L)return;
+  const NUM=['boxes','kg','cbm','rate','amount','extra_fee','w','l','h'];
+  L[k]=NUM.includes(k)?num(v):v;
+  /* ใส่คิว+เรทแล้วยังไม่มียอด → คิดให้ (แก้ทับได้) · ใส่ ก×ย×ส แล้วยังไม่มีคิว → คิดคิวให้ */
+  if(['w','l','h','boxes'].includes(k)&&num(L.w)&&num(L.l)&&num(L.h)&&num(L.boxes)&&!L._cbmTouched)
+    L.cbm=+(num(L.w)*num(L.l)*num(L.h)/1e6*num(L.boxes)).toFixed(6);
+  if(k==='cbm')L._cbmTouched=true;
+  if(['cbm','rate'].includes(k)&&num(L.cbm)&&num(L.rate)&&!L._amtTouched)L.amount=+(num(L.cbm)*num(L.rate)).toFixed(2);
+  if(k==='amount')L._amtTouched=true;
+  renderLines(i,k);
+}
+function renderLines(keepI,keepK){
+  const b=curBill(); b.id=BILL_ID;
+  const au=billAudit(b,BL);
+  $('bl_count').textContent=BL.length?('('+BL.length+' บรรทัด · Σ '+money2(au.sumAmt)+' ฿)'):'';
+  const car=b.carrier;
+  const I=(i,k,v,w,ph,extra)=>'<input data-k="'+k+'" value="'+esc(v==null?'':v)+'" placeholder="'+esc(ph||'')+'" '
+    +'style="width:'+w+'px;padding:4px 6px;font-size:12px" '+(extra||'')
+    +' oninput="setLine('+i+',\''+k+'\',this.value)">';
+  let h='<table style="min-width:1180px"><thead><tr>'
+    +'<th style="width:26px">#</th><th>ใบแจ้งหนี้</th><th>เลขที่รายการ ★</th><th>PO</th><th>สินค้า</th>'
+    +'<th>ประเภท</th><th class="num">กล่อง</th><th class="num">กก.</th><th class="num">คิว</th>'
+    +'<th class="num">เรท</th><th class="num">ยอด</th><th class="num">ค่าเพิ่ม</th><th>ก×ย×ส</th>'
+    +'<th style="min-width:220px">ผลตรวจ</th><th style="width:30px"></th></tr></thead><tbody>';
+  BL.forEach(function(L,i){
+    const a=au.per[i];
+    const red=a.flags.filter(f=>f.lvl==='red'), warn=a.flags.filter(f=>f.lvl!=='red');
+    const cls=red.length?' class="over"':(warn.length&&warn.some(f=>f.lvl==='warn')?' class="round"':'');
+    const dims=[L.w,L.l,L.h].map(x=>x==null?'':x);
+    h+='<tr'+cls+'><td class="num muted">'+(i+1)+'</td>'
+      +'<td>'+I(i,'inv_no',L.inv_no,104,'INV/EK/FW')+'</td>'
+      +'<td>'+I(i,'line_ref',L.line_ref,110,'CO/Tracking/ตู้')+'</td>'
+      +'<td>'+I(i,'po_number',L.po_number,66,'PO')+'</td>'
+      +'<td>'+I(i,'description',L.description,110,'')+'</td>'
+      +'<td>'+I(i,'svc',L.svc,70,'ตั้งต้น','list="svcList"')+'</td>'
+      +'<td>'+I(i,'boxes',L.boxes,54,'')+'</td>'
+      +'<td>'+I(i,'kg',L.kg,66,'')+'</td>'
+      +'<td>'+I(i,'cbm',L.cbm,78,'')+'</td>'
+      +'<td>'+I(i,'rate',L.rate,66,a.cardRate!=null?String(a.cardRate):'')+'</td>'
+      +'<td>'+I(i,'amount',L.amount,90,'')+'</td>'
+      +'<td>'+I(i,'extra_fee',L.extra_fee||'',56,'0')+'</td>'
+      +'<td style="white-space:nowrap">'+I(i,'w',dims[0],40,'ก')+'×'+I(i,'l',dims[1],40,'ย')+'×'+I(i,'h',dims[2],40,'ส')+'</td>'
+      +'<td style="font-size:11px;line-height:1.5">'
+        +(a.flags.length?a.flags.map(f=>'<div'+(f.lvl==='red'?' style="color:var(--red);font-weight:700"':(f.lvl==='warn'?' style="color:#B7791F"':' class="muted"'))+'>'
+          +LVL_ICON[f.lvl]+' '+esc(f.m)+'</div>').join('')
+          :'<span class="diff-ok">✅ ผ่าน</span>')
+        +(a.item&&!red.some(f=>f.c==='BOX')?'<div class="muted">🔗 คลังรับ '+money(a.item.boxes)+' กล่อง'+(a.item.multi?' ('+a.item.ids.length+' รายการ)':'')+'</div>':'')
+        +(a.over!=null&&Math.abs(a.over)>0.5?'<div style="color:'+(a.over>0?'var(--red)':'#2E75B6')+'">'+(a.over>0?'+':'')+money2(a.over)+' ฿ จากที่ควรเป็น</div>':'')
+      +'</td>'
+      +'<td><button class="btn mini red" onclick="delLine('+i+')" title="ลบบรรทัด">✕</button></td></tr>';
+  });
+  h+='</tbody>'+(BL.length?('<tfoot><tr style="font-weight:800;background:#EFEFEF"><td colspan="6" style="text-align:right">รวม</td>'
+    +'<td class="num">'+money(BL.reduce((s,L)=>s+(num(L.boxes)||0),0))+'</td>'
+    +'<td class="num">'+money2(BL.reduce((s,L)=>s+(num(L.kg)||0),0))+'</td>'
+    +'<td class="num">'+cbmFmt(BL.reduce((s,L)=>s+(num(L.cbm)||0),0))+'</td><td></td>'
+    +'<td class="num">'+money2(au.sumAmt)+'</td>'
+    +'<td class="num">'+money2(BL.reduce((s,L)=>s+(num(L.extra_fee)||0),0))+'</td>'
+    +'<td colspan="3" class="muted" style="font-weight:400">ควรเป็น '+money2(au.sumExp)+' ฿ ตามคิว×เรทสัญญา</td></tr></tfoot>'):'')+'</table>';
+  $('bl_body').innerHTML=BL.length?h:'<div class="empty">ยังไม่มีบรรทัด — กด ➕ เพิ่มบรรทัด หรือ 📋 วางจากตาราง</div>';
+  /* คืนโฟกัสให้ช่องที่กำลังพิมพ์ */
+  if(keepI!=null&&keepK){
+    const el=document.querySelector('#bl_body tbody tr:nth-child('+(keepI+1)+') input[data-k="'+keepK+'"]');
+    if(el){ el.focus(); try{ el.setSelectionRange(el.value.length,el.value.length); }catch(e){} }
+  }
+  renderBillAudit(au);
+  const dp=dimPushCandidates(), btn=$('dimPushBtn');
+  if(btn){ btn.style.display=dp.length?'':'none'; btn.textContent='⤴ ส่งขนาดเข้ารายการรับสินค้า ('+dp.length+')'; }
+}
+/* ── สะพานเชื่อม 2 ส่วนของระบบ: บิล FCL พิมพ์ ก×ย×ส มาให้ → ส่งไปเป็น "ขนาดที่ขนส่งคิด" ของรายการรับสินค้า
+      เฉพาะบรรทัดที่ผูกกับรายการได้แน่ชัด (ตรง 1:1) และรายการนั้นยังไม่มีขนาดฝั่งขนส่ง — ไม่ทับของที่กรอกไว้แล้ว ── */
+function dimPushCandidates(){
+  const car=$('b_carrier').value;
+  return BL.map((L,i)=>({L:L,i:i,it:matchItem(L,car)}))
+    .filter(x=>x.it&&!x.it.multi&&num(x.L.w)>0&&num(x.L.l)>0&&num(x.L.h)>0&&!x.it.hasFw);
+}
+async function dimPush(){
+  const c=dimPushCandidates(); if(!c.length)return toast('ไม่มีบรรทัดที่ส่งขนาดได้');
+  if(!confirm('ส่งขนาด ก×ย×ส จากบิล '+c.length+' บรรทัด ไปใส่เป็น "ขนาดที่ขนส่งคิด" ในรายการรับสินค้า?\n\n'
+    +c.slice(0,6).map(x=>'· '+(x.L.line_ref||x.L.po_number)+' → '+num(x.L.w)+'×'+num(x.L.l)+'×'+num(x.L.h)).join('\n')
+    +(c.length>6?('\n…อีก '+(c.length-6)):'')+'\n\nรายการที่มีขนาดขนส่งอยู่แล้วจะไม่ถูกทับ'))return;
+  let ok=0, fail=0;
+  for(const x of c){
+    const upd={w_fw:num(x.L.w),l_fw:num(x.L.l),h_fw:num(x.L.h)};
+    if(num(x.L.rate)>0)upd.rate_cbm=num(x.L.rate);
+    const {error}=await sb.from('freight_items').update(upd).eq('id',x.it.first.id);
+    if(error){ fail++; console.warn('[dimPush]',error.message); continue; }
+    ok++; const it=ITEMIDX.find(z=>z.id===x.it.first.id); if(it){ it.w_fw=upd.w_fw; it.l_fw=upd.l_fw; it.h_fw=upd.h_fw; }
+  }
+  toast('ส่งขนาดแล้ว '+ok+' รายการ'+(fail?(' · ไม่สำเร็จ '+fail):'')+' — ดูผลเทียบที่แท็บ 📋 รายการตรวจสอบ');
+  renderLines();
+  if(ok)loadItems();   /* รีเฟรชแท็บรายการรับสินค้า (เดือนที่เลือกอยู่) ให้เห็นผลเทียบทันที */
+}
+function renderBillAudit(au){
+  const six=sixSummary(au);
+  let h='<div style="border:1px solid var(--line);border-radius:11px;overflow:hidden">'
+    +'<div style="background:var(--navy);color:#fff;padding:8px 12px;font-weight:800;font-size:13px;display:flex;gap:12px;align-items:center">'
+    +'🔍 ผลตรวจ 6 ข้อ <span style="flex:1"></span>'
+    +(au.nRed?('<span class="v-tag t-over">🔴 '+au.nRed+' จุดต้องจัดการ</span>'):'<span class="v-tag t-ok">✅ ไม่มีธงแดง</span>')
+    +'</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">';
+  six.forEach(function(s){
+    const bg=s.lvl==='red'?'#FEF1F1':(s.lvl==='warn'?'#FFFCF4':'#F5FBF5');
+    const ic=s.lvl==='red'?'🔴':(s.lvl==='warn'?'🟠':'✅');
+    const msgs=[...au.flags.filter(f=>s.codes.includes(f.c)).map(f=>f.m),
+      ...au.per.flatMap((a,i)=>a.flags.filter(f=>s.codes.includes(f.c)).map(f=>'#'+(i+1)+' '+f.m))];
+    h+='<div style="padding:9px 12px;border:1px solid var(--line);background:'+bg+'">'
+      +'<div style="font-weight:800;font-size:12.5px">'+ic+' '+esc(s.t)+(s.n?(' <span class="muted">('+s.n+')</span>'):'')+'</div>'
+      +'<div class="muted" style="font-size:11px">'+esc(s.d)+'</div>'
+      +(msgs.length?('<div style="font-size:11.5px;margin-top:4px;line-height:1.55">'+msgs.slice(0,4).map(esc).join('<br>')
+        +(msgs.length>4?('<br><span class="muted">…อีก '+(msgs.length-4)+'</span>'):'')+'</div>'):'')
+      +'</div>';
+  });
+  h+='</div>';
+  if(au.stated!=null||au.sumExp>0){
+    h+='<div style="padding:9px 12px;border-top:1px solid var(--line);font-size:12.5px;display:flex;gap:22px;flex-wrap:wrap;background:#fff">'
+      +'<div>ยอดใบวางบิล <b>'+money2(au.stated)+'</b></div>'
+      +'<div>Σ บรรทัด <b>'+money2(au.sumAmt)+'</b></div>'
+      +'<div>ควรเป็น (คิว×เรทสัญญา) <b>'+money2(au.sumExp)+'</b></div>'
+      +(au.over!=null?('<div>'+(au.over>1?'<b style="color:var(--red)">เรียกเก็บเกิน '+money2(au.over)+' ฿</b>'
+        :(au.over<-1?'<span style="color:#2E75B6">ต่ำกว่าที่ควร '+money2(-au.over)+' ฿</span>':'<b style="color:var(--green)">✅ ตรงที่ควรเป็น</b>'))+'</div>'):'')
+      +'</div>';
+  }
+  $('bAudit').innerHTML=h+'</div>';
+}
+
+async function saveBill(){
+  const b=curBill();
+  if(!b.carrier)return toast('เลือกบริษัทขนส่งก่อน');
+  if(!b.bill_date)return toast('ใส่วันที่วางบิลก่อน');
+  if(b.stated_total==null)return toast('ใส่ยอดตามใบวางบิลก่อน');
+  b.bill_month=monthOfDate(b.bill_date);
+  /* ยอดเปลี่ยนจากที่เคยบันทึก → จดประวัติ (ขนส่งส่งฉบับใหม่มาบ่อย) */
+  const old=BILL_ID?BILLS.find(x=>String(x.id)===String(BILL_ID)):null;
+  let revisions=old&&Array.isArray(old.revisions)?old.revisions.slice():[];
+  if(old&&num(old.stated_total)!=null&&Math.abs(num(old.stated_total)-b.stated_total)>0.005)
+    revisions.push({at:new Date().toISOString(),by:ME,from:num(old.stated_total),to:b.stated_total,note:b.note||''});
+  const rec=Object.assign({},b,{revisions:revisions}); delete rec.id;
+  let res;
+  if(BILL_ID)res=await sb.from('freight_bills').update(rec).eq('id',BILL_ID).select().single();
+  else{ rec.created_by=ME; res=await sb.from('freight_bills').insert(rec).select().single(); }
+  if(res.error)return toast('บันทึกหัวใบไม่สำเร็จ: '+res.error.message);
+  const saved=res.data, id=saved.id;
+
+  /* บรรทัด: ลบของเดิมทั้งชุดแล้วใส่ใหม่ — ง่าย ตรงไปตรงมา ใบละไม่กี่สิบบรรทัด */
+  const clean=BL.map(function(L,i){ return {
+    bill_id:id, carrier:b.carrier, inv_no:String(L.inv_no||'').trim()||null, inv_date:L.inv_date||null,
+    line_ref:String(L.line_ref||'').trim()||null, po_number:String(L.po_number||'').trim()||null,
+    description:String(L.description||'').trim()||null, svc:String(L.svc||'').trim(),
+    boxes:num(L.boxes), kg:num(L.kg), cbm:num(L.cbm), rate:num(L.rate), amount:num(L.amount),
+    extra_fee:num(L.extra_fee)||0, extra_note:String(L.extra_note||'').trim()||null,
+    w:num(L.w), l:num(L.l), h:num(L.h),
+    item_id:(matchItem(L,b.carrier)||{}).first?.id||null, seq:i }; });
+  const d=await sb.from('freight_bill_lines').delete().eq('bill_id',id);
+  if(d.error)return toast('ลบบรรทัดเดิมไม่สำเร็จ: '+d.error.message);
+  let lines=[];
+  if(clean.length){
+    const ins=await sb.from('freight_bill_lines').insert(clean).select();
+    if(ins.error)return toast('บันทึกบรรทัดไม่สำเร็จ: '+ins.error.message);
+    lines=ins.data||[];
+  }
+  /* อัปเดตในหน่วยความจำ — ไม่โหลดใหม่ */
+  const curMo=$('bMonth').value||monthStr();
+  BILLS=BILLS.filter(x=>String(x.id)!==String(id)); BLINES=BLINES.filter(x=>String(x.bill_id)!==String(id));
+  if(saved.bill_month===curMo){ BILLS.unshift(saved); BLINES=BLINES.concat(lines); }
+  REFIDX=null; await loadRefIndex();
+  BILLS.sort((a,c)=>String(c.bill_date||'').localeCompare(String(a.bill_date||'')));
+  renderBills(); renderAlerts();
+  $('billBg').style.display='none';
+  toast(BILL_ID?'บันทึกใบวางบิลแล้ว':'เพิ่มใบวางบิลแล้ว');
+  if(saved.bill_month!==curMo)toast('บันทึกเข้าเดือน '+saved.bill_month+' — เปลี่ยนตัวกรองเดือนเพื่อดู');
+}
+async function delBill(){
+  if(!BILL_ID)return;
+  const b=BILLS.find(x=>String(x.id)===String(BILL_ID))||{};
+  if(!confirm('ลบใบวางบิลนี้?\n\n'+(b.carrier||'')+' · '+(b.bill_no||thDate(b.bill_date))
+    +'\nยอด '+money2(b.stated_total)+' ฿ · '+linesOf(BILL_ID).length+' บรรทัด\n\nบรรทัดทั้งหมดจะถูกลบตาม เอากลับไม่ได้'))return;
+  const {error}=await sb.from('freight_bills').delete().eq('id',BILL_ID);
+  if(error)return toast('ลบไม่สำเร็จ: '+error.message);
+  BILLS=BILLS.filter(x=>String(x.id)!==String(BILL_ID)); BLINES=BLINES.filter(x=>String(x.bill_id)!==String(BILL_ID));
+  REFIDX=null; await loadRefIndex();
+  renderBills(); renderAlerts(); $('billBg').style.display='none'; toast('ลบแล้ว');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   📋 วางจากตาราง — ก็อปจาก PDF/Excel มาวางทีเดียวหลายบรรทัด
+   ───────────────────────────────────────────────────────────────
+   แยกคอลัมน์ด้วย Tab / ช่องว่าง ≥2 / | · เดาหัวคอลัมน์จากคำสำคัญ
+   ถ้าไม่มีหัว → เดาจากรูปแบบค่า (เลขทศนิยม 6 หลัก = คิว · เลข 4 หลักกลม = เรท ฯลฯ)
+   แล้วให้คนยืนยันในแถว "คอลัมน์นี้คือ" ก่อนเพิ่ม
+   ═══════════════════════════════════════════════════════════════ */
+const PCOLS=[['','— ข้าม —'],['line_ref','เลขที่รายการ (CO/Tracking)'],['inv_no','เลขใบแจ้งหนี้'],['po_number','PO'],
+  ['description','สินค้า'],['svc','ประเภทบริการ'],['boxes','กล่อง (C/N)'],['kg','น้ำหนัก (KGS)'],['cbm','คิว (CBM)'],
+  ['rate','เรท (Price)'],['amount','ยอด (Total)'],['extra_fee','ค่าเพิ่ม'],['w','กว้าง'],['l','ยาว'],['h','สูง']];
+const PHEAD=[[/^(co|co\s*no|หมายเลข|tracking|เลขที่รายการ|เลขที่รับ|เลขรับ|ตู้|container)/i,'line_ref'],
+  [/^(inv|invoice|ek|fw|ใบแจ้ง|เลขที่ใบ|บิล)/i,'inv_no'],[/^po/i,'po_number'],
+  [/(สินค้า|desc|รายการ|product)/i,'description'],[/(ประเภท|type|svc|class)/i,'svc'],
+  [/(c\/n|ctn|carton|กล่อง|จำนวน|qty|box)/i,'boxes'],[/(kg|น้ำหนัก|weight)/i,'kg'],[/(cbm|คิว|ปริมาตร|vol)/i,'cbm'],
+  [/(price|เรท|ราคาต่อ|unit)/i,'rate'],[/(amount|total|รวม|จำนวนเงิน|ราคารวม)/i,'amount'],
+  [/(กว้าง|width|^w$)/i,'w'],[/(ยาว|length|^l$)/i,'l'],[/(สูง|height|^h$)/i,'h']];
+let PASTE={rows:[],map:[]};
+function pnum(s){ const n=parseFloat(String(s||'').replace(/[,฿\s]/g,'').replace(/[^\d.\-]/g,'')); return isFinite(n)?n:null; }
+function pasteOpen(){ $('pasteBox').style.display=''; $('pasteTxt').focus(); }
+function splitRow(r){ return r.split(/\t|\s{2,}|\s*\|\s*/).map(c=>c.trim()).filter(c=>c!==''); }
+function pastePreview(){
+  const txt=$('pasteTxt').value;
+  let rows=txt.split(/\r?\n/).map(r=>r.trim()).filter(Boolean).map(splitRow).filter(r=>r.length>=2);
+  if(!rows.length){ $('pastePrev').innerHTML=''; $('pasteAdd').disabled=true; return; }
+  /* ตัดคอลัมน์ "ลำดับ" ตัวแรกถ้าเป็นเลขจำนวนเต็มสั้น ๆ ไล่กันทีละ 1 (ไม่จำเป็นต้องเริ่มที่ 1 — ก็อปมาแค่บางแถวก็ได้) */
+  const seq=rows.length>=1&&rows.every(r=>/^\d{1,3}$/.test(r[0]))
+    &&rows.every((r,i)=>i===0||(+r[0]===+rows[i-1][0]+1));
+  if(seq)rows=rows.map(r=>r.slice(1));
+  const width=Math.max(...rows.map(r=>r.length));
+  /* แถวแรกเป็นหัวไหม — ส่วนใหญ่เป็นตัวหนังสือ */
+  let map=new Array(width).fill(''), head=null;
+  const first=rows[0], isHead=first.filter(c=>pnum(c)==null).length>=Math.ceil(first.length*0.6);
+  if(isHead){ head=first; rows=rows.slice(1);
+    head.forEach((c,i)=>{ const hit=PHEAD.find(p=>p[0].test(c)); if(hit&&!map.includes(hit[1]))map[i]=hit[1]; }); }
+  else{
+    /* ไม่มีหัว → เดาจาก "รูปร่างของข้อความ" ในคอลัมน์ ไม่ใช่แค่ค่าตัวเลข
+       เพราะ CO อย่าง 5010637 ก็เป็นตัวเลขล้วน แต่ไม่มีลูกน้ำ ไม่มีทศนิยม และยาว ≥6 หลัก */
+    const has=k=>map.includes(k), RATE_SET=[2700,2900,3000,3100,3200,3400,3500,5300,5500,5600,5900,6000];
+    const moneyCols=[];
+    for(let i=0;i<width;i++){
+      const raw=rows.map(r=>r[i]).filter(c=>c!=null&&c!=='');
+      if(!raw.length)continue;
+      const numeric=raw.every(c=>/^[\d,.\-]+$/.test(c)&&pnum(c)!=null);
+      if(!numeric){
+        const idLike=raw.every(c=>/^[A-Z0-9][A-Z0-9\-\/]{3,}$/i.test(c)&&/\d/.test(c));
+        if(idLike&&!has('line_ref'))map[i]='line_ref';
+        else if(/^[AB]\s*\/\s*(SEA|AIR)$/i.test(raw[0])&&!has('svc'))map[i]='svc';
+        else if(!has('description'))map[i]='description';
+        continue;
+      }
+      const nums=raw.map(pnum), dec=raw.map(c=>(String(c).split('.')[1]||'').length);
+      const intOnly=dec.every(d=>d===0), hasComma=raw.some(c=>c.includes(','));
+      const digits=raw.map(c=>c.replace(/[^0-9]/g,'').length);
+      if(intOnly&&!hasComma&&digits.every(d=>d>=6)&&!has('line_ref')){ map[i]='line_ref'; continue; }   // 5010637
+      if(dec.every(d=>d>=4)&&!has('cbm')){ map[i]='cbm'; continue; }                                    // 16.131690
+      if(nums.every(n=>RATE_SET.includes(n))&&!has('rate')){ map[i]='rate'; continue; }                 // 3,500.00
+      if(intOnly&&!hasComma&&nums.every(n=>n<10000)&&!has('boxes')){ map[i]='boxes'; continue; }        // 109
+      moneyCols.push(i);                                                                                 // ที่เหลือ = เงิน/กก.
+    }
+    /* คอลัมน์ตัวเลขที่เหลือ: ตัวสุดท้าย = ยอด · ก่อนหน้า = น้ำหนัก */
+    if(moneyCols.length){ map[moneyCols[moneyCols.length-1]]='amount';
+      if(moneyCols.length>=2&&!has('kg'))map[moneyCols[moneyCols.length-2]]='kg'; }
+  }
+  PASTE={rows:rows,map:map,head:head};
+  let h='<table style="font-size:11.5px"><thead><tr><th style="width:110px">คอลัมน์นี้คือ</th>';
+  for(let i=0;i<width;i++)h+='<th><select data-i="'+i+'" onchange="PASTE.map[+this.dataset.i]=this.value" style="font-size:11px;padding:3px 5px">'
+    +PCOLS.map(c=>'<option value="'+c[0]+'"'+(map[i]===c[0]?' selected':'')+'>'+c[1]+'</option>').join('')+'</select></th>';
+  h+='</tr>'+(head?('<tr><th class="muted">หัวที่วางมา</th>'+head.map(c=>'<th class="muted" style="font-weight:400">'+esc(c)+'</th>').join('')+'</tr>'):'')+'</thead><tbody>';
+  rows.slice(0,6).forEach(function(r){ h+='<tr><td class="muted">ตัวอย่าง</td>'+[...Array(width).keys()].map(i=>'<td>'+esc(r[i]||'')+'</td>').join('')+'</tr>'; });
+  if(rows.length>6)h+='<tr><td colspan="'+(width+1)+'" class="muted">…อีก '+(rows.length-6)+' บรรทัด</td></tr>';
+  $('pastePrev').innerHTML=h+'</tbody></table>';
+  $('pasteAdd').disabled=false;
+  $('pasteAdd').textContent='⤵ เพิ่ม '+rows.length+' บรรทัดเข้าตาราง';
+}
+function pasteCommit(){
+  const inv=$('pasteInv').value.trim(), svc=$('pasteSvc').value.trim(), rate=num($('pasteRate').value);
+  if(!PASTE.map.includes('line_ref')&&!confirm('ยังไม่ได้ระบุว่าคอลัมน์ไหนคือ "เลขที่รายการ" — จะเพิ่มโดยไม่มีเลขที่รายการไหม (เช็กซ้ำไม่ได้)'))return;
+  let n=0;
+  PASTE.rows.forEach(function(r){
+    const L=blankLine(); L.inv_no=inv; L.svc=svc; if(rate!=null)L.rate=rate;
+    PASTE.map.forEach(function(k,i){ if(!k||r[i]==null)return;
+      if(['boxes','kg','cbm','rate','amount','extra_fee','w','l','h'].includes(k))L[k]=pnum(r[i]); else L[k]=r[i]; });
+    if(L.line_ref||L.amount!=null){ L._amtTouched=(L.amount!=null); L._cbmTouched=(L.cbm!=null);
+      if(L.amount==null&&num(L.cbm)&&num(L.rate))L.amount=+(num(L.cbm)*num(L.rate)).toFixed(2);
+      BL.push(L); n++; }
+  });
+  $('pasteTxt').value=''; $('pastePrev').innerHTML=''; $('pasteAdd').disabled=true; $('pasteBox').style.display='none';
+  renderLines(); toast('เพิ่ม '+n+' บรรทัดแล้ว — เช็กผลตรวจท้ายกล่อง');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ⚙️ ตารางเรทตามประเภทบริการ (ในแท็บตั้งค่า)
+   ═══════════════════════════════════════════════════════════════ */
+function renderRates(){
+  const el=$('rtBody'); if(!el)return;
+  let h='<table><thead><tr><th style="width:170px">บริษัทขนส่ง</th><th style="width:140px">ประเภทบริการ</th>'
+    +'<th style="width:120px">หน่วย</th><th class="num" style="width:130px">เรท (บาท)</th><th style="width:80px">ใช้งาน</th><th>หมายเหตุ</th><th style="width:40px"></th></tr></thead><tbody>';
+  RATES.forEach(function(r,i){
+    h+='<tr><td><select data-k="carrier" data-i="'+i+'">'+CARRIERS.map(c=>'<option'+(c.name===r.carrier?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></td>'
+      +'<td><input data-k="svc" data-i="'+i+'" value="'+esc(r.svc||'')+'" placeholder="ว่าง = ตั้งต้น" style="max-width:130px"></td>'
+      +'<td><select data-k="unit" data-i="'+i+'"><option value="cbm"'+((r.unit||'cbm')==='cbm'?' selected':'')+'>ต่อคิว</option>'
+        +'<option value="container"'+(r.unit==='container'?' selected':'')+'>เหมาตู้</option></select></td>'
+      +'<td class="num"><input data-k="rate" data-i="'+i+'" inputmode="decimal" value="'+(r.rate??'')+'" style="max-width:120px"></td>'
+      +'<td><input type="checkbox" data-k="active" data-i="'+i+'" '+(r.active!==false?'checked':'')+' style="width:auto"></td>'
+      +'<td><input data-k="note" data-i="'+i+'" value="'+esc(r.note||'')+'"></td>'
+      +'<td><button class="btn mini red" onclick="delRate('+i+')">✕</button></td></tr>';
+  });
+  el.innerHTML=h+'</tbody></table>';
+}
+function addRateRow(){ RATES.push({carrier:(CARRIERS[0]||{}).name||'',svc:'',unit:'cbm',rate:null,active:true,note:''}); renderRates(); }
+async function delRate(i){
+  const r=RATES[i]; if(!r)return;
+  if(!confirm('ลบเรท '+r.carrier+' / '+(r.svc||'ตั้งต้น')+' ?'))return;
+  if(r.id){ const {error}=await sb.from('freight_rates').delete().eq('id',r.id); if(error)return toast('ลบไม่สำเร็จ: '+error.message); }
+  RATES.splice(i,1); renderRates(); toast('ลบเรทแล้ว');
+}
+async function saveRates(){
+  document.querySelectorAll('#rtBody [data-k]').forEach(function(el){
+    const i=+el.dataset.i, k=el.dataset.k; if(!RATES[i])return;
+    RATES[i][k]=(k==='active')?el.checked:(k==='rate'?num(el.value):el.value.trim());
+  });
+  const keys=RATES.map(r=>r.carrier+'|'+String(r.svc||'').toUpperCase());
+  if(new Set(keys).size!==keys.length)return toast('มี (ขนส่ง, ประเภทบริการ) ซ้ำกัน — รวมเป็นแถวเดียว');
+  let ok=0, fail=[];
+  for(const r of RATES){
+    const row={carrier:r.carrier,svc:String(r.svc||''),unit:r.unit||'cbm',rate:r.rate,active:r.active!==false,note:r.note||null};
+    const q=r.id?await sb.from('freight_rates').update(row).eq('id',r.id).select().single()
+                :await sb.from('freight_rates').insert(row).select().single();
+    if(q.error)fail.push(r.carrier+'/'+r.svc+' — '+q.error.message); else{ Object.assign(r,q.data); ok++; }
+  }
+  renderRates(); if(BILLS.length)renderBills();
+  toast(fail.length?('บันทึก '+ok+' · ไม่สำเร็จ '+fail.length):'บันทึกเรทแล้ว');
+  if(fail.length)console.warn('[rates]',fail);
+}
+
+/* ═══════════════════════════════════════════════════════════════
    Export Excel
    ═══════════════════════════════════════════════════════════════ */
 function xlsx(rows,sheet,file){
@@ -1287,9 +2155,9 @@ function exportSum(){
 /* ปิดโมดัลด้วย Esc / คลิกพื้นหลัง */
 document.addEventListener('keydown',function(e){
   if(e.key!=='Escape')return;
-  ['itemBg','clBg'].forEach(function(k){ const el=$(k); if(el&&el.style.display!=='none')el.style.display='none'; });
+  ['itemBg','clBg','billBg'].forEach(function(k){ const el=$(k); if(el&&el.style.display!=='none')el.style.display='none'; });
 });
-['itemBg','clBg'].forEach(function(k){
+['itemBg','clBg','billBg'].forEach(function(k){
   const el=$(k); if(!el)return;
   el.addEventListener('mousedown',function(e){ if(e.target===el)el.style.display='none'; });
 });
