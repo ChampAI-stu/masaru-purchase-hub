@@ -362,14 +362,14 @@
   .arr-wrap{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
   /* ★ ตารางนี้บีบให้แน่นเป็นพิเศษ — 1 ใบแจ้งมีหลายรายการ ถ้าแถวสูงจะอ่านยาก
      (ย่อเฉพาะ .arr-* ตารางอื่นในหน้านี้ไม่เปลี่ยน) */
-  .arr-tb{width:100%;border-collapse:collapse;font-size:11.5px;min-width:1040px;line-height:1.35}
-  .arr-tb th{background:var(--navy);color:#fff;font-weight:600;padding:6px 6px;text-align:left;
-    white-space:nowrap;font-size:10.5px}
-  .arr-tb td{padding:4px 6px;border-bottom:1px solid #EFF3F8;vertical-align:middle}
+  .arr-tb{width:100%;border-collapse:collapse;font-size:12.5px;min-width:920px;line-height:1.4}
+  .arr-tb th{background:var(--navy);color:#fff;font-weight:600;padding:6px 5px;text-align:left;
+    white-space:nowrap;font-size:11px}
+  .arr-tb td{padding:5px 5px;border-bottom:1px solid #EFF3F8;vertical-align:middle}
   .arr-tb td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
   .arr-head td{background:#EEF3FA;border-top:2px solid var(--navy-light);font-weight:600;padding:5px 6px}
-  .arr-head .arr-date{font-size:12px;color:var(--navy);font-weight:800}
-  .arr-head .arr-sub{font-size:10.5px;color:var(--muted);font-weight:400}
+  .arr-head .arr-date{font-size:12.5px;color:var(--navy);font-weight:800}
+  .arr-head .arr-sub{font-size:11px;color:var(--muted);font-weight:400}
   /* ปุ่มในแถวหัวใบ — ไอคอนเดียว เรียงแถวเดียว ไม่ให้แถวสูงขึ้น */
   .arr-act{display:inline-flex;gap:3px;white-space:nowrap;vertical-align:middle}
   .arr-act .arr-mini{padding:2px 6px;font-size:11px;line-height:1.5}
@@ -807,7 +807,7 @@ body.price-on .sl-price{display:block}
       <div class="m-field"><label>วันที่เข้าคลัง</label><input type="date" id="ar_indate"></div>
       <div class="m-field"><label>&nbsp;</label>
         <button type="button" class="arr-mini" onclick="arrInAll()" style="width:100%;padding:11px">
-          ✅ เข้าครบทั้งใบ (เติมลังที่ค้างให้ทุกแถว)</button></div>
+          ✅ เข้าครบทั้งใบ (เติมจำนวนที่ค้างให้ทุกแถว)</button></div>
     </div>
     <div id="arrInBody"></div>
     <div class="modal-foot">
@@ -2970,17 +2970,7 @@ function arrRefreshLeft(){
 /* ★ นับเป็น "ชิ้น" ไม่ใช่ลัง — หน้าแผนรับสินค้ากรอกของเข้าเป็นชิ้น
    ชิ้นที่เหลือ = ชิ้น/ลัง × ลังที่ยังค้าง (ถ้าไม่มีชิ้น/ลัง ใช้สัดส่วนจากจำนวนลัง)
    เก็บจำนวนลังไว้ในทูลทิปให้ดูควบคู่ได้ */
-function tlPcsOf(it){
-  const boxes=+it.boxes||0, bin=+it.boxes_in||0, leftBox=boxes-bin;
-  const ppb=+it.pcs_per_box||0, pcs=+it.pcs||0;
-  let fullPcs = pcs>0 ? pcs : (ppb>0&&boxes>0 ? ppb*boxes : 0);
-  let leftPcs;
-  if(ppb>0)            leftPcs = ppb*leftBox;                 // ตรงที่สุด
-  else if(boxes>0)     leftPcs = Math.round(fullPcs*leftBox/boxes);
-  else                 leftPcs = fullPcs;
-  return {fullPcs:Math.round(fullPcs), leftPcs:Math.round(leftPcs),
-          fullBox:boxes, leftBox:leftBox};
-}
+const tlPcsOf = it => arrPcsOf(it);   // ใช้ตัวเดียวกับแท็บ 📦 เพื่อให้ตัวเลขตรงกันเสมอ
 function tlLeftPaint(cell, m){
   if(!m || m.fullPcs==null){
     cell.className='tl-left none'; cell.innerHTML='—';
@@ -3268,16 +3258,36 @@ const ARR_ST = { waiting:{c:'w',t:'🟠 ค้างที่ขนส่ง'}, 
 const arrItemsOf = id => ARR_IT.filter(x => String(x.notice_id)===String(id))
                                .sort((a,b)=>(a.seq||0)-(b.seq||0));
 
+/* ── นับเป็น "ชิ้น" ──
+   ฐานข้อมูลเก็บเป็นลัง (boxes / boxes_in) เพราะขนส่งคิดเงินตามลัง/คิว
+   แต่คลังกับแผนรับสินค้านับเป็นชิ้น → แปลงให้ตรงกันด้วยชิ้น/ลัง
+   ไม่มีชิ้น/ลัง ก็เทียบสัดส่วนจากจำนวนลังให้ */
+function arrPcsOf(it){
+  const boxes=+it.boxes||0, bin=Math.min(+it.boxes_in||0, boxes||Infinity)||0;
+  const leftBox=boxes-bin, ppb=+it.pcs_per_box||0, pcs=+it.pcs||0;
+  const fullPcs = pcs>0 ? pcs : (ppb>0&&boxes>0 ? ppb*boxes : 0);
+  let inPcs;
+  if(ppb>0)        inPcs = ppb*bin;
+  else if(boxes>0) inPcs = fullPcs*bin/boxes;
+  else             inPcs = 0;
+  const leftPcs = Math.max(0, fullPcs-inPcs);
+  return {fullPcs:Math.round(fullPcs), inPcs:Math.round(inPcs), leftPcs:Math.round(leftPcs),
+          fullBox:boxes, inBox:bin, leftBox:leftBox, ppb:ppb};
+}
+/* ข้อความกำกับ 2 หน่วย ใช้ในทูลทิป */
+const arrBoth = (pcs,box) => arrInt(pcs)+' ชิ้น ('+arrInt(box)+' ลัง)';
+
 /* ── ยอดรวมของใบแจ้ง ──
    ★ บรรทัดพ่วง (is_extra) นับแค่จำนวนชิ้น ไม่นับลัง/คิว/น้ำหนัก
      ไม่งั้น SKU ที่แถมมาในลังเดียวกันจะทำให้ลัง/คิวบวกซ้ำ */
 function arrTotals(items){
-  const t = {boxes:0, boxIn:0, pcs:0, cbm:0, kg:0, cbmWait:0, kgWait:0, n:items.length};
+  const t = {boxes:0, boxIn:0, pcs:0, pcsIn:0, pcsWait:0, cbm:0, kg:0, cbmWait:0, kgWait:0, n:items.length};
   items.forEach(x => {
     t.pcs += +x.pcs||0;
     if(x.is_extra) return;
     const bx = +x.boxes||0, bi = Math.min(+x.boxes_in||0, bx||Infinity)||0;
     t.boxes += bx; t.boxIn += bi;
+    const m = arrPcsOf(x); t.pcsIn += m.inPcs; t.pcsWait += m.leftPcs;   // ★ ยอดชิ้น
     t.cbm += +x.cbm||0; t.kg += +x.weight_kg||0;
     /* คิว/กก. ของส่วนที่ยังค้าง — เทียบสัดส่วนจำนวนลัง (ขนส่งไม่ได้แจ้งคิวรายรอบ) */
     const left = bx>0 ? (bx-bi)/bx : (bi>0?0:1);
@@ -3510,11 +3520,12 @@ function renderArrAlert(groups){
   }
   const hot = due.filter(g => g.days >= arrHotDays());
   const boxW = due.reduce((a,g)=>a+g.t.boxWait,0);
+  const pcsW = due.reduce((a,g)=>a+g.t.pcsWait,0);
   const cbmW = due.reduce((a,g)=>a+g.t.cbmWait,0);
   const kgW  = due.reduce((a,g)=>a+g.t.kgWait,0);
   box.innerHTML = `<div class="arr-alert ${hot.length?'red':'amber'}">
     <h4>${hot.length?'🔴':'🟠'} มีของค้างที่ขนส่งเกิน ${ARR_DUE} วัน — ${due.length} ใบแจ้ง
-      · ${arrInt(boxW)} ลัง · ${arrMoney(cbmW)} คิว · ${arrInt(kgW)} กก.</h4>
+      · ${arrInt(pcsW)} ชิ้น · ${arrInt(boxW)} ลัง · ${arrMoney(cbmW)} คิว</h4>
     <div style="font-size:12.5px;color:var(--muted)">
       ${hot.length?`<b style="color:var(--red)">ค้างเกิน ${arrHotDays()} วัน ${hot.length} ใบ — ควรโทรตามขนส่งวันนี้</b> · `:''}
       แจ้งคลังให้เตรียมพื้นที่ไว้ก่อนได้เลย</div>
@@ -3522,7 +3533,7 @@ function renderArrAlert(groups){
       <span class="arr-al-day ${g.days>=arrHotDays()?'r':'a'}">ค้าง ${g.days} วัน</span>
       <b>${esc(g.n.carrier||'-')}</b>
       <span style="color:var(--muted)">แจ้ง ${fmtDate(g.n.notice_date)}${g.n.notice_no?' · '+esc(g.n.notice_no):''}</span>
-      <span>ค้าง <b>${arrInt(g.t.boxWait)}</b> ลัง · ${arrMoney(g.t.cbmWait)} คิว${g.t.kgWait?' · '+arrInt(g.t.kgWait)+' กก.':''}</span>
+      <span>ค้าง <b>${arrInt(g.t.pcsWait)}</b> ชิ้น · ${arrInt(g.t.boxWait)} ลัง · ${arrMoney(g.t.cbmWait)} คิว</span>
       <div style="flex:1"></div>
       ${currentRole==='purchase'?`<button class="arr-mini go" onclick="openArrIn('${g.n.id}')">🚚 ตัดเข้าคลัง</button>`:''}
       <button class="arr-mini" onclick="arrJump('${g.n.id}')">🔎 ดูในตาราง</button>
@@ -3676,25 +3687,27 @@ function renderArrStrip(groups){
   const by = {};
   groups.filter(g=>g.st!=='cancel').forEach(function(g){
     const k = String(g.n.carrier||'—');
-    const p = by[k] || (by[k] = {n:0, boxWait:0, cbmWait:0, kgWait:0, boxes:0, due:0});
+    const p = by[k] || (by[k] = {n:0, boxWait:0, cbmWait:0, kgWait:0, boxes:0, due:0, pcs:0, pcsWait:0});
     p.n++; p.boxes+=g.t.boxes; p.boxWait+=g.t.boxWait; p.cbmWait+=g.t.cbmWait; p.kgWait+=g.t.kgWait;
+    p.pcs+=g.t.pcs; p.pcsWait+=g.t.pcsWait;
     if(g.t.boxWait>0.0001 && arrDaysWait(g.n.notice_date)>=ARR_DUE) p.due++;
   });
   const keys = Object.keys(by).sort((a,b)=>by[b].boxWait-by[a].boxWait || a.localeCompare(b));
   if(!keys.length){ el.innerHTML=''; return; }
-  const tot = keys.reduce((a,k)=>({n:a.n+by[k].n, boxWait:a.boxWait+by[k].boxWait}),{n:0,boxWait:0});
+  const tot = keys.reduce((a,k)=>({n:a.n+by[k].n, boxWait:a.boxWait+by[k].boxWait,
+    pcsWait:a.pcsWait+by[k].pcsWait}),{n:0,boxWait:0,pcsWait:0});
   el.innerHTML =
     '<button class="arr-chip'+(ARR_CAR?'':' on')+'" style="border-left-color:var(--navy)" onclick="arrPickCar(\'\')">'
       +'<b>ทุกบริษัทขนส่ง</b>'
-      +'<span class="s">'+tot.n+' ใบ · ค้าง '+arrInt(tot.boxWait)+' ลัง</span></button>'
+      +'<span class="s">'+tot.n+' ใบ · ค้าง '+arrInt(tot.pcsWait)+' ชิ้น</span></button>'
     + keys.map(function(k){
         const p=by[k], c=arrColor(k);
         return '<button class="arr-chip'+(ARR_CAR===k?' on':'')+'" style="border-left-color:'+c+'"'
           +' onclick="arrPickCar('+JSON.stringify(k).replace(/"/g,'&quot;')+')">'
           +'<b style="color:'+c+'">🚛 '+esc(k)+'</b>'
-          +'<span class="s">'+p.n+' ใบ · แจ้งมา '+arrInt(p.boxes)+' ลัง</span>'
+          +'<span class="s">'+p.n+' ใบ · แจ้งมา '+arrInt(p.pcs)+' ชิ้น ('+arrInt(p.boxes)+' ลัง)</span>'
           +(p.boxWait>0.0001
-            ? '<span class="w">ค้าง '+arrInt(p.boxWait)+' ลัง · '+arrMoney(p.cbmWait)+' คิว'
+            ? '<span class="w">ค้าง '+arrInt(p.pcsWait)+' ชิ้น · '+arrInt(p.boxWait)+' ลัง'
               +(p.due?(' · <span style="color:var(--red)">เกินกำหนด '+p.due+' ใบ</span>'):'')+'</span>'
             : '<span class="s" style="color:var(--green);font-weight:700">✅ เข้าคลังครบ</span>')
           +'</button>';
@@ -3737,8 +3750,9 @@ function renderArr(){
                  .filter(g => g.st!=='cancel');
   const sum = all.reduce((a,g) => ({
     boxWait:a.boxWait+g.t.boxWait, cbmWait:a.cbmWait+g.t.cbmWait, kgWait:a.kgWait+g.t.kgWait,
-    boxIn:a.boxIn+g.t.boxIn, boxes:a.boxes+g.t.boxes
-  }), {boxWait:0,cbmWait:0,kgWait:0,boxIn:0,boxes:0});
+    boxIn:a.boxIn+g.t.boxIn, boxes:a.boxes+g.t.boxes,
+    pcsWait:a.pcsWait+g.t.pcsWait, pcsIn:a.pcsIn+g.t.pcsIn, pcs:a.pcs+g.t.pcs
+  }), {boxWait:0,cbmWait:0,kgWait:0,boxIn:0,boxes:0,pcsWait:0,pcsIn:0,pcs:0});
   const unfinished = all.filter(g => g.st!=='done');
   const oldest = unfinished.filter(g=>g.t.boxWait>0)
     .sort((a,b)=>String(a.n.notice_date||'').localeCompare(String(b.n.notice_date||'')))[0];
@@ -3753,17 +3767,20 @@ function renderArr(){
     dueList.filter(g=>g.days>=arrHotDays()).length
     + otherList.filter(p=>arrDaysWait(p.date)>=arrHotDays()).length);
 
-  $('arrWaitBox').textContent = arrInt(sum.boxWait) + ' ลัง';
-  $('arrWaitSub').textContent = arrMoney(sum.cbmWait) + ' คิว · ' + arrInt(sum.kgWait) + ' กก.';
-  $('arrInBox').textContent   = arrInt(sum.boxIn) + ' ลัง';
-  $('arrInSub').textContent   = 'จากที่แจ้งมา ' + arrInt(sum.boxes) + ' ลัง';
+  /* ★ ตัวเลขหลักเป็น "ชิ้น" · ลัง/คิว/กก. ย้ายไปบรรทัดรอง */
+  $('arrWaitBox').textContent = arrInt(sum.pcsWait) + ' ชิ้น';
+  $('arrWaitSub').textContent = arrInt(sum.boxWait) + ' ลัง · ' + arrMoney(sum.cbmWait) + ' คิว · '
+                              + arrInt(sum.kgWait) + ' กก.';
+  $('arrInBox').textContent   = arrInt(sum.pcsIn) + ' ชิ้น';
+  $('arrInSub').textContent   = arrInt(sum.boxIn) + ' ลัง · จากที่แจ้งมา ' + arrInt(sum.pcs) + ' ชิ้น';
   $('arrNotice').textContent  = ARR.length;
   $('arrNoticeSub').textContent = 'ยังไม่ครบ ' + unfinished.length + ' ใบ';
   const oldDays = oldest ? arrDaysWait(oldest.n.notice_date) : 0;
   $('arrOld').textContent    = oldest ? (oldDays + ' วัน') : '-';
   $('arrOld').style.color    = (oldest && oldDays>=ARR_DUE) ? 'var(--red)' : '';
   $('arrOldSub').textContent = oldest
-    ? (esc(oldest.n.carrier||'-') + ' · แจ้ง ' + fmtDate(oldest.n.notice_date) + ' · ค้าง ' + arrInt(oldest.t.boxWait) + ' ลัง')
+    ? (esc(oldest.n.carrier||'-') + ' · แจ้ง ' + fmtDate(oldest.n.notice_date)
+       + ' · ค้าง ' + arrInt(oldest.t.pcsWait) + ' ชิ้น (' + arrInt(oldest.t.boxWait) + ' ลัง)')
     : 'ไม่มีของค้างที่ขนส่ง 🎉';
 
   if(!rows.length){
@@ -3773,11 +3790,14 @@ function renderArr(){
   }
 
   let h = `<thead><tr>
-    <th style="width:84px">วันแจ้งเข้า</th><th style="width:84px">เลขที่รายการ</th><th style="width:52px">PO</th>
-    <th>SKU</th><th class="n" style="width:50px">ชิ้น/ลัง</th><th class="n" style="width:44px">ลัง</th>
-    <th class="n" style="width:58px">ชิ้น</th><th class="n" style="width:62px">คิว</th>
-    <th class="n" style="width:60px">น้ำหนัก</th><th class="n" style="width:58px">เข้าคลัง</th>
-    <th class="n" style="width:48px">ค้าง</th><th style="width:134px">หมายเหตุ</th>
+    <th style="width:78px">วันแจ้งเข้า</th><th style="width:76px">เลขที่รายการ</th><th style="width:46px">PO</th>
+    <th>SKU</th><th class="n" style="width:44px" title="จำนวนชิ้นต่อลัง">ชิ้น/ลัง</th>
+    <th class="n" style="width:40px">ลัง</th>
+    <th class="n" style="width:62px">ชิ้น</th><th class="n" style="width:54px">คิว</th>
+    <th class="n" style="width:52px">น้ำหนัก</th>
+    <th class="n" style="width:64px">เข้าคลัง<br><span style="font-weight:400;font-size:9.5px">(ชิ้น)</span></th>
+    <th class="n" style="width:64px">ค้าง<br><span style="font-weight:400;font-size:9.5px">(ชิ้น)</span></th>
+    <th style="width:104px">หมายเหตุ</th>
   </tr></thead><tbody>`;
 
   rows.forEach(g => {
@@ -3805,13 +3825,13 @@ function renderArr(){
       <td class="n">${arrInt(t.pcs)}</td>
       <td class="n"><b>${arrMoney(t.cbm)}</b></td>
       <td class="n">${t.kg?arrInt(t.kg):'-'}</td>
-      <td class="n ${t.boxIn?'arr-done':''}">${arrInt(t.boxIn)}</td>
-      <td class="n ${t.boxWait>0&&g.st!=='cancel'?'arr-wait':''}">${
-        g.st==='cancel'?'—':(t.boxWait>0?arrInt(t.boxWait):'—')}</td>
+      <td class="n ${t.pcsIn?'arr-done':''}" title="เข้าคลังแล้ว ${arrBoth(t.pcsIn,t.boxIn)}">${arrInt(t.pcsIn)}</td>
+      <td class="n ${t.pcsWait>0&&g.st!=='cancel'?'arr-wait':''}" title="ค้างที่ขนส่ง ${arrBoth(t.pcsWait,t.boxWait)}">${
+        g.st==='cancel'?'—':(t.pcsWait>0?arrInt(t.pcsWait):'—')}</td>
       <td></td></tr>`;
 
     g.items.forEach(x => {
-      const bx=+x.boxes||0, bi=+x.boxes_in||0, left=bx-bi;
+      const bx=+x.boxes||0, bi=+x.boxes_in||0, left=bx-bi, m=arrPcsOf(x);
       h += `<tr class="${x.is_extra?'arr-extra':''}" style="box-shadow:inset 7px 0 0 ${col}33">
         <td></td>
         <td>${esc(x.line_ref||'-')}</td>
@@ -3822,22 +3842,24 @@ function renderArr(){
         <td class="n">${x.pcs?arrInt(x.pcs):'-'}</td>
         <td class="n">${x.cbm?arrMoney(x.cbm):'-'}</td>
         <td class="n">${x.weight_kg?arrInt(x.weight_kg):'-'}</td>
-        <td class="n ${bi?'arr-done':''}" ${x.in_date?`title="เข้าคลัง ${fmtDate(x.in_date)}"`:''}>${
-          bi?arrInt(bi):'-'}</td>
-        <td class="n ${left>0&&!x.is_extra&&g.st!=='cancel'?'arr-wait':''}">${
-          x.is_extra?'▸':(g.st==='cancel'?'—':(left>0?arrInt(left):'—'))}</td>
+        <td class="n ${bi?'arr-done':''}" title="เข้าคลังแล้ว ${arrBoth(m.inPcs,bi)}${
+          x.in_date?' · รอบล่าสุด '+fmtDate(x.in_date):''}">${m.inPcs?arrInt(m.inPcs):'-'}</td>
+        <td class="n ${left>0&&!x.is_extra&&g.st!=='cancel'?'arr-wait':''}" title="ค้างที่ขนส่ง ${arrBoth(m.leftPcs,left)}">${
+          x.is_extra?'▸':(g.st==='cancel'?'—':(m.leftPcs>0?arrInt(m.leftPcs):'—'))}</td>
         <td style="font-size:11.5px;color:var(--muted)">${esc(x.note||'')}</td></tr>`;
     });
   });
 
   /* แถวรวมท้ายตาราง — เทียบกับชีทเดิมได้ตรง ๆ */
   const gt = rows.reduce((a,g)=>({boxes:a.boxes+g.t.boxes,pcs:a.pcs+g.t.pcs,cbm:a.cbm+g.t.cbm,
-    kg:a.kg+g.t.kg,boxIn:a.boxIn+g.t.boxIn,boxWait:a.boxWait+g.t.boxWait}),
-    {boxes:0,pcs:0,cbm:0,kg:0,boxIn:0,boxWait:0});
+    kg:a.kg+g.t.kg,boxIn:a.boxIn+g.t.boxIn,boxWait:a.boxWait+g.t.boxWait,
+    pcsIn:a.pcsIn+g.t.pcsIn,pcsWait:a.pcsWait+g.t.pcsWait}),
+    {boxes:0,pcs:0,cbm:0,kg:0,boxIn:0,boxWait:0,pcsIn:0,pcsWait:0});
   h += `<tr class="arr-sum"><td colspan="5">รวม ${rows.length} ใบแจ้ง</td>
     <td class="n">${arrInt(gt.boxes)}</td><td class="n">${arrInt(gt.pcs)}</td>
     <td class="n">${arrMoney(gt.cbm)}</td><td class="n">${arrInt(gt.kg)}</td>
-    <td class="n">${arrInt(gt.boxIn)}</td><td class="n">${arrInt(gt.boxWait)}</td><td></td></tr></tbody>`;
+    <td class="n" title="เข้าคลังแล้ว ${arrBoth(gt.pcsIn,gt.boxIn)}">${arrInt(gt.pcsIn)}</td>
+    <td class="n" title="ค้างที่ขนส่ง ${arrBoth(gt.pcsWait,gt.boxWait)}">${arrInt(gt.pcsWait)}</td><td></td></tr></tbody>`;
   $('arrTb').innerHTML = h;
 }
 
@@ -4036,17 +4058,26 @@ function openArrIn(id){
   const its = arrItemsOf(id).filter(x=>!x.is_extra);
   $('ar_indate').value = arrToday();
   $('arrInHead').innerHTML = `📅 ${fmtDate(n.notice_date)} · 🚛 ${esc(n.carrier||'-')}
-    ${n.notice_no?' · '+esc(n.notice_no):''} — ใส่จำนวนลังที่<b>เข้าคลังรอบนี้</b> (ที่ค้างไว้ก่อนไม่ต้องใส่ซ้ำ)`;
+    ${n.notice_no?' · '+esc(n.notice_no):''} — ใส่<b>จำนวนชิ้น</b>ที่เข้าคลังรอบนี้ (ที่ค้างไว้ก่อนไม่ต้องใส่ซ้ำ)`;
   $('arrInBody').innerHTML = its.map(x => {
-    const bx=+x.boxes||0, bi=+x.boxes_in||0, left=bx-bi;
-    return `<div class="arr-ln" data-id="${x.id}" style="grid-template-columns:1fr 70px 70px 90px;gap:8px">
-      <div style="font-size:12px;line-height:1.5">
+    /* ★ กรอกเป็นชิ้น — ฐานข้อมูลเก็บเป็นลัง ระบบหารด้วยชิ้น/ลังให้ตอนบันทึก
+       รายการที่ไม่ได้ใส่ชิ้น/ลัง แปลงไม่ได้ → ให้กรอกเป็นลังตามเดิม (ป้ายบอกไว้) */
+    const m = arrPcsOf(x), byPcs = m.ppb>0 || m.fullPcs>0;
+    const left = byPcs ? m.leftPcs : m.leftBox;
+    const full = byPcs ? m.fullPcs : m.fullBox;
+    const unit = byPcs ? 'ชิ้น' : 'ลัง';
+    return `<div class="arr-ln" data-id="${x.id}" style="grid-template-columns:1fr 78px 78px 96px;gap:8px">
+      <div style="font-size:12.5px;line-height:1.5">
         <b>${esc(x.sku||'-')}</b>
-        <div style="color:var(--muted);font-size:11px">${esc(x.line_ref||'')}${x.po_number?' · PO '+esc(x.po_number):''}</div></div>
-      <div style="font-size:11.5px;text-align:right">แจ้ง<br><b>${arrInt(bx)}</b></div>
-      <div style="font-size:11.5px;text-align:right">ค้าง<br><b class="${left>0?'arr-wait':''}">${arrInt(left)}</b></div>
-      <input class="ai-in" inputmode="decimal" value="" placeholder="0" data-left="${left}"
-        title="ลังที่เข้าคลังรอบนี้ (ไม่เกิน ${arrInt(left)})">
+        <div style="color:var(--muted);font-size:11px">${esc(x.line_ref||'')}${x.po_number?' · PO '+esc(x.po_number):''}
+          ${m.ppb>0?' · '+arrInt(m.ppb)+' ชิ้น/ลัง':''}</div></div>
+      <div style="font-size:11.5px;text-align:right" title="${byPcs?arrBoth(m.fullPcs,m.fullBox):arrInt(m.fullBox)+' ลัง'}">
+        แจ้ง<br><b>${arrInt(full)}</b> <span class="muted" style="font-size:10px">${unit}</span></div>
+      <div style="font-size:11.5px;text-align:right" title="${byPcs?arrBoth(m.leftPcs,m.leftBox):arrInt(m.leftBox)+' ลัง'}">
+        ค้าง<br><b class="${left>0?'arr-wait':''}">${arrInt(left)}</b> <span class="muted" style="font-size:10px">${unit}</span></div>
+      <input class="ai-in" inputmode="decimal" value="" placeholder="0"
+        data-left="${left}" data-unit="${byPcs?'pcs':'box'}" data-ppb="${m.ppb||0}" data-leftbox="${m.leftBox}"
+        title="${unit}ที่เข้าคลังรอบนี้ (ไม่เกิน ${arrInt(left)} ${unit})">
     </div>`;
   }).join('') || '<div style="color:var(--muted);padding:10px">ไม่มีรายการที่ต้องตัด</div>';
   $('arrInBg').style.display='flex';
@@ -4062,13 +4093,21 @@ async function saveArrIn(){
   $('arrInBody').querySelectorAll('.arr-ln').forEach(l => {
     const el = l.querySelector('.ai-in'); const add = arrNum(el.value);
     if(!(add>0)) return;
-    const left = +el.dataset.left||0;
-    if(add>left+0.0001){ bad = 'ใส่เกินจำนวนที่ค้าง ('+arrInt(left)+' ลัง)'; return; }
+    const left = +el.dataset.left||0, unit = el.dataset.unit;
+    if(add>left+0.0001){
+      bad = 'ใส่เกินจำนวนที่ค้าง ('+arrInt(left)+' '+(unit==='pcs'?'ชิ้น':'ลัง')+')'; return; }
     const it = ARR_IT.find(x=>String(x.id)===String(l.dataset.id));
-    ups.push({ id:l.dataset.id, boxes_in:(+it.boxes_in||0)+add, in_date:d });
+    /* กรอกเป็นชิ้น → หารด้วยชิ้น/ลัง เป็นลังก่อนเก็บ (ฐานข้อมูลเก็บเป็นลัง)
+       ใส่ครบเท่าที่ค้าง = ตัดลังที่ค้างทั้งหมด ไม่ให้เหลือเศษทศนิยมค้างไว้ */
+    let addBox;
+    if(unit!=='pcs')                     addBox = add;
+    else if(Math.abs(add-left)<0.51)     addBox = +el.dataset.leftbox||0;
+    else if(+el.dataset.ppb>0)           addBox = Math.round(add/(+el.dataset.ppb)*1000)/1000;
+    else                                 addBox = Math.round(add/left*(+el.dataset.leftbox||0)*1000)/1000;
+    ups.push({ id:l.dataset.id, boxes_in:Math.round(((+it.boxes_in||0)+addBox)*1000)/1000, in_date:d });
   });
   if(bad) return toast(bad);
-  if(!ups.length) return toast('ยังไม่ได้ใส่จำนวนลังที่เข้าคลัง');
+  if(!ups.length) return toast('ยังไม่ได้ใส่จำนวนที่เข้าคลัง');
   const btn=$('arrInSaveBtn'); btn.disabled=true; btn.textContent='กำลังบันทึก...';
   for(const u of ups){
     const r = await sb.from('arrival_items').update({boxes_in:u.boxes_in, in_date:u.in_date}).eq('id',u.id).select().single();
@@ -4124,23 +4163,28 @@ function exportArr(){
   if(!groups.length) return toast('เดือนนี้ไม่มีข้อมูล');
   const aoa = [['วันแจ้งเข้า','เลขที่แจ้ง','ขนส่ง','รถนำส่ง','คาดเข้าคลัง','สถานะ',
     'เลขที่รายการ','PO','SKU','ชิ้น/ลัง','จำนวนลัง','จำนวนชิ้น','จำนวนคิว','น้ำหนัก (กก.)',
+    'เข้าคลังแล้ว (ชิ้น)','ค้างที่ขนส่ง (ชิ้น)',
     'เข้าคลังแล้ว (ลัง)','ค้างที่ขนส่ง (ลัง)','วันที่เข้าคลัง','บรรทัดพ่วง','หมายเหตุรายการ','หมายเหตุใบแจ้ง']];
   groups.forEach(g => {
     const st = (ARR_ST[arrCalcStatus(g.n,g.items)]||{}).t||'';
     g.items.forEach(x => {
-      const bx=+x.boxes||0, bi=+x.boxes_in||0;
+      const bx=+x.boxes||0, bi=+x.boxes_in||0, m=arrPcsOf(x);
       aoa.push([g.n.notice_date||'', g.n.notice_no||'', g.n.carrier||'', g.n.truck||'', g.n.eta_date||'', st,
         x.line_ref||'', x.po_number||'', x.sku||'', +x.pcs_per_box||'', bx||'', +x.pcs||'',
-        +x.cbm||'', +x.weight_kg||'', bi||'', x.is_extra?'':(bx-bi), x.in_date||'',
+        +x.cbm||'', +x.weight_kg||'',
+        m.inPcs||'', x.is_extra?'':m.leftPcs,
+        bi||'', x.is_extra?'':(bx-bi), x.in_date||'',
         x.is_extra?'พ่วง':'', x.note||'', g.n.note||'']);
     });
   });
   const t = arrTotals(groups.flatMap(g=>g.items));
   aoa.push([]);
-  aoa.push(['รวม','','','','','','','','','', t.boxes, t.pcs, +t.cbm.toFixed(4), t.kg, t.boxIn, t.boxWait]);
+  aoa.push(['รวม','','','','','','','','','', t.boxes, t.pcs, +t.cbm.toFixed(4), t.kg,
+            t.pcsIn, t.pcsWait, t.boxIn, t.boxWait]);
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols']=[{wch:12},{wch:12},{wch:16},{wch:12},{wch:12},{wch:16},{wch:14},{wch:9},{wch:24},
-               {wch:9},{wch:10},{wch:11},{wch:11},{wch:12},{wch:14},{wch:15},{wch:12},{wch:9},{wch:26},{wch:26}];
+               {wch:9},{wch:10},{wch:11},{wch:11},{wch:12},
+               {wch:16},{wch:17},{wch:15},{wch:16},{wch:12},{wch:9},{wch:26},{wch:26}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'แจ้งสินค้าขาเข้า');
   XLSX.writeFile(wb, 'แจ้งสินค้าขาเข้า_'+mo+'.xlsx');
