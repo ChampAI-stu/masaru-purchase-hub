@@ -161,7 +161,7 @@ code{background:#F1F5F9;padding:1px 5px;border-radius:4px;font-size:11.5px;overf
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v01-12</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v01-13</span>
   <button class="hp-btn o" onclick="window.print()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF">🖨️ พิมพ์คู่มือ</button>
   <a href="index.html" class="pill-top">🏠 หน้ารวม</a>
 </div>
@@ -819,6 +819,16 @@ code{background:#F1F5F9;padding:1px 5px;border-radius:4px;font-size:11.5px;overf
     — <b>แก้ทับได้เสมอ</b> เพราะยอดจริงมาจาก Ksher ไม่ใช่จากการคำนวณ
     <br>ยอดนี้จะไปโผล่ในหน้า <b>ดูคำขอ (👁)</b> เป็นกล่องส้ม <b>เจ้านายเห็นก่อนกดอนุมัติ</b>
     และเด้งเข้าช่อง <b>ยอดเติมเงินเข้าระบบ</b> ในกล่อง 📢 แจ้งโอนเงิน ให้เองด้วย</div>
+  <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:190px">ที่ไหนอีก</th><th>โชว์ยังไง</th></tr></thead><tbody>
+    <tr><td><b>ช่อง "รวมบาท" ในตาราง</b><div class="muted" style="font-size:11.5px">รายการคำขอ · รออนุมัติ · ของฉัน</div></td>
+      <td>คำขอ Ksher โชว์<b>ยอดเติม</b>แทน (ไม่ใช่ 0) พร้อมป้ายเล็ก
+        <b style="color:#B45309">💰 ยอดเติม Ksher</b> · ถ้ากรอกเติมจริงแล้วเป็น <b style="color:#B45309">💰 เติมจริง ✓</b>
+        · ยังไม่กรอกเลย = <b style="color:#B91C1C">⚠️ ยังไม่ใส่ยอดเติม</b> — เจ้านายกวาดตาดูทั้งหน้าได้ ไม่ต้องกด 👁 ทีละใบ</td></tr>
+    <tr><td><b>การ์ด "อยู่ระหว่างอนุมัติ ≈ บาท"</b></td><td>รวมยอดเติมของ Ksher เข้าไปด้วย</td></tr>
+    <tr><td><b>กล่องยืนยันอนุมัติ / ตีกลับ</b></td><td>ขึ้น <b>"ยอดที่ต้องเติม Ksher x ฿"</b> แทน "ยอดรวม"</td></tr>
+    <tr><td><b>ปฏิทิน · สรุปรายเดือน · Excel</b></td><td>หัวข้อ event ใช้ยอดเติม (มีวงเล็บ "เติม Ksher") · สรุปรวมด้วยยอดเติม ·
+      Excel เพิ่ม 3 คอลัมน์ <b>ยอดเติม Ksher (ขอ) / (จริง) / ยอดที่ต้องโอน (บาท)</b></td></tr>
+  </tbody></table></div>
   <div class="hp-tip">💡 <b>ยอดคำขอยังเป็นสกุลเดิมเหมือนเดิม</b> (เช่น 199,700 ¥) ไม่ถูกแทนที่ —
     ยอดเติมเป็นตัวเลขคนละก้อน เก็บคู่กันไว้เทียบได้</div>
 
