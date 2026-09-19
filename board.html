@@ -341,11 +341,13 @@
   .plan-table .plan-subtotal td{background:#EEF2F7;font-weight:700;border-top:2px solid #475569}
   /* แถวกรอกในฟอร์มเที่ยว */
   .trip-lines-wrap{overflow-x:auto;padding-bottom:4px}
-  .trip-lines-head,.trip-line{min-width:780px}
-  .trip-lines-head{display:grid;grid-template-columns:78px 80px 1fr 50px 48px 92px 62px 62px 50px 116px 24px;gap:6px;
+  .trip-lines-head,.trip-line{min-width:900px}   /* กันเลขถูกตัด — จอแคบเลื่อนแนวนอนแทน */
+  .trip-lines-head{display:grid;grid-template-columns:78px 78px 1fr 52px 56px 104px 68px 62px 52px 106px 30px;gap:6px;
     font-size:11px;color:var(--muted);margin-bottom:6px;padding:0 2px}
-  .trip-line{display:grid;grid-template-columns:78px 80px 1fr 50px 48px 92px 62px 62px 50px 116px 24px;gap:6px;margin-bottom:8px;align-items:center}
-  .trip-line input{width:100%;padding:9px 5px;border:1px solid var(--line);border-radius:8px;font-size:13px}
+  .trip-line{display:grid;grid-template-columns:78px 78px 1fr 52px 56px 104px 68px 62px 52px 106px 30px;gap:6px;margin-bottom:8px;align-items:center}
+  /* ช่องในกริดต้องยอมหดได้ ไม่งั้นช่อง SKU (1fr) ดันความกว้างจนคอลัมน์ท้ายหลุดขอบ */
+  .trip-lines-head > *, .trip-line > *{min-width:0}
+  .trip-line input{width:100%;min-width:0;padding:9px 5px;border:1px solid var(--line);border-radius:8px;font-size:13px}
   .trip-line input[type=number]{font-variant-numeric:tabular-nums}
   /* ช่องอ่านอย่างเดียว — แจ้งมากี่ลัง / เหลือรับอีกกี่ลัง (มาจากใบแจ้งสินค้าขาเข้า) */
   .tl-left{font-size:11px;line-height:1.35;text-align:center;color:var(--muted);
@@ -818,7 +820,7 @@ body.price-on .sl-price{display:block}
 
 <!-- ============ Modal เพิ่ม/แก้ไขเที่ยวส่ง ============ -->
 <div class="modal-bg" id="tripBg">
-  <div class="modal" style="max-width:980px">
+  <div class="modal" style="max-width:1020px">
     <div class="modal-head">
       <h2 id="tripTitle">เพิ่มเที่ยวส่ง</h2>
       <button class="modal-close" id="tripClose">&times;</button>
@@ -844,7 +846,7 @@ body.price-on .sl-price{display:block}
       </div>
       <div style="font-size:11.5px;color:var(--muted);margin-top:6px" id="tpArrHint">
         เลือกใบแจ้งที่ขนส่งจะส่งเข้าคลังรอบนี้ → ดึงรายการที่<b>ยังค้างที่ขนส่ง</b>มาให้ พร้อมเติม
-        จำนวนลัง/ชิ้น/คิว ตาม<b>จำนวนคงเหลือ</b> (แก้ทับได้ · กรอกมือเพิ่มด้านล่างก็ได้)
+        <b>ของเข้า (ชิ้น)</b> · ลัง · คิว ตาม<b>จำนวนคงเหลือ</b> (แก้ทับได้ · กรอกมือเพิ่มด้านล่างก็ได้)
       </div>
     </div>
     <div class="trip-lines-wrap">
@@ -854,7 +856,7 @@ body.price-on .sl-price{display:block}
       <span>SKU</span>
       <span>ชิ้น/ลัง</span>
       <span>ลัง</span>
-      <span style="text-align:center">แจ้งมา/คงเหลือ</span>
+      <span style="text-align:center">แจ้งมา/คงเหลือ<br><span style="font-size:9.5px">(ชิ้น)</span></span>
       <span>ของเข้า</span>
       <span>คิว</span>
       <span>เคลียร์</span>
@@ -2904,10 +2906,10 @@ async function arrPickLoad(){
       if(r.is_extra) return;                       // บรรทัดพ่วงไม่มีลังของตัวเอง
       const nn = r.arrival_notices || {};
       const left = (+r.boxes||0) - (+r.boxes_in||0);
-      const g = by[r.notice_id] || (by[r.notice_id] = {n:Object.assign({id:r.notice_id},nn), items:[], left:0, boxes:0});
+      const g = by[r.notice_id] || (by[r.notice_id] = {n:Object.assign({id:r.notice_id},nn), items:[], left:0, boxes:0, leftPcs:0});
       g.items.push(Object.assign({}, r, {left:left}));
       g.boxes += (+r.boxes||0);
-      if(left>0.0001) g.left += left;
+      if(left>0.0001){ g.left += left; g.leftPcs += tlPcsOf(r).leftPcs; }
     });
     ARR_PICK = Object.values(by)
       .filter(g => g.left>0.0001)                  // ใบที่เข้าครบแล้วไม่ต้องโชว์
@@ -2935,7 +2937,7 @@ function arrPickFill(){
     return '<option value="'+esc(g.n.id)+'">'
       + esc(d) + ' · ' + esc(g.n.carrier||'-')
       + (g.n.notice_no?(' · '+esc(g.n.notice_no)):'')
-      + ' — คงเหลือ ' + arrInt(g.left) + ' ลัง (' + nItems + ' รายการ)'
+      + ' — คงเหลือ ' + arrInt(g.leftPcs) + ' ชิ้น (' + arrInt(g.left) + ' ลัง · ' + nItems + ' รายการ)'
       + '</option>';
   }).join('');
   $('tpArrHint').innerHTML = 'เลือกใบแจ้งที่ขนส่งจะส่งเข้าคลังรอบนี้ → ดึงรายการที่<b>ยังค้างที่ขนส่ง</b>มาให้ พร้อมเติม'
@@ -2951,7 +2953,7 @@ function arrFindLeft(lineno, po, sku){
       const iref = String(it.line_ref||'').trim().toUpperCase().replace(/[\s\-–—_\/]+$/,'');
       const hit = (ref && iref && iref===ref)
         || (!ref && P && S && String(it.po_number||'').trim()===P && String(it.sku||'').trim()===S);
-      if(hit) return {full:+it.boxes||0, left:it.left, notice:g.n};
+      if(hit) return Object.assign(tlPcsOf(it), {notice:g.n});
     }
   }
   return null;
@@ -2962,14 +2964,33 @@ function arrRefreshLeft(){
     if(cell.dataset.fixed==='1') return;                    // บรรทัดที่ดึงมาสด ๆ ไม่ต้องคำนวณใหม่
     const m = arrFindLeft(l.querySelector('.tl-lineno').value,
                           l.querySelector('.tl-po').value, l.querySelector('.tl-sku').value);
-    tlLeftPaint(cell, m ? m.full : null, m ? m.left : null);
+    tlLeftPaint(cell, m);
   });
 }
-function tlLeftPaint(cell, full, left){
-  if(full==null){ cell.className='tl-left none'; cell.innerHTML='—'; cell.title='ไม่พบในใบแจ้งสินค้าขาเข้า (กรอกมือ)'; return; }
+/* ★ นับเป็น "ชิ้น" ไม่ใช่ลัง — หน้าแผนรับสินค้ากรอกของเข้าเป็นชิ้น
+   ชิ้นที่เหลือ = ชิ้น/ลัง × ลังที่ยังค้าง (ถ้าไม่มีชิ้น/ลัง ใช้สัดส่วนจากจำนวนลัง)
+   เก็บจำนวนลังไว้ในทูลทิปให้ดูควบคู่ได้ */
+function tlPcsOf(it){
+  const boxes=+it.boxes||0, bin=+it.boxes_in||0, leftBox=boxes-bin;
+  const ppb=+it.pcs_per_box||0, pcs=+it.pcs||0;
+  let fullPcs = pcs>0 ? pcs : (ppb>0&&boxes>0 ? ppb*boxes : 0);
+  let leftPcs;
+  if(ppb>0)            leftPcs = ppb*leftBox;                 // ตรงที่สุด
+  else if(boxes>0)     leftPcs = Math.round(fullPcs*leftBox/boxes);
+  else                 leftPcs = fullPcs;
+  return {fullPcs:Math.round(fullPcs), leftPcs:Math.round(leftPcs),
+          fullBox:boxes, leftBox:leftBox};
+}
+function tlLeftPaint(cell, m){
+  if(!m || m.fullPcs==null){
+    cell.className='tl-left none'; cell.innerHTML='—';
+    cell.title='ไม่พบในใบแจ้งสินค้าขาเข้า (กรอกมือ)'; return;
+  }
   cell.className='tl-left';
-  cell.innerHTML = 'แจ้ง '+arrInt(full)+'<br>เหลือ <b>'+arrInt(left)+'</b>';
-  cell.title = 'แจ้งมา '+arrInt(full)+' ลัง · เข้าคลังแล้ว '+arrInt(full-left)+' ลัง · เหลือรับ '+arrInt(left)+' ลัง';
+  cell.innerHTML = 'แจ้ง '+arrInt(m.fullPcs)+'<br>เหลือ <b>'+arrInt(m.leftPcs)+'</b>';
+  cell.title = 'แจ้งมา '+arrInt(m.fullPcs)+' ชิ้น ('+arrInt(m.fullBox)+' ลัง)'
+             + ' · รับไปแล้ว '+arrInt(m.fullPcs-m.leftPcs)+' ชิ้น ('+arrInt(m.fullBox-m.leftBox)+' ลัง)'
+             + ' · เหลือรับ '+arrInt(m.leftPcs)+' ชิ้น ('+arrInt(m.leftBox)+' ลัง)';
 }
 
 function addArrLines(){
@@ -2989,19 +3010,19 @@ function addArrLines(){
   if(!$('tpCarrier').value.trim()) $('tpCarrier').value = g.n.carrier||'';
 
   list.forEach(function(it){
-    const full = +it.boxes||0, left = it.left;
-    const ratio = full>0 ? left/full : 1;
+    const m = tlPcsOf(it);
+    const ratio = m.fullBox>0 ? m.leftBox/m.fullBox : 1;
     addTripLine({
       lineno: it.line_ref||'',
       po: it.po_number||'',
       sku: it.sku||'',
       pcs: it.pcs_per_box!=null?it.pcs_per_box:'',
-      cartons: Math.round(left*1000)/1000,                       // ลังที่ควรรับรอบนี้ = คงเหลือ
-      qin: (+it.pcs>0) ? Math.round((+it.pcs)*ratio) : '',       // ชิ้นตามสัดส่วนที่เหลือ
+      cartons: Math.round(m.leftBox*1000)/1000,                  // ลังที่ควรรับรอบนี้ = ลังคงเหลือ
+      qin: m.leftPcs>0 ? m.leftPcs : '',                         // ★ ของเข้า = ชิ้นที่เหลือรับ
       cubic: (+it.cbm>0) ? Math.round((+it.cbm)*ratio*10000)/10000 : '',
       note: 'ใบแจ้ง '+(g.n.notice_no||fmtDate(g.n.notice_date))
-            + ' · แจ้งมา '+arrInt(full)+' เข้าแล้ว '+arrInt(full-left),
-      full: full, left: left
+            + ' · แจ้งมา '+arrInt(m.fullPcs)+' ชิ้น รับไปแล้ว '+arrInt(m.fullPcs-m.leftPcs)+' ชิ้น',
+      left4: m
     });
   });
   toast('ดึง '+list.length+' รายการที่ยังค้าง จากใบแจ้ง '+(g.n.notice_no||fmtDate(g.n.notice_date))+' แล้ว');
@@ -3029,7 +3050,7 @@ function addTripLine(vals={}){
     if(lines.length > 1) line.remove(); else toast('ต้องมีอย่างน้อย 1 รายการ');
   });
   const cell = line.querySelector('.tl-left');
-  if(vals.full!=null){ tlLeftPaint(cell, vals.full, vals.left); cell.dataset.fixed='1'; }
+  if(vals.left4){ tlLeftPaint(cell, vals.left4); cell.dataset.fixed='1'; }
   /* พิมพ์เลขที่รายการ/PO/SKU เอง → ไปหาจำนวนคงเหลือให้ */
   ['.tl-lineno','.tl-po','.tl-sku'].forEach(function(sel){
     line.querySelector(sel).addEventListener('change', function(){
