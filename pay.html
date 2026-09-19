@@ -270,6 +270,42 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
 .warnbox{background:#FCE4E4;border:1px solid #D0212B55;color:#8f1219;border-radius:10px;padding:10px 12px;font-size:13px;margin-top:10px;display:none}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 22px;border-radius:10px;font-weight:600;display:none;z-index:99}
 .tag-co{display:inline-block;padding:2px 10px;border-radius:6px;font-size:11.5px;font-weight:700;color:#fff;background:#3A5A8C}
+/* ═══════ แผ่นพิมพ์สลิปทั้งชุด (แท็บหลักฐานชำระเงินร้านค้า) ═══════
+   หนึ่ง .rp-page = หนึ่งแผ่น A4 พอดี — A4 สูง 297mm − ขอบ 12mm×2 = 273mm ใช้ 272mm กันปัดเศษ
+   ไม่ฟิกความสูงช่องรูปเป็น mm (จะบวกแคปชัน+ขอบ+padding แล้วเกิน → ล้นไปอีกหน้า)
+   ให้กริดแบ่งพื้นที่ที่เหลือให้เท่า ๆ กันเอง */
+.rp{background:#fff;color:#111;width:780px;max-width:100%;margin:0 auto}
+.rp-head{border:1px solid #333;padding:12px 16px;margin-bottom:10px}
+.rp-head h1{font-size:17px;font-weight:800;text-align:center;margin:0 0 2px}
+.rp-head .no{text-align:center;font-size:12.5px;color:#333;margin-bottom:9px}
+.rp-head table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+.rp-head td{border:1px solid #666;padding:5px 8px;color:#000;word-break:break-word}
+.rp-head td.k{background:#EFEFEF;font-weight:700;width:112px;white-space:nowrap}
+.rp-idx{width:100%;border-collapse:collapse;font-size:11.5px;table-layout:fixed}
+.rp-idx th,.rp-idx td{border:1px solid #777;padding:4px 6px;color:#000;word-break:break-word}
+.rp-idx thead th{background:#E8E8E8;font-weight:800;text-align:center}
+.rp-idx td.r{text-align:right;white-space:nowrap}
+.rp-idx td.c{text-align:center;white-space:nowrap}
+.rp-idx tr.miss td{background:#FBECEC}
+.rp-page{height:272mm;overflow:hidden;display:flex;flex-direction:column}
+.rp-page>.rp-head,.rp-page>.rp-cap-pg{flex:0 0 auto}
+.rp-page+.rp-page,.rp-idxpage+.rp-page,.rp-page+.rp-idxpage{page-break-before:always;break-before:page}
+.rp-cap-pg{font-size:11px;color:#333;margin:0 0 6px}
+.rp-grid{flex:1 1 auto;min-height:0;display:grid;gap:8px}
+.rp-cell{border:1px solid #999;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;
+  background:#fff;min-height:0;min-width:0}
+.rp-cap{flex:0 0 auto;font-size:10.5px;padding:4px 7px;background:#F0F0F0;border-bottom:1px solid #999;
+  color:#000;word-break:break-word;line-height:1.45}
+.rp-box{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;padding:5px}
+.rp-box img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.rp-miss{font-size:11.5px;color:#555;text-align:center;line-height:1.7;padding:12px 8px;word-break:break-all}
+.rp-1 .rp-grid{grid-template-columns:minmax(0,1fr)}
+.rp-2 .rp-grid{grid-template-columns:minmax(0,1fr)}
+.rp-4 .rp-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+/* บนจอ ขีดเส้นคั่นให้เห็นว่าคนละแผ่น — เวลาพิมพ์ไม่มีเส้นนี้ ไม่กินความสูง */
+@media screen{ .rp-page+.rp-page,.rp-idxpage+.rp-page{margin-top:16px;border-top:2px dashed #bbb} }
+#rpPrev{background:#F4F6FA;border:1px solid var(--line);border-radius:10px;padding:12px;
+  max-height:calc(100vh - 300px);overflow:auto}
 </style>
 </head>
 <body>
@@ -278,7 +314,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-93</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-94</span>
   </span>
   <span id="testBadge" style="display:none;background:#B45309;color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;margin-right:8px">🧪 โหมดทดสอบ — ไม่ต้องรออนุมัติ</span>
   <div class="pill-top" id="rolePill">…</div>
@@ -695,6 +731,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
         </select>
         <div style="flex:1"></div>
         <button class="btn mini ghost" id="gasBtn" onclick="openGasCfg()">⚙️ ที่เก็บสลิป</button>
+        <button class="btn mini ghost" id="rmPrintBtn" onclick="printRemitAll()">🖨️ พิมพ์สลิปทั้งชุด</button>
         <button class="btn mini" onclick="exportRemit()">📥 Export Excel</button>
       </div>
       <div class="scroll"><div id="rmBody"></div></div>
@@ -1076,6 +1113,29 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   </div>
 </div>
 
+<!-- ============ MODAL: พิมพ์สลิปทั้งชุด (หลักฐานชำระเงินร้านค้า) ============ -->
+<div class="modal-bg" id="rpBg">
+  <div class="modal" style="max-width:1000px">
+    <div class="row no-print" style="align-items:center;margin-bottom:4px">
+      <h3 style="margin:0;padding-right:0" id="rpTitle">🖨️ พิมพ์สลิปทั้งชุด</h3>
+      <div style="flex:1"></div>
+      <span class="muted" style="font-size:12px">รูป/หน้า</span>
+      <button class="btn mini" id="rpP1" onclick="rpSetPer(1)">1</button>
+      <button class="btn mini ghost" id="rpP2" onclick="rpSetPer(2)">2</button>
+      <button class="btn mini ghost" id="rpP4" onclick="rpSetPer(4)">4</button>
+    </div>
+    <div class="row no-print" style="align-items:center;gap:10px;margin:8px 0 10px;flex-wrap:wrap">
+      <span class="muted" id="rpInfo" style="font-size:12.5px">—</span>
+      <div style="flex:1"></div>
+      <button class="btn ghost" onclick="$('rpBg').style.display='none'">ปิด</button>
+      <button class="btn" id="rpBtn" onclick="rpPrint()">🖨️ สั่งพิมพ์</button>
+    </div>
+    <div id="rpPdfWarn" class="no-print" style="display:none;background:#FDF3DC;border:1px solid #E9C46A;
+         border-radius:10px;padding:9px 12px;font-size:12.5px;margin-bottom:10px"></div>
+    <div id="rpPrev"><div id="rpPaper"></div></div>
+  </div>
+</div>
+
 <!-- ============ MODAL: บันทึกข้อความภายใน (Internal Memo) ============ -->
 <div class="modal-bg" id="memoDocBg">
   <div class="modal" style="max-width:1080px">
@@ -1183,7 +1243,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v09-93';
+const PAY_VERSION='v09-94';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -6004,6 +6064,179 @@ function exportRemit(){
   const tag=(f||t)?((f&&t&&f!==t)?(f+'_ถึง_'+t):(f||t)):($('rmMonth').value||monthStr());
   XLSX.writeFile(wb,'หลักฐานชำระเงินร้านค้า_'+tag+'.xlsx');
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   🖨️ พิมพ์สลิปทั้งชุด — ทุกงวดตามที่กรองอยู่ สั่งพิมพ์ครั้งเดียวจบ
+   ───────────────────────────────────────────────────────────────
+   หน้าแรก = สารบัญ (เช็คลิสต์) ทุกงวดในช่วงนั้น รวมงวดที่ยังไม่แนบสลิป
+   หน้าถัดไป = สลิปเรียงตามลำดับในสารบัญ 1 / 2 / 4 รูปต่อหน้า
+   ⚠️ รูปดึงจาก Google Drive (ไม่กิน egress ของ Supabase เลย)
+      ต้องรอโหลดครบก่อนสั่งพิมพ์ ไม่งั้นได้กระดาษเปล่า — ปุ่มพิมพ์จึงล็อกไว้
+   ⚠️ PDF: ไฟล์ที่อยู่บน Drive พิมพ์ได้หน้าแรก (Drive เรนเดอร์รูปย่อให้)
+           ไฟล์ PDF ที่อยู่บน Supabase Storage เรนเดอร์ไม่ได้ → ขึ้นเป็นช่องแจ้ง
+           พร้อมรายชื่อ + ลิงก์ให้เปิดพิมพ์แยก (โชว์บนจอ ไม่ติดไปบนกระดาษ)
+   ═══════════════════════════════════════════════════════════════ */
+let RP_PER=1, RP_ROWS=[];
+const RP_KEY='masaru_pay_rpper', RP_WARN_FILES=80;
+
+/* รูปสำหรับพิมพ์ — ใหญ่ขึ้นตามพื้นที่จริงบนกระดาษ ไม่ดึงใหญ่เกินจำเป็น */
+function rpImg(it,per){
+  const id=it.id||driveId(it.url);
+  const w=per===1?1600:(per===2?1200:900);
+  if(id)return 'https://drive.google.com/thumbnail?id='+id+'&sz=w'+w;
+  return rpIsPdf(it)?'':(it.url||'');
+}
+function rpIsPdf(it){ return /pdf/i.test(it.mime||'')||/\.pdf(\?|$)/i.test(it.url||''); }
+
+function printRemitAll(){
+  const rows=remitRows();
+  if(!rows.length)return toast('ไม่มีงวดจ่ายตามเงื่อนไขที่เลือก');
+  const files=rows.reduce((t,p)=>t+slipCount(p),0);
+  if(!files)return toast('งวดในช่วงนี้ยังไม่มีสลิปแนบเลย');
+  if(files>RP_WARN_FILES&&!confirm('ช่วงที่กรองอยู่มีสลิป '+files+' ไฟล์\n'
+      +'ต้องโหลดรูปจาก Google Drive ทั้งหมดก่อนพิมพ์ — อาจใช้เวลาหลายสิบวินาที\n\n'
+      +'จะไปต่อไหม? (ถ้าไม่ ให้แคบช่วงวันที่ลงก่อน)'))return;
+  RP_ROWS=rows;
+  try{ RP_PER=+(localStorage.getItem(RP_KEY)||1)||1; }catch(e){ RP_PER=1; }
+  if([1,2,4].indexOf(RP_PER)<0)RP_PER=1;
+  $('rpTitle').textContent='🖨️ พิมพ์สลิปทั้งชุด'+rmSpanLabel();
+  rpDraw();
+  $('rpBg').style.display='flex';
+}
+function rpSetPer(n){
+  RP_PER=[1,2,4].indexOf(+n)>=0?+n:1;
+  try{ localStorage.setItem(RP_KEY,String(RP_PER)); }catch(e){}
+  rpDraw();
+}
+function rpDraw(){
+  [1,2,4].forEach(function(n){
+    const b=$('rpP'+n); if(b)b.className='btn mini'+(RP_PER===n?'':' ghost');
+  });
+  const rows=RP_ROWS;
+  /* แผ่รายการไฟล์ทั้งหมดออกเป็นชุดเดียว พร้อมข้อมูลงวดติดไปด้วย */
+  const flat=[]; const noRender=[];
+  rows.forEach(function(p,ri){
+    const b=billOf(p.bill_id);
+    slipList(p).forEach(function(it,fi){
+      const src=rpImg(it,RP_PER);
+      const o={p:p,b:b,it:it,ri:ri+1,fi:fi+1,fn:slipCount(p),src:src,pdf:rpIsPdf(it)};
+      if(!src)noRender.push(o);
+      flat.push(o);
+    });
+  });
+
+  /* ---------- หน้าสารบัญ ---------- */
+  const files=flat.length;
+  const done=rows.filter(p=>slipCount(p)>0).length;
+  const thb=rows.reduce((t,p)=>t+thbOf(p),0);
+  let h='<div class="rp rp-'+RP_PER+'" id="rpSheet">'
+    +'<div class="rp-idxpage">'
+    +'<div class="rp-head"><h1>หลักฐานการชำระเงินร้านค้า</h1>'
+    +'<div class="no">'+esc((rmSpanLabel()||'').replace(/^ · /,'ช่วง ')||'ทุกช่วงวันที่')+'</div>'
+    +'<table><tbody>'
+    +'<tr><td class="k">จำนวนงวด</td><td>'+rows.length+' งวด</td>'
+      +'<td class="k">ยอดรวม (บาท)</td><td>'+money2(thb)+' ฿</td></tr>'
+    +'<tr><td class="k">แนบสลิปแล้ว</td><td>'+done+' งวด · '+files+' ไฟล์</td>'
+      +'<td class="k">ยังไม่แนบ</td><td>'+(rows.length-done)+' งวด</td></tr>'
+    +'<tr><td class="k">พิมพ์เมื่อ</td><td>'+esc(new Date().toLocaleString('th-TH'))+'</td>'
+      +'<td class="k">ผู้พิมพ์</td><td>'+esc(typeof ME!=='undefined'&&ME?ME:'-')+'</td></tr>'
+    +'</tbody></table></div>'
+    +'<table class="rp-idx"><thead><tr>'
+    +'<th style="width:26px">#</th><th style="width:66px">วันที่</th><th style="width:66px">PO</th>'
+    +'<th>Vendor / ผู้รับเงิน</th><th style="width:80px">งวด</th>'
+    +'<th style="width:76px">ยอด</th><th style="width:72px">≈ บาท</th>'
+    +'<th style="width:74px">จ่ายในนาม</th><th style="width:40px">สลิป</th></tr></thead><tbody>';
+  rows.forEach(function(p,i){
+    const b=billOf(p.bill_id), c=slipCount(p);
+    h+='<tr'+(c?'':' class="miss"')+'>'
+      +'<td class="c">'+(i+1)+'</td>'
+      +'<td class="c">'+esc(p.pay_date||'-')+'</td>'
+      +'<td class="c">'+esc(b.po_number||'-')+'</td>'
+      +'<td>'+esc(b.vendor||'')+(p.payee?('<div style="color:#555">'+esc(String(p.payee).split('\n')[0])+'</div>'):'')+'</td>'
+      +'<td>'+esc(p.installment||'-')+'</td>'
+      +'<td class="r">'+money(p.amount)+' '+curSym(b.currency)+'</td>'
+      +'<td class="r">'+money(thbOf(p))+'</td>'
+      +'<td class="c">'+esc(p.pay_type||'-')+'</td>'
+      +'<td class="c">'+(c?('<b>'+c+'</b>'):'✕')+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+
+  /* ---------- หน้าสลิป ---------- */
+  const cols=(RP_PER===4?2:1), pages=[];
+  for(let i=0;i<flat.length;i+=RP_PER)pages.push(flat.slice(i,i+RP_PER));
+  pages.forEach(function(pg,pi){
+    const rws=Math.max(1,Math.ceil(pg.length/cols));
+    h+='<div class="rp-page">'
+      +'<div class="rp-cap-pg">หลักฐานการชำระเงินร้านค้า'+esc(rmSpanLabel())
+      +' · แผ่นสลิปที่ '+(pi+1)+'/'+pages.length+'</div>'
+      +'<div class="rp-grid" style="grid-template-rows:repeat('+rws+',minmax(0,1fr))">';
+    pg.forEach(function(o){
+      const n=flat.indexOf(o)+1;
+      h+='<div class="rp-cell"><div class="rp-cap">'
+        +'<b>'+n+'/'+flat.length+'</b> · <b>#'+o.ri+'</b> '+esc(o.p.pay_date||'')
+        +' · PO '+esc(o.b.po_number||'-')+' · '+esc(o.p.installment||'')
+        +' · '+money(o.p.amount)+' '+curSym(o.b.currency)
+        +(o.fn>1?(' · ไฟล์ '+o.fi+'/'+o.fn):'')
+        +'<div style="color:#444">'+esc(o.it.name||'')
+        +(o.pdf?(o.src?' <b>(PDF — พิมพ์ได้หน้าแรก)</b>':' <b>(PDF — พิมพ์จากหน้านี้ไม่ได้)</b>'):'')+'</div></div>'
+        +'<div class="rp-box">'
+        +(o.src
+          ? '<img src="'+esc(o.src)+'" alt="" data-rp="1" onerror="rpErr(this)">'
+          : '<div class="rp-miss">📄 ไฟล์ PDF ที่เก็บในระบบ — พิมพ์จากหน้านี้ไม่ได้<br>'
+            +'<b>'+esc(o.it.name||'')+'</b><br>เปิดพิมพ์แยกจากรายการด้านล่างของหน้าต่างนี้</div>')
+        +'</div></div>';
+    });
+    h+='</div></div>';
+  });
+  h+='</div>';
+  $('rpPaper').innerHTML=h;
+
+  /* รายชื่อ PDF ที่ต้องเปิดพิมพ์แยก — โชว์บนจอเท่านั้น */
+  const w=$('rpPdfWarn');
+  if(noRender.length){
+    w.style.display='';
+    w.innerHTML='⚠️ มี PDF '+noRender.length+' ไฟล์ที่เรนเดอร์ลงกระดาษไม่ได้ '
+      +'(เก็บอยู่ในระบบ ไม่ใช่ Google Drive) — เปิดพิมพ์แยกได้จากลิงก์นี้:<div style="margin-top:6px">'
+      +noRender.map(function(o){
+          return '<a href="'+esc(o.it.open||o.it.url)+'" target="_blank" rel="noopener" '
+            +'style="display:inline-block;margin:2px 8px 2px 0">↗ #'+o.ri+' '+esc(o.it.name||'ไฟล์')+'</a>';
+        }).join('')+'</div>';
+  } else w.style.display='none';
+
+  rpWatch();
+}
+function rpErr(img){
+  img.outerHTML='<div class="rp-miss">โหลดรูปไม่สำเร็จ — เปิดสิทธิ์ไฟล์ใน Drive '
+    +'เป็น “ผู้ที่มีลิงก์ดูได้” แล้วลองใหม่</div>';
+  rpWatch();
+}
+/* รอรูปโหลดให้ครบก่อนปล่อยให้กดพิมพ์ — กันได้กระดาษเปล่า */
+function rpWatch(){
+  const imgs=[].slice.call($('rpPaper').querySelectorAll('img[data-rp]'));
+  const pages=$('rpPaper').querySelectorAll('.rp-page').length;
+  const upd=function(){
+    const d=imgs.filter(im=>im.complete&&im.naturalWidth>0).length, n=imgs.length;
+    const ready=(d>=n);
+    $('rpBtn').disabled=!ready; $('rpBtn').style.opacity=ready?'':'.55';
+    $('rpInfo').textContent = n
+      ? (ready?('พร้อมพิมพ์ · '+n+' รูป · รวม '+(pages+1)+' แผ่น (สารบัญ 1 + สลิป '+pages+')')
+              :('กำลังโหลดรูปจาก Drive '+d+'/'+n+' …'))
+      : 'ไม่มีรูปให้พิมพ์ — มีแต่สารบัญ 1 แผ่น';
+  };
+  imgs.forEach(function(im){
+    if(im.dataset.bound)return; im.dataset.bound='1';
+    im.addEventListener('load',upd); im.addEventListener('error',upd);
+  });
+  upd();
+  /* กันเคสรูปค้างนาน — ปล่อยให้กดได้ พร้อมเตือนว่ายังโหลดไม่ครบ */
+  clearTimeout(window.RP_T);
+  window.RP_T=setTimeout(function(){
+    if(!$('rpBtn').disabled)return;
+    $('rpBtn').disabled=false; $('rpBtn').style.opacity='';
+    $('rpInfo').textContent='โหลดรูปไม่ครบ — พิมพ์ได้ แต่รูปที่ยังไม่ขึ้นจะเป็นช่องว่าง';
+  },Math.max(15000,imgs.length*700));
+}
+function rpPrint(){ printSheet($('rpSheet'),{empty:'ยังไม่มีอะไรให้พิมพ์'}); }
 
 boot();
 </script>
