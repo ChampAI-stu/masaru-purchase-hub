@@ -253,6 +253,35 @@
     color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px}
   .tab-btn:hover{color:var(--navy)}
   .tab-btn.active{color:var(--navy);border-bottom-color:var(--gold)}
+  /* ===== 🔔 กระดิ่งแจ้งเตือน (สินค้าขาเข้า) ===== */
+  .bell-wrap{position:relative}
+  .bell-btn{position:relative;background:#ffffff1a;border:1px solid #ffffff33;color:#fff;
+    border-radius:9px;padding:7px 11px;font-size:15px;line-height:1}
+  .bell-btn:hover{background:#ffffff2e}
+  .bell-btn.ring{animation:bellRing 1.6s ease-in-out infinite}
+  @keyframes bellRing{0%,88%,100%{transform:rotate(0)}91%{transform:rotate(11deg)}
+    94%{transform:rotate(-9deg)}97%{transform:rotate(5deg)}}
+  .bell-n{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 4px;
+    background:var(--red);color:#fff;border-radius:999px;font-size:11px;font-weight:800;
+    display:none;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--navy)}
+  .bell-n.on{display:flex}
+  .bell-pop{position:absolute;right:0;top:44px;width:min(380px,92vw);background:#fff;
+    border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 44px #0f172a33;
+    z-index:60;display:none;overflow:hidden;color:var(--text)}
+  .bell-pop.on{display:block}
+  .bell-hd{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--line);
+    font-weight:700;font-size:13.5px;color:var(--navy);background:#F8FAFC}
+  .bell-list{max-height:min(62vh,420px);overflow:auto}
+  .bell-it{display:block;width:100%;text-align:left;background:none;border:none;
+    padding:10px 14px;border-bottom:1px solid #F1F5F9;font-size:12.5px;line-height:1.55}
+  .bell-it:hover{background:#F8FAFC}
+  .bell-it.new{background:#FFFBEB}
+  .bell-it .w{color:var(--muted);font-size:11px}
+  .bell-it .ic{font-size:14px;margin-right:5px}
+  .bell-due{padding:11px 14px;background:var(--orange-bg);border-bottom:1px solid #f7d9b5;
+    font-size:12.5px;font-weight:700;color:var(--orange);cursor:pointer}
+  .bell-em{padding:22px 14px;text-align:center;color:var(--muted);font-size:12.5px}
+
   /* ป้ายเลขบนแท็บ — เห็นของค้างเกินกำหนดโดยไม่ต้องกดเข้าแท็บ */
   .tab-bdg{display:none;margin-left:6px;background:var(--red);color:#fff;font-size:11px;
     font-weight:800;padding:2px 7px;border-radius:999px;vertical-align:1px}
@@ -434,6 +463,17 @@ body.price-on .sl-price{display:block}
     </div>
     <div class="topbar-right">
       <span class="rt-status"><span class="rt-dot"></span>realtime</span>
+      <div class="bell-wrap" id="bellWrap" style="display:none">
+        <button class="bell-btn" id="bellBtn" title="แจ้งเตือนสินค้าขาเข้า" onclick="bellToggle()">🔔
+          <span class="bell-n" id="bellN"></span></button>
+        <div class="bell-pop" id="bellPop">
+          <div class="bell-hd">🔔 แจ้งเตือนสินค้าขาเข้า
+            <div style="flex:1"></div>
+            <button class="arr-mini" onclick="bellClear()">อ่านทั้งหมด</button></div>
+          <div id="bellDue"></div>
+          <div class="bell-list" id="bellList"></div>
+        </div>
+      </div>
       <button class="logout-btn" id="statusHelpBtn">ℹ️ สถานะ PO</button>
       <button class="logout-btn" id="editAnnounceBtn" style="display:none">📢 แก้ประกาศ</button>
       <span class="role-pill" id="rolePill">—</span>
@@ -1274,7 +1314,11 @@ function enterApp(session){
   if($('priceHead')) $('priceHead').style.display = canSeePrice ? '' : 'none';
   if(canSeePrice) document.body.classList.add('price-on');
   captureMe();
-  if(currentRole==='purchase') arrBadgeBoot();   // ⏰ ป้ายของค้างเกินกำหนดบนแท็บ 📦
+  if(currentRole==='purchase'){
+    $('bellWrap').style.display='';   // 🔔 กระดิ่งสินค้าขาเข้า (การตลาดไม่เห็นแท็บนี้ จึงไม่ต้องมีกระดิ่ง)
+    arrBadgeBoot();                   // ⏰ ป้ายของค้างเกินกำหนดบนแท็บ 📦
+    subscribeArrival();               // ฟังการเปลี่ยนแปลงแบบ realtime
+  }
   if(canSeePrice) loadMasterPrices();
   loadOrders();
   loadPlan();
@@ -2596,7 +2640,8 @@ function switchTab(t){
   $('tabRep').classList.toggle('active',   t==='rep');
   if(t==='rep')renderReport();
   if(t==='up')loadUploads();
-  if(t==='arr' && !ARR_LOADED)loadArr();   // โหลดครั้งแรกที่เปิดแท็บ ไม่ดึงทิ้งตอนเปิดหน้า
+  /* โหลดครั้งแรกที่เปิดแท็บ · หรือมีคนอื่นแก้ระหว่างที่เราไม่ได้เปิดแท็บนี้ */
+  if(t==='arr' && (!ARR_LOADED || ARR_STALE)){ ARR_STALE=false; loadArr(); }
 }
 
 // ---- โหลดข้อมูลแผน ----
@@ -3078,6 +3123,158 @@ function arrCalcStatus(n, items){
 }
 const arrDaysWait = d => Math.floor((new Date(arrToday()) - new Date(d))/86400000);
 
+
+/* ══════════════════════════════════════════════════════════════════
+   🔔 แจ้งเตือน + realtime ของแท็บ 📦 แจ้งสินค้าขาเข้า
+
+   เดิม: ใครเพิ่มใบแจ้ง คนอื่นต้องกด 🔄 เองถึงเห็น และไม่มีอะไรบอกว่ามีของใหม่
+   ตอนนี้: ฟังการเปลี่ยนจากฐานข้อมูลตรง ๆ (Supabase realtime)
+           → ตารางอัปเดตเอง + แถวที่เปลี่ยนกะพริบให้เห็น
+           → กระดิ่งขึ้นเลขว่ามีกิจกรรมใหม่กี่รายการ (ของตัวเองไม่นับ)
+           → ชื่อแท็บเบราว์เซอร์ขึ้น (2) ด้วย เผื่อสลับไปทำงานอื่น
+
+   ประหยัดโควตา: รวบเหตุการณ์ที่มาติด ๆ กันแล้วโหลดครั้งเดียว (debounce 700ms)
+                 และถ้าไม่ได้เปิดแท็บนี้อยู่ จะไม่โหลด — แค่จำไว้ว่าค้าง
+   ══════════════════════════════════════════════════════════════════ */
+let ARR_FEED = [];            // รายการกิจกรรม (ใหม่สุดอยู่หน้า) เก็บในหน่วยความจำ
+let ARR_UNSEEN = 0;           // ยังไม่ได้อ่านกี่รายการ
+let ARR_STALE = false;        // มีการเปลี่ยนแปลงแต่ยังไม่ได้โหลด (ไม่ได้เปิดแท็บอยู่)
+let ARR_FLASH = new Set();    // id ใบแจ้งที่เพิ่งเปลี่ยน รอกะพริบ
+let arrLiveTimer = null;
+const ARR_TITLE = document.title;
+
+const arrIsMe = who => !!who && !!ME_EMAIL && String(who).toLowerCase()===String(ME_EMAIL).toLowerCase();
+const arrWho  = who => !who ? 'ใครไม่รู้' : String(who).split('@')[0];
+const arrTimeAgo = ts => {
+  const s = Math.max(0, Math.floor((Date.now()-ts)/1000));
+  if(s<60) return 'เมื่อสักครู่';
+  if(s<3600) return Math.floor(s/60)+' นาทีที่แล้ว';
+  if(s<86400) return Math.floor(s/3600)+' ชม.ที่แล้ว';
+  return Math.floor(s/86400)+' วันที่แล้ว';
+};
+
+/* ── ตัวรับเหตุการณ์จากฐานข้อมูล ── */
+function arrLive(kind, payload){
+  const row = payload.new || payload.old || {};
+  const ev  = payload.eventType || payload.event;
+
+  if(kind==='notices'){
+    const actor = row.updated_by || row.created_by;
+    const nid   = row.id;
+    if(nid) ARR_FLASH.add(String(nid));
+    /* กิจกรรมของตัวเองไม่ต้องเตือนตัวเอง — แต่ข้อมูลยังต้องอัปเดต */
+    if(!arrIsMe(actor)){
+      if(ev==='INSERT')
+        arrFeedPush('📦', `<b>${esc(arrWho(actor))}</b> เพิ่มใบแจ้งใหม่ — ${esc(row.carrier||'')}`
+          + (row.notice_no?(' · '+esc(row.notice_no)):''), nid, row.notice_month);
+      else if(ev==='DELETE')
+        arrFeedPush('🗑️', `ใบแจ้ง ${esc(row.notice_no||row.notice_date||'')} ถูกลบ`, null, row.notice_month);
+      else if(row.status==='done')
+        arrFeedPush('✅', `<b>${esc(arrWho(actor))}</b> ตัดของเข้าคลังครบแล้ว — ${esc(row.carrier||'')}`
+          + (row.notice_no?(' · '+esc(row.notice_no)):''), nid, row.notice_month);
+      else if(row.status==='partial')
+        arrFeedPush('🚚', `<b>${esc(arrWho(actor))}</b> ตัดของเข้าคลังบางส่วน — ${esc(row.carrier||'')}`
+          + (row.notice_no?(' · '+esc(row.notice_no)):''), nid, row.notice_month);
+      else
+        arrFeedPush('✏️', `<b>${esc(arrWho(actor))}</b> แก้ใบแจ้ง ${esc(row.notice_no||row.carrier||'')}`, nid, row.notice_month);
+    }
+  }else{
+    /* รายการในใบ — เหตุการณ์เยอะ (บันทึกใบเดียวลบ-ใส่ใหม่ทั้งชุด)
+       ไม่ยิงกระดิ่งซ้ำ ให้ใบแจ้งเป็นตัวแทน แค่ทำให้ข้อมูลสดพอ */
+    if(row.notice_id) ARR_FLASH.add(String(row.notice_id));
+  }
+  arrLiveRefresh();
+}
+
+function arrFeedPush(ic, html, nid, month){
+  ARR_FEED.unshift({ts:Date.now(), ic, html, nid, month, seen:false});
+  if(ARR_FEED.length>30) ARR_FEED.length=30;
+  ARR_UNSEEN++;
+  bellPaint();
+  /* เด้ง toast ให้เห็นทันทีแม้ไม่เปิดแผง */
+  const plain = String(html).replace(/<[^>]+>/g,'');
+  toast(ic+' '+plain);
+}
+
+/* รวบเหตุการณ์ที่มาติดกันแล้วโหลดครั้งเดียว */
+function arrLiveRefresh(){
+  clearTimeout(arrLiveTimer);
+  arrLiveTimer = setTimeout(function(){
+    const onTab = $('viewArr') && $('viewArr').style.display!=='none';
+    if(onTab) loadArr();          // เปิดแท็บอยู่ → โหลดสด
+    else { ARR_STALE = true; arrBadgeBoot(); }   // ไม่ได้เปิด → แค่อัปเดตป้ายของค้าง
+  }, 700);
+}
+
+/* ── กระดิ่ง ── */
+function bellPaint(){
+  const n = ARR_UNSEEN;
+  const el = $('bellN'), btn = $('bellBtn');
+  if(el){ el.textContent = n>99?'99+':String(n); el.className = 'bell-n'+(n?' on':''); }
+  if(btn) btn.className = 'bell-btn'+(n?' ring':'');
+  document.title = n ? ('('+n+') '+ARR_TITLE) : ARR_TITLE;
+  if($('bellPop') && $('bellPop').classList.contains('on')) bellList();
+}
+function bellToggle(){
+  const pop = $('bellPop'); if(!pop) return;
+  const open = !pop.classList.contains('on');
+  pop.className = 'bell-pop'+(open?' on':'');
+  if(open){ bellList(); }
+}
+function bellList(){
+  /* ของค้างเกินกำหนด — ปักไว้บนสุดเสมอ ไม่นับเป็น "ยังไม่อ่าน" */
+  const dueBox = $('bellDue');
+  if(dueBox){
+    const nDue = (ARR_BOOT||[]).filter(p => p.wait>0.0001 && p.date && arrDaysWait(p.date)>=ARR_DUE).length;
+    dueBox.innerHTML = nDue
+      ? `<div class="bell-due" onclick="bellGoTab()">⏰ มีของค้างที่ขนส่งเกิน ${ARR_DUE} วัน ${nDue} ใบ — กดดูในแท็บ 📦</div>`
+      : '';
+  }
+  const list = $('bellList'); if(!list) return;
+  list.innerHTML = ARR_FEED.length
+    ? ARR_FEED.map((f,i)=>`<button class="bell-it${f.seen?'':' new'}" onclick="bellGo(${i})">
+        <span class="ic">${f.ic}</span>${f.html}
+        <div class="w">${arrTimeAgo(f.ts)}${f.month?(' · เดือน '+esc(f.month)):''}</div></button>`).join('')
+    : '<div class="bell-em">ยังไม่มีกิจกรรมใหม่<br><span style="font-size:11.5px">เมื่อมีคนเพิ่ม/แก้ใบแจ้ง จะขึ้นที่นี่ทันที</span></div>';
+}
+function bellClear(){
+  ARR_FEED.forEach(f=>f.seen=true);
+  ARR_UNSEEN = 0; bellPaint(); bellList();
+}
+function bellGoTab(){
+  $('bellPop').className='bell-pop';
+  switchTab('arr');
+  if(ARR_STALE){ ARR_STALE=false; loadArr(); }
+}
+function bellGo(i){
+  const f = ARR_FEED[i]; if(!f) return;
+  if(!f.seen){ f.seen=true; ARR_UNSEEN=Math.max(0,ARR_UNSEEN-1); bellPaint(); }
+  $('bellPop').className='bell-pop';
+  switchTab('arr');
+  /* ถ้าอยู่คนละเดือน สลับตัวกรองเดือนให้ก่อน */
+  if(f.month && $('arrMonth').value!==f.month){
+    $('arrMonth').value = f.month;
+    loadArr().then(()=>{ if(f.nid) arrJump(f.nid); });
+    return;
+  }
+  if(ARR_STALE){ ARR_STALE=false; loadArr().then(()=>{ if(f.nid) arrJump(f.nid); }); return; }
+  if(f.nid) arrJump(f.nid);
+}
+/* คลิกที่อื่น = ปิดแผง */
+document.addEventListener('click', function(e){
+  const w = $('bellWrap');
+  if(w && !w.contains(e.target) && $('bellPop') && $('bellPop').classList.contains('on'))
+    $('bellPop').className='bell-pop';
+});
+
+/* ── ฟังการเปลี่ยนแปลงจากฐานข้อมูล ── */
+function subscribeArrival(){
+  sb.channel('arrival-changes')
+    .on('postgres_changes',{event:'*',schema:'public',table:'arrival_notices'}, p=>arrLive('notices',p))
+    .on('postgres_changes',{event:'*',schema:'public',table:'arrival_items'},   p=>arrLive('items',p))
+    .subscribe();
+}
+
 /* ══════════ ⏰ แจ้งเตือนของค้างที่ขนส่งเกินกำหนด ══════════
    "ของถึงไทยแล้วแต่ยังไม่เข้าคลัง" เกิน N วัน = ต้องโทรตามขนส่ง
    ค่าตั้งต้น 3 วัน · เปลี่ยนได้ที่กล่องเลือกด้านบน (จำไว้ในเครื่อง)
@@ -3226,9 +3423,24 @@ async function loadArr(){
     const { data:its, error:e2 } = await sb.from('arrival_items').select('*').in('notice_id', ids);
     if(e2){ toast('โหลดรายการไม่สำเร็จ: '+e2.message); ARR_IT=[]; } else ARR_IT = its || [];
   } else ARR_IT = [];
-  ARR_LOADED = true;
+  ARR_LOADED = true; ARR_STALE = false;
   arrFillCarriers();
   renderArr();
+  arrFlashRows();
+}
+
+/* กะพริบแถวหัวใบที่เพิ่งถูกคนอื่นแก้ — ใช้ animation ตัวเดียวกับบอร์ด PO */
+function arrFlashRows(){
+  if(!ARR_FLASH.size) return;
+  const ids=[...ARR_FLASH]; ARR_FLASH.clear();
+  ids.forEach(function(id){
+    const tr=document.querySelector('#arrTb .arr-head[data-nid="'+id+'"]');
+    if(!tr)return;
+    tr.classList.remove('flash-row');
+    void tr.offsetWidth;
+    tr.classList.add('flash-row');
+    setTimeout(()=>tr.classList.remove('flash-row'), 2400);
+  });
 }
 
 /* รายชื่อขนส่งที่เคยใช้ — ไว้เลือกซ้ำได้เร็ว */
@@ -3528,7 +3740,9 @@ async function arrSyncStatus(id, items){
   const n = ARR.find(x=>String(x.id)===String(id)); if(!n) return;
   const st = arrCalcStatus(n, items || arrItemsOf(id));
   if(n.status === st) return;
-  const r = await sb.from('arrival_notices').update({status:st}).eq('id',id).select().single();
+  const r = await sb.from('arrival_notices')
+    .update({status:st, updated_by:ME_EMAIL||null})   // ให้กระดิ่งของคนอื่นรู้ว่าใครตัดเข้าคลัง
+    .eq('id',id).select().single();
   if(!r.error && r.data){ n.status = r.data.status; }
 }
 
