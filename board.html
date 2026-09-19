@@ -253,6 +253,11 @@
     color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px}
   .tab-btn:hover{color:var(--navy)}
   .tab-btn.active{color:var(--navy);border-bottom-color:var(--gold)}
+  /* จอเล็ก: ซ่อนป้าย "realtime" ให้แถบบนพอสำหรับกระดิ่ง (จุดเขียวยังเห็นในปุ่มกระดิ่งพอ) */
+  @media(max-width:760px){
+    .rt-status{display:none}
+    .bell-btn{padding:6px 9px;font-size:14px}
+  }
   /* ===== 🔔 กระดิ่งแจ้งเตือน (สินค้าขาเข้า) ===== */
   .bell-wrap{position:relative}
   .bell-btn{position:relative;background:#ffffff1a;border:1px solid #ffffff33;color:#fff;
@@ -297,7 +302,22 @@
   .arr-al-day{font-weight:800;padding:3px 9px;border-radius:7px;white-space:nowrap}
   .arr-al-day.r{background:var(--red-bg);color:var(--red)}
   .arr-al-day.a{background:var(--orange-bg);color:var(--orange)}
-  .arr-hot{box-shadow:inset 4px 0 0 var(--red)}
+  /* แถวที่ค้างเกินกำหนด / แถวที่เพิ่งกดจากกระดิ่ง — ใช้ "พื้นหลัง" ไม่ใช้เส้นซ้าย
+     เพราะเส้นซ้ายสงวนไว้ให้สีของบริษัทขนส่ง */
+  .arr-hot td{background:#FFF1F2!important}
+  /* ชิปชื่อขนส่ง — สีประจำเจ้า ทำให้กวาดตาแยกออกทันทีว่าใบไหนของใคร */
+  .arr-car{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:800;
+    padding:2px 9px;border-radius:999px;white-space:nowrap}
+  /* แถบสรุปรายขนส่ง — กดเพื่อกรองเฉพาะเจ้านั้น */
+  .arr-strip{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0}
+  .arr-chip{display:flex;flex-direction:column;gap:2px;border:1px solid var(--line);
+    border-left-width:5px;border-radius:10px;padding:7px 12px;background:#fff;
+    font-size:12px;text-align:left;min-width:150px}
+  .arr-chip:hover{background:#F8FAFC}
+  .arr-chip.on{background:#F1F5F9;box-shadow:0 0 0 2px #1A294222}
+  .arr-chip b{font-size:13px;color:var(--navy)}
+  .arr-chip .s{font-size:11px;color:var(--muted)}
+  .arr-chip .w{font-size:11px;font-weight:800;color:var(--orange)}
 
   /* ===== แผนรับสินค้า (ตาราง) ===== */
   .plan-day{margin-bottom:24px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
@@ -658,6 +678,8 @@ body.price-on .sl-price{display:block}
         <div class="sum-val" id="arrOld">-</div>
         <div class="sum-sub" id="arrOldSub">—</div></div>
     </div>
+
+    <div class="arr-strip" id="arrStrip"></div>
 
     <div class="toolbar">
       <div class="search-wrap">
@@ -3411,7 +3433,9 @@ async function loadArr(){
   const mo = $('arrMonth').value;
   arrMsg('กำลังโหลด...');
   const { data:ns, error:e1 } = await sb.from('arrival_notices').select('*')
-    .eq('notice_month', mo).order('notice_date',{ascending:false}).order('created_at',{ascending:false});
+    .eq('notice_month', mo)
+    .order('notice_date',{ascending:true})      // ★ เก่าสุดอยู่บน — ของที่ค้างนานสุดเห็นก่อน
+    .order('created_at',{ascending:true});
   if(e1){
     arrMsg(`<span style="color:var(--red)">โหลดไม่สำเร็จ: ${esc(e1.message)}</span>
       <div style="color:var(--muted);font-size:12px;margin-top:6px">ถ้าเพิ่งเพิ่มระบบนี้ ต้องรัน <b>arrival_notices.sql</b> ใน Supabase ก่อน</div>`);
@@ -3443,6 +3467,87 @@ function arrFlashRows(){
   });
 }
 
+/* ══════════ 🎨 สีประจำบริษัทขนส่ง ══════════
+   ชื่อขนส่งพิมพ์อิสระ (168 EXPRESS / 168 ( สาย2 ) / TSD Cargo / 6303 ...)
+   จับคำที่รู้จักก่อน ที่เหลือแจกสีจากชื่อแบบคงที่ (ชื่อเดิม = สีเดิมทุกครั้ง ไม่สลับไปมา) */
+const ARR_PAL = ['#E67E22','#185FA5','#5BA85B','#C0392B','#8E44AD','#16A085',
+                 '#B45309','#6B2737','#2E75B6','#7C3AED','#0E7490','#BE185D'];
+const ARR_KNOWN = [
+  [/168/i,'#E67E22'], [/FCL/i,'#185FA5'], [/JMF/i,'#5BA85B'], [/TSD/i,'#16A085'],
+  [/FAST/i,'#C0392B'], [/NEXT/i,'#6B2737'], [/GTL/i,'#8E44AD'], [/6303/,'#0E7490'],
+];
+let ARR_CMAP = {};
+/* แจกสีให้ครบทุกเจ้าในรอบเดียว — ★ ห้ามซ้ำกัน
+   เดิมจับคำแล้วให้สีทันที ทำให้ "168 EXPRESS" กับ "168 ( สาย2 )" ได้สีส้มเหมือนกัน
+   แยกด้วยตาไม่ออก ทั้งที่ทีมนับเป็นคนละเจ้า → ถ้าสีที่ควรได้ถูกใช้ไปแล้ว ขยับไปสีว่างถัดไป
+   เรียงชื่อก่อนแจกเสมอ ชุดขนส่งเดิมจึงได้สีเดิมทุกครั้ง ไม่สลับไปมา */
+function arrColorInit(names){
+  const list=[...new Set(names.map(x=>String(x||'').trim()||'—'))].sort();
+  const used=new Set(), map={};
+  list.forEach(function(k){
+    let c=(ARR_KNOWN.find(x=>x[0].test(k))||[])[1];
+    if(!c||used.has(c)){
+      let h=0; for(let i=0;i<k.length;i++) h=(h*31+k.charCodeAt(i))>>>0;
+      const start=h%ARR_PAL.length;
+      c=null;
+      for(let i=0;i<ARR_PAL.length;i++){
+        const cand=ARR_PAL[(start+i)%ARR_PAL.length];
+        if(!used.has(cand)){ c=cand; break; }
+      }
+      if(!c) c=ARR_PAL[start];          // ขนส่งเกิน 12 เจ้า ค่อยเริ่มใช้สีซ้ำ
+    }
+    used.add(c); map[k]=c;
+  });
+  ARR_CMAP=map;
+}
+function arrColor(name){
+  const k = String(name||'').trim() || '—';
+  return ARR_CMAP[k] || '#64748B';
+}
+/* ชิปชื่อขนส่งสีประจำเจ้า */
+function arrCarChip(name){
+  const c = arrColor(name);
+  return '<span class="arr-car" style="background:'+c+'1f;color:'+c+';border:1px solid '+c+'55">🚛 '
+    + esc(name||'-') + '</span>';
+}
+
+let ARR_CAR = '';          // กรองเฉพาะขนส่งรายนี้ ('' = ทุกเจ้า)
+function arrPickCar(name){
+  ARR_CAR = (ARR_CAR===name) ? '' : name;   // กดซ้ำ = ยกเลิกตัวกรอง
+  renderArr();
+}
+
+/* แถบสรุปรายขนส่ง — ใบกี่ใบ · ค้างกี่ลัง · กี่คิว ของแต่ละเจ้า */
+function renderArrStrip(groups){
+  const el = $('arrStrip'); if(!el) return;
+  const by = {};
+  groups.filter(g=>g.st!=='cancel').forEach(function(g){
+    const k = String(g.n.carrier||'—');
+    const p = by[k] || (by[k] = {n:0, boxWait:0, cbmWait:0, kgWait:0, boxes:0, due:0});
+    p.n++; p.boxes+=g.t.boxes; p.boxWait+=g.t.boxWait; p.cbmWait+=g.t.cbmWait; p.kgWait+=g.t.kgWait;
+    if(g.t.boxWait>0.0001 && arrDaysWait(g.n.notice_date)>=ARR_DUE) p.due++;
+  });
+  const keys = Object.keys(by).sort((a,b)=>by[b].boxWait-by[a].boxWait || a.localeCompare(b));
+  if(!keys.length){ el.innerHTML=''; return; }
+  const tot = keys.reduce((a,k)=>({n:a.n+by[k].n, boxWait:a.boxWait+by[k].boxWait}),{n:0,boxWait:0});
+  el.innerHTML =
+    '<button class="arr-chip'+(ARR_CAR?'':' on')+'" style="border-left-color:var(--navy)" onclick="arrPickCar(\'\')">'
+      +'<b>ทุกบริษัทขนส่ง</b>'
+      +'<span class="s">'+tot.n+' ใบ · ค้าง '+arrInt(tot.boxWait)+' ลัง</span></button>'
+    + keys.map(function(k){
+        const p=by[k], c=arrColor(k);
+        return '<button class="arr-chip'+(ARR_CAR===k?' on':'')+'" style="border-left-color:'+c+'"'
+          +' onclick="arrPickCar('+JSON.stringify(k).replace(/"/g,'&quot;')+')">'
+          +'<b style="color:'+c+'">🚛 '+esc(k)+'</b>'
+          +'<span class="s">'+p.n+' ใบ · แจ้งมา '+arrInt(p.boxes)+' ลัง</span>'
+          +(p.boxWait>0.0001
+            ? '<span class="w">ค้าง '+arrInt(p.boxWait)+' ลัง · '+arrMoney(p.cbmWait)+' คิว'
+              +(p.due?(' · <span style="color:var(--red)">เกินกำหนด '+p.due+' ใบ</span>'):'')+'</span>'
+            : '<span class="s" style="color:var(--green);font-weight:700">✅ เข้าคลังครบ</span>')
+          +'</button>';
+      }).join('');
+}
+
 /* รายชื่อขนส่งที่เคยใช้ — ไว้เลือกซ้ำได้เร็ว */
 function arrFillCarriers(){
   const names = [...new Set(ARR.map(x=>x.carrier).filter(Boolean))].sort();
@@ -3457,6 +3562,12 @@ function renderArr(){
 
   let rows = ARR.map(n => ({ n, items: arrItemsOf(n.id) }))
                 .map(g => ({ ...g, st: arrCalcStatus(g.n, g.items), t: arrTotals(g.items) }));
+  /* ★ เรียงจากวันแจ้งเข้าเก่าสุด → ล่าสุด (ของที่ค้างนานสุดอยู่บน)
+     เรียงที่นี่ด้วย ไม่พึ่งลำดับจากฐานข้อมูลอย่างเดียว — เผื่อแถวใหม่จาก realtime
+     หรือที่เพิ่งบันทึกเข้ามาแทรก ลำดับบนหน้าจอจะถูกเสมอ */
+  rows.sort((a,b) => String(a.n.notice_date||'').localeCompare(String(b.n.notice_date||''))
+                  || String(a.n.created_at||'').localeCompare(String(b.n.created_at||'')));
+  if(ARR_CAR) rows = rows.filter(g => String(g.n.carrier||'—')===ARR_CAR);
   if(st==='over'){
     const ids = arrOverdue(rows).map(g=>String(g.n.id));
     rows = rows.filter(g => ids.includes(String(g.n.id)));
@@ -3481,6 +3592,8 @@ function renderArr(){
 
   /* ⏰ แจ้งเตือน + ป้ายบนแท็บ — คิดจากทุกใบในเดือน ไม่ขึ้นกับตัวกรอง */
   arrDueLoad();
+  arrColorInit(ARR.map(x=>x.carrier));    // 🎨 แจกสีให้ครบก่อนวาด
+  renderArrStrip(all);
   renderArrAlert(all);
   const dueList = arrOverdue(all), otherList = arrOtherDue();
   arrSetBadge(dueList.length + otherList.length,
@@ -3518,10 +3631,12 @@ function renderArr(){
     const n=g.n, t=g.t, S=ARR_ST[g.st]||ARR_ST.waiting;
     const days = arrDaysWait(n.notice_date);
     const dwarn = (g.st!=='done'&&g.st!=='cancel'&&t.boxWait>0&&days>=ARR_DUE);
-    h += `<tr class="arr-head${dwarn?' arr-hot':''}" data-nid="${n.id}"><td colspan="4">
+    const col = arrColor(n.carrier);        // 🎨 สีประจำบริษัทขนส่ง
+    h += `<tr class="arr-head${dwarn?' arr-hot':''}" data-nid="${n.id}"
+      style="box-shadow:inset 7px 0 0 ${col}"><td colspan="4">
         <div class="arr-date">📅 ${fmtDate(n.notice_date)}${n.notice_no?' · '+esc(n.notice_no):''}</div>
         <div style="font-size:11.5px;color:var(--muted);font-weight:400;margin-top:2px">
-          🚛 ${esc(n.carrier||'-')}${n.truck?' · รถนำส่ง '+esc(n.truck):''}
+          ${arrCarChip(n.carrier)}${n.truck?' · รถนำส่ง '+esc(n.truck):''}
           ${n.eta_date?' · คาดเข้าคลัง '+fmtDate(n.eta_date):''}
           ${g.st!=='done'&&g.st!=='cancel'&&days>0?` · <span class="arr-wait"${dwarn?' style="color:var(--red)"':''}>${
             dwarn?(days>=arrHotDays()?'🔴 ':'🟠 '):''}ค้างมา ${days} วัน${dwarn?' (เกิน '+ARR_DUE+' วัน)':''}</span>`:''}
@@ -3543,7 +3658,7 @@ function renderArr(){
 
     g.items.forEach(x => {
       const bx=+x.boxes||0, bi=+x.boxes_in||0, left=bx-bi;
-      h += `<tr class="${x.is_extra?'arr-extra':''}">
+      h += `<tr class="${x.is_extra?'arr-extra':''}" style="box-shadow:inset 7px 0 0 ${col}33">
         <td></td>
         <td>${esc(x.line_ref||'-')}</td>
         <td>${esc(x.po_number||'-')}</td>
@@ -3727,8 +3842,9 @@ async function saveArr(){
   const mo = $('arrMonth').value;
   ARR_IT = ARR_IT.filter(x => String(x.notice_id)!==String(id));
   ARR    = ARR.filter(x => String(x.id)!==String(id));
-  if(saved && saved.notice_month===mo){ ARR.unshift(saved); ARR_IT = ARR_IT.concat(items); }
-  ARR.sort((a,b)=>String(b.notice_date||'').localeCompare(String(a.notice_date||'')));
+  if(saved && saved.notice_month===mo){ ARR.push(saved); ARR_IT = ARR_IT.concat(items); }
+  ARR.sort((a,b)=>String(a.notice_date||'').localeCompare(String(b.notice_date||''))    // เก่า → ใหม่
+                  || String(a.created_at||'').localeCompare(String(b.created_at||'')));
   await arrSyncStatus(id, items);
   closeArr(); arrFillCarriers(); renderArr();
   toast(ARR_ID ? 'แก้ไขใบแจ้งเรียบร้อย' : 'เพิ่มใบแจ้งเรียบร้อย');
