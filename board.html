@@ -118,6 +118,46 @@
     body.printing-rep,body.printing-rep *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
     @page{size:A4 portrait;margin:12mm}
   }
+  /* ===== 🖨️ รายงาน PDF — แจ้งสินค้าขาเข้า =====
+     สร้าง HTML รายงานลง #arrPrint (ซ่อนไว้) แล้วสั่งพิมพ์ → เลือก "บันทึกเป็น PDF"
+     ตอนพิมพ์ ซ่อนทุกอย่างในหน้าเหลือแต่รายงาน (ใช้ display:none กับลูกตรงของ body) */
+  #arrPrint{display:none}
+  @media print{
+    body.printing-arr > *{display:none!important}
+    body.printing-arr > #arrPrint{display:block!important;width:100%!important}
+    /* ล้าง margin/padding/ความกว้างขั้นต่ำของหน้าเว็บ ไม่ให้ตารางล้นขอบกระดาษ */
+    html.printing-arr,body.printing-arr{margin:0!important;padding:0!important;
+      width:auto!important;min-width:0!important;max-width:none!important;background:#fff!important}
+    body.printing-arr,body.printing-arr *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+    #arrPrint tr.g{break-after:avoid;page-break-after:avoid}   /* หัวใบไม่ตกค้างท้ายหน้าเดี่ยว ๆ */
+  }
+  #arrPrint{font-size:9px;color:#000;background:#fff}
+  #arrPrint .rp-hd{display:flex;align-items:flex-end;gap:10px;border-bottom:2.5px solid #14315C;padding-bottom:6px;margin-bottom:8px}
+  #arrPrint .rp-ti{font-size:15px;font-weight:800;color:#14315C;line-height:1.25}
+  #arrPrint .rp-sub{font-size:9px;color:#444;margin-top:2px}
+  #arrPrint .rp-meta{margin-left:auto;text-align:right;font-size:8.5px;color:#444;line-height:1.55}
+  #arrPrint h3{font-size:10.5px;color:#14315C;margin:10px 0 4px;padding-left:5px;border-left:3px solid #B01722}
+  #arrPrint .rp-kpi{display:flex;gap:6px;margin-bottom:2px}
+  #arrPrint .rp-k{flex:1;border:1px solid #BBB;border-radius:4px;padding:5px 7px}
+  #arrPrint .rp-k b{display:block;font-size:13px;color:#14315C;line-height:1.3}
+  #arrPrint .rp-k span{font-size:8px;color:#555;display:block;line-height:1.45}
+  #arrPrint table{width:100%;border-collapse:collapse;font-size:8.3px;table-layout:fixed}
+  #arrPrint th,#arrPrint td{border:1px solid #999;padding:2px 3px;vertical-align:top;
+    word-wrap:break-word;overflow-wrap:break-word}
+  #arrPrint thead th{background:#E3EAF4;color:#14315C;font-weight:700;text-align:center}
+  #arrPrint td.n{text-align:right;white-space:nowrap}
+  #arrPrint tr.g td{background:#EEF3FA;font-weight:700}
+  #arrPrint tr.g.hot td{background:#FDEBEC}
+  #arrPrint tr.x td{background:#FAFCFF;color:#444}
+  #arrPrint tr.sum td{background:#E8E8E8;font-weight:800}
+  #arrPrint thead{display:table-header-group}
+  #arrPrint tr{break-inside:avoid;page-break-inside:avoid}
+  #arrPrint .rp-warn{border:1px solid #E0A0A6;background:#FDEBEC;border-radius:4px;padding:5px 7px;font-size:8.5px}
+  #arrPrint .rp-fo{margin-top:9px;padding-top:5px;border-top:1px solid #BBB;font-size:7.8px;color:#555;
+    display:flex;justify-content:space-between}
+  #arrPrint .pl{color:#185FA5;font-weight:700}
+  #arrPrint .wt{color:#C25E00;font-weight:700}
+  #arrPrint .dn{color:#2E7D32;font-weight:700}
   /* ETA badge ใกล้เข้า / เลยกำหนด */
   .eta-tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;
     margin-left:6px;vertical-align:middle}
@@ -725,6 +765,8 @@ body.price-on .sl-price{display:block}
         <option value="done">✅ เข้าคลังครบ</option>
         <option value="cancel">⚪ ยกเลิก</option>
       </select>
+      <button class="add-btn" onclick="arrPdf()" style="background:#B01722"
+        title="ทำรายงานสำหรับพิมพ์ / บันทึกเป็น PDF (ตามตัวกรองที่เลือกอยู่)">🖨️ รายงาน PDF</button>
       <button class="add-btn" onclick="exportArr()" style="background:#1E7145">📥 Export Excel</button>
       <button class="add-btn" id="arrAddBtn" onclick="openArr()" style="display:none">+ เพิ่มใบแจ้ง</button>
       <button class="wk-btn" onclick="loadArr()" title="โหลดใหม่">🔄</button>
@@ -3348,6 +3390,8 @@ sb.auth.onAuthStateChange((event, session) => {
 let ARR = [];            // ใบแจ้งของเดือนที่เลือก
 let ARR_IT = [];         // รายการของใบแจ้งเหล่านั้น
 let ARR_LOADED = false;  // โหลดแล้วหรือยัง (กันดึงซ้ำตอนสลับแท็บ)
+let ARR_VIEW = [];       // ใบแจ้งที่กำลังโชว์บนตาราง (ตามตัวกรอง) — ใช้ทำรายงาน PDF
+let ARR_ALLG = [];       // ทุกใบในเดือน (ไม่สนตัวกรอง) — ใช้ทำสรุปในรายงาน
 let ARR_ID = null;       // ใบที่กำลังแก้ในโมดัล
 let ARR_IN_ID = null;    // ใบที่กำลังตัดเข้าคลัง
 
@@ -4010,6 +4054,7 @@ function renderArr(){
     ).toLowerCase().includes(q));
 
   /* KPI — คิดจากทุกใบในเดือน ไม่ขึ้นกับตัวกรอง (ตัวเลขภาพรวมต้องนิ่ง) */
+  ARR_VIEW = rows; ARR_ALLG = ALLG;          // 🖨️ เก็บไว้ให้รายงาน PDF ใช้ชุดเดียวกับที่เห็นบนจอ
   const all = ALLG.filter(g => g.st!=='cancel');
   const sum = all.reduce((a,g) => ({
     boxWait:a.boxWait+g.t.boxWait, cbmWait:a.cbmWait+g.t.cbmWait, kgWait:a.kgWait+g.t.kgWait,
@@ -4438,6 +4483,177 @@ async function arrToFreight(id){
 }
 
 /* ══════════ Export Excel ══════════ */
+/* ══════════════════════════════════════════════════════════════════
+   🖨️ รายงาน PDF — แจ้งสินค้าขาเข้า
+   ใช้ชุดข้อมูล "ตามตัวกรองที่เห็นบนจอ" (เดือน/ขนส่ง/สถานะ/คำค้น)
+   วิธีทำ PDF: สร้าง HTML รายงาน → สั่งพิมพ์ → เลือกปลายทาง "บันทึกเป็น PDF"
+   (ไม่ต้องลงไลบรารีเพิ่ม ฟอนต์ไทยคมชัด เลือกกระดาษ/ย่อขยายได้เอง)
+   ══════════════════════════════════════════════════════════════════ */
+function arrPdfSum(list){
+  return list.reduce(function(a,g){
+    return {n:a.n+1, boxes:a.boxes+g.t.boxes, pcs:a.pcs+g.t.pcs, cbm:a.cbm+g.t.cbm, kg:a.kg+g.t.kg,
+            pcsIn:a.pcsIn+g.t.pcsIn, boxIn:a.boxIn+g.t.boxIn,
+            pcsWait:a.pcsWait+g.t.pcsWait, boxWait:a.boxWait+g.t.boxWait,
+            cbmWait:a.cbmWait+g.t.cbmWait, kgWait:a.kgWait+g.t.kgWait, plan:a.plan+g.pl.pcs};
+  },{n:0,boxes:0,pcs:0,cbm:0,kg:0,pcsIn:0,boxIn:0,pcsWait:0,boxWait:0,cbmWait:0,kgWait:0,plan:0});
+}
+function arrPdf(){
+  if(!ARR_LOADED){ toast('รอโหลดข้อมูลก่อน'); return; }
+  const rows = ARR_VIEW.slice();
+  if(!rows.length){ toast('ไม่มีข้อมูลตามตัวกรองนี้ — ปรับตัวกรองก่อน'); return; }
+  const mo = $('arrMonth').value || arrMonthNow();
+  const [yy,mm] = mo.split('-');
+  const MTH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+               'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const moTxt = MTH[(+mm||1)-1] + ' ' + (String(+yy+543).slice(-2));
+  const live  = rows.filter(g => g.st!=='cancel');
+  const S     = arrPdfSum(live);
+  const due   = arrOverdue(ARR_ALLG.filter(g=>g.st!=='cancel'));
+  const now   = new Date();
+  const stamp = fmtDate(now.toISOString().slice(0,10)) + ' ' + String(now.getHours()).padStart(2,'0')
+              + ':' + String(now.getMinutes()).padStart(2,'0');
+  /* บอกให้ชัดว่ารายงานใบนี้กรองอะไรไว้ — กันเอาไปอ่านผิด */
+  const fq = [];
+  if(ARR_CAR) fq.push('ขนส่ง: '+ARR_CAR);
+  if($('arrStatus').value) fq.push('สถานะ: '+($('arrStatus').selectedOptions[0]||{}).text);
+  if(($('arrSearch').value||'').trim()) fq.push('คำค้น: "'+$('arrSearch').value.trim()+'"');
+
+  /* ── สรุปรายขนส่ง ── */
+  const byCar = {};
+  live.forEach(function(g){
+    const k = g.n.carrier || '—';
+    const c = byCar[k] || (byCar[k] = {k:k, list:[]});
+    c.list.push(g);
+  });
+  const cars = Object.values(byCar).map(function(c){
+    const s = arrPdfSum(c.list);
+    s.over = c.list.filter(g => g.st!=='done' && g.t.boxWait>0.0001 && !g.pl.full
+                                && arrDaysWait(g.n.notice_date)>=ARR_DUE).length;
+    return {k:c.k, s:s};
+  }).sort((a,b)=>b.s.pcsWait-a.s.pcsWait);
+
+  let h = `<div class="rp-hd">
+    <div><div class="rp-ti">รายงานสินค้าขาเข้า — แจ้งจากบริษัทขนส่ง</div>
+      <div class="rp-sub">MASARU · Purchase Board · ประจำเดือน ${esc(moTxt)}${
+        fq.length?' · <b>กรอง:</b> '+esc(fq.join(' · ')):' · ทุกขนส่ง/ทุกสถานะ'}</div></div>
+    <div class="rp-meta">พิมพ์เมื่อ ${esc(stamp)}<br>โดย ${esc(String(ME_EMAIL||'-').split('@')[0])}
+      <br>เกณฑ์เตือน: ค้างเกิน ${ARR_DUE} วัน</div></div>`;
+
+  h += `<div class="rp-kpi">
+    <div class="rp-k"><span>ค้างที่ขนส่ง (ยังไม่เข้าคลัง)</span><b>${arrInt(S.pcsWait)} ชิ้น</b>
+      <span>${arrInt(S.boxWait)} ลัง · ${arrMoney(S.cbmWait)} คิว · ${arrInt(S.kgWait)} กก.</span></div>
+    <div class="rp-k"><span>จัดเที่ยวส่งไว้แล้ว</span><b>${arrInt(S.plan)} ชิ้น</b>
+      <span>รอของถึงคลัง · ไม่ต้องตามขนส่ง</span></div>
+    <div class="rp-k"><span>เข้าคลังแล้ว (เดือนนี้)</span><b>${arrInt(S.pcsIn)} ชิ้น</b>
+      <span>${arrInt(S.boxIn)} ลัง · จากที่แจ้งมา ${arrInt(S.pcs)} ชิ้น</span></div>
+    <div class="rp-k"><span>ใบแจ้งในรายงาน</span><b>${S.n} ใบ</b>
+      <span>ยังไม่ครบ ${live.filter(g=>g.st!=='done').length} ใบ · เกินกำหนด ${due.length} ใบ</span></div>
+  </div>`;
+
+  if(due.length){
+    h += `<h3>⚠️ ต้องตามขนส่งด่วน — ค้างเกิน ${ARR_DUE} วัน (${due.length} ใบ)</h3>
+      <div class="rp-warn">` + due.slice(0,12).map(function(g){
+        return '<b>ค้าง '+g.days+' วัน</b> · '+esc(g.n.carrier||'-')+' · แจ้ง '+fmtDate(g.n.notice_date)
+             + (g.n.notice_no?(' · '+esc(g.n.notice_no)):'')
+             + ' — ค้าง <b>'+arrInt(g.t.pcsWait)+'</b> ชิ้น ('+arrInt(g.t.boxWait)+' ลัง · '+arrMoney(g.t.cbmWait)+' คิว)';
+      }).join('<br>')
+      + (due.length>12?('<br><i>และอีก '+(due.length-12)+' ใบ</i>'):'') + `</div>`;
+  }
+
+  h += `<h3>สรุปรายบริษัทขนส่ง</h3><table>
+    <colgroup><col style="width:17%"><col style="width:7%"><col style="width:11%"><col style="width:9%">
+      <col style="width:11%"><col style="width:9%"><col style="width:9%"><col style="width:9%">
+      <col style="width:9%"><col style="width:9%"></colgroup>
+    <thead><tr><th>บริษัทขนส่ง</th><th>ใบแจ้ง</th><th>แจ้งมา (ชิ้น)</th><th>ลัง</th>
+      <th>เข้าคลัง (ชิ้น)</th><th>ค้าง (ชิ้น)</th><th>ค้าง (ลัง)</th><th>ค้าง (คิว)</th>
+      <th>จัดเที่ยวแล้ว</th><th>เกินกำหนด</th></tr></thead><tbody>`;
+  cars.forEach(function(c){
+    h += `<tr><td>${esc(c.k)}</td><td class="n">${c.s.n}</td><td class="n">${arrInt(c.s.pcs)}</td>
+      <td class="n">${arrInt(c.s.boxes)}</td><td class="n dn">${arrInt(c.s.pcsIn)}</td>
+      <td class="n wt">${arrInt(c.s.pcsWait)}</td><td class="n">${arrInt(c.s.boxWait)}</td>
+      <td class="n">${arrMoney(c.s.cbmWait)}</td>
+      <td class="n pl">${c.s.plan>0.0001?arrInt(c.s.plan):'-'}</td>
+      <td class="n">${c.s.over?('<b>'+c.s.over+' ใบ</b>'):'-'}</td></tr>`;
+  });
+  h += `<tr class="sum"><td>รวมทั้งหมด</td><td class="n">${S.n}</td><td class="n">${arrInt(S.pcs)}</td>
+    <td class="n">${arrInt(S.boxes)}</td><td class="n">${arrInt(S.pcsIn)}</td>
+    <td class="n">${arrInt(S.pcsWait)}</td><td class="n">${arrInt(S.boxWait)}</td>
+    <td class="n">${arrMoney(S.cbmWait)}</td><td class="n">${arrInt(S.plan)}</td>
+    <td class="n">${due.length} ใบ</td></tr></tbody></table>`;
+
+  /* ── รายละเอียดรายใบแจ้ง ── */
+  h += `<h3>รายละเอียดรายใบแจ้ง (เรียงวันแจ้งเข้า เก่า → ใหม่)</h3><table>
+    <colgroup><col style="width:7.5%"><col style="width:11%"><col style="width:6%"><col style="width:17%">
+      <col style="width:5%"><col style="width:5.5%"><col style="width:6.5%"><col style="width:6%">
+      <col style="width:6%"><col style="width:7%"><col style="width:7%"><col style="width:9.5%"></colgroup>
+    <thead><tr><th>วันแจ้งเข้า</th><th>เลขที่รายการ</th><th>PO</th><th>SKU</th>
+      <th>ชิ้น/ลัง</th><th>ลัง</th><th>ชิ้น</th><th>คิว</th><th>น้ำหนัก<br>(กก.)</th>
+      <th>เข้าคลัง<br>(ชิ้น)</th><th>ค้าง<br>(ชิ้น)</th><th>หมายเหตุ</th></tr></thead><tbody>`;
+  rows.forEach(function(g){
+    const n=g.n, t=g.t, st=(ARR_ST[g.st]||ARR_ST.waiting).t.replace(/^[^\s]+\s/,'');
+    const days = arrDaysWait(n.notice_date);
+    const hot = (g.st!=='done'&&g.st!=='cancel'&&t.boxWait>0&&days>=ARR_DUE&&!g.pl.full);
+    const head = [
+      '<b>'+esc(n.carrier||'-')+'</b>',
+      n.notice_no?esc(n.notice_no):null,
+      st,
+      t.n+' รายการ',
+      n.truck?('รถ '+esc(n.truck)):null,
+      n.eta_date?('คาดเข้า '+fmtDate(n.eta_date)):null,
+      (g.st!=='done'&&g.st!=='cancel'&&days>0)?((hot?'⚠️ ':'')+'ค้าง '+days+' วัน'):null,
+      g.pl.pcs>0.0001?('<span class="pl">🚚 จัดเที่ยว'+(g.pl.full?'แล้ว':'บางส่วน')
+        +(g.pl.date?(' '+fmtDate(g.pl.date)):'')+'</span>'):null
+    ].filter(Boolean).join(' · ');
+    h += `<tr class="g${hot?' hot':''}"><td>${fmtDate(n.notice_date)}</td><td colspan="3">${head}</td>
+      <td class="n"></td><td class="n">${arrInt(t.boxes)}</td><td class="n">${arrInt(t.pcs)}</td>
+      <td class="n">${arrMoney(t.cbm)}</td><td class="n">${t.kg?arrInt(t.kg):'-'}</td>
+      <td class="n dn">${t.pcsIn?arrInt(t.pcsIn):'-'}</td>
+      <td class="n ${g.pl.full?'pl':'wt'}">${g.st==='cancel'?'—':(t.pcsWait>0?arrInt(t.pcsWait):'—')}</td>
+      <td>${n.note?esc(n.note):''}</td></tr>`;
+    g.items.forEach(function(x){
+      const m = g.M[x.id] || arrPcsOf(x,null), P = g.pl.by[x.id]||null;
+      h += `<tr class="x"><td></td><td>${esc(x.line_ref||'-')}</td><td>${esc(x.po_number||'-')}</td>
+        <td>${x.is_extra?'▸ ':''}${esc(x.sku||'-')}</td>
+        <td class="n">${x.pcs_per_box?arrInt(x.pcs_per_box):'-'}</td>
+        <td class="n">${x.boxes?arrInt(x.boxes):'-'}</td><td class="n">${x.pcs?arrInt(x.pcs):'-'}</td>
+        <td class="n">${x.cbm?arrMoney(x.cbm):'-'}</td><td class="n">${x.weight_kg?arrInt(x.weight_kg):'-'}</td>
+        <td class="n">${m.inPcs?arrInt(m.inPcs):'-'}</td>
+        <td class="n ${P?'pl':''}">${g.st==='cancel'?'—':(m.leftPcs>0?(arrInt(m.leftPcs)+(P?' 🚚':'')):'—')}</td>
+        <td>${esc(x.note||'')}</td></tr>`;
+    });
+  });
+  h += `<tr class="sum"><td colspan="5">รวม ${rows.length} ใบแจ้ง</td>
+    <td class="n">${arrInt(S.boxes)}</td><td class="n">${arrInt(S.pcs)}</td>
+    <td class="n">${arrMoney(S.cbm)}</td><td class="n">${arrInt(S.kg)}</td>
+    <td class="n">${arrInt(S.pcsIn)}</td><td class="n">${arrInt(S.pcsWait)}</td><td></td></tr></tbody></table>`;
+
+  h += `<div class="rp-fo"><div>▸ = บรรทัดพ่วง (มาในลังของบรรทัดบน นับแต่จำนวนชิ้น) ·
+      🚚 = จัดเที่ยวส่งไว้แล้ว รอของถึงคลัง · ยอด "เข้าคลัง" ขยับเมื่อกดตัดเข้าคลังจริง</div>
+    <div>MASARU Purchase Board · เอกสารภายใน</div></div>`;
+
+  let root = $('arrPrint');
+  if(!root){ root=document.createElement('div'); root.id='arrPrint'; document.body.appendChild(root); }
+  root.innerHTML = h;
+  /* กระดาษแนวนอนเฉพาะรายงานนี้ — ใส่ชั่วคราวแล้วถอนออก ไม่ให้กระทบรายงาน On-Time */
+  let pg = document.getElementById('arrPrintPage');
+  if(!pg){ pg=document.createElement('style'); pg.id='arrPrintPage'; document.head.appendChild(pg); }
+  pg.textContent = '@media print{@page{size:A4 landscape;margin:8mm}}';
+  document.body.classList.add('printing-arr');
+  document.documentElement.classList.add('printing-arr');
+
+  let fin=false;
+  const done=function(){
+    if(fin)return; fin=true;
+    document.body.classList.remove('printing-arr');
+    document.documentElement.classList.remove('printing-arr');
+    if(pg&&pg.parentNode) pg.parentNode.removeChild(pg);
+    root.innerHTML='';
+    window.removeEventListener('afterprint',done);
+  };
+  window.addEventListener('afterprint',done);
+  setTimeout(function(){ window.print(); setTimeout(done,1500); },80);
+}
+
 function exportArr(){
   const mo = $('arrMonth').value || arrMonthNow();
   const groups = ARR.map(n=>({n, items:arrItemsOf(n.id)}));
