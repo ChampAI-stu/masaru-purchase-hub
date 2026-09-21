@@ -400,6 +400,19 @@
     </section>
 
     <section id="tab-taxsum" style="display:none">
+      <!-- ★ รายการใบสรุปภาษีที่บันทึกไว้ — ย้อนดูได้ทันทีไม่ต้องไล่หาในช่องค้นหา -->
+      <div class="card">
+        <div class="toolbar">
+          <h2 style="margin:0;border:0;padding:0">🧾 ใบสรุปภาษีที่บันทึกไว้</h2><span class="sp"></span>
+          <input id="txSearch" placeholder="ค้นหา หัวเรื่อง / ขนส่ง / ใบขน / PO / SKU" style="max-width:230px" oninput="renderTaxList()">
+          <select id="txMonth" onchange="renderTaxList()" style="max-width:135px" title="กรองตามภาษีเดือน"></select>
+          <select id="txCar" onchange="renderTaxList()" style="max-width:135px" title="กรองตามบริษัทขนส่ง"></select>
+          <button class="btn ghost" onclick="exportTaxList()" title="ดึงใบสรุปภาษีทั้งหมดเป็น Excel">📥 Excel</button>
+          <button class="btn ghost" onclick="reloadTax()" title="โหลดรายการใหม่">🔄</button>
+        </div>
+        <div id="txKpi" class="kpis"></div>
+        <div class="scroll"><div id="txList"></div></div>
+      </div>
       <div class="card">
         <div class="toolbar"><h2 style="margin:0;border:0;padding:0">🧾 สรุปภาษีนำเข้า (คำนวณอัตโนมัติ)</h2><span class="sp"></span>
           <div class="combo" style="max-width:240px;flex:1"><input id="loadTax" class="combo-input" placeholder="— ค้นหา/เลือกใบสรุปภาษี —"><div id="loadTax_list" class="combo-list"></div></div>
@@ -423,6 +436,15 @@
         <div class="grid2">
           <div><label>เงื่อนไข/ท่าเรือ</label><input id="x_termport" placeholder="EXW SHANGHAI" oninput="renderTaxDoc()"></div>
           <div><label>อ้างอิงรายการสินค้า (PO)</label><input id="x_ref" placeholder="PO2607005" oninput="renderTaxDoc()"></div>
+        </div>
+        <div>
+          <label>🔗 ผูกกับรายการใน ตาราง Shipment (ไม่บังคับ — ผูกแล้วย้อนดูกันได้ทั้ง 2 ทาง)</label>
+          <div class="row" style="gap:8px;align-items:center">
+            <select id="x_trk" onchange="txTrkPick()" style="flex:1;min-width:220px"></select>
+            <button class="btn mini ghost" onclick="txFillFromTrk(true)" title="เติม ขนส่ง / เลขดราฟใบขน / ภาษีเดือน / อ้างอิง PO จากรายการที่เลือก">⬇️ เติมหัวใบจากรายการนี้</button>
+            <button class="btn mini ghost" onclick="txOpenTrk()" title="เปิดรายการนี้ในตาราง Shipment">🔎 เปิดใน Shipment</button>
+          </div>
+          <div id="x_trkInfo" class="muted" style="font-size:11.5px;margin-top:4px;line-height:1.6"></div>
         </div>
         <h3>รายการ</h3>
         <div class="note">ใส่ <b>จำนวนเงิน(บาท)</b> ต่อรายการ + <b>อากรขาเข้า%</b> (0 หรือ 5) → ระบบคิด อากร=เงิน×%, VAT7%=(เงิน+อากร)×7%, รวม=อากร+VAT ให้อัตโนมัติ · ปุ่ม “+ ค่าผ่านพิธีศุลกากร” = แถวค่าธรรมเนียม — เว้นช่องจำนวนเงินไว้ ใส่ยอดที่ช่อง “รวมชำระ” (ตั้งไว้ 200)</div>
@@ -1683,7 +1705,9 @@ function renderTrack(){
   if(canEdit)_th+='<th class="no-print">จัดการ</th>';
   let h='<table class="trkc">'+_colg+'<thead><tr>'+_th+'</tr></thead><tbody>';
   pageList.forEach(t=>{
-    const taxCell=(+t.tax_amount?money(t.tax_amount):'-')+(t.tax_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.tax_amount)?' <span class="pill pending">ค้าง</span>':''));
+    const tx=db.taxsum.find(v=>String(v.tracking_id||'')===String(t.id));
+    const taxCell=(+t.tax_amount?money(t.tax_amount):'-')+(t.tax_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.tax_amount)?' <span class="pill pending">ค้าง</span>':''))
+      +(tx?`<br><button class="mini btn" onclick="openTaxFromTrack('${t.id}')" title="เปิดใบสรุปภาษี ${esc(tx.title||'')}">🧾 ใบสรุปภาษี</button>`:'');
     const fi=(typeof FRINVS!=='undefined')?FRINVS.find(v=>String(v.tracking_id||'')===String(t.id)):null;
     const shpCell=(+t.ship_cost?money(t.ship_cost):'-')+(t.ship_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.ship_cost)?' <span class="pill pending">ค้าง</span>':''))
       +(fi?`<br><button class="mini btn" onclick="openFrInvFromTrack('${t.id}')" title="เปิดใบวางบิล ${esc(fi.entry_no||'')} · ต้องชำระ ${money(fi.sum_total)} บาท">🚛 ใบวางบิล</button>`:'');
@@ -2388,10 +2412,158 @@ function renderTaxDoc(){
     '</div></section>';
   $('taxPreview').innerHTML=preview;
 }
+/* ══════════════════════════════════════════════════════════════════
+   🧾 รายการใบสรุปภาษีที่บันทึกไว้ + ลิงก์กับ ตาราง Shipment
+   เดิมมีแค่ช่องค้นหา และทุกครั้งที่เข้าแท็บฟอร์มถูกล้าง → ย้อนดูใบเก่ายาก
+   ตอนนี้: มีตารางใบที่บันทึกไว้ · กรองเดือน/ขนส่ง · กด 👁 ดู เปิดใบเดิม
+           · ผูกกับรายการใน ตาราง Shipment แล้วเขียนค่าภาษีกลับให้
+   ══════════════════════════════════════════════════════════════════ */
+let TAX_INIT=false;
 function initTax(){
   comboInit('loadTax', db.taxsum.map(s=>({id:s.id,label:(s.title||'(ไม่มีหัวเรื่อง)')+' · '+String(s.created_at||'').slice(0,10)})), ()=>loadTaxToForm(), '— ค้นหา/เลือกใบสรุปภาษี —');
   comboInit('loadFromInv', db.shipments.map(s=>({id:s.id,label:(s.invno||'(ไม่มีเลข)')+' · '+(s.date||'')+' · '+(s.cname||'')})), ()=>onTaxInvPicked(), '— เลือกใบบิล INV —');
-  newTaxForm();
+  txFillTrkList(); txFillFilters(); renderTaxList();
+  /* ★ ล้างฟอร์มแค่ครั้งแรก — กลับเข้าแท็บอีกครั้งให้คงใบที่เปิดอยู่ ไม่ล้างงานที่ทำค้าง */
+  if(!TAX_INIT){ TAX_INIT=true; newTaxForm(); }
+  else if(comboVal('loadTax')) loadTaxToForm();
+  else txTrkInfo();
+}
+async function reloadTax(){ await reload('taxsum'); initTax(); }
+/* ยอดของใบสรุปภาษี — คิดจากรายการในใบ (สูตรเดียวกับในฟอร์ม) */
+function txSum(s){
+  const items=Array.isArray(s.items)?s.items:[];
+  let amt=0,duty=0,vat=0,tot=0;
+  items.forEach(function(it){ const c=taxCalc(it);
+    if(!it.fee)amt+=c.amount; duty+=c.duty; vat+=c.vat; tot+=c.total; });
+  return {amt:amt,duty:duty,vat:vat,tot:tot,n:items.length};
+}
+const txTrkOf=s=>s&&s.tracking_id?db.tracking.find(t=>String(t.id)===String(s.tracking_id)):null;
+const txThMonth=m=>{ if(!m)return '(ไม่ระบุ)';
+  const T=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const a=String(m).split('-'); return T[(+a[1]||1)-1]+' '+String((+a[0])+543).slice(-2); };
+function txFillFilters(){
+  const m0=$('txMonth')?$('txMonth').value:'', c0=$('txCar')?$('txCar').value:'';
+  const ms=[...new Set(db.taxsum.map(s=>s.period||String(s.created_at||'').slice(0,7)).filter(Boolean))].sort().reverse();
+  const cs=[...new Set(db.taxsum.map(s=>s.carrier).filter(Boolean))].sort();
+  if($('txMonth'))$('txMonth').innerHTML='<option value="">— ทุกเดือน —</option>'
+    +ms.map(m=>'<option value="'+esc(m)+'">'+esc(txThMonth(m))+'</option>').join('');
+  if($('txCar'))$('txCar').innerHTML='<option value="">— ทุกขนส่ง —</option>'
+    +cs.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');
+  if($('txMonth')&&ms.includes(m0))$('txMonth').value=m0;
+  if($('txCar')&&cs.includes(c0))$('txCar').value=c0;
+}
+function txFilter(){
+  const q=($('txSearch')?$('txSearch').value:'').toLowerCase().trim();
+  const mo=$('txMonth')?$('txMonth').value:'', ca=$('txCar')?$('txCar').value:'';
+  return db.taxsum.filter(s=>{
+    const m=s.period||String(s.created_at||'').slice(0,7);
+    if(mo&&m!==mo)return false;
+    if(ca&&String(s.carrier||'')!==ca)return false;
+    if(!q)return true;
+    const t=txTrkOf(s)||{};
+    const skus=(Array.isArray(s.items)?s.items:[]).map(x=>x.sku||'').join(' ');
+    return ((s.title||'')+' '+(s.carrier||'')+' '+(s.draft_no||'')+' '+(s.ref||'')+' '+(s.company||'')
+            +' '+(s.note||'')+' '+skus+' '+(t.invoice_no||'')+' '+(t.jst_po||'')).toLowerCase().includes(q);
+  }).sort((a,b)=>String(b.period||b.created_at||'').localeCompare(String(a.period||a.created_at||'')));
+}
+function renderTaxList(){
+  if(!$('txList'))return;
+  const list=txFilter();
+  const sums=list.map(txSum);
+  const tot=sums.reduce((s,x)=>s+x.tot,0), vat=sums.reduce((s,x)=>s+x.vat,0), duty=sums.reduce((s,x)=>s+x.duty,0);
+  $('txKpi').innerHTML='<div class="kpi"><div class="lbl">ใบสรุปภาษีที่แสดง</div><div class="val">'+list.length
+      +'</div><div class="lbl" style="opacity:.8">จากทั้งหมด '+db.taxsum.length+' ใบ</div></div>'
+    +'<div class="kpi gold"><div class="lbl">รวมชำระค่าภาษี (บาท)</div><div class="val">'+money(Math.round(tot))+'</div></div>'
+    +'<div class="kpi"><div class="lbl">อากรขาเข้า / VAT 7%</div><div class="val" style="font-size:18px">'+money(Math.round(duty))+' / '+money(Math.round(vat))+'</div></div>';
+  if(!list.length){ $('txList').innerHTML='<div class="empty">'
+    +(db.taxsum.length?'ไม่มีใบสรุปภาษีที่ตรงกับตัวกรอง — ล้างช่องค้นหา/เลือก “ทุกเดือน”'
+                      :'ยังไม่มีใบสรุปภาษี — กรอกด้านล่างแล้วกด 💾 บันทึก')+'</div>'; return; }
+  let h='<table><thead><tr><th>ภาษีเดือน</th><th>หัวเรื่อง</th><th>บริษัท</th><th>ขนส่ง</th>'
+    +'<th>เลขที่ดราฟใบขน</th><th>อ้างอิง PO</th><th>🔗 Shipment</th>'
+    +'<th class="right">จำนวนเงิน</th><th class="right">อากร</th><th class="right">VAT 7%</th>'
+    +'<th class="right">รวมชำระ</th><th></th></tr></thead><tbody>';
+  list.forEach((s,i)=>{ const u=sums[i], t=txTrkOf(s);
+    h+='<tr><td><b>'+esc(txThMonth(s.period||String(s.created_at||'').slice(0,7)))+'</b></td>'
+      +'<td style="font-size:11.5px">'+esc(s.title||'(ไม่มีหัวเรื่อง)')
+        +'<br><span class="muted">'+u.n+' รายการ · บันทึก '+esc(String(s.created_at||'').slice(0,10))+'</span></td>'
+      +'<td>'+esc(s.company||'-')+'</td><td>'+esc(s.carrier||'-')+'</td>'
+      +'<td style="font-size:11.5px">'+esc(s.draft_no||'-')+'</td>'
+      +'<td style="font-size:11.5px">'+esc(s.ref||'-')+'</td>'
+      +'<td style="font-size:11.5px">'+(t
+          ?('<b>'+esc(t.invoice_no||'-')+'</b>'+(t.jst_po?'<br><span class="muted">'+esc(t.jst_po)+'</span>':'')
+            +' <button class="mini btn" onclick="frOpenTrkById(\''+t.id+'\')" title="เปิดรายการนี้ในตาราง Shipment">🔎</button>')
+          :'<span class="muted">—</span>')+'</td>'
+      +'<td class="right">'+money(u.amt)+'</td><td class="right">'+money(Math.round(u.duty))+'</td>'
+      +'<td class="right">'+money(Math.round(u.vat))+'</td>'
+      +'<td class="right"><b>'+money(Math.round(u.tot))+'</b></td>'
+      +'<td style="white-space:nowrap"><button class="mini btn" onclick="txOpen(\''+s.id+'\')" title="เปิดใบนี้มาดู / ออก PDF ซ้ำ">👁 ดู</button></td>'
+      +'</tr>';});
+  $('txList').innerHTML=h+'</tbody></table>';
+}
+function txOpen(id){
+  comboSet('loadTax',id); loadTaxToForm();
+  const el=$('x_title'); if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); }
+}
+function exportTaxList(){
+  const list=txFilter(); if(!list.length)return alert('ไม่มีใบสรุปภาษีตามตัวกรองนี้');
+  const head=[['ภาษีเดือน','หัวเรื่อง','บริษัท','บริษัทขนส่ง','เลขที่ดราฟใบขน','เงื่อนไข/ท่าเรือ','อ้างอิง PO',
+    'อินวอยซ์ (Shipment)','PO JST','จำนวนรายการ','จำนวนเงิน (บาท)','อากรขาเข้า','VAT 7%','รวมชำระ','บันทึกเมื่อ']];
+  const det=[['ภาษีเดือน','หัวเรื่อง','SKU / รายการ','จำนวน/ชุด','จำนวนเงิน (บาท)','อากร%','อากรขาเข้า','VAT 7%','รวมชำระ']];
+  list.forEach(s=>{ const u=txSum(s), t=txTrkOf(s)||{};
+    head.push([s.period||'',s.title||'',s.company||'',s.carrier||'',s.draft_no||'',s.termport||'',s.ref||'',
+      t.invoice_no||'',t.jst_po||'',u.n,+u.amt.toFixed(2),+u.duty.toFixed(2),+u.vat.toFixed(2),Math.round(u.tot),
+      String(s.created_at||'').slice(0,10)]);
+    (Array.isArray(s.items)?s.items:[]).forEach(it=>{ const c=taxCalc(it);
+      det.push([s.period||'',s.title||'',it.sku||'',+it.qty||0, it.fee?'':+c.amount.toFixed(2),
+        it.fee?'':(+it.duty||0), it.fee?'':+c.duty.toFixed(2), it.fee?'':+c.vat.toFixed(2), +c.total.toFixed(2)]);});
+  });
+  const wb=XLSX.utils.book_new();
+  const w1=XLSX.utils.aoa_to_sheet(head); w1['!cols']=head[0].map(()=>({wch:16}));
+  const w2=XLSX.utils.aoa_to_sheet(det);  w2['!cols']=det[0].map(()=>({wch:16}));
+  XLSX.utils.book_append_sheet(wb,w1,'ใบสรุปภาษี');
+  XLSX.utils.book_append_sheet(wb,w2,'รายการในใบ');
+  XLSX.writeFile(wb,'สรุปภาษีนำเข้า_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+/* ── ผูกกับ ตาราง Shipment ── */
+function txFillTrkList(){
+  const sel=$('x_trk'); if(!sel)return;
+  const cur=sel.value;
+  const list=db.tracking.slice().sort((a,b)=>String(b.start_date||'').localeCompare(String(a.start_date||'')));
+  sel.innerHTML='<option value="">— ไม่ผูก —</option>'
+    +list.map(t=>'<option value="'+esc(t.id)+'">'+esc(frTrkLabel(t))+'</option>').join('');
+  if(cur)sel.value=cur;
+}
+function txTrkInfo(){
+  const box=$('x_trkInfo'); if(!box)return;
+  const t=db.tracking.find(x=>String(x.id)===String($('x_trk').value));
+  if(!t){ box.innerHTML='ยังไม่ผูก — ถ้าผูกไว้ ระบบจะเขียน <b>ค่าภาษี</b> และ <b>เลขที่ดราฟใบขน</b> '
+    +'กลับไปที่รายการนั้นในตาราง Shipment ให้เองตอนบันทึก'; return; }
+  box.innerHTML='ผูกกับ <b>'+esc(t.invoice_no||'-')+'</b>'
+    +(t.jst_po?(' · PO '+esc(t.jst_po)):'')+(t.shipping?(' · ขนส่ง '+esc(t.shipping)):'')
+    +(t.tax_amount?(' · ค่าภาษีในตารางตอนนี้ '+money(t.tax_amount)+' บาท'):'')
+    +'<br>บันทึกแล้วจะอัปเดต <b>ค่าภาษี = รวมชำระค่าภาษีทั้งหมด</b> · <b>เลขที่ดราฟใบขน</b> ให้รายการนี้';
+}
+function txTrkPick(){ txFillFromTrk(false); txTrkInfo(); }
+function txFillFromTrk(force){
+  const t=db.tracking.find(x=>String(x.id)===String($('x_trk').value));
+  if(!t){ if(force)alert('เลือกรายการใน ตาราง Shipment ก่อน'); return; }
+  const set=(id,v)=>{ if(v==null||v==='')return; if(force||!$(id).value.trim())$(id).value=v; };
+  set('x_carrier', t.shipping||'');
+  set('x_draft',   t.draft_no||t.draft_bill_no||'');
+  set('x_period',  t.period||'');
+  set('x_ref',     t.jst_po||t.invoice_no||'');
+  if(t.import_company) set('x_company', t.import_company);
+  if(force||!$('x_title').value.trim())
+    $('x_title').value='สรุปภาษีนำเข้า '+(t.jst_po||t.invoice_no||'')+(t.shipping?(' By '+t.shipping):'');
+  txTrkInfo(); renderTaxDoc();
+  if(force)alert('เติมหัวใบจากรายการ '+(t.invoice_no||'')+' แล้ว ✅');
+}
+function txOpenTrk(){ frOpenTrkById($('x_trk').value); }
+/* กดจากตาราง Shipment → เปิดใบสรุปภาษีของรายการนั้น */
+function openTaxFromTrack(trackingId){
+  const s=db.taxsum.find(v=>String(v.tracking_id||'')===String(trackingId));
+  if(!s)return alert('รายการนี้ยังไม่มีใบสรุปภาษีที่ผูกไว้');
+  go('taxsum'); setTimeout(function(){ txOpen(s.id); },120);
 }
 function onTaxInvPicked(){
   const id=comboVal('loadFromInv'); const s=db.shipments.find(x=>x.id===id); if(!s)return;
@@ -2425,6 +2597,7 @@ function loadInvToTax(){
 }
 function newTaxForm(){
   comboSet('loadTax',''); if(COMBOS['loadFromInv'])comboSet('loadFromInv','');
+  if($('x_trk')){ txFillTrkList(); $('x_trk').value=''; txTrkInfo(); }
   ['x_title','x_period','x_carrier','x_draft','x_termport','x_ref','x_note'].forEach(i=>$(i).value='');
   $('x_company').value='MASARU'; if($('x_rate')){$('x_rate').value='1';$('x_rate').disabled=false;} if($('x_rate_lbl'))$('x_rate_lbl').textContent='อัตราแลกเปลี่ยน (บาท/หน่วยบิล)';
   taxItems=[]; renderTaxLines();
@@ -2434,18 +2607,38 @@ function loadTaxToForm(){
   const s=db.taxsum.find(x=>x.id===id); if(!s){newTaxForm();return;}
   $('x_title').value=s.title||'';$('x_period').value=s.period||'';$('x_company').value=s.company||'MASARU';
   $('x_carrier').value=s.carrier||'';$('x_draft').value=s.draft_no||'';$('x_termport').value=s.termport||'';$('x_ref').value=s.ref||'';$('x_note').value=s.note||'';
-  taxItems=Array.isArray(s.items)?s.items.map(x=>({sku:x.sku||'',qty:+x.qty||0,amount:+x.amount||0,duty:+x.duty||0,fee:!!x.fee})):[];
+  taxItems=Array.isArray(s.items)?s.items.map(x=>({sku:x.sku||'',qty:+x.qty||0,amount:+x.amount||0,duty:+x.duty||0,fee:!!x.fee,feeAmt:(x.feeAmt!=null?x.feeAmt:undefined)})):[];
+  if($('x_trk')){ txFillTrkList(); $('x_trk').value=s.tracking_id||''; txTrkInfo(); }
   renderTaxLines();
 }
 async function saveTaxSummary(){
   if(!canEdit){alert('ไม่มีสิทธิ์แก้ไข');return;}
   const d=taxFormData();
-  const rec={title:d.title||null,period:d.period||null,company:d.company||null,carrier:d.carrier||null,draft_no:d.draft_no||null,termport:d.termport||null,ref:d.ref||null,note:d.note||null,items:taxItems};
+  const rec={title:d.title||null,period:d.period||null,company:d.company||null,carrier:d.carrier||null,draft_no:d.draft_no||null,termport:d.termport||null,ref:d.ref||null,note:d.note||null,items:taxItems,
+    tracking_id:($('x_trk')&&$('x_trk').value)||null};
   const id=comboVal('loadTax'); let ok;
   if(id){ok=await dbWrite(()=>sb.from('tax_summaries').update(rec).eq('id',id));}
-  else{const res=await sb.from('tax_summaries').insert(rec).select('id').single(); ok=!res.error; if(res.error)alert('บันทึกไม่สำเร็จ: '+res.error.message); if(!res.error){await reload('taxsum'); initTax(); comboSet('loadTax',res.data.id); loadTaxToForm();} }
+  else{const res=await sb.from('tax_summaries').insert(rec).select('id').single(); ok=!res.error;
+       if(res.error)alert('บันทึกไม่สำเร็จ: '+res.error.message
+         +(/tracking_id/i.test(res.error.message||'')?'\n\nยังไม่มีคอลัมน์ tracking_id — ให้รันไฟล์ tax_summary_link.sql ใน Supabase ก่อน':''));
+       if(!res.error){await reload('taxsum'); initTax(); comboSet('loadTax',res.data.id); loadTaxToForm();} }
   if(id&&ok){await reload('taxsum'); initTax(); comboSet('loadTax',id); loadTaxToForm();}
-  if(ok)alert('บันทึกใบสรุปภาษีแล้ว');
+  /* 🔗 เขียนค่าภาษีกลับไปที่ ตาราง Shipment ที่ผูกไว้ */
+  let back='';
+  if(ok&&rec.tracking_id){
+    const t=db.tracking.find(x=>String(x.id)===String(rec.tracking_id));
+    if(t){
+      const u=txSum({items:taxItems});
+      const patch={tax_amount:Math.round(u.tot), draft_no:rec.draft_no||t.draft_no||null};
+      const {error:e2}=await sb.from('shipment_tracking').update(patch).eq('id',t.id);
+      if(e2) back='\n⚠️ อัปเดตตาราง Shipment ไม่สำเร็จ: '+e2.message;
+      else { Object.assign(t,patch);
+             back='\nอัปเดตตาราง Shipment ให้แล้ว — ค่าภาษี '+money(patch.tax_amount)+' บาท'
+                  +(patch.draft_no?(' · เลขดราฟใบขน '+patch.draft_no):'');
+             if(CUR_TAB==='track')renderTrack(); }
+    }
+  }
+  if(ok){ renderTaxList(); alert('บันทึกใบสรุปภาษีแล้ว ✅'+back); }
 }
 async function deleteTaxSummary(){
   const id=comboVal('loadTax'); if(!id){alert('เลือกใบที่จะลบก่อน');return;}
