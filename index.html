@@ -963,27 +963,31 @@
   #hubScreen .empty-apps{color:#8fa2ba;border-color:rgba(133,173,226,.22);background:rgba(12,34,59,.52);box-shadow:0 15px 38px rgba(0,0,0,.16)}
 
   @media (max-width:1000px){
-    #hubScreen .hub-hero{grid-template-columns:minmax(0,1fr) 315px;gap:25px}
-    .hub-core{width:300px;height:300px}
+    #hubScreen .hub-hero{grid-template-columns:minmax(0,1fr) 96px;gap:16px;padding:18px 20px}
+    .hub-core{width:88px;height:88px}
+    .hub-core-center{width:74px;height:74px;border-radius:18px}
+    .hub-core-center strong{font-size:1.4rem}
     #hubScreen .app-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   }
   @media (max-width:700px){
     #hubScreen main{padding:30px 17px 58px}
-    #hubScreen .hub-hero{min-height:auto;margin-bottom:32px;padding:22px 2px 25px;grid-template-columns:1fr;gap:18px;text-align:left}
-    #hubScreen .hub-title{font-size:clamp(2.55rem,13vw,4rem)}
-    #hubScreen .hub-sub{font-size:.91rem}
-    .hub-core{width:245px;height:245px;justify-self:center}
-    .hub-core-center{width:92px;height:92px;border-radius:24px}.hub-core-center strong{font-size:2rem}.hub-core-center::after{bottom:15px;width:35px}
+    #hubScreen .hub-hero{min-height:auto;margin-bottom:20px;padding:16px 16px 18px;grid-template-columns:minmax(0,1fr) 78px;gap:12px;text-align:left}
+    #hubScreen .hub-title{font-size:clamp(1.15rem,5.2vw,1.5rem)}
+    #hubScreen .hub-sub{font-size:.78rem}
+    .hub-core{width:74px;height:74px;justify-self:end}
+    .hub-core-center{width:64px;height:64px;border-radius:16px}.hub-core-center strong{font-size:1.25rem}.hub-core-center::after{bottom:9px;width:22px}
     .ring-2{inset:32px}.ring-3{inset:62px}
     .core-satellite{transform:scale(.88)}
     #hubScreen .app-grid{grid-template-columns:1fr;gap:15px}
     #hubScreen .app-tile{min-height:235px}
-    #hubScreen .hub-hero::before{font-size:3.5rem;bottom:8px}
+    #hubScreen .hub-hero::before{font-size:2rem;bottom:2px}
     #hubScreen .hub-hero::after{display:none}
   }
   @media (max-width:430px){
-    .hero-status-row{gap:8px}.hero-access{display:none}
-    .hub-core{width:220px;height:220px}
+    .hero-status-row{gap:7px}.hero-access{display:none}
+    #hubScreen .hub-hero{grid-template-columns:minmax(0,1fr) 66px}
+    .hub-core{width:62px;height:62px}
+    .hub-core-center{width:56px;height:56px;border-radius:14px}.hub-core-center strong{font-size:1.1rem}
     .core-satellite{font-size:.52rem;min-width:44px}
     #hubScreen .section-title{font-size:1.12rem}
   }
@@ -1023,28 +1027,29 @@
   #hubScreen header.top .masaru-logo{height:31px;width:150px}
   #hubScreen .role-pill{border-color:rgba(255,255,255,.13);background:rgba(255,255,255,.075);color:#dce7f6}
 
-  #hubScreen main{width:min(1240px,100%);padding:42px 28px 68px}
+  #hubScreen main{width:min(1240px,100%);padding:30px 28px 62px}
+  /* ★ ย่อแบนเนอร์หัวหน้าให้เตี้ยลง เห็นการ์ดระบบเร็วขึ้นโดยไม่ต้องเลื่อน */
   #hubScreen .hub-hero{
-    min-height:220px;
-    margin:0 0 34px;
-    padding:38px 42px;
-    grid-template-columns:minmax(0,1fr) 165px;
-    gap:30px;
+    min-height:0;
+    margin:0 0 22px;
+    padding:20px 26px;
+    grid-template-columns:minmax(0,1fr) 112px;
+    gap:20px;
     border:1px solid rgba(183,198,216,.64);
-    border-radius:24px;
+    border-radius:18px;
     background:
       radial-gradient(circle at 92% 8%,rgba(227,31,50,.07),transparent 28%),
       linear-gradient(135deg,rgba(255,255,255,.98),rgba(248,251,255,.96));
-    box-shadow:0 18px 48px rgba(30,54,86,.09),inset 0 1px 0 #fff;
+    box-shadow:0 10px 28px rgba(30,54,86,.07),inset 0 1px 0 #fff;
     overflow:hidden;
   }
   #hubScreen .hub-hero::before{
     content:"MASARU PURCHASE HUB";
     left:auto;
-    right:-8px;
-    bottom:-21px;
-    color:rgba(18,43,74,.035);
-    font-size:clamp(3.3rem,7vw,6rem);
+    right:-6px;
+    bottom:-12px;
+    color:rgba(18,43,74,.032);
+    font-size:clamp(2rem,4.2vw,3.4rem);
     letter-spacing:-.035em;
   }
   #hubScreen .hub-hero::after{
@@ -1060,42 +1065,42 @@
     animation:none;
   }
   #hubScreen .hero-copy{max-width:760px}
-  #hubScreen .hero-eyebrow{margin-bottom:10px;color:var(--brand-red);font-size:.74rem;letter-spacing:.19em}
-  #hubScreen .hub-title{margin-bottom:8px;color:var(--navy);font-size:clamp(1.85rem,3.5vw,2.75rem);line-height:1.2;letter-spacing:-.035em;text-shadow:none}
-  #hubScreen .hub-sub{max-width:720px;color:#6f8095;font-size:.94rem;line-height:1.65}
-  .hero-status-row{margin-top:18px}
-  .hero-status,.hero-access{min-height:30px;padding:5px 10px;border-color:#dbe5ef;background:#f7f9fc;color:#53667d;font-size:.72rem;backdrop-filter:none}
-  .hero-access{color:#8a98aa;background:#fff}
-  .status-pulse{width:6px;height:6px}
+  #hubScreen .hero-eyebrow{margin-bottom:6px;color:var(--brand-red);font-size:.66rem;letter-spacing:.17em}
+  #hubScreen .hub-title{margin-bottom:4px;color:var(--navy);font-size:clamp(1.3rem,2.3vw,1.8rem);line-height:1.22;letter-spacing:-.03em;text-shadow:none}
+  #hubScreen .hub-sub{max-width:720px;color:#6f8095;font-size:.82rem;line-height:1.55}
+  .hero-status-row{margin-top:11px;gap:9px}
+  .hero-status,.hero-access{min-height:25px;padding:3px 9px;border-color:#dbe5ef;background:#f7f9fc;color:#53667d;font-size:.66rem;backdrop-filter:none}
+  .hero-access{color:#8a98aa;background:#fff;font-size:.6rem}
+  .status-pulse{width:5px;height:5px}
 
   .hub-core{
-    width:145px;
-    height:145px;
+    width:100px;
+    height:100px;
     justify-self:end;
     filter:none;
   }
   .hub-core::before{
     inset:0;
-    border-radius:34px;
+    border-radius:24px;
     background:linear-gradient(145deg,rgba(49,95,167,.08),rgba(227,31,50,.045));
     filter:none;
     animation:none;
   }
   .hub-core-ring,.hub-core-line,.core-satellite{display:none}
   .hub-core-center{
-    width:108px;
-    height:108px;
+    width:84px;
+    height:84px;
     border:1px solid #d7e2ed;
-    border-radius:27px;
+    border-radius:20px;
     background:#fff;
-    box-shadow:0 13px 30px rgba(31,57,89,.10),inset 0 1px 0 #fff;
+    box-shadow:0 8px 20px rgba(31,57,89,.09),inset 0 1px 0 #fff;
     animation:none;
   }
-  .hub-core-center::after{bottom:18px;width:37px;height:3px;box-shadow:none}
-  .hub-core-center strong{color:var(--navy);font-size:2.25rem}
-  .hub-core-center span{color:#8291a4;font-size:.55rem}
+  .hub-core-center::after{bottom:12px;width:28px;height:2px;box-shadow:none}
+  .hub-core-center strong{color:var(--navy);font-size:1.6rem}
+  .hub-core-center span{color:#8291a4;font-size:.48rem}
 
-  #hubScreen .section-head{margin-bottom:18px;padding-top:18px;border-top-color:#dce4ee}
+  #hubScreen .section-head{margin-bottom:14px;padding-top:14px;border-top-color:#dce4ee}
   #hubScreen .section-head::before{width:74px;box-shadow:none}
   #hubScreen .section-kicker{color:var(--brand-red);font-size:.72rem}
   #hubScreen .section-title{color:var(--navy);font-size:1.18rem}
@@ -1172,26 +1177,27 @@
   #hubScreen .empty-apps{color:#718298;border-color:#cbd7e4;background:rgba(255,255,255,.78);box-shadow:0 10px 28px rgba(24,49,81,.06)}
 
   @media (max-width:960px){
-    #hubScreen .hub-hero{grid-template-columns:minmax(0,1fr) 135px}
-    .hub-core{width:125px;height:125px}.hub-core-center{width:94px;height:94px;border-radius:24px}.hub-core-center strong{font-size:1.95rem}.hub-core-center::after{bottom:14px;width:32px}
+    #hubScreen .hub-hero{grid-template-columns:minmax(0,1fr) 96px;padding:18px 22px;gap:16px}
+    .hub-core{width:88px;height:88px}.hub-core-center{width:74px;height:74px;border-radius:18px}.hub-core-center strong{font-size:1.4rem}.hub-core-center::after{bottom:10px;width:24px}
     #hubScreen .app-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   }
   @media (max-width:700px){
     #hubScreen main{padding:25px 16px 48px}
-    #hubScreen .hub-hero{min-height:auto;margin-bottom:27px;padding:29px 25px;grid-template-columns:1fr;text-align:left;border-radius:20px}
-    #hubScreen .hub-title{font-size:1.85rem}
-    #hubScreen .hub-sub{font-size:.9rem}
-    .hub-core{position:absolute;width:92px;height:92px;right:17px;top:17px;opacity:.28}
-    .hub-core-center{width:70px;height:70px;border-radius:19px}.hub-core-center strong{font-size:1.5rem}.hub-core-center span,.hub-core-center::after{display:none}
-    #hubScreen .hero-copy{padding-right:40px}
-    #hubScreen .hub-hero::before{font-size:3rem;bottom:-11px}
+    #hubScreen .hub-hero{min-height:auto;margin-bottom:18px;padding:15px 16px;grid-template-columns:1fr;text-align:left;border-radius:15px}
+    #hubScreen .hub-title{font-size:1.28rem}
+    #hubScreen .hub-sub{font-size:.79rem}
+    .hub-core{position:absolute;width:62px;height:62px;right:12px;top:12px;opacity:.26}
+    .hub-core-center{width:54px;height:54px;border-radius:14px}.hub-core-center strong{font-size:1.1rem}.hub-core-center span,.hub-core-center::after{display:none}
+    #hubScreen .hero-copy{padding-right:64px}
+    #hubScreen .hub-hero::before{font-size:1.9rem;bottom:-6px}
     #hubScreen .app-grid{grid-template-columns:1fr;gap:14px}
     #hubScreen .app-tile{min-height:225px}
   }
   @media (max-width:430px){
     #hubScreen .hero-copy{padding-right:0}
     .hub-core{display:none}
-    #hubScreen .hub-hero{padding:27px 22px}
+    #hubScreen .hub-hero{padding:14px 15px}
+    #hubScreen .hub-title{font-size:1.18rem}
   }
 
   /* Brand art layer — MASARU navy / blue / red only */
@@ -1219,11 +1225,11 @@
   }
   #hubScreen .hub-hero::before{
     color:rgba(23,61,109,.045);
-    text-shadow:34px -24px 0 rgba(227,31,50,.018);
+    text-shadow:16px -11px 0 rgba(227,31,50,.016);
   }
   #hubScreen .hub-hero::after{
     right:24%;
-    width:4px;
+    width:3px;
     background:linear-gradient(transparent,rgba(227,31,50,.64),rgba(49,95,167,.42),transparent);
     box-shadow:54px 0 0 rgba(49,95,167,.07),108px 0 0 rgba(227,31,50,.045);
   }
