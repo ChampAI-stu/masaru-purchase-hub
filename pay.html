@@ -314,7 +314,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-97</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-98</span>
   </span>
   <!-- ⚠️ ป้าย "🧪 โหมดทดสอบ" ถอดออกตามที่สั่ง (v09-96)
        พฤติกรรมยังคงเดิม — APPROVAL_MODE=false อยู่ (ดูตัวแปรในสคริปต์)
@@ -831,7 +831,9 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
           <option value="นามบุคคล">นามบุคคล</option>
         </select></div>
       <div class="fld"><label>งวด</label>
-        <input id="p_inst" list="instList" placeholder="มัดจำครั้งที่ 1"><datalist id="instList"><option value="มัดจำครั้งที่ 1"><option value="มัดจำครั้งที่ 2"><option value="จ่ายยอดค้างชำระ"><option value="จ่ายเต็มจำนวน"></datalist></div>
+        <input id="p_inst" list="instList" placeholder="มัดจำครั้งที่ 1" oninput="instWatch()" onchange="instWatch()"><datalist id="instList"><option value="มัดจำครั้งที่ 1"><option value="มัดจำครั้งที่ 2"><option value="จ่ายยอดค้างชำระ"><option value="จ่ายเต็มจำนวน"></datalist>
+        <!-- ⚠️ เตือนตั้งชื่องวดซ้ำกับงวดที่มีอยู่แล้วในบิลเดียวกัน -->
+        <div id="p_instWarn" style="display:none;font-size:11.5px;margin-top:5px;padding:6px 9px;border-radius:7px;line-height:1.55"></div></div>
       <div class="fld" style="grid-column:1/-1"><label>ข้อมูลผู้รับเงิน (ชื่อบัญชี / ธนาคาร / เลขบัญชี)</label>
         <textarea id="p_payee" rows="6" style="min-height:110px;max-height:260px" placeholder="เช่น&#10;Zhejiang XX Trading Co.,Ltd&#10;Bank of China · A/C 6217 0000 1234 5678 · SWIFT BKCHCNBJ"></textarea></div>
       <div class="fld"><label>ผู้รับผิดชอบ</label><input id="p_resp"></div>
@@ -1250,7 +1252,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v09-97';
+const PAY_VERSION='v09-98';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -2028,6 +2030,66 @@ function setSelKeep(id,val,opts){
   }
   el.value=v;
 }
+/* ══════════════════════════════════════════════════════════════════
+   ⚠️ กันตั้งชื่องวดซ้ำ (เช่น "มัดจำครั้งที่ 1" สองงวดในบิลเดียวกัน)
+   เทียบแบบไม่สนช่องว่าง/ตัวพิมพ์เล็กใหญ่/เลขไทย — "มัดจำครั้งที่ 1",
+   "มัดจำครั้งที่1" และ "มัดจำครั้งที่ ๑" ถือว่าชื่อเดียวกัน
+   ══════════════════════════════════════════════════════════════════ */
+const instKey = v => String(v==null?'':v).trim().toLowerCase()
+  .replace(/[๐-๙]/g, d => String('๐๑๒๓๔๕๖๗๘๙'.indexOf(d)))
+  .replace(/\s+/g,'');
+function instDup(bid, name, exceptId){
+  const k = instKey(name); if(!k) return [];
+  return billPays(bid).filter(p => String(p.id)!==String(exceptId||'') && instKey(p.installment)===k);
+}
+/* ชื่องวดถัดไปที่ยังไม่ถูกใช้ — "มัดจำครั้งที่ 1" → "มัดจำครั้งที่ 2" */
+function instNext(bid, name, exceptId){
+  /* รับทั้งเลขอารบิกและเลขไทย ("มัดจำครั้งที่ ๑" → "มัดจำครั้งที่ 2") */
+  const m = String(name||'').trim().match(/^(.*?)([\d๐-๙]+)\s*$/);
+  if(!m) return '';
+  let n = +String(m[2]).replace(/[๐-๙]/g, d => String('๐๑๒๓๔๕๖๗๘๙'.indexOf(d)));
+  if(isNaN(n)) return '';
+  for(let i=0;i<60;i++){
+    n++;
+    const cand = (m[1]+n).replace(/\s+/g,' ').trim();
+    if(!instDup(bid, cand, exceptId).length) return cand;
+  }
+  return '';
+}
+function useInst(v){ $('p_inst').value=v; instWatch(); $('p_inst').focus(); }
+/* เตือนสด ๆ ตอนพิมพ์ — ไม่ต้องรอกดบันทึก */
+function instWatch(){
+  const box = $('p_instWarn'); if(!box) return;
+  const name = $('p_inst').value;
+  const dup = instDup(payBillId, name, payEditId);
+  if(!dup.length){ box.style.display='none'; box.innerHTML=''; return; }
+  const b = BILLS.find(x=>String(x.id)===String(payBillId))||{};
+  const s = curSym(b.currency);
+  const list = dup.map(p => (p.pay_date||'-')+' · '+money(p.amount)+' '+s
+                            +' · '+({planned:'วางแผน',submitted:'ส่งยอด',paid:'จ่ายแล้ว',rejected:'ไม่อนุมัติ'}[p.status]||p.status||'')).join('<br>');
+  const nx = instNext(payBillId, name, payEditId);
+  box.style.display='block';
+  box.style.background='#FFF4E5'; box.style.border='1px solid #F0C48A'; box.style.color='#8A4B00';
+  box.innerHTML = '⚠️ <b>ชื่องวดซ้ำ</b> — บิลนี้มีงวด "<b>'+esc(name.trim())+'</b>" อยู่แล้ว '+dup.length+' งวด<br>'
+    + '<span style="color:#A8641F">'+list+'</span>'
+    + (nx ? '<br>👉 ถ้าเป็นงวดใหม่ ควรใช้ <b>'+esc(nx)+'</b> '
+            + '<button class="btn mini" style="margin-left:4px" onclick="useInst(\''+esc(nx).replace(/'/g,"\\'")+'\')">ใช้ชื่อนี้</button>' : '')
+    + '<br><span style="font-size:11px">ถ้าตั้งใจให้ชื่อซ้ำจริง กดบันทึกได้ตามปกติ (ระบบจะถามยืนยันอีกครั้ง)</span>';
+}
+/* เติมรายการเลือกชื่องวดให้ตรงบิลนี้ — ชื่อที่ใช้ไปแล้วมีป้ายกำกับ */
+function instFillList(bid){
+  const dl = $('instList'); if(!dl) return;
+  const base = ['มัดจำครั้งที่ 1','มัดจำครั้งที่ 2','มัดจำครั้งที่ 3','จ่ายยอดค้างชำระ','จ่ายเต็มจำนวน'];
+  const used = billPays(bid).map(p=>String(p.installment||'').trim()).filter(Boolean);
+  const seen = {}, opts = [];
+  base.concat(used).forEach(function(n){
+    const k = instKey(n); if(!k || seen[k]) return; seen[k]=1;
+    const u = instDup(bid, n, payEditId).length;
+    opts.push('<option value="'+esc(n)+'"'+(u?' label="'+esc(n)+' — ใช้แล้ว"':'')+'>');
+  });
+  dl.innerHTML = opts.join('');
+}
+
 function openPay(bid){
   payEditId=null;
   const b=BILLS.find(x=>String(x.id)===String(bid));
@@ -2043,6 +2105,7 @@ function openPay(bid){
   $('p_kuser').value=lastKuser(bid); toggleKuser();
   $('p_paycur').value=''; $('p_cross').value=''; $('p_usd').value=''; $('p_ship').value='0'; calcThb();
   $('p_inst').value=''; $('p_resp').value=''; $('p_note').value=''; $('p_payee').value='';   // ให้ว่างเสมอ
+  instFillList(bid); instWatch();            // ⚠️ เตรียมตัวเลือกชื่องวด + ล้างคำเตือนเดิม
   $('p_status').value='planned';
   if($('p_optPaid'))$('p_optPaid').style.display=(!APPROVAL_MODE||IS_EXEC)?'':'none';
   $('payWarn').style.display='none';
@@ -2072,6 +2135,7 @@ function editPay(pid,bid){
   $('p_ship').value=p.ship_fee||0; calcThb();
   $('p_payee').value=p.payee||'';
   $('p_inst').value=p.installment||'';
+  instFillList(bid); instWatch();            // ⚠️ เช็คซ้ำ โดยไม่นับงวดที่กำลังแก้
   $('p_resp').value=p.responsible||'';
   $('p_note').value=p.note||'';
   $('p_status').value=p.status||'planned';
@@ -2136,6 +2200,16 @@ async function savePayment(){
       +`<br><span class="muted" style="font-size:11.5px">ถ้ายอดบิลไม่ถูก ให้ไปแก้ที่ปุ่ม "แก้" ของบิลก่อน</span>`;
     $('p_amount').focus(); $('p_amount').select();
     return;
+  }
+  // ── ⚠️ เช็คชื่องวดซ้ำ: บิลเดียวกัน ตั้งชื่องวดเดิม (เช่น "มัดจำครั้งที่ 1" สองรอบ) ──
+  const instName = $('p_inst').value.trim();
+  const dupInst = instDup(payBillId, instName, payEditId);
+  if(dupInst.length){
+    const nx = instNext(payBillId, instName, payEditId);
+    warns.push(`⚠️ <b>ชื่องวดซ้ำ!</b> บิลนี้มีงวด "<b>${esc(instName)}</b>" อยู่แล้ว ${dupInst.length} งวด `
+      + `(${dupInst.map(p=>(p.pay_date||'-')+' ยอด '+money(p.amount)).join(' · ')})`
+      + (nx?`<br>&nbsp;&nbsp;&nbsp;👉 ถ้าเป็นงวดใหม่ ควรใช้ <b>${esc(nx)}</b> `
+            + `<button class="btn mini" onclick="useInst('${esc(nx).replace(/'/g,"\\'")}')">ใช้ชื่อนี้</button>`:''));
   }
   // ── เช็คยอดซ้ำ: บิลเดียวกัน ยอดเท่ากัน ──
   const dupSame=billPays(payBillId).filter(p=>p.id!==payEditId&&Math.abs((+p.amount||0)-amt)<0.001);
@@ -2724,8 +2798,11 @@ function openHist(bid){
   if(!rows.length){h+='<div class="empty">ยังไม่มีงวดจ่าย</div>';}
   else{
     h+=`<table><thead><tr><th>วันที่</th><th>งวด</th><th class="right">ยอด (${s})</th><th class="right">เรท</th><th class="right">บาท</th><th>ช่องทางการโอน</th><th>ประเภทการจ่าย</th><th>ข้อมูลผู้รับเงิน</th><th>ผู้รับผิดชอบ</th><th>หมายเหตุ</th><th>สถานะ</th><th></th></tr></thead><tbody>`;
+    /* ⚠️ ชื่องวดที่ซ้ำกันในบิลนี้ — ให้เห็นทันทีว่ามีงวดชื่อเดียวกันซ้อนอยู่ */
+    const instCnt={}; rows.forEach(p=>{const k=instKey(p.installment); if(k) instCnt[k]=(instCnt[k]||0)+1;});
     rows.forEach(p=>{
-      h+=`<tr><td>${esc(p.pay_date||'-')}</td><td>${esc(p.installment||'-')}</td>
+      const dupI = instCnt[instKey(p.installment)]>1;
+      h+=`<tr><td>${esc(p.pay_date||'-')}</td><td>${esc(p.installment||'-')}${dupI?' <span class="pill" style="background:#FFF4E5;color:#8A4B00;border:1px solid #F0C48A" title="บิลนี้มีงวดชื่อนี้มากกว่า 1 งวด — เช็คว่าไม่ใช่รายการซ้ำ">⚠️ ซ้ำ</span>':''}</td>
         <td class="right"><b>${money(p.amount)}</b></td>
         <td class="right">${p.rate?esc(p.rate):'-'}</td>
         <td class="right">${p.amount_thb?money(p.amount_thb):'-'}</td>
