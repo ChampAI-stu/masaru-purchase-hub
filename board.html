@@ -1311,17 +1311,22 @@ function enterApp(session){
     : (meta.user_role ? [meta.user_role] : []);
   const isExec = roles.includes('pr_exec') || roles.includes('executive');
   const isMgr  = roles.includes('pr_manager');
-  // อนุญาตเฉพาะบัญชีที่มีสิทธิ์ purchase/marketing/หัวหน้า/ผู้บริหาร
-  if(!roles.includes('purchase') && !roles.includes('marketing') && !isMgr && !isExec){
+  const isShip = roles.includes('shipping');
+  // อนุญาตเฉพาะบัญชีที่มีสิทธิ์ purchase/marketing/shipping/หัวหน้า/ผู้บริหาร
+  if(!roles.includes('purchase') && !roles.includes('marketing') && !isShip && !isMgr && !isExec){
     location.replace('index.html');   // ไม่มีสิทธิ์ → กลับหน้ารวม HUB
     return;
   }
-  // จัดซื้อ/หัวหน้า/ผู้บริหาร → แก้ไขได้ทั้งหมด ; การตลาด → ดูอย่างเดียว
+  /* จัดซื้อ/หัวหน้า/ผู้บริหาร → แก้ไขได้ทั้งหมด
+     ★ ชิปปิ้ง → เห็นครบทุกแท็บ แต่ "ดูอย่างเดียว" (ไม่มีปุ่มเพิ่ม/แก้/ลบ/นำเข้า)
+       การตลาด → ดูอย่างเดียว และเห็นแค่ 2 แท็บแรกเหมือนเดิม */
   const canManage = roles.includes('purchase') || isMgr || isExec;
-  currentRole = canManage ? 'purchase' : 'marketing';
+  currentRole = canManage ? 'purchase' : (isShip ? 'shipping' : 'marketing');
   ROLE_LABEL = roles.includes('purchase') ? '\ud83d\udce6 \u0e1d\u0e48\u0e32\u0e22\u0e08\u0e31\u0e14\u0e0b\u0e37\u0e49\u0e2d'
              : (isMgr ? '\ud83e\uddd1\u200d\ud83d\udcbc \u0e2b\u0e31\u0e27\u0e2b\u0e19\u0e49\u0e32'
-             : (isExec ? '\ud83d\udc51 \u0e1c\u0e39\u0e49\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23' : '\ud83d\udc41\ufe0f \u0e1d\u0e48\u0e32\u0e22\u0e01\u0e32\u0e23\u0e15\u0e25\u0e32\u0e14'));
+             : (isExec ? '\ud83d\udc51 \u0e1c\u0e39\u0e49\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23'
+             : (isShip ? '\ud83d\ude9a \u0e0a\u0e34\u0e1b\u0e1b\u0e34\u0e49\u0e07 (\u0e14\u0e39\u0e2d\u0e22\u0e48\u0e32\u0e07\u0e40\u0e14\u0e35\u0e22\u0e27)'
+             : '\ud83d\udc41\ufe0f \u0e1d\u0e48\u0e32\u0e22\u0e01\u0e32\u0e23\u0e15\u0e25\u0e32\u0e14')));
   // ราคาสินค้า: เห็น+แก้ได้ เฉพาะ จัดซื้อ/หัวหน้า/ผู้บริหาร
   canSeePrice  = canManage;
   canEditPrice = canManage;
@@ -1329,9 +1334,9 @@ function enterApp(session){
   $('app').style.display='block';
   updatePortalBtn(roles);   // โชว์ปุ่มหน้ารวมเฉพาะคนที่เข้าได้หลายเว็บ
   // 🔒 รายงาน On-Time + ประวัติการอัพโหลด = ข้อมูลภายในฝ่ายจัดซื้อ ไม่ให้การตลาดเห็น
-  const inner = (currentRole === 'purchase');
+  const inner = (currentRole === 'purchase' || currentRole === 'shipping');
   $('tabRep').style.display = inner ? '' : 'none';
-  $('tabArr').style.display = inner ? '' : 'none';   // 📦 แจ้งสินค้าขาเข้า = ข้อมูลภายใน
+  $('tabArr').style.display = inner ? '' : 'none';   // 📦 แจ้งสินค้าขาเข้า
   $('tabUp').style.display  = inner ? '' : 'none';
   // role UI
   if(currentRole === 'purchase'){
@@ -1349,13 +1354,15 @@ function enterApp(session){
     $('rolePill').textContent = '🧑‍💼 หัวหน้า';
   } else if(currentRole === 'executive'){
     $('rolePill').textContent = '👑 ผู้บริหาร';
+  } else if(currentRole === 'shipping'){
+    $('rolePill').textContent = '🚚 ชิปปิ้ง (ดูอย่างเดียว)';
   } else {
     $('rolePill').textContent = '👁️ ฝ่ายการตลาด';
   }
   if($('priceHead')) $('priceHead').style.display = canSeePrice ? '' : 'none';
   if(canSeePrice) document.body.classList.add('price-on');
   captureMe();
-  if(currentRole==='purchase'){
+  if(currentRole==='purchase' || currentRole==='shipping'){
     $('bellWrap').style.display='';   // 🔔 กระดิ่งสินค้าขาเข้า (การตลาดไม่เห็นแท็บนี้ จึงไม่ต้องมีกระดิ่ง)
     arrBadgeBoot();                   // ⏰ ป้ายของค้างเกินกำหนดบนแท็บ 📦
     subscribeArrival();               // ฟังการเปลี่ยนแปลงแบบ realtime
@@ -2688,7 +2695,7 @@ $('tabUp').addEventListener('click',   () => switchTab('up'));
 $('tabRep').addEventListener('click',  () => switchTab('rep'));
 function switchTab(t){
   // การตลาดเข้า 3 แท็บนี้ไม่ได้ แม้จะเรียกฟังก์ชันตรงๆ (ข้อมูลภายในฝ่ายจัดซื้อ)
-  if((t==='rep'||t==='up'||t==='arr') && currentRole!=='purchase') t='board';
+  if((t==='rep'||t==='up'||t==='arr') && currentRole!=='purchase' && currentRole!=='shipping') t='board';
   $('viewBoard').style.display = t==='board' ? 'block' : 'none';
   $('viewArr').style.display   = t==='arr'   ? 'block' : 'none';
   $('viewPlan').style.display  = t==='plan'  ? 'block' : 'none';
