@@ -131,6 +131,43 @@
     body.printing-fi,body.printing-fi *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
     @page{size:A4 landscape;margin:8mm}
   }
+  /* ===== 📎 แนบสลิป/เอกสาร (ใบวางบิลขนส่ง + สรุปภาษี) ===== */
+  .slip-wrap{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#FAFCFF;margin-top:12px}
+  .slip-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+  .slip-head b{font-size:13px;color:var(--navy)}
+  .slip-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(122px,1fr));gap:9px}
+  .slip-card{border:1px solid #CBD5E1;border-radius:9px;background:#fff;overflow:hidden;position:relative}
+  .slip-card img{width:100%;height:108px;object-fit:cover;display:block;cursor:zoom-in;background:#F1F5F9}
+  .slip-card .pdf{height:108px;display:flex;align-items:center;justify-content:center;flex-direction:column;
+    gap:3px;background:#FFF1F2;color:#B01722;font-size:22px;cursor:pointer}
+  .slip-card .pdf span{font-size:10.5px;font-weight:700}
+  .slip-card .cap{font-size:10px;color:#475569;padding:4px 6px;line-height:1.45;word-break:break-all}
+  .slip-card .del{position:absolute;top:4px;right:4px;border:0;background:#D0212Bcc;color:#fff;
+    width:22px;height:22px;border-radius:6px;font-size:13px;line-height:1;cursor:pointer}
+  .slip-empty{font-size:12px;color:var(--muted);padding:6px 2px}
+  /* หน้าปริ้นสลิป — ซ่อนทุกอย่างเหลือแต่ชุดเอกสาร */
+  #slipPrint{display:none}
+  @media print{
+    body.printing-slip > *{display:none!important}
+    body.printing-slip > #slipPrint{display:block!important;width:100%!important}
+    /* หน้านี้มีกฎพิมพ์รวมที่สั่ง body *{visibility:hidden} ไว้ (ของเอกสาร INV)
+       ต้องสั่งให้ชุดสลิปมองเห็นได้กลับมา ไม่งั้นพิมพ์ออกมาเป็นหน้าขาว */
+    body.printing-slip #slipPrint,body.printing-slip #slipPrint *{visibility:visible!important}
+    html.printing-slip,body.printing-slip{margin:0!important;padding:0!important;background:#fff!important}
+    body.printing-slip,body.printing-slip *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  }
+  #slipPrint{font-size:11px;color:#000;background:#fff}
+  #slipPrint .sp-hd{border-bottom:2.5px solid #14315C;padding-bottom:6px;margin-bottom:10px}
+  #slipPrint .sp-ti{font-size:16px;font-weight:800;color:#14315C}
+  #slipPrint .sp-meta{font-size:11px;color:#333;line-height:1.7;margin-top:3px}
+  #slipPrint .sp-meta b{color:#000}
+  #slipPrint .sp-one{border:1px solid #999;border-radius:6px;padding:8px;margin-bottom:10px;
+    break-inside:avoid;page-break-inside:avoid;text-align:center}
+  #slipPrint .sp-one .cap{font-size:10.5px;color:#333;text-align:left;margin-bottom:5px}
+  #slipPrint .sp-one img{max-width:100%;max-height:112mm;object-fit:contain}
+  #slipPrint .sp-pdf{font-size:12px;color:#B01722;padding:16px;border:1px dashed #E0A0A6;border-radius:6px}
+  #slipPrint .sp-fo{margin-top:8px;padding-top:5px;border-top:1px solid #BBB;font-size:9px;color:#555;
+    display:flex;justify-content:space-between}
   .sku-pic-box{width:74px;height:74px;border-radius:8px;border:1px dashed #94A3B8;background:#F4F6FA;
     display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:17px;
     color:#64748B;cursor:pointer;object-fit:cover;margin:0 auto}
@@ -395,6 +432,19 @@
           <button class="btn mini ghost" onclick="resetFrRows()">↺ ใช้รายการมาตรฐาน</button>
         </div>
         <div class="scroll"><div id="fiRows"></div></div>
+        <!-- 📎 แนบสลิปโอนเงิน / ใบเสร็จ / เอกสารแนบ -->
+        <div class="slip-wrap" id="fiSlipWrap">
+          <div class="slip-head">
+            <b>📎 แนบสลิป / เอกสารของใบนี้</b>
+            <span class="muted" style="font-size:11.5px">รูป JPG/PNG หรือไฟล์ PDF · แนบได้หลายไฟล์</span>
+            <div style="flex:1"></div>
+            <input type="file" id="fiSlipFile" multiple accept="image/*,application/pdf" style="display:none"
+              onchange="slipPick('frinv',this)">
+            <button class="btn mini edit-only" onclick="slipAdd('frinv')">➕ เลือกไฟล์แนบ</button>
+            <button class="btn mini ghost" onclick="slipPrint('frinv')" title="ปริ้นชุดสลิปที่แนบไว้ พร้อมหัวเอกสาร">🖨️ ปริ้นสลิป</button>
+          </div>
+          <div id="fiSlipGrid"></div>
+        </div>
         <div id="fiPaper" style="margin-top:16px"></div>
       </div>
     </section>
@@ -451,6 +501,19 @@
         <div style="overflow-x:auto"><div id="taxLines"></div></div>
         <div class="edit-only" style="margin:8px 0"><button class="btn ghost" onclick="addTaxLine()">+ เพิ่มรายการ</button> <button class="btn ghost" onclick="addFeeLine()">+ ค่าผ่านพิธีศุลกากร</button></div>
         <div><label>หมายเหตุเพิ่มเติม</label><textarea id="x_note" oninput="renderTaxDoc()" placeholder="เช่น รายการ 1.PO19305 SMLG-320 = 1000 ชุด ..."></textarea></div>
+        <!-- 📎 แนบสลิปจ่ายภาษี / ใบเสร็จกรมศุลฯ / ใบขน 04 -->
+        <div class="slip-wrap" id="txSlipWrap">
+          <div class="slip-head">
+            <b>📎 แนบสลิป / เอกสารของใบนี้</b>
+            <span class="muted" style="font-size:11.5px">สลิปจ่ายภาษี · ใบเสร็จกรมศุลฯ · ใบขน 04 (รูป หรือ PDF)</span>
+            <div style="flex:1"></div>
+            <input type="file" id="txSlipFile" multiple accept="image/*,application/pdf" style="display:none"
+              onchange="slipPick('taxsum',this)">
+            <button class="btn mini edit-only" onclick="slipAdd('taxsum')">➕ เลือกไฟล์แนบ</button>
+            <button class="btn mini ghost" onclick="slipPrint('taxsum')" title="ปริ้นชุดสลิปที่แนบไว้ พร้อมหัวเอกสาร">🖨️ ปริ้นสลิป</button>
+          </div>
+          <div id="txSlipGrid"></div>
+        </div>
         <div class="toolbar edit-only" style="margin-top:8px"><button class="btn" onclick="saveTaxSummary()">💾 บันทึก</button><button class="btn gold" onclick="exportTaxPdf(event)">📄 PDF</button></div>
       </div>
       <div class="card"><div id="taxPreview"></div></div>
@@ -1160,7 +1223,7 @@ function renderFrInvList(){
   let h='<table><thead><tr><th>ใบขนเลขที่</th><th>เลขอ้างอิง</th><th>ขนส่ง</th><th>IVSI / PO</th>'
     +'<th>🔗 Shipment</th>'
     +'<th class="right">ยอดก่อนภาษี</th><th class="right">VAT</th><th class="right">หัก ณ ที่จ่าย</th>'
-    +'<th class="right">ต้องชำระ</th><th>กำหนดชำระ</th><th></th></tr></thead><tbody>';
+    +'<th class="right">ต้องชำระ</th><th>กำหนดชำระ</th><th>📎</th><th></th></tr></thead><tbody>';
   list.forEach(x=>{
     const late=x.due_date&&x.due_date<=today;
     const t=frTrkOf(x);
@@ -1174,6 +1237,9 @@ function renderFrInvList(){
       +'<td class="right" style="color:#1E7145">'+money(x.sum_wht)+'</td>'
       +'<td class="right"><b>'+money(x.sum_total)+'</b></td>'
       +'<td>'+(x.due_date?'<span style="'+(late?'color:#D0212B;font-weight:700':'')+'">'+esc(x.due_date)+'</span>':'-')+'</td>'
+      +'<td style="text-align:center">'+(slipsOf(x).length
+          ?('<button class="mini btn" onclick="openFrInv(\''+x.id+'\')" title="มีไฟล์แนบ '+slipsOf(x).length+' ไฟล์ — กดเปิดดู">📎 '+slipsOf(x).length+'</button>')
+          :'<span class="muted">—</span>')+'</td>'
       +'<td style="white-space:nowrap"><button class="mini btn" onclick="openFrInv(\''+x.id+'\')" title="เปิดดูใบนี้ / สั่งพิมพ์ PDF">👁 ดู</button>'
       +(canEdit?' <button class="mini btn red" onclick="delFrInv(\''+x.id+'\')">ลบ</button>':'')+'</td>'
       +'</tr>';});
@@ -1261,7 +1327,7 @@ function openFrInv(id){
   $('fi_ivsi').value=(x&&x.ivsi_no)||'';    $('fi_po').value=(x&&x.po_list)||'';
   frFillTrkList(); if($('fi_trk'))$('fi_trk').value=(x&&x.tracking_id)||''; frTrkInfo();
   FR_ROWS=(x&&Array.isArray(x.items)&&x.items.length)?JSON.parse(JSON.stringify(x.items)):stdRows();
-  $('fiEditor').style.display=''; drawFrRows(); calcFrInv();
+  $('fiEditor').style.display=''; drawFrRows(); calcFrInv(); renderSlips('frinv');
   $('fiEditor').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function closeFrInv(){ $('fiEditor').style.display='none'; FR_ID=null; }
@@ -1353,8 +1419,14 @@ async function saveFrInv(){
                   +(patch.ship_due?(' · กำหนดชำระ '+patch.ship_due):'')+' · ใบวางบิล '+(patch.billing||'-')+')'; }
     }
   }
-  await loadFrInv(); closeFrInv();
+  await loadFrInv();
   if(CUR_TAB==='track')renderTrack();
+  /* ★ ใบใหม่: คงฟอร์มไว้แล้วชี้ไปที่ใบที่เพิ่งสร้าง เพื่อแนบสลิปต่อได้ทันที */
+  if(!FR_ID){
+    const mine=FRINVS.find(v=>String(v.entry_no||'')===String(rec.entry_no||'')&&String(v.booking_no||'')===String(rec.booking_no||''));
+    if(mine){ openFrInv(mine.id); alert('บันทึกใบวางบิลแล้ว ✅'+back+'\n\n📎 แนบสลิปได้เลยที่ช่อง "แนบสลิป / เอกสารของใบนี้" ด้านล่าง'); return; }
+  }
+  renderSlips('frinv'); closeFrInv();
   alert('บันทึกใบวางบิลแล้ว ✅'+back);
 }
 async function delFrInv(id){
@@ -1363,6 +1435,140 @@ async function delFrInv(id){
   if(error)return alert('ลบไม่สำเร็จ: '+error.message);
   await loadFrInv();
 }
+/* ══════════════════════════════════════════════════════════════════
+   📎 แนบสลิป / เอกสาร — ใช้ร่วมกันทั้ง "ใบวางบิลขนส่ง" และ "สรุปภาษี"
+
+   เก็บไฟล์จริงไว้ใน Supabase Storage (bucket: shipment-slips)
+   ในตารางเก็บแค่ลิสต์ URL ไว้ในคอลัมน์ slips (jsonb) → ไม่บวม ไม่กิน egress
+   รองรับรูป JPG/PNG/WebP และไฟล์ PDF · แนบได้หลายไฟล์ต่อ 1 ใบ
+   ══════════════════════════════════════════════════════════════════ */
+const SLIP_BUCKET='shipment-slips';
+const SLIP_CFG={
+  frinv:{table:'freight_invoices', grid:'fiSlipGrid', file:'fiSlipFile',
+         cur:()=>FR_ID, row:id=>FRINVS.find(x=>String(x.id)===String(id)),
+         title:x=>'สลิป/เอกสารแนบ — ใบวางบิลค่าขนส่ง',
+         meta:x=>[['บริษัทขนส่ง',x.carrier],['ใบขนเลขที่',x.entry_no],['เลขอ้างอิง',x.booking_no],
+                  ['IVSI / PO',x.ivsi_no],['ยอดต้องชำระ',money(x.sum_total)+' บาท'],['กำหนดชำระ',x.due_date]]},
+  taxsum:{table:'tax_summaries', grid:'txSlipGrid', file:'txSlipFile',
+         cur:()=>comboVal('loadTax'), row:id=>db.taxsum.find(x=>String(x.id)===String(id)),
+         title:x=>'สลิป/เอกสารแนบ — ใบสรุปภาษีนำเข้า',
+         meta:x=>{const u=txSum(x);return [['หัวเรื่อง',x.title],['ภาษีเดือน',txThMonth(x.period)],
+                  ['บริษัท',x.company],['บริษัทขนส่ง',x.carrier],['เลขที่ดราฟใบขน',x.draft_no],
+                  ['อ้างอิง PO',x.ref],['รวมชำระค่าภาษี',money(Math.round(u.tot))+' บาท']];}}
+};
+const slipsOf=x=>(x&&Array.isArray(x.slips))?x.slips:[];
+const slipIsPdf=s=>/pdf/i.test(s.type||'')||/\.pdf$/i.test(s.name||'');
+
+function slipAdd(kind){
+  const c=SLIP_CFG[kind];
+  if(!c.cur())return alert('กด 💾 บันทึกใบนี้ก่อน แล้วค่อยแนบไฟล์\n(ระบบต้องมีเลขใบก่อนจึงจะผูกไฟล์แนบได้)');
+  $(c.file).click();
+}
+async function slipPick(kind,inp){
+  const files=[...(inp.files||[])]; inp.value='';
+  if(!files.length)return;
+  const c=SLIP_CFG[kind], id=c.cur(), x=c.row(id);
+  if(!id||!x)return alert('ไม่พบใบนี้ — กดบันทึกก่อน');
+  const grid=$(c.grid); if(grid)grid.innerHTML='<div class="slip-empty">⏳ กำลังอัปโหลด '+files.length+' ไฟล์…</div>';
+  const list=slipsOf(x).slice(); const bad=[];
+  for(const f of files){
+    if(f.size>15*1024*1024){ bad.push(f.name+' (ใหญ่เกิน 15MB)'); continue; }
+    const safe=String(f.name||'file').replace(/[^\w.\-ก-๙ ]+/g,'_').slice(-60);
+    const path=kind+'/'+id+'/'+Date.now()+'_'+safe;
+    const up=await sb.storage.from(SLIP_BUCKET).upload(path,f,{contentType:f.type||'application/octet-stream',upsert:false});
+    if(up.error){ bad.push(f.name+' — '+up.error.message); continue; }
+    const pub=sb.storage.from(SLIP_BUCKET).getPublicUrl(path);
+    list.push({path:path, url:(pub.data&&pub.data.publicUrl)||'', name:safe,
+               type:f.type||'', size:f.size||0, by:(typeof ME==='string'?ME:''), at:new Date().toISOString()});
+  }
+  const {error}=await sb.from(c.table).update({slips:list}).eq('id',id);
+  if(error){ renderSlips(kind);
+    return alert('บันทึกรายการไฟล์แนบไม่สำเร็จ: '+error.message
+      +(/slips/i.test(error.message||'')?'\n\nยังไม่มีคอลัมน์ slips — ให้รันไฟล์ shipment_slips.sql ใน Supabase ก่อน':'')); }
+  x.slips=list; renderSlips(kind);
+  if(kind==='frinv')renderFrInvList(); else renderTaxList();
+  if(bad.length)alert('แนบไม่สำเร็จ '+bad.length+' ไฟล์:\n'+bad.join('\n'));
+}
+async function slipDel(kind,i){
+  const c=SLIP_CFG[kind], id=c.cur(), x=c.row(id); if(!x)return;
+  const list=slipsOf(x).slice(); const s=list[i]; if(!s)return;
+  if(!confirm('ลบไฟล์แนบนี้?\n\n'+(s.name||'')))return;
+  try{ await sb.storage.from(SLIP_BUCKET).remove([s.path]); }catch(e){}
+  list.splice(i,1);
+  const {error}=await sb.from(c.table).update({slips:list}).eq('id',id);
+  if(error)return alert('ลบไม่สำเร็จ: '+error.message);
+  x.slips=list; renderSlips(kind);
+  if(kind==='frinv')renderFrInvList(); else renderTaxList();
+}
+function renderSlips(kind){
+  const c=SLIP_CFG[kind], grid=$(c.grid); if(!grid)return;
+  const id=c.cur(), x=id?c.row(id):null;
+  if(!id||!x){ grid.innerHTML='<div class="slip-empty">— ยังไม่ได้บันทึกใบนี้ — กดบันทึกก่อนแล้วจะแนบไฟล์ได้ —</div>'; return; }
+  const list=slipsOf(x);
+  if(!list.length){ grid.innerHTML='<div class="slip-empty">ยังไม่มีไฟล์แนบ — กด <b>➕ เลือกไฟล์แนบ</b> เพื่อแนบสลิป/ใบเสร็จ</div>'; return; }
+  grid.innerHTML='<div class="slip-grid">'+list.map(function(s,i){
+    const cap='<div class="cap">'+esc((s.name||'').slice(0,34))+'<br>'+esc(String(s.at||'').slice(0,10))
+      +(s.by?(' · '+esc(String(s.by).split('@')[0])):'')+'</div>';
+    const del=canEdit?'<button class="del" title="ลบไฟล์แนบนี้" onclick="slipDel(\''+kind+'\','+i+')">✕</button>':'';
+    return '<div class="slip-card">'+(slipIsPdf(s)
+      ? '<div class="pdf" onclick="window.open(\''+esc(s.url)+'\',\'_blank\')">📄<span>เปิดไฟล์ PDF</span></div>'
+      : '<img src="'+esc(s.url)+'" loading="lazy" onclick="window.open(\''+esc(s.url)+'\',\'_blank\')" alt="'+esc(s.name||'')+'">')
+      +cap+del+'</div>';
+  }).join('')+'</div>';
+}
+/* 🖨️ ฟอร์มปริ้นสลิป — หัวเอกสารกำกับ + รูปสลิปที่แนบไว้ (A4 ตั้ง) */
+function slipPrint(kind){
+  const c=SLIP_CFG[kind], id=c.cur(), x=id?c.row(id):null;
+  if(!x)return alert('เปิดใบที่จะปริ้นก่อน');
+  const list=slipsOf(x);
+  if(!list.length)return alert('ใบนี้ยังไม่มีไฟล์แนบ — แนบสลิปก่อนแล้วค่อยปริ้น');
+  const now=new Date();
+  const stamp=now.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit'})+'/'+(now.getFullYear()+543)
+            +' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  const meta=c.meta(x).filter(m=>m[1]).map(m=>'<b>'+esc(m[0])+':</b> '+esc(m[1])).join(' &nbsp;·&nbsp; ');
+  const imgs=list.filter(s=>!slipIsPdf(s)), pdfs=list.filter(slipIsPdf);
+  let h='<div class="sp-hd"><div class="sp-ti">'+esc(c.title(x))+'</div>'
+    + '<div class="sp-meta">'+meta+'<br>MASARU · Shipment นำเข้า · พิมพ์เมื่อ '+esc(stamp)
+    + ' · ไฟล์แนบ '+list.length+' รายการ'+(pdfs.length?(' (PDF '+pdfs.length+' ไฟล์)'):'')+'</div></div>';
+  imgs.forEach(function(s,i){
+    h+='<div class="sp-one"><div class="cap">'+(i+1)+'. '+esc(s.name||'')
+      +' · แนบ '+esc(String(s.at||'').slice(0,10))+(s.by?(' โดย '+esc(String(s.by).split('@')[0])):'')+'</div>'
+      +'<img src="'+esc(s.url)+'"></div>';
+  });
+  if(pdfs.length)
+    h+='<div class="sp-pdf"><b>📄 มีไฟล์ PDF แนบอยู่ '+pdfs.length+' ไฟล์</b> — ปริ้นรูปไม่ได้ ให้กดเปิดไฟล์แล้วสั่งพิมพ์แยก:<br>'
+      + pdfs.map((s,i)=>(i+1)+'. '+esc(s.name||'')).join('<br>')+'</div>';
+  h+='<div class="sp-fo"><div>เอกสารแนบประกอบการจ่ายเงิน — ใช้แนบกับใบวางบิล/ใบสรุปภาษีตัวจริง</div>'
+    +'<div>MASARU · เอกสารภายใน</div></div>';
+
+  let root=$('slipPrint');
+  if(!root){ root=document.createElement('div'); root.id='slipPrint'; document.body.appendChild(root); }
+  root.innerHTML=h;
+  let pg=document.getElementById('slipPrintPage');
+  if(!pg){ pg=document.createElement('style'); pg.id='slipPrintPage'; document.head.appendChild(pg); }
+  pg.textContent='@media print{@page{size:A4 portrait;margin:10mm}}';
+  document.body.classList.add('printing-slip');
+  document.documentElement.classList.add('printing-slip');
+
+  let fin=false;
+  const done=function(){
+    if(fin)return; fin=true;
+    document.body.classList.remove('printing-slip');
+    document.documentElement.classList.remove('printing-slip');
+    if(pg&&pg.parentNode)pg.parentNode.removeChild(pg);
+    root.innerHTML='';
+    window.removeEventListener('afterprint',done);
+  };
+  window.addEventListener('afterprint',done);
+  /* รอรูปโหลดให้ครบก่อนสั่งพิมพ์ ไม่งั้นหน้าว่าง/แบ่งหน้าเพี้ยน */
+  const ims=[].slice.call(root.querySelectorAll('img'));
+  Promise.all(ims.map(im=>im.complete&&im.naturalHeight?Promise.resolve():new Promise(res=>{
+    const t=setTimeout(res,9000);
+    im.addEventListener('load',()=>{clearTimeout(t);res();},{once:true});
+    im.addEventListener('error',()=>{clearTimeout(t);res();},{once:true});
+  }))).then(()=>setTimeout(()=>{window.print();setTimeout(done,1500);},80));
+}
+
 function printFrInv(){
   document.body.classList.add('printing-fi');
   const done=function(){document.body.classList.remove('printing-fi');window.removeEventListener('afterprint',done);};
@@ -2481,7 +2687,7 @@ function renderTaxList(){
   let h='<table><thead><tr><th>ภาษีเดือน</th><th>หัวเรื่อง</th><th>บริษัท</th><th>ขนส่ง</th>'
     +'<th>เลขที่ดราฟใบขน</th><th>อ้างอิง PO</th><th>🔗 Shipment</th>'
     +'<th class="right">จำนวนเงิน</th><th class="right">อากร</th><th class="right">VAT 7%</th>'
-    +'<th class="right">รวมชำระ</th><th></th></tr></thead><tbody>';
+    +'<th class="right">รวมชำระ</th><th>📎</th><th></th></tr></thead><tbody>';
   list.forEach((s,i)=>{ const u=sums[i], t=txTrkOf(s);
     h+='<tr><td><b>'+esc(txThMonth(s.period||String(s.created_at||'').slice(0,7)))+'</b></td>'
       +'<td style="font-size:11.5px">'+esc(s.title||'(ไม่มีหัวเรื่อง)')
@@ -2496,6 +2702,9 @@ function renderTaxList(){
       +'<td class="right">'+money(u.amt)+'</td><td class="right">'+money(Math.round(u.duty))+'</td>'
       +'<td class="right">'+money(Math.round(u.vat))+'</td>'
       +'<td class="right"><b>'+money(Math.round(u.tot))+'</b></td>'
+      +'<td style="text-align:center">'+(slipsOf(s).length
+          ?('<button class="mini btn" onclick="txOpen(\''+s.id+'\')" title="มีไฟล์แนบ '+slipsOf(s).length+' ไฟล์ — กดเปิดดู">📎 '+slipsOf(s).length+'</button>')
+          :'<span class="muted">—</span>')+'</td>'
       +'<td style="white-space:nowrap"><button class="mini btn" onclick="txOpen(\''+s.id+'\')" title="เปิดใบนี้มาดู / ออก PDF ซ้ำ">👁 ดู</button></td>'
       +'</tr>';});
   $('txList').innerHTML=h+'</tbody></table>';
@@ -2600,7 +2809,7 @@ function newTaxForm(){
   if($('x_trk')){ txFillTrkList(); $('x_trk').value=''; txTrkInfo(); }
   ['x_title','x_period','x_carrier','x_draft','x_termport','x_ref','x_note'].forEach(i=>$(i).value='');
   $('x_company').value='MASARU'; if($('x_rate')){$('x_rate').value='1';$('x_rate').disabled=false;} if($('x_rate_lbl'))$('x_rate_lbl').textContent='อัตราแลกเปลี่ยน (บาท/หน่วยบิล)';
-  taxItems=[]; renderTaxLines();
+  taxItems=[]; renderTaxLines(); renderSlips('taxsum');
 }
 function loadTaxToForm(){
   const id=comboVal('loadTax'); if(!id){newTaxForm();return;}
@@ -2609,6 +2818,7 @@ function loadTaxToForm(){
   $('x_carrier').value=s.carrier||'';$('x_draft').value=s.draft_no||'';$('x_termport').value=s.termport||'';$('x_ref').value=s.ref||'';$('x_note').value=s.note||'';
   taxItems=Array.isArray(s.items)?s.items.map(x=>({sku:x.sku||'',qty:+x.qty||0,amount:+x.amount||0,duty:+x.duty||0,fee:!!x.fee,feeAmt:(x.feeAmt!=null?x.feeAmt:undefined)})):[];
   if($('x_trk')){ txFillTrkList(); $('x_trk').value=s.tracking_id||''; txTrkInfo(); }
+  renderSlips('taxsum');
   renderTaxLines();
 }
 async function saveTaxSummary(){
@@ -2638,7 +2848,9 @@ async function saveTaxSummary(){
              if(CUR_TAB==='track')renderTrack(); }
     }
   }
-  if(ok){ renderTaxList(); alert('บันทึกใบสรุปภาษีแล้ว ✅'+back); }
+  if(ok){ renderTaxList(); renderSlips('taxsum');
+    alert('บันทึกใบสรุปภาษีแล้ว ✅'+back
+      +(slipsOf(db.taxsum.find(v=>String(v.id)===String(comboVal('loadTax')))||{}).length?'':'\n\n📎 แนบสลิปได้ที่ช่อง "แนบสลิป / เอกสารของใบนี้" ด้านล่าง')); }
 }
 async function deleteTaxSummary(){
   const id=comboVal('loadTax'); if(!id){alert('เลือกใบที่จะลบก่อน');return;}
