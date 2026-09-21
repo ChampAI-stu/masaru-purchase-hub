@@ -765,6 +765,7 @@ body.price-on .sl-price{display:block}
         <option value="waiting">🟠 ค้างที่ขนส่ง</option>
         <option value="partial">🟡 เข้าคลังบางส่วน</option>
         <option value="plan">🚚 จัดเที่ยวส่งแล้ว</option>
+        <option value="sent">📤 ส่งตรวจค่าขนส่งแล้ว (ที่ซ่อนอยู่)</option>
         <option value="done">✅ เข้าคลังครบ</option>
         <option value="cancel">⚪ ยกเลิก</option>
       </select>
@@ -4038,7 +4039,10 @@ function renderArr(){
   const canEdit = currentRole==='purchase';
 
   const ALLG = ARR.map(arrGroup);          // คิดครั้งเดียว ใช้ทั้งตาราง/KPI/แจ้งเตือน
-  let rows = ALLG.slice();
+  /* ★ ใบที่ส่งเข้าระบบตรวจค่าขนส่งแล้ว = งานจบที่แท็บนี้ → ซ่อนออกจากตาราง
+     (เลือกตัวกรอง 📤 เพื่อดูย้อนหลัง) */
+  const SENT = g => !!g.n.freight_sent_at;
+  let rows = (st==='sent') ? ALLG.filter(SENT) : ALLG.filter(g=>!SENT(g));
   /* ★ เรียงจากวันแจ้งเข้าเก่าสุด → ล่าสุด (ของที่ค้างนานสุดอยู่บน)
      เรียงที่นี่ด้วย ไม่พึ่งลำดับจากฐานข้อมูลอย่างเดียว — เผื่อแถวใหม่จาก realtime
      หรือที่เพิ่งบันทึกเข้ามาแทรก ลำดับบนหน้าจอจะถูกเสมอ */
@@ -4050,6 +4054,7 @@ function renderArr(){
     rows = rows.filter(g => ids.includes(String(g.n.id)));
   }
   else if(st==='plan') rows = rows.filter(g => g.pl.pcs>0.0001);
+  else if(st==='sent'){ /* กรองไว้แล้วด้านบน — โชว์เฉพาะใบที่ส่งตรวจค่าขนส่งแล้ว */ }
   else if(st) rows = rows.filter(g => g.st===st);
   if(q) rows = rows.filter(g =>
     ((g.n.notice_no||'')+' '+(g.n.carrier||'')+' '+(g.n.truck||'')+' '+(g.n.note||'')+' '
@@ -4057,8 +4062,8 @@ function renderArr(){
     ).toLowerCase().includes(q));
 
   /* KPI — คิดจากทุกใบในเดือน ไม่ขึ้นกับตัวกรอง (ตัวเลขภาพรวมต้องนิ่ง) */
-  ARR_VIEW = rows; ARR_ALLG = ALLG;          // 🖨️ เก็บไว้ให้รายงาน PDF ใช้ชุดเดียวกับที่เห็นบนจอ
-  const all = ALLG.filter(g => g.st!=='cancel');
+  ARR_VIEW = rows; ARR_ALLG = ALLG.filter(g=>!SENT(g));   // 🖨️ รายงาน/แจ้งเตือน ไม่เอาใบที่ส่งแล้ว
+  const all = ALLG.filter(g => g.st!=='cancel' && !SENT(g));
   const sum = all.reduce((a,g) => ({
     boxWait:a.boxWait+g.t.boxWait, cbmWait:a.cbmWait+g.t.cbmWait, kgWait:a.kgWait+g.t.kgWait,
     boxIn:a.boxIn+g.t.boxIn, boxes:a.boxes+g.t.boxes,
@@ -4086,8 +4091,11 @@ function renderArr(){
                               + (sum.plan>0.0001 ? ' · 🚚 จัดเที่ยวแล้ว '+arrInt(sum.plan)+' ชิ้น' : '');
   $('arrInBox').textContent   = arrInt(sum.pcsIn) + ' ชิ้น';
   $('arrInSub').textContent   = arrInt(sum.boxIn) + ' ลัง · จากที่แจ้งมา ' + arrInt(sum.pcs) + ' ชิ้น';
-  $('arrNotice').textContent  = ARR.length;
-  $('arrNoticeSub').textContent = 'ยังไม่ครบ ' + unfinished.length + ' ใบ';
+  /* นับเฉพาะใบที่ยังอยู่ในตาราง (ใบที่ส่งตรวจค่าขนส่งแล้วถูกซ่อน จึงไม่นับ) */
+  const nSentAll = ARR.filter(x=>x.freight_sent_at).length;
+  $('arrNotice').textContent  = ARR.length - nSentAll;
+  $('arrNoticeSub').textContent = 'ยังไม่ครบ ' + unfinished.length + ' ใบ'
+    + (nSentAll ? ' · 📤 ส่งตรวจค่าขนส่งแล้ว '+nSentAll+' ใบ' : '');
   const oldDays = oldest ? arrDaysWait(oldest.n.notice_date) : 0;
   $('arrOld').textContent    = oldest ? (oldDays + ' วัน') : '-';
   $('arrOld').style.color    = (oldest && oldDays>=ARR_DUE) ? 'var(--red)' : '';
@@ -4097,7 +4105,12 @@ function renderArr(){
     : 'ไม่มีของค้างที่ขนส่ง 🎉';
 
   if(!rows.length){
-    arrMsg(ARR.length ? 'ไม่มีใบแจ้งที่ตรงกับตัวกรอง'
+    const nSent = ARR.filter(x=>x.freight_sent_at).length;
+    arrMsg(ARR.length
+      ? ('ไม่มีใบแจ้งที่ตรงกับตัวกรอง'
+         + (nSent&&st!=='sent' ? '<div style="color:var(--muted);font-size:12px;margin-top:6px">'
+            +'📤 เดือนนี้มี <b>'+nSent+'</b> ใบที่ส่งตรวจค่าขนส่งแล้ว (ถูกซ่อนไว้) — เลือกสถานะ '
+            +'<b>📤 ส่งตรวจค่าขนส่งแล้ว</b> เพื่อดู</div>' : ''))
       : 'เดือนนี้ยังไม่มีใบแจ้งสินค้าขาเข้า'+(canEdit?' — กด <b>+ เพิ่มใบแจ้ง</b>':''));
     return;
   }
@@ -4131,14 +4144,19 @@ function renderArr(){
           n.truck?' · รถ '+esc(n.truck):''}${n.eta_date?' · คาดเข้า '+fmtDate(n.eta_date):''}</span>
         ${g.st!=='done'&&g.st!=='cancel'&&days>0?`<span class="arr-wait"${dwarn?' style="color:var(--red)"':''}>${
           dwarn?(days>=arrHotDays()?'🔴 ':'🟠 '):''}ค้าง ${days} ว.${dwarn?' (เกิน '+ARR_DUE+')':''}</span>`:''}
+        ${n.freight_sent_at?`<span class="arr-pl" style="background:#F1F5F9;color:#475569;border-color:#CBD5E1"
+          title="ส่งเข้าระบบตรวจสอบค่าขนส่งแล้ว${n.freight_sent_by?(' โดย '+esc(String(n.freight_sent_by).split('@')[0])):''}">📤 ส่งตรวจค่าขนส่งแล้ว ${
+          fmtDate(String(n.freight_sent_at).slice(0,10))}</span>`:''}
         ${canEdit?`<span class="arr-act">
-          ${g.st!=='cancel'&&t.boxWait>0?`<button class="arr-mini go" onclick="openArrIn('${n.id}')" title="ตัดเข้าคลัง — บันทึกว่าของเข้าคลังแล้วกี่ลัง">🚚</button>`:''}
+          ${!n.freight_sent_at&&g.st!=='cancel'&&t.boxWait>0?`<button class="arr-mini go" onclick="openArrIn('${n.id}')" title="ตัดเข้าคลัง — บันทึกว่าของเข้าคลังแล้วกี่ลัง">🚚</button>`:''}
           <button class="arr-mini" onclick="openArr('${n.id}')" title="แก้ไขใบแจ้ง">✏️</button>
-          <button class="arr-mini ${g.st==='done'?'rdy':'off'}" onclick="arrToFreight('${n.id}')" title="${
+          ${n.freight_sent_at?`<button class="arr-mini" onclick="arrUnsend('${n.id}')"
+            title="เอาใบนี้กลับมาแสดงในตาราง (กรณีกดส่งผิดใบ)">↩</button>`:
+          `<button class="arr-mini ${g.st==='done'?'rdy':'off'}" onclick="arrToFreight('${n.id}')" title="${
             g.st==='done'
               ? 'พร้อมส่งแล้ว — ส่งรายการเข้าระบบตรวจสอบค่าขนส่ง เพื่อให้คลังใส่ขนาดกล่องแล้วเทียบกับที่ขนส่งคิด'
               : (g.st==='cancel' ? 'ใบนี้ยกเลิกแล้ว — ส่งไม่ได้'
-                 : 'ต้อง 🚚 ตัดเข้าคลังให้ครบก่อน (ค้างอีก '+arrInt(t.pcsWait)+' ชิ้น) แล้วจึงกดส่งเข้าระบบตรวจค่าขนส่งได้')}">⤵</button>
+                 : 'ต้อง 🚚 ตัดเข้าคลังให้ครบก่อน (ค้างอีก '+arrInt(t.pcsWait)+' ชิ้น) แล้วจึงกดส่งเข้าระบบตรวจค่าขนส่งได้')}">⤵</button>`}
         </span>`:''}
         ${n.note?`<div class="arr-sub">📝 ${esc(n.note)}</div>`:''}</td>
       <td class="n"></td>
@@ -4589,8 +4607,40 @@ async function arrToFreight(id){
   const { data, error } = await sb.from('freight_items').insert(rows).select('id');
   if(error) return toast('ส่งเข้า freight ไม่สำเร็จ: '+error.message
     + (/relation .*freight_items/.test(error.message) ? ' — ต้องรัน freight_audit.sql ก่อน' : ''));
-  toast('ส่งเข้าระบบตรวจค่าขนส่งแล้ว '+(data?data.length:rows.length)+' รายการ ✅ เปิดเมนู 📐 เพื่อใส่ขนาดกล่อง');
+
+  /* ★ ปักธงว่า "ส่งตรวจค่าขนส่งแล้ว" → ใบนี้หายจากตารางแจ้งสินค้าขาเข้า
+     (งานจบที่แท็บนี้แล้ว ไปต่อที่เมนู 📐 ตรวจสอบค่าขนส่ง) ย้อนดูได้ที่ตัวกรอง 📤 */
+  const up = await sb.from('arrival_notices')
+    .update({freight_sent_at:new Date().toISOString(), freight_sent_by:email, updated_by:email})
+    .eq('id', id).select().single();
+  if(up.error){
+    toast('ส่งเข้าระบบตรวจค่าขนส่งแล้ว '+(data?data.length:rows.length)+' รายการ ✅'
+      + ' — แต่ยังซ่อนใบนี้ไม่ได้: '+up.error.message
+      + (/freight_sent_at/i.test(up.error.message||'') ? ' (ต้องรัน arrival_freight_sent.sql ก่อน)' : ''));
+  }else{
+    const i = ARR.findIndex(x=>String(x.id)===String(id));
+    if(i>=0) ARR[i] = up.data;
+    toast('ส่งเข้าระบบตรวจค่าขนส่งแล้ว '+(data?data.length:rows.length)+' รายการ ✅'
+      + ' · ใบนี้ถูกซ่อนจากตารางแล้ว (ดูย้อนหลังเลือกตัวกรอง 📤 ส่งตรวจค่าขนส่งแล้ว)');
+  }
+  renderArr();
 }
+
+/* ↩ เอาใบที่ส่งไปแล้วกลับมาแสดงในตาราง (กรณีกดส่งผิดใบ) */
+window.arrUnsend = async function(id){
+  if(currentRole!=='purchase') return;
+  const n = ARR.find(x=>String(x.id)===String(id)); if(!n) return;
+  if(!confirm('เอาใบนี้กลับมาแสดงในตาราง?\n\n'+(n.notice_no||fmtDate(n.notice_date))+' · '+(n.carrier||'')
+    +'\n\n⚠️ รายการที่ส่งเข้าระบบตรวจค่าขนส่งไปแล้วจะยังอยู่ที่นั่น (ไม่ได้ลบให้)\n'
+    +'ถ้ากด ⤵ ส่งอีกครั้ง จะเกิดรายการซ้ำ — ให้ไปลบของเดิมในเมนู 📐 ก่อน'))return;
+  const r = await sb.from('arrival_notices')
+    .update({freight_sent_at:null, freight_sent_by:null, updated_by:ME_EMAIL||null})
+    .eq('id', id).select().single();
+  if(r.error) return toast('ยกเลิกไม่สำเร็จ: '+r.error.message);
+  const i = ARR.findIndex(x=>String(x.id)===String(id));
+  if(i>=0) ARR[i] = r.data;
+  renderArr(); toast('เอาใบนี้กลับมาแสดงแล้ว');
+};
 
 /* ══════════ Export Excel ══════════ */
 /* ══════════════════════════════════════════════════════════════════
@@ -4771,7 +4821,8 @@ function exportArr(){
   const aoa = [['วันแจ้งเข้า','เลขที่แจ้ง','ขนส่ง','รถนำส่ง','คาดเข้าคลัง','สถานะ',
     'เลขที่รายการ','PO','SKU','ชิ้น/ลัง','จำนวนลัง','จำนวนชิ้น','จำนวนคิว','น้ำหนัก (กก.)',
     'เข้าคลังแล้ว (ชิ้น)','ค้างที่ขนส่ง (ชิ้น)',
-    'เข้าคลังแล้ว (ลัง)','ค้างที่ขนส่ง (ลัง)','วันที่เข้าคลัง','บรรทัดพ่วง','หมายเหตุรายการ','หมายเหตุใบแจ้ง']];
+    'เข้าคลังแล้ว (ลัง)','ค้างที่ขนส่ง (ลัง)','วันที่เข้าคลัง','บรรทัดพ่วง','หมายเหตุรายการ','หมายเหตุใบแจ้ง',
+    'ส่งตรวจค่าขนส่งเมื่อ','ส่งโดย']];
   groups.forEach(g => {
     const st = (ARR_ST[arrCalcStatus(g.n,g.items)]||{}).t||'';
     const ME = arrCalc(g.items);
@@ -4782,7 +4833,8 @@ function exportArr(){
         +x.cbm||'', +x.weight_kg||'',
         m.inPcs||'', m.leftPcs,
         bi||'', x.is_extra?'':(bx-bi), x.in_date||'',
-        x.is_extra?'พ่วง':'', x.note||'', g.n.note||'']);
+        x.is_extra?'พ่วง':'', x.note||'', g.n.note||'',
+        String(g.n.freight_sent_at||'').slice(0,10), g.n.freight_sent_by||'']);
     });
   });
   const t = arrTotals(groups.flatMap(g=>g.items));
