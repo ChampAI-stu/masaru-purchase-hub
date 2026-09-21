@@ -4378,8 +4378,16 @@ function openArrIn(id){
   const its = all.filter(x=>!x.is_extra);
   const extras = all.filter(x=>x.is_extra);
   $('ar_indate').value = arrToday();
+  /* บอกไว้เลยว่าบันทึกแล้วจะไปอัปเดต Purchase Board ด้วยวันไหน — ไม่ต้องเดา */
+  const pl = arrPlanTot(all, MIN, '');
   $('arrInHead').innerHTML = `📅 ${fmtDate(n.notice_date)} · 🚛 ${esc(n.carrier||'-')}
-    ${n.notice_no?' · '+esc(n.notice_no):''} — ใส่<b>จำนวนชิ้น</b>ที่เข้าคลังรอบนี้ (ที่ค้างไว้ก่อนไม่ต้องใส่ซ้ำ)`;
+    ${n.notice_no?' · '+esc(n.notice_no):''} — ใส่<b>จำนวนชิ้น</b>ที่เข้าคลังรอบนี้ (ที่ค้างไว้ก่อนไม่ต้องใส่ซ้ำ)
+    <div style="margin-top:5px;padding:5px 8px;background:#E8F0FB;border:1px solid #C7DBF3;border-radius:7px;
+      color:#185FA5;font-size:11.5px;line-height:1.55">
+      🔗 บันทึกแล้วระบบจะไปเพิ่ม <b>จำนวนที่เข้า</b> ในหน้า <b>Purchase Board</b> ให้เอง (จับคู่ด้วย PO + SKU)
+      <br>และลง <b>วันที่นำส่งคลัง</b> = ${pl.date
+        ? ('<b>'+fmtDate(pl.date)+'</b> (วันรับสินค้าจากแท็บ 🚛 แผนรับสินค้า)')
+        : 'วันที่ตัดเข้าคลังที่กรอกด้านล่าง <span style="color:#8A4B00">(ใบนี้ยังไม่ได้จัดเที่ยวส่ง)</span>'}</div>`;
   $('arrInBody').innerHTML = its.map(x => {
     /* ★ กรอกเป็นชิ้น — ฐานข้อมูลเก็บเป็นลัง ระบบหารด้วยชิ้น/ลังให้ตอนบันทึก
        รายการที่ไม่ได้ใส่ชิ้น/ลัง แปลงไม่ได้ → ให้กรอกเป็นลังตามเดิม (ป้ายบอกไว้) */
@@ -4411,9 +4419,63 @@ function openArrIn(id){
 function arrInAll(){
   $('arrInBody').querySelectorAll('.ai-in').forEach(el => { el.value = el.dataset.left; });
 }
+/* ══════════════════════════════════════════════════════════════════
+   🔗 ตัดเข้าคลัง → อัปเดต Purchase Board ให้เอง
+
+   • จำนวนที่เข้า (received_qty) += จำนวนชิ้นที่เพิ่งตัดเข้าคลังรอบนี้
+     (คิดจากผลต่างก่อน/หลัง → กดหลายรอบก็ไม่บวกซ้ำ · บรรทัดพ่วงก็ได้ตามสัดส่วนแม่)
+   • วันที่นำส่งคลัง (delivered_at) = <b>วันรับสินค้าจากแท็บ 🚛 แผนรับสินค้า</b>
+     ถ้าใบนั้นไม่ได้จัดเที่ยวส่งไว้ ใช้วันที่ตัดเข้าคลังที่กรอกในฟอร์ม
+   • สถานะ PO: รับครบ → เข้าคลังแล้ว · รับบางส่วน → รอนำส่งเข้าคลัง
+   จับคู่ด้วย PO + SKU · บรรทัดพ่วงไม่มี PO ก็ยืม PO ของบรรทัดแม่
+   ══════════════════════════════════════════════════════════════════ */
+function arrFindPO(it, poHint){
+  const sku = String(it.sku||'').trim().toUpperCase();
+  if(!sku || !allOrders.length) return null;
+  const same = allOrders.filter(o => String(o.sku||'').trim().toUpperCase()===sku);
+  if(!same.length) return null;
+  const po = String(it.po_number||'').trim() || String(poHint||'').trim();
+  let c = po ? same.filter(o => String(o.po_number||'').trim()===po) : [];
+  if(!c.length) c = same;                       // ไม่มี PO ตรง → ใช้ SKU อย่างเดียว
+  const open = c.filter(o => (+o.received_qty||0) < (+o.quantity||0));
+  return (open.length?open:c).slice()
+    .sort((a,b)=>String(a.eta||'9999-12-31').localeCompare(String(b.eta||'9999-12-31')))[0] || null;
+}
+async function arrPushPO(list){
+  if(!list.length) return {ok:0, miss:[], date:''};
+  if(!allOrders.length) return {ok:0, miss:['ยังไม่ได้โหลด Purchase Board'], date:''};
+  const ok=[], miss=[]; let dateShown='';
+  window.SELF_WRITING = true;                   // กัน realtime โหลดตารางใหม่ทุกแถวที่เขียน
+  try{
+    for(const x of list){
+      const o = arrFindPO(x.it, x.poHint);
+      if(!o){ miss.push(x.it.sku||'-'); continue; }
+      const qty = +o.quantity||0, oldR = +o.received_qty||0;
+      const newR = Math.round(oldR + x.addPcs);
+      const st = (qty>0 && newR>=qty) ? 'เข้าคลังแล้ว'
+        : (newR>0 && (!o.status || o.status==='อยู่ระหว่างสั่งซื้อ' || o.status==='อยู่ระหว่างผลิต'
+                      || o.status==='อยู่ระหว่างขนส่ง') ? 'รอนำส่งเข้าคลัง' : o.status);
+      const r = await sb.from('purchase_orders')
+        .update({received_qty:newR, delivered_at:x.date||o.delivered_at||null,
+                 status:st, updated_at:new Date().toISOString()})
+        .eq('id', o.id).select(PO_COLS).single();
+      if(r.error){ miss.push((x.it.sku||'-')+' ('+r.error.message+')'); continue; }
+      const i = allOrders.findIndex(y=>String(y.id)===String(o.id));
+      if(i>=0) allOrders[i] = r.data;
+      if(x.date) dateShown = x.date;
+      ok.push({sku:o.sku, po:o.po_number, from:oldR, to:newR, qty:qty, over:(qty>0&&newR>qty)});
+    }
+  } finally { window.SELF_WRITING = false; }
+  if(ok.length) render();                        // ตาราง Purchase Board + การ์ดสรุป อัปเดตตาม
+  return {ok:ok, miss:miss, date:dateShown};
+}
+
 async function saveArrIn(){
   if(!ARR_IN_ID) return;
   const d = $('ar_indate').value || arrToday();
+  /* ★ เก็บยอด "เข้าคลังแล้ว" ก่อนบันทึก ไว้หาผลต่างเพื่อไปบวกที่ Purchase Board */
+  const snap = arrItemsOf(ARR_IN_ID).map(x=>Object.assign({},x));
+  const M0 = arrCalc(snap);
   const ups = [];
   let bad = '';
   $('arrInBody').querySelectorAll('.arr-ln').forEach(l => {
@@ -4443,8 +4505,31 @@ async function saveArrIn(){
   }
   btn.disabled=false; btn.textContent='บันทึก';
   await arrSyncStatus(ARR_IN_ID);
+
+  /* ── 🔗 ส่งยอดที่เพิ่งเข้าคลัง ไปอัปเดต Purchase Board ── */
+  const after = arrItemsOf(ARR_IN_ID), M1 = arrCalc(after);
+  const push = []; let parentPo = '';
+  arrOrder(after).forEach(function(x){
+    if(!x.is_extra) parentPo = String(x.po_number||'') || parentPo;
+    const a = (M1[x.id]||{}).inPcs||0, b = (M0[x.id]||{}).inPcs||0;
+    const addPcs = Math.round(a-b);
+    if(addPcs<=0) return;
+    const p = arrPlanOf(x, '');                     // วันรับสินค้าจากแท็บแผนรับสินค้า
+    push.push({it:x, addPcs:addPcs, poHint:parentPo, date:p.date||d});
+  });
+  const res = await arrPushPO(push);
+
   $('arrInBg').style.display='none'; renderArr();
-  toast('บันทึกของเข้าคลังแล้ว ✅');
+  let msg = 'บันทึกของเข้าคลังแล้ว ✅';
+  if(res.ok.length){
+    msg += ' · อัปเดต Purchase Board '+res.ok.length+' รายการ'
+         + (res.date?(' (วันที่นำส่ง '+fmtDate(res.date)+' จากแผนรับสินค้า)'):(' (วันที่นำส่ง '+fmtDate(d)+')'));
+    const over = res.ok.filter(x=>x.over);
+    if(over.length) msg += ' ⚠️ มี '+over.length+' SKU ที่ยอดเข้าเกินจำนวนสั่ง — เช็คด้วย';
+  }
+  if(res.miss.length) msg += ' · ⚠️ ไม่พบใน Purchase Board: '+res.miss.slice(0,4).join(', ')
+                            + (res.miss.length>4?(' และอีก '+(res.miss.length-4)):'');
+  toast(msg);
 }
 
 /* ══════════ ส่งต่อเข้าระบบตรวจสอบค่าขนส่ง (freight.html) ══════════
