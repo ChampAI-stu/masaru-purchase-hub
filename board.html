@@ -378,6 +378,11 @@
   .arr-sum td{background:#F8FAFC;font-weight:700;border-bottom:2px solid var(--line)}
   .arr-wait{color:var(--orange);font-weight:800}
   .arr-done{color:var(--green);font-weight:700}
+  /* 🚚 จัดเที่ยวส่งไว้แล้ว — ของยังไม่ถึงคลัง แต่มีคิววันรับแล้ว ไม่ต้องตามของ */
+  .arr-pl{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;
+    padding:2px 7px;border-radius:999px;white-space:nowrap;vertical-align:middle;
+    background:#E8F0FB;color:#185FA5;border:1px solid #C7DBF3}
+  .arr-planq{color:#185FA5;font-weight:800}
   .arr-st{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;
     padding:2px 7px;border-radius:999px;white-space:nowrap;vertical-align:middle}
   .arr-st.w{background:var(--orange-bg);color:var(--orange)}
@@ -716,6 +721,7 @@ body.price-on .sl-price{display:block}
         <option value="over">🔴 ค้างเกินกำหนด</option>
         <option value="waiting">🟠 ค้างที่ขนส่ง</option>
         <option value="partial">🟡 เข้าคลังบางส่วน</option>
+        <option value="plan">🚚 จัดเที่ยวส่งแล้ว</option>
         <option value="done">✅ เข้าคลังครบ</option>
         <option value="cancel">⚪ ยกเลิก</option>
       </select>
@@ -2931,9 +2937,13 @@ async function arrPickLoad(){
     const { data, error } = await sb.from('arrival_items')
       .select('id,notice_id,line_ref,po_number,sku,pcs_per_box,boxes,pcs,cbm,weight_kg,boxes_in,is_extra,seq,'
              +'arrival_notices!inner(id,notice_no,notice_date,carrier,status)')
-      .in('arrival_notices.status',['waiting','partial']);
+      .in('arrival_notices.status',['waiting','partial'])
+      .order('notice_id',{ascending:true})
+      .order('seq',{ascending:true,nullsFirst:false});   // ★ ให้พ่วงตามหลังบรรทัดแม่เสมอ
     if(error){ ARR_PICK=[]; ARR_PICK_ERR=error.message; return; }
     ARR_PICK_ERR='';
+    await arrPlanLoad();                                  // 🚚 หักของที่จัดเที่ยวไว้แล้ว
+    const except = ($('tripId') && $('tripId').value) || '';   // เที่ยวที่กำลังแก้ ไม่นับตัวเอง
     const by = {};
     (data||[]).forEach(function(r){
       /* ★ เก็บ "บรรทัดพ่วง" ไว้ด้วย — ของพ่วงเป็นสินค้าจริงที่คลังต้องรับ
@@ -2944,17 +2954,30 @@ async function arrPickLoad(){
     });
     ARR_PICK = Object.values(by);
     ARR_PICK.forEach(function(g){
-      g.items.sort((x,y)=>(x.seq||0)-(y.seq||0));
-      const M = arrCalc(g.items);                  // พ่วงต้องรู้บรรทัดแม่ → คิดทั้งใบทีเดียว
+      g.items = arrOrder(g.items);                 // พ่วงต้องอยู่ใต้บรรทัดแม่เวลาดึงเข้าเที่ยว
+      const M = arrCalc(g.items);                // พ่วงต้องรู้บรรทัดแม่ → คิดทั้งใบทีเดียว
       g.items.forEach(function(it){
-        const m = M[it.id] || arrPcsOf(it, null);
-        it._m = m; it.left = m.leftBox; it.leftPcs = m.leftPcs;
-        g.leftPcs += m.leftPcs;
-        if(!it.is_extra){ g.boxes += m.fullBox; g.left += Math.max(0,m.leftBox); }
+        const m0 = M[it.id] || arrPcsOf(it, null);
+        /* 🚚 หักของที่จัดเข้าเที่ยวส่งอื่นไว้แล้ว — กันดึงซ้ำ 2 เที่ยว
+           openPcs = ยังไม่ได้จัดเที่ยว (คือที่ควรดึงรอบนี้) */
+        const p = arrPlanOf(it, except);
+        const planPcs = Math.min(p.pcs, m0.leftPcs);
+        const m = Object.assign({}, m0, {planPcs:planPcs, planDate:p.date,
+                                         openPcs:Math.max(0, m0.leftPcs-planPcs)});
+        it._m = m; it.left = m.leftBox; it.leftPcs = m.leftPcs; it.openPcs = m.openPcs;
+        /* พ่วงที่ยังไม่รู้จำนวน (unknown) ต้องดึงได้ด้วย แล้วกรอกจำนวนมือ */
+        it.pickable = m.openPcs>0.0001 || !!m.unknown;
+        g.leftPcs += m.openPcs;
+        g.unknown = g.unknown || !!m.unknown;
+        if(!it.is_extra){
+          g.boxes += m.fullBox;
+          const openBox = m.fullBox>0 ? m.leftBox*(m.leftPcs>0?m.openPcs/m.leftPcs:0) : 0;
+          g.left += Math.max(0, m.leftPcs>0 ? openBox : m.leftBox);
+        }
       });
     });
     ARR_PICK = ARR_PICK
-      .filter(g => g.leftPcs>0.0001 || g.left>0.0001)   // ใบที่เข้าครบแล้วไม่ต้องโชว์
+      .filter(g => g.leftPcs>0.0001 || g.left>0.0001 || g.unknown)   // ใบที่จัดครบแล้วไม่ต้องโชว์
       .sort((x,y)=>String(x.n.notice_date||'').localeCompare(String(y.n.notice_date||'')));
   }catch(e){ ARR_PICK=[]; ARR_PICK_ERR=e.message; }
 }
@@ -2974,7 +2997,7 @@ function arrPickFill(){
   }
   sel.innerHTML = ARR_PICK.map(function(g){
     const d = g.n.notice_date ? fmtDate(g.n.notice_date) : '-';
-    const nItems = g.items.filter(x=>x.leftPcs>0.0001).length;
+    const nItems = g.items.filter(x=>x.pickable).length;
     return '<option value="'+esc(g.n.id)+'">'
       + esc(d) + ' · ' + esc(g.n.carrier||'-')
       + (g.n.notice_no?(' · '+esc(g.n.notice_no)):'')
@@ -2982,22 +3005,27 @@ function arrPickFill(){
       + '</option>';
   }).join('');
   $('tpArrHint').innerHTML = 'เลือกใบแจ้งที่ขนส่งจะส่งเข้าคลังรอบนี้ → ดึงรายการที่<b>ยังค้างที่ขนส่ง</b>มาให้ พร้อมเติม'
-    + ' จำนวนลัง/ชิ้น/คิว ตาม<b>จำนวนคงเหลือ</b> (แก้ทับได้ · กรอกมือเพิ่มด้านล่างก็ได้)';
+    + ' จำนวนลัง/ชิ้น/คิว ตาม<b>จำนวนคงเหลือ</b> (แก้ทับได้ · กรอกมือเพิ่มด้านล่างก็ได้)'
+    + '<br>🚚 ของที่จัดเที่ยวส่งอื่นไว้แล้วถูกหักออกจากคงเหลือให้แล้ว — ดึงซ้ำไม่ได้'
+    + ' · ▸ บรรทัดพ่วงจะถูกดึงมาด้วยทุกครั้ง';
 }
 
 /* หาจำนวนแจ้งมา/คงเหลือ ของบรรทัดที่กรอกไว้ (ใช้ตอนเปิดแก้เที่ยวเดิม) */
+/* ★ ให้คะแนนแล้วเลือกตัวที่ตรงที่สุด — เลขที่รายการเป็น "เลขตู้" ใช้ซ้ำหลาย SKU ได้
+   ถ้าดูแต่เลขที่รายการ จะหยิบยอดของบรรทัดอื่นในตู้เดียวกันมาแสดงผิด */
 function arrFindLeft(lineno, po, sku){
-  const ref = String(lineno||'').trim().toUpperCase().replace(/[\s\-–—_\/]+$/,'');
-  const P = String(po||'').trim(), S = String(sku||'').trim();
+  const ref = arrKey(lineno), P = String(po||'').trim(), S = String(sku||'').trim();
+  let best = null, score = 0;
   for(const g of ARR_PICK){
     for(const it of g.items){
-      const iref = String(it.line_ref||'').trim().toUpperCase().replace(/[\s\-–—_\/]+$/,'');
-      const hit = (ref && iref && iref===ref)
-        || (!ref && P && S && String(it.po_number||'').trim()===P && String(it.sku||'').trim()===S);
-      if(hit) return Object.assign({}, it._m || arrPcsOf(it, null), {notice:g.n});
+      let sc = 0;
+      if(ref && arrKey(it.line_ref)===ref) sc += 2;
+      if(S && String(it.sku||'').trim()===S) sc += 3;
+      if(P && String(it.po_number||'').trim()===P) sc += 1;
+      if(sc >= 2 && sc > score){ score = sc; best = Object.assign({}, it._m || arrPcsOf(it, null), {notice:g.n}); }
     }
   }
-  return null;
+  return best;
 }
 function arrRefreshLeft(){
   $('tripLines').querySelectorAll('.trip-line').forEach(function(l){
@@ -3018,21 +3046,29 @@ function tlLeftPaint(cell, m){
     cell.title='ไม่พบในใบแจ้งสินค้าขาเข้า (กรอกมือ)'; return;
   }
   cell.className='tl-left';
-  cell.innerHTML = 'แจ้ง '+arrInt(m.fullPcs)+'<br>เหลือ <b>'+arrInt(m.leftPcs)+'</b>';
-  cell.title = m.extra
+  /* "เหลือ" = ที่ยังไม่ได้จัดเที่ยว (หักเที่ยวอื่นที่จัดไว้แล้ว) */
+  const openPcs = m.openPcs!=null ? m.openPcs : m.leftPcs;
+  cell.innerHTML = 'แจ้ง '+arrInt(m.fullPcs)+'<br>เหลือ <b>'+arrInt(openPcs)+'</b>'
+    + (m.planPcs>0.0001 ? '<br><span style="color:#185FA5;font-size:9.5px">🚚 จัดแล้ว '+arrInt(m.planPcs)+'</span>' : '');
+  cell.title = (m.planPcs>0.0001
+      ? ('🚚 จัดเที่ยวส่งอื่นไว้แล้ว '+arrInt(m.planPcs)+' ชิ้น'
+         +(m.planDate?' (วันรับ '+fmtDate(m.planDate)+')':'')+' — หักออกจากคงเหลือแล้ว\n')
+      : '')
+    + (m.extra
     ? ('▸ บรรทัดพ่วง — มาในลังของบรรทัดแม่ · แจ้งมา '+arrInt(m.fullPcs)+' ชิ้น'
        + ' · รับไปแล้ว '+arrInt(m.fullPcs-m.leftPcs)+' ชิ้น · เหลือรับ '+arrInt(m.leftPcs)+' ชิ้น')
     : ('แจ้งมา '+arrInt(m.fullPcs)+' ชิ้น ('+arrInt(m.fullBox)+' ลัง)'
        + ' · รับไปแล้ว '+arrInt(m.fullPcs-m.leftPcs)+' ชิ้น ('+arrInt(m.fullBox-m.leftBox)+' ลัง)'
-       + ' · เหลือรับ '+arrInt(m.leftPcs)+' ชิ้น ('+arrInt(m.leftBox)+' ลัง)');
+       + ' · เหลือรับ '+arrInt(m.leftPcs)+' ชิ้น ('+arrInt(m.leftBox)+' ลัง)'));
 }
 
 function addArrLines(){
   const id = $('tpArrPick').value;
   const g = ARR_PICK.find(x=>String(x.n.id)===String(id));
   if(!g){ toast('เลือกใบแจ้งก่อน'); return; }
-  const list = g.items.filter(x=>x.leftPcs>0.0001);   // ★ รวมบรรทัดพ่วง
-  if(!list.length){ toast('ใบนี้เข้าคลังครบแล้ว'); return; }
+  /* ★ รวมบรรทัดพ่วงเสมอ — รวมพ่วงที่ยังไม่รู้จำนวน (ดึงมาแล้วกรอกมือได้) */
+  const list = g.items.filter(x=>x.pickable);
+  if(!list.length){ toast('ใบนี้จัดเที่ยวส่ง/เข้าคลังครบแล้ว'); return; }
 
   /* ถ้ามีบรรทัดว่างบรรทัดเดียว ลบทิ้งก่อน */
   const lines = $('tripLines').querySelectorAll('.trip-line');
@@ -3045,28 +3081,37 @@ function addArrLines(){
 
   /* หาชื่อบรรทัดแม่ เอาไปเขียนในหมายเหตุของพ่วง ให้คลังรู้ว่ามาในลังไหน */
   let lastMain = null;
+  /* หาบรรทัดแม่ให้พ่วง: ตัวที่อยู่ก่อนหน้า ถ้าไม่มี (ลำดับเพี้ยน) ใช้บรรทัดปกติตัวแรกของใบ */
+  const firstMain = g.items.find(x=>!x.is_extra) || null;
+  let nOpen = 0, nUnknown = 0;
   list.forEach(function(it){
     const m = it._m || arrPcsOf(it, null);
-    const ratio = m.fullBox>0 ? m.leftBox/m.fullBox : 1;
+    const open = m.openPcs!=null ? m.openPcs : m.leftPcs;
+    const openBox = m.leftPcs>0 ? m.leftBox*open/m.leftPcs : m.leftBox;
+    const ratio = m.fullBox>0 ? openBox/m.fullBox : 1;
     if(!it.is_extra) lastMain = it;
+    const par = lastMain || firstMain;
     const head = 'ใบแจ้ง '+(g.n.notice_no||fmtDate(g.n.notice_date));
+    if(m.unknown) nUnknown++; else nOpen++;
     addTripLine({
-      lineno: it.line_ref||(it.is_extra&&lastMain?(lastMain.line_ref||''):''),
+      lineno: it.line_ref||(it.is_extra&&par?(par.line_ref||''):''),
       po: it.po_number||'',
       sku: it.sku||'',
       pcs: it.pcs_per_box!=null?it.pcs_per_box:'',
       /* พ่วงไม่มีลัง/คิวของตัวเอง — เว้นไว้ ไม่ให้ยอดลัง/คิวของเที่ยวส่งบวกซ้ำ */
-      cartons: it.is_extra ? '' : Math.round(m.leftBox*1000)/1000,
-      qin: m.leftPcs>0 ? m.leftPcs : '',                         // ★ ของเข้า = ชิ้นที่เหลือรับ
+      cartons: it.is_extra ? '' : Math.round(openBox*1000)/1000,
+      qin: open>0 ? Math.round(open) : '',                       // ★ ของเข้า = ชิ้นที่ยังไม่ได้จัดเที่ยว
       cubic: (!it.is_extra && +it.cbm>0) ? Math.round((+it.cbm)*ratio*10000)/10000 : '',
       note: it.is_extra
-        ? (head+' · ▸ พ่วงมาในลังของ '+((lastMain&&lastMain.sku)||'บรรทัดบน')
-           + ' · แจ้งมา '+arrInt(m.fullPcs)+' ชิ้น')
+        ? (head+' · ▸ พ่วงมาในลังของ '+((par&&par.sku)||'บรรทัดบน')
+           + (m.unknown ? ' · ⚠️ ใบแจ้งไม่ได้ระบุจำนวน — กรอกจำนวนเอง'
+                        : ' · แจ้งมา '+arrInt(m.fullPcs)+' ชิ้น'))
         : (head+' · แจ้งมา '+arrInt(m.fullPcs)+' ชิ้น รับไปแล้ว '+arrInt(m.fullPcs-m.leftPcs)+' ชิ้น'),
       left4: m
     });
   });
-  toast('ดึง '+list.length+' รายการที่ยังค้าง จากใบแจ้ง '+(g.n.notice_no||fmtDate(g.n.notice_date))+' แล้ว');
+  toast('ดึง '+list.length+' รายการที่ยังค้าง จากใบแจ้ง '+(g.n.notice_no||fmtDate(g.n.notice_date))+' แล้ว'
+        + (nUnknown?(' — มีพ่วง '+nUnknown+' รายการที่ใบแจ้งไม่ได้ระบุจำนวน กรุณากรอกช่อง "ของเข้า"'):''));
 }
 
 function closeTrip(){ $('tripBg').style.display='none'; }
@@ -3168,6 +3213,14 @@ async function saveTrip(){
   closeTrip();
   toast(id ? 'แก้ไขเที่ยวส่งเรียบร้อย' : 'เพิ่มเที่ยวส่งเรียบร้อย');
   loadPlan();
+  arrPlanPing();          // 🚚 ให้แท็บแจ้งสินค้าขาเข้าขึ้นป้าย "จัดเที่ยวแล้ว" ตาม
+}
+
+/* เที่ยวส่งเปลี่ยน → ป้าย 🚚 ในแท็บแจ้งสินค้าขาเข้าต้องเปลี่ยนตาม
+   เปิดแท็บนั้นอยู่ก็โหลดเลย ไม่ได้เปิดก็แค่จำไว้ (ประหยัดโควตา) */
+function arrPlanPing(){
+  const on = $('viewArr') && $('viewArr').style.display!=='none';
+  if(on) loadArr(); else ARR_STALE = true;
 }
 
 window.delTrip = async function(id){
@@ -3177,6 +3230,7 @@ window.delTrip = async function(id){
   if(error){ toast('ลบไม่สำเร็จ: '+error.message); return; }
   toast('ลบเที่ยวส่งเรียบร้อย');
   loadPlan();
+  arrPlanPing();
 };
 
 // ---- Export Excel (เลือกช่วงวันที่) ----
@@ -3306,8 +3360,7 @@ const ARR_ST = { waiting:{c:'w',t:'🟠 ค้างที่ขนส่ง'}, 
                  done:{c:'d',t:'✅ เข้าคลังครบ'}, cancel:{c:'c',t:'⚪ ยกเลิก'} };
 
 /* รายการของใบแจ้งนั้น เรียงตามลำดับที่กรอก */
-const arrItemsOf = id => ARR_IT.filter(x => String(x.notice_id)===String(id))
-                               .sort((a,b)=>(a.seq||0)-(b.seq||0));
+const arrItemsOf = id => arrOrder(ARR_IT.filter(x => String(x.notice_id)===String(id)));
 
 /* ── นับเป็น "ชิ้น" ──
    ฐานข้อมูลเก็บเป็นลัง (boxes / boxes_in) เพราะขนส่งคิดเงินตามลัง/คิว
@@ -3325,9 +3378,12 @@ function arrPcsOf(it, parentM){
     const fullPcs = pcs>0 ? pcs : (ppb>0&&parentM&&parentM.fullBox>0 ? ppb*parentM.fullBox : 0);
     const ratio = (parentM && parentM.fullBox>0) ? (parentM.inBox/parentM.fullBox) : 0;
     const inPcs = fullPcs*ratio;
+    /* ★ ยังไม่รู้จำนวน (ไม่ได้กรอกชิ้น และไม่มีบรรทัดแม่ให้เทียบ) → ติดธง unknown ไว้
+       เพื่อให้ยัง "ดึงเข้าเที่ยวส่ง" ได้ แล้วกรอกจำนวนมือ — ห้ามหายไปเงียบ ๆ */
     return {fullPcs:Math.round(fullPcs), inPcs:Math.round(inPcs),
             leftPcs:Math.round(Math.max(0,fullPcs-inPcs)),
-            fullBox:0, inBox:0, leftBox:0, ppb:ppb, extra:true, parent:parentM||null};
+            fullBox:0, inBox:0, leftBox:0, ppb:ppb, extra:true, parent:parentM||null,
+            unknown:!(fullPcs>0)};
   }
 
   const leftBox=boxes-bin;
@@ -3341,15 +3397,51 @@ function arrPcsOf(it, parentM){
           fullBox:boxes, inBox:bin, leftBox:leftBox, ppb:ppb, extra:false};
 }
 
-/* คิดทั้งใบทีเดียว — ต้องไล่ตามลำดับ seq เพื่อให้พ่วงรู้ว่าแม่คือบรรทัดไหน
-   คืน Map(id → ยอดชิ้น/ลังของบรรทัดนั้น) */
+/* คิดทั้งใบทีเดียว — พ่วงต้องรู้ว่าแม่คือบรรทัดไหน
+   คืน Map(id → ยอดชิ้น/ลังของบรรทัดนั้น)
+
+   ★ ทน "ลำดับเพี้ยน" ได้: ถ้า seq ว่าง/ซ้ำ/ไม่ครบ จะใช้ลำดับที่ดึงมาแทน
+     และคิด "บรรทัดแม่ทั้งหมดก่อน" แล้วค่อยคิดพ่วง — พ่วงจึงไม่หลุด
+     แม้ฐานข้อมูลคืนพ่วงมาก่อนแม่ (เคสที่ทำให้ดึงเข้าเที่ยวส่งไม่ขึ้น) */
+function arrOrder(items){
+  const arr = items.slice();
+  const seqOK = arr.every(x => x.seq!=null && x.seq!=='' && !isNaN(+x.seq))
+             && new Set(arr.map(x=>+x.seq)).size === arr.length;
+  if(seqOK) return arr.sort((a,b)=>(+a.seq)-(+b.seq));
+
+  /* seq ว่าง/ซ้ำ → จัดเองให้พ่วงอยู่ใต้บรรทัดแม่ (จับคู่ด้วยเลขที่รายการ/เลขตู้)
+     พ่วงที่หาแม่ไม่ได้ ยัดไว้ใต้บรรทัดปกติตัวแรก — ไม่ทิ้งหาย */
+  const mains = arr.filter(x=>!x.is_extra), extras = arr.filter(x=>x.is_extra);
+  if(!mains.length) return arr;
+  const used = new Set(), out = [];
+  mains.forEach(function(mn){
+    out.push(mn);
+    extras.forEach(function(ex){
+      if(used.has(ex)) return;
+      const a = arrKey(ex.line_ref), b = arrKey(mn.line_ref);
+      if(a && b && a===b){ used.add(ex); out.push(ex); }
+    });
+  });
+  const orphan = extras.filter(x=>!used.has(x));
+  if(orphan.length) out.splice(1, 0, ...orphan);
+  return out;
+}
 function arrCalc(items){
-  const sorted = items.slice().sort((a,b)=>(a.seq||0)-(b.seq||0));
-  const out = {}; let parentM = null;
+  const sorted = arrOrder(items);
+  const out = {};
+  /* รอบ 1 — บรรทัดปกติ (ไม่ต้องพึ่งใคร) */
+  let firstMain = null;
   sorted.forEach(function(x){
-    const m = arrPcsOf(x, parentM);
-    if(!x.is_extra) parentM = m;      // บรรทัดปกติ = แม่ของพ่วงที่ตามมา
+    if(x.is_extra) return;
+    const m = arrPcsOf(x, null);
     out[x.id] = m;
+    if(!firstMain) firstMain = m;
+  });
+  /* รอบ 2 — พ่วง: ใช้แม่ที่อยู่ก่อนหน้า ถ้าไม่มีเลยก็ยึดแม่บรรทัดแรกของใบ */
+  let parentM = null;
+  sorted.forEach(function(x){
+    if(!x.is_extra){ parentM = out[x.id]; return; }
+    out[x.id] = arrPcsOf(x, parentM || firstMain);
   });
   return out;
 }
@@ -3394,6 +3486,83 @@ function arrCalcStatus(n, items){
   return t.boxWait>0.0001 ? 'partial' : 'done';
 }
 const arrDaysWait = d => Math.floor((new Date(arrToday()) - new Date(d))/86400000);
+
+/* ══════════════════════════════════════════════════════════════════
+   🚚 เชื่อม "แผนรับสินค้า" ↔ "แจ้งสินค้าขาเข้า"
+
+   ปัญหา: ดึงรายการไปตั้งเที่ยวส่งแล้ว แต่ในใบแจ้งยังขึ้นค้างเหมือนเดิม
+          ดูไม่ออกว่าใบไหนจัดเที่ยวไปแล้ว → เสี่ยงดึงซ้ำ/ตามของซ้ำ
+
+   วิธี: ของยัง "ไม่ถึงคลัง" จริง ๆ จนกด 🚚 ตัดเข้าคลัง — ฉะนั้นห้ามหักยอดเข้าคลังให้
+        แต่จะเทียบกับบรรทัดในเที่ยวส่ง (receipt_items) แล้วติดป้าย
+        "🚚 จัดเที่ยวแล้ว" ให้เห็น + ตัดออกจากแจ้งเตือนเกินกำหนด
+        + หักออกจาก "คงเหลือ" ในช่องเลือกใบแจ้ง กันดึงซ้ำ
+        (อ่านอย่างเดียว ไม่แก้ฐานข้อมูล — ยอดเข้าคลังยังเป็นของจริงเสมอ)
+   ══════════════════════════════════════════════════════════════════ */
+let ARR_PL = [];              // บรรทัดในเที่ยวส่งย้อนหลัง 90 วัน
+let ARR_PL_OK = false;
+const arrKey = v => String(v==null?'':v).trim().toUpperCase().replace(/[\s\-–—_\/]+$/,'');
+
+async function arrPlanLoad(){
+  try{
+    const d = new Date(); d.setDate(d.getDate()-90);
+    const from = d.toISOString().slice(0,10);
+    const { data, error } = await sb.from('receipt_items')
+      .select('trip_id,line_no,po_number,sku,qty_in,receipt_trips!inner(id,plan_date,carrier)')
+      .gte('receipt_trips.plan_date', from);
+    if(error){ ARR_PL=[]; ARR_PL_OK=false; return; }
+    ARR_PL = (data||[]).map(function(r){
+      const t = r.receipt_trips || {};
+      return {trip:String(r.trip_id||t.id||''), ref:arrKey(r.line_no),
+              po:String(r.po_number||'').trim(), sku:String(r.sku||'').trim(),
+              pcs:+r.qty_in||0, date:t.plan_date||'', carrier:t.carrier||''};
+    });
+    ARR_PL_OK = true;
+  }catch(e){ ARR_PL=[]; ARR_PL_OK=false; }
+}
+
+/* บรรทัดนี้ถูกจัดเข้าเที่ยวส่งไปแล้วกี่ชิ้น (exceptTrip = เที่ยวที่กำลังเปิดแก้ ไม่นับตัวเอง)
+   จับคู่ด้วยเลขที่รายการ + SKU (เลขที่รายการเป็นเลขตู้ ใช้ซ้ำหลาย SKU ได้ ต้องดู SKU ด้วย) */
+function arrPlanOf(it, exceptTrip){
+  if(!ARR_PL.length) return {pcs:0,n:0,date:'',carrier:''};
+  const ref = arrKey(it.line_ref), po = String(it.po_number||'').trim(), sku = String(it.sku||'').trim();
+  let pcs=0, n=0, date='', carrier='';
+  ARR_PL.forEach(function(r){
+    if(exceptTrip && r.trip===String(exceptTrip)) return;
+    const hit = (ref && r.ref && r.ref===ref && (!sku || !r.sku || r.sku===sku))
+             || (po && sku && r.po===po && r.sku===sku);
+    if(!hit) return;
+    pcs += r.pcs; n++;
+    if(r.date > date){ date = r.date; carrier = r.carrier; }
+  });
+  return {pcs:pcs, n:n, date:date, carrier:carrier};
+}
+
+/* ยอด "จัดเที่ยวแล้ว" ของทั้งใบ — ตัดไม่ให้เกินยอดค้างของแต่ละบรรทัด */
+function arrPlanTot(items, M, exceptTrip){
+  const pl = {pcs:0, date:'', by:{}, full:false};
+  let wait = 0;
+  items.forEach(function(x){
+    const m = M[x.id] || arrPcsOf(x, null);
+    wait += m.leftPcs;
+    const p = arrPlanOf(x, exceptTrip);
+    const take = Math.min(p.pcs, m.leftPcs);
+    if(take > 0.0001){
+      pl.by[x.id] = {pcs:take, date:p.date, carrier:p.carrier};
+      pl.pcs += take;
+      if(p.date > pl.date) pl.date = p.date;
+    }
+  });
+  pl.full = wait>0.0001 && pl.pcs >= wait-0.0001;
+  return pl;
+}
+/* กลุ่มข้อมูลของใบแจ้ง 1 ใบ — คิดครั้งเดียวใช้ได้ทั้งตาราง/KPI/แจ้งเตือน */
+function arrGroup(n){
+  const items = arrItemsOf(n.id);
+  const M = arrCalc(items);
+  const t = arrTotals(items);
+  return {n:n, items:items, M:M, t:t, st:arrCalcStatus(n, items), pl:arrPlanTot(items, M, '')};
+}
 
 
 /* ══════════════════════════════════════════════════════════════════
@@ -3572,7 +3741,9 @@ const arrHotDays = () => ARR_DUE + 3;
 
 /* ใบที่ค้างเกินกำหนด เรียงค้างนานสุดก่อน */
 function arrOverdue(groups){
+  /* ★ ใบที่จัดเที่ยวส่งไว้ครบแล้ว ไม่ต้องเตือนให้ตามของอีก — มีคิววันรับแล้ว */
   return groups.filter(g => g.st!=='cancel' && g.st!=='done' && g.t.boxWait>0.0001
+                            && !(g.pl && g.pl.full)
                             && arrDaysWait(g.n.notice_date) >= ARR_DUE)
                .map(g => ({...g, days: arrDaysWait(g.n.notice_date)}))
                .sort((a,b) => b.days - a.days);
@@ -3624,6 +3795,8 @@ function renderArrAlert(groups){
       <b>${esc(g.n.carrier||'-')}</b>
       <span style="color:var(--muted)">แจ้ง ${fmtDate(g.n.notice_date)}${g.n.notice_no?' · '+esc(g.n.notice_no):''}</span>
       <span>ค้าง <b>${arrInt(g.t.pcsWait)}</b> ชิ้น · ${arrInt(g.t.boxWait)} ลัง · ${arrMoney(g.t.cbmWait)} คิว</span>
+      ${g.pl&&g.pl.pcs>0.0001?`<span class="arr-pl">🚚 จัดเที่ยวแล้ว ${arrInt(g.pl.pcs)} ชิ้น${
+        g.pl.date?' · '+fmtDate(g.pl.date):''}</span>`:''}
       <div style="flex:1"></div>
       ${currentRole==='purchase'?`<button class="arr-mini go" onclick="openArrIn('${g.n.id}')">🚚 ตัดเข้าคลัง</button>`:''}
       <button class="arr-mini" onclick="arrJump('${g.n.id}')">🔎 ดูในตาราง</button>
@@ -3700,7 +3873,8 @@ async function loadArr(){
     const ids = ARR.map(x=>x.id);
     const { data:its, error:e2 } = await sb.from('arrival_items').select('*').in('notice_id', ids);
     if(e2){ toast('โหลดรายการไม่สำเร็จ: '+e2.message); ARR_IT=[]; } else ARR_IT = its || [];
-  } else ARR_IT = [];
+    await arrPlanLoad();            // 🚚 ใบไหนถูกดึงไปตั้งเที่ยวส่งแล้ว
+  } else { ARR_IT = []; ARR_PL = []; }
   ARR_LOADED = true; ARR_STALE = false;
   arrFillCarriers();
   renderArr();
@@ -3816,8 +3990,8 @@ function renderArr(){
   const st = $('arrStatus').value;
   const canEdit = currentRole==='purchase';
 
-  let rows = ARR.map(n => ({ n, items: arrItemsOf(n.id) }))
-                .map(g => ({ ...g, st: arrCalcStatus(g.n, g.items), t: arrTotals(g.items) }));
+  const ALLG = ARR.map(arrGroup);          // คิดครั้งเดียว ใช้ทั้งตาราง/KPI/แจ้งเตือน
+  let rows = ALLG.slice();
   /* ★ เรียงจากวันแจ้งเข้าเก่าสุด → ล่าสุด (ของที่ค้างนานสุดอยู่บน)
      เรียงที่นี่ด้วย ไม่พึ่งลำดับจากฐานข้อมูลอย่างเดียว — เผื่อแถวใหม่จาก realtime
      หรือที่เพิ่งบันทึกเข้ามาแทรก ลำดับบนหน้าจอจะถูกเสมอ */
@@ -3828,6 +4002,7 @@ function renderArr(){
     const ids = arrOverdue(rows).map(g=>String(g.n.id));
     rows = rows.filter(g => ids.includes(String(g.n.id)));
   }
+  else if(st==='plan') rows = rows.filter(g => g.pl.pcs>0.0001);
   else if(st) rows = rows.filter(g => g.st===st);
   if(q) rows = rows.filter(g =>
     ((g.n.notice_no||'')+' '+(g.n.carrier||'')+' '+(g.n.truck||'')+' '+(g.n.note||'')+' '
@@ -3835,14 +4010,13 @@ function renderArr(){
     ).toLowerCase().includes(q));
 
   /* KPI — คิดจากทุกใบในเดือน ไม่ขึ้นกับตัวกรอง (ตัวเลขภาพรวมต้องนิ่ง) */
-  const all = ARR.map(n => ({ n, items: arrItemsOf(n.id) }))
-                 .map(g => ({ ...g, st: arrCalcStatus(g.n, g.items), t: arrTotals(g.items) }))
-                 .filter(g => g.st!=='cancel');
+  const all = ALLG.filter(g => g.st!=='cancel');
   const sum = all.reduce((a,g) => ({
     boxWait:a.boxWait+g.t.boxWait, cbmWait:a.cbmWait+g.t.cbmWait, kgWait:a.kgWait+g.t.kgWait,
     boxIn:a.boxIn+g.t.boxIn, boxes:a.boxes+g.t.boxes,
-    pcsWait:a.pcsWait+g.t.pcsWait, pcsIn:a.pcsIn+g.t.pcsIn, pcs:a.pcs+g.t.pcs
-  }), {boxWait:0,cbmWait:0,kgWait:0,boxIn:0,boxes:0,pcsWait:0,pcsIn:0,pcs:0});
+    pcsWait:a.pcsWait+g.t.pcsWait, pcsIn:a.pcsIn+g.t.pcsIn, pcs:a.pcs+g.t.pcs,
+    plan:a.plan+g.pl.pcs
+  }), {boxWait:0,cbmWait:0,kgWait:0,boxIn:0,boxes:0,pcsWait:0,pcsIn:0,pcs:0,plan:0});
   const unfinished = all.filter(g => g.st!=='done');
   const oldest = unfinished.filter(g=>g.t.boxWait>0)
     .sort((a,b)=>String(a.n.notice_date||'').localeCompare(String(b.n.notice_date||'')))[0];
@@ -3860,7 +4034,8 @@ function renderArr(){
   /* ★ ตัวเลขหลักเป็น "ชิ้น" · ลัง/คิว/กก. ย้ายไปบรรทัดรอง */
   $('arrWaitBox').textContent = arrInt(sum.pcsWait) + ' ชิ้น';
   $('arrWaitSub').textContent = arrInt(sum.boxWait) + ' ลัง · ' + arrMoney(sum.cbmWait) + ' คิว · '
-                              + arrInt(sum.kgWait) + ' กก.';
+                              + arrInt(sum.kgWait) + ' กก.'
+                              + (sum.plan>0.0001 ? ' · 🚚 จัดเที่ยวแล้ว '+arrInt(sum.plan)+' ชิ้น' : '');
   $('arrInBox').textContent   = arrInt(sum.pcsIn) + ' ชิ้น';
   $('arrInSub').textContent   = arrInt(sum.boxIn) + ' ลัง · จากที่แจ้งมา ' + arrInt(sum.pcs) + ' ชิ้น';
   $('arrNotice').textContent  = ARR.length;
@@ -3893,13 +4068,17 @@ function renderArr(){
   rows.forEach(g => {
     const n=g.n, t=g.t, S=ARR_ST[g.st]||ARR_ST.waiting;
     const days = arrDaysWait(n.notice_date);
-    const dwarn = (g.st!=='done'&&g.st!=='cancel'&&t.boxWait>0&&days>=ARR_DUE);
+    /* ★ จัดเที่ยวส่งไว้ครบแล้ว = ไม่ต้องขึ้นแดง/ส้มเตือนตามของอีก (มีคิววันรับแล้ว) */
+    const dwarn = (g.st!=='done'&&g.st!=='cancel'&&t.boxWait>0&&days>=ARR_DUE&&!g.pl.full);
     const col = arrColor(n.carrier);        // 🎨 สีประจำบริษัทขนส่ง
     /* ข้อมูลใบแจ้งอยู่บรรทัดเดียว + ปุ่มไอคอนต่อท้าย — แถวหัวใบเตี้ยลงเกินครึ่ง */
     h += `<tr class="arr-head${dwarn?' arr-hot':''}" data-nid="${n.id}"
       style="box-shadow:inset 7px 0 0 ${col}"><td colspan="4">
         <span class="arr-date">📅 ${fmtDate(n.notice_date)}</span>
         ${arrCarChip(n.carrier)}<span class="arr-st ${S.c}">${S.t}</span>
+        ${g.pl.pcs>0.0001&&g.st!=='cancel'?`<span class="arr-pl" title="ดึงไปตั้งเที่ยวส่งในแท็บ 🚛 แผนรับสินค้าแล้ว ${
+          arrInt(g.pl.pcs)} ชิ้น${g.pl.date?' · วันรับ '+fmtDate(g.pl.date):''} — ยอดเข้าคลังจะขยับเมื่อกด 🚚 ตัดเข้าคลัง ตอนของถึงจริง">🚚 จัดเที่ยว${
+          g.pl.full?'แล้ว':'บางส่วน'} ${g.pl.date?fmtDate(g.pl.date):arrInt(g.pl.pcs)+' ชิ้น'}</span>`:''}
         <span class="arr-sub">${n.notice_no?esc(n.notice_no)+' · ':''}${t.n} รายการ${
           n.truck?' · รถ '+esc(n.truck):''}${n.eta_date?' · คาดเข้า '+fmtDate(n.eta_date):''}</span>
         ${g.st!=='done'&&g.st!=='cancel'&&days>0?`<span class="arr-wait"${dwarn?' style="color:var(--red)"':''}>${
@@ -3916,13 +4095,15 @@ function renderArr(){
       <td class="n"><b>${arrMoney(t.cbm)}</b></td>
       <td class="n">${t.kg?arrInt(t.kg):'-'}</td>
       <td class="n ${t.pcsIn?'arr-done':''}" title="เข้าคลังแล้ว ${arrBoth(t.pcsIn,t.boxIn)}">${arrInt(t.pcsIn)}</td>
-      <td class="n ${t.pcsWait>0&&g.st!=='cancel'?'arr-wait':''}" title="ค้างที่ขนส่ง ${arrBoth(t.pcsWait,t.boxWait)}">${
+      <td class="n ${t.pcsWait>0&&g.st!=='cancel'?(g.pl.full?'arr-planq':'arr-wait'):''}" title="ค้างที่ขนส่ง ${
+        arrBoth(t.pcsWait,t.boxWait)}${g.pl.pcs>0.0001?' · จัดเที่ยวส่งแล้ว '+arrInt(g.pl.pcs)+' ชิ้น':''}">${
         g.st==='cancel'?'—':(t.pcsWait>0?arrInt(t.pcsWait):'—')}</td>
       <td></td></tr>`;
 
-    const MI = arrCalc(g.items);
+    const MI = g.M;
     g.items.forEach(x => {
       const bx=+x.boxes||0, bi=+x.boxes_in||0, left=bx-bi, m=MI[x.id]||arrPcsOf(x,null);
+      const P = g.pl.by[x.id] || null;                 // 🚚 บรรทัดนี้จัดเที่ยวไว้แล้วหรือยัง
       h += `<tr class="${x.is_extra?'arr-extra':''}" style="box-shadow:inset 7px 0 0 ${col}33">
         <td></td>
         <td>${esc(x.line_ref||'-')}</td>
@@ -3935,8 +4116,10 @@ function renderArr(){
         <td class="n">${x.weight_kg?arrInt(x.weight_kg):'-'}</td>
         <td class="n ${m.inPcs?'arr-done':''}" title="${x.is_extra?'พ่วง — เข้าคลังตามบรรทัดแม่ ':'เข้าคลังแล้ว '}${
           arrBoth(m.inPcs,bi)}${x.in_date?' · รอบล่าสุด '+fmtDate(x.in_date):''}">${m.inPcs?arrInt(m.inPcs):'-'}</td>
-        <td class="n ${m.leftPcs>0&&g.st!=='cancel'?'arr-wait':''}" title="${x.is_extra?'พ่วง — ค้างตามบรรทัดแม่ ':'ค้างที่ขนส่ง '}${
-          arrBoth(m.leftPcs,left>0?left:0)}">${g.st==='cancel'?'—':(m.leftPcs>0?arrInt(m.leftPcs):'—')}</td>
+        <td class="n ${m.leftPcs>0&&g.st!=='cancel'?(P&&P.pcs>=m.leftPcs-0.0001?'arr-planq':'arr-wait'):''}" title="${
+          x.is_extra?'พ่วง — ค้างตามบรรทัดแม่ ':'ค้างที่ขนส่ง '}${arrBoth(m.leftPcs,left>0?left:0)}${
+          P?' · 🚚 จัดเที่ยวส่งแล้ว '+arrInt(P.pcs)+' ชิ้น'+(P.date?' (วันรับ '+fmtDate(P.date)+')':''):''}">${
+          g.st==='cancel'?'—':(m.leftPcs>0?(arrInt(m.leftPcs)+(P?' 🚚':'')):'—')}</td>
         <td style="font-size:11.5px;color:var(--muted)">${esc(x.note||'')}</td></tr>`;
     });
   });
