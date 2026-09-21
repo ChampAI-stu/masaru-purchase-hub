@@ -347,7 +347,11 @@
       <div class="card">
         <div class="toolbar">
           <h2 style="margin:0;border:0;padding:0">🚛 ใบวางบิลค่าขนส่ง</h2><span class="sp"></span>
-          <input id="fiSearch" placeholder="ค้นหา ใบขน / เลขอ้างอิง / ขนส่ง" style="max-width:250px" oninput="renderFrInvList()">
+          <input id="fiSearch" placeholder="ค้นหา ใบขน / เลขอ้างอิง / ขนส่ง / อินวอยซ์" style="max-width:230px" oninput="renderFrInvList()">
+          <select id="fiMonth" onchange="renderFrInvList()" style="max-width:135px" title="กรองตามเดือนกำหนดชำระ"></select>
+          <select id="fiCar" onchange="renderFrInvList()" style="max-width:135px" title="กรองตามบริษัทขนส่ง"></select>
+          <button class="btn ghost" onclick="exportFrInv()" title="ดึงใบวางบิลทั้งหมดเป็น Excel">📥 Excel</button>
+          <button class="btn ghost" onclick="loadFrInv()" title="โหลดรายการใบวางบิลใหม่">🔄</button>
           <button class="btn edit-only" onclick="openFrInv()">+ สร้างใบวางบิล</button>
         </div>
         <div id="fiKpi" class="kpis"></div>
@@ -366,6 +370,15 @@
           <div><label>ใบขนเลขที่</label><input id="fi_entry" placeholder="DHSX000061424" oninput="drawFrInv()"></div>
           <div><label>เลขอ้างอิง</label><input id="fi_book" placeholder="A022-0-6907-07766" oninput="drawFrInv()"></div>
           <div><label>กำหนดชำระ</label><input type="date" id="fi_due" onchange="drawFrInv()"></div>
+          <div style="grid-column:1/-1">
+            <label>🔗 ผูกกับรายการใน ตาราง Shipment (ไม่บังคับ — ผูกแล้วย้อนดูกันได้ทั้ง 2 ทาง)</label>
+            <div class="row" style="gap:8px;align-items:center">
+              <select id="fi_trk" onchange="frTrkPick()" style="flex:1;min-width:220px"></select>
+              <button class="btn mini ghost" onclick="frFillFromTrk(true)" title="เติม ขนส่ง / ใบขนเลขที่ / IVSI-PO / รายละเอียด PO จากรายการที่เลือก (ทับของเดิม)">⬇️ เติมหัวใบจากรายการนี้</button>
+              <button class="btn mini ghost" onclick="frOpenTrk()" title="เปิดรายการนี้ในตาราง Shipment">🔎 เปิดใน Shipment</button>
+            </div>
+            <div id="fi_trkInfo" class="muted" style="font-size:11.5px;margin-top:4px;line-height:1.6"></div>
+          </div>
           <div><label>IVSI / PO</label><input id="fi_ivsi" placeholder="IVSI26080221 - PO2606011" oninput="drawFrInv()"></div>
           <div style="grid-column:2/-1"><label>รายละเอียด PO (ท้ายใบ)</label>
             <textarea id="fi_po" rows="3" placeholder="PO 19210 + 19300 + 19358&#10;1. PO 19210 SCCG-100 = 1400 ชุด" oninput="drawFrInv()"></textarea></div>
@@ -673,7 +686,7 @@ async function enterApp(session){
    ทำให้ข้อมูลที่คนอื่นเพิ่ง เพิ่ม/แก้ ไม่ขึ้นจนกว่าจะกด F5 ===== */
 let CUR_TAB='dashboard', RT_TIMER=null, LAST_SYNC=null, RELOADING=false;
 const RT_TABLES=['shipments','shipment_tracking','sku_master','sku_export_info',
-                 'shipcosts','inv_parties','purchase_orders','tax_summaries','acct_budget'];
+                 'shipcosts','inv_parties','purchase_orders','tax_summaries','acct_budget','freight_invoices'];
 
 function livePill(state,msg){
   const el=$('livePill'); if(!el)return;
@@ -815,6 +828,7 @@ async function loadAll(only){
   set('tracking','tracking'); set('parties','parties'); set('budget','budget'); set('po','po'); set('taxsum','taxsum');
   if(m.exp){ db.expMap={}; m.exp.forEach(e=>db.expMap[e.sku]=e); }
   buildProducts();
+  if(!only||only.has('freight_invoices')){ try{ await loadFrInv(); }catch(e){} }
   if($('seedBtn'))$('seedBtn').style.display=db.products.length?'none':'';
 }
 function buildProducts(){
@@ -857,6 +871,7 @@ function go(t){
   if(t==='summary')renderSummary();
   if(t==='posum')renderPoSummary();
   if(t==='taxsum')initTax();
+  if(t==='frinv')initFrInv();   // ★ เปิดแท็บแล้วโหลดใบวางบิลที่บันทึกไว้ให้เห็นทันที
 }
 
 /* ===== SKU + EXPORT INFO ===== */
@@ -1060,39 +1075,159 @@ function addFrRow(){ FR_ROWS.push({en:'',th:'',amt:0,v:false,w:false}); drawFrRo
 function delFrRow(i){ FR_ROWS.splice(i,1); drawFrRows(); calcFrInv(); }
 function setFr(i,k,v){ FR_ROWS[i][k]=(k==='amt')?(parseFloat(v)||0):((k==='v'||k==='w')?!!v:v); calcFrInv(); }
 
+/* ★ เปิดแท็บแล้วต้องเห็นใบที่บันทึกไว้ทันที
+   (ของเดิมโหลดรายการเฉพาะตอน "บันทึก/ลบ" — เปิดแท็บใหม่หรือ F5 แล้วรายการเลยว่าง
+    กลายเป็นย้อนดูใบเก่าไม่ได้) */
+let FR_LOADED=false;
+function initFrInv(){ frFillTrkList(); if(!FR_LOADED){ loadFrInv(); } else { frFillFilters(); renderFrInvList(); } }
+
 async function loadFrInv(){
-  const {data,error}=await sb.from('freight_invoices').select('*').order('created_at',{ascending:false}).limit(300);
+  const {data,error}=await sb.from('freight_invoices').select('*').order('created_at',{ascending:false}).limit(1000);
   if(error){
+    FR_LOADED=false;
     $('fiList').innerHTML='<div class="empty">โหลดไม่ได้: '+esc(error.message)
       +(/does not exist/i.test(error.message)?'<br><span class="muted">ยังไม่ได้สร้างตาราง — รันไฟล์ freight_invoice.sql ก่อน</span>':'')+'</div>';
     return;
   }
-  FRINVS=data||[]; renderFrInvList();
+  FRINVS=data||[]; FR_LOADED=true;
+  frFillFilters(); renderFrInvList();
+}
+/* เดือนของใบ = เดือนกำหนดชำระ (ไม่มีก็ใช้เดือนที่สร้าง) */
+const frMonthOf=x=>String(x.due_date||x.created_at||'').slice(0,7);
+const frThMonth=m=>{ if(!m)return '(ไม่ระบุ)';
+  const T=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const[y,mm]=m.split('-'); return T[(+mm||1)-1]+' '+String(+y+543).slice(-2); };
+function frFillFilters(){
+  const keep=k=>$(k)?$(k).value:'';
+  const m0=keep('fiMonth'), c0=keep('fiCar');
+  const ms=[...new Set(FRINVS.map(frMonthOf).filter(Boolean))].sort().reverse();
+  const cs=[...new Set(FRINVS.map(x=>x.carrier).filter(Boolean))].sort();
+  if($('fiMonth')) $('fiMonth').innerHTML='<option value="">— ทุกเดือน —</option>'
+    +ms.map(m=>'<option value="'+esc(m)+'">'+esc(frThMonth(m))+'</option>').join('');
+  if($('fiCar')) $('fiCar').innerHTML='<option value="">— ทุกขนส่ง —</option>'
+    +cs.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');
+  if($('fiMonth')&&ms.includes(m0))$('fiMonth').value=m0;
+  if($('fiCar')&&cs.includes(c0))$('fiCar').value=c0;
+}
+/* รายการใน ตาราง Shipment ที่ใบนี้ผูกอยู่ */
+const frTrkOf=x=>x&&x.tracking_id?db.tracking.find(t=>String(t.id)===String(x.tracking_id)):null;
+function frFilter(){
+  const q=($('fiSearch').value||'').toLowerCase();
+  const mo=$('fiMonth')?$('fiMonth').value:'', ca=$('fiCar')?$('fiCar').value:'';
+  return FRINVS.filter(x=>{
+    if(mo&&frMonthOf(x)!==mo)return false;
+    if(ca&&String(x.carrier||'')!==ca)return false;
+    if(!q)return true;
+    const t=frTrkOf(x)||{};
+    return ((x.entry_no||'')+' '+(x.booking_no||'')+' '+(x.carrier||'')+' '+(x.ivsi_no||'')+' '+(x.po_list||'')
+            +' '+(t.invoice_no||'')+' '+(t.jst_po||'')).toLowerCase().includes(q);
+  });
 }
 function renderFrInvList(){
-  const q=($('fiSearch').value||'').toLowerCase();
-  const list=FRINVS.filter(x=>!q||((x.entry_no||'')+' '+(x.booking_no||'')+' '+(x.carrier||'')+' '+(x.ivsi_no||'')).toLowerCase().includes(q));
+  const list=frFilter();
   const tot=list.reduce((s,x)=>s+(+x.sum_total||0),0);
   const today=new Date().toISOString().slice(0,10);
   const due=list.filter(x=>x.due_date&&x.due_date<=today);
-  $('fiKpi').innerHTML='<div class="kpi"><div class="lbl">ใบวางบิลทั้งหมด</div><div class="val">'+list.length+'</div></div>'
-    +'<div class="kpi gold"><div class="lbl">ยอดรวม (บาท)</div><div class="val">'+money(tot)+'</div></div>'
+  $('fiKpi').innerHTML='<div class="kpi"><div class="lbl">ใบวางบิลที่แสดง</div><div class="val">'+list.length
+      +'</div><div class="lbl" style="opacity:.8">จากทั้งหมด '+FRINVS.length+' ใบ</div></div>'
+    +'<div class="kpi gold"><div class="lbl">ยอดต้องชำระรวม (บาท)</div><div class="val">'+money(tot)+'</div></div>'
     +'<div class="kpi '+(due.length?'red':'green')+'"><div class="lbl">'+(due.length?'⚠️ ถึง/เลยกำหนดชำระ':'ไม่มีใบเลยกำหนด')+'</div><div class="val">'+due.length+'</div></div>';
-  if(!list.length){$('fiList').innerHTML='<div class="empty">ยังไม่มีใบวางบิล — กด "+ สร้างใบวางบิล"</div>';return;}
+  if(!list.length){$('fiList').innerHTML='<div class="empty">'
+    +(FRINVS.length?'ไม่มีใบวางบิลที่ตรงกับตัวกรอง — ล้างช่องค้นหา/เลือก “ทุกเดือน”'
+                   :'ยังไม่มีใบวางบิล — กด "+ สร้างใบวางบิล"')+'</div>';return;}
   let h='<table><thead><tr><th>ใบขนเลขที่</th><th>เลขอ้างอิง</th><th>ขนส่ง</th><th>IVSI / PO</th>'
+    +'<th>🔗 Shipment</th>'
     +'<th class="right">ยอดก่อนภาษี</th><th class="right">VAT</th><th class="right">หัก ณ ที่จ่าย</th>'
-    +'<th class="right">ต้องชำระ</th><th>กำหนดชำระ</th>'+(canEdit?'<th></th>':'')+'</tr></thead><tbody>';
+    +'<th class="right">ต้องชำระ</th><th>กำหนดชำระ</th><th></th></tr></thead><tbody>';
   list.forEach(x=>{
     const late=x.due_date&&x.due_date<=today;
+    const t=frTrkOf(x);
     h+='<tr><td><b>'+esc(x.entry_no||'-')+'</b></td><td>'+esc(x.booking_no||'-')+'</td>'
       +'<td>'+esc(x.carrier||'-')+'</td><td style="font-size:11.5px">'+esc(x.ivsi_no||'-')+'</td>'
+      +'<td style="font-size:11.5px">'+(t
+          ?('<b>'+esc(t.invoice_no||'-')+'</b>'+(t.jst_po?'<br><span class="muted">'+esc(t.jst_po)+'</span>':'')
+            +' <button class="mini btn" onclick="frOpenTrkById(\''+t.id+'\')" title="เปิดรายการนี้ในตาราง Shipment">🔎</button>')
+          :'<span class="muted">—</span>')+'</td>'
       +'<td class="right">'+money(x.sum_amount)+'</td><td class="right">'+money(x.sum_vat)+'</td>'
       +'<td class="right" style="color:#1E7145">'+money(x.sum_wht)+'</td>'
       +'<td class="right"><b>'+money(x.sum_total)+'</b></td>'
       +'<td>'+(x.due_date?'<span style="'+(late?'color:#D0212B;font-weight:700':'')+'">'+esc(x.due_date)+'</span>':'-')+'</td>'
-      +(canEdit?'<td style="white-space:nowrap"><button class="mini btn" onclick="openFrInv(\''+x.id+'\')">แก้</button> <button class="mini btn red" onclick="delFrInv(\''+x.id+'\')">ลบ</button></td>':'')
+      +'<td style="white-space:nowrap"><button class="mini btn" onclick="openFrInv(\''+x.id+'\')" title="เปิดดูใบนี้ / สั่งพิมพ์ PDF">👁 ดู</button>'
+      +(canEdit?' <button class="mini btn red" onclick="delFrInv(\''+x.id+'\')">ลบ</button>':'')+'</td>'
       +'</tr>';});
   $('fiList').innerHTML=h+'</tbody></table>';
+}
+function exportFrInv(){
+  const list=frFilter();
+  if(!list.length)return alert('ไม่มีใบวางบิลตามตัวกรองนี้');
+  const head=[['ใบขนเลขที่','เลขอ้างอิง','บริษัทขนส่ง','IVSI / PO','อินวอยซ์ (Shipment)','PO JST',
+    'กำหนดชำระ','ยอดก่อนภาษี','VAT','หัก ณ ที่จ่าย','ต้องชำระ','รายละเอียด PO','สร้างเมื่อ']];
+  list.forEach(x=>{ const t=frTrkOf(x)||{};
+    head.push([x.entry_no||'',x.booking_no||'',x.carrier||'',x.ivsi_no||'',t.invoice_no||'',t.jst_po||'',
+      x.due_date||'',+x.sum_amount||0,+x.sum_vat||0,+x.sum_wht||0,+x.sum_total||0,
+      x.po_list||'',String(x.created_at||'').slice(0,10)]);});
+  const det=[['ใบขนเลขที่','ขนส่ง','DESCRIPTION','รายละเอียด','จำนวนเงิน','VAT','WHT','ต้องชำระ']];
+  list.forEach(x=>{ (Array.isArray(x.items)?x.items:[]).forEach(r=>{
+    const a=+r.amt||0, v=r.v?+(a*((+x.sum_amount?((+x.sum_vat||0)/(+x.sum_amount||1)):0.07))).toFixed(2):0;
+    det.push([x.entry_no||'',x.carrier||'',r.en||'',r.th||'',a,r.v?'V':'',r.w?'W':'','']);});});
+  const wb=XLSX.utils.book_new();
+  const w1=XLSX.utils.aoa_to_sheet(head); w1['!cols']=head[0].map(()=>({wch:16}));
+  const w2=XLSX.utils.aoa_to_sheet(det);  w2['!cols']=det[0].map(()=>({wch:18}));
+  XLSX.utils.book_append_sheet(wb,w1,'ใบวางบิลขนส่ง');
+  XLSX.utils.book_append_sheet(wb,w2,'รายการในใบ');
+  XLSX.writeFile(wb,'ใบวางบิลขนส่ง_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+/* ══════════ 🔗 ลิงก์กับ ตาราง Shipment / PO ══════════ */
+function frTrkLabel(t){
+  return [t.period||'', t.invoice_no||'(ไม่มีเลขอินวอยซ์)', t.jst_po?('PO '+t.jst_po):'',
+          t.shipping||'', t.draft_bill_no?('ใบขน '+t.draft_bill_no):''].filter(Boolean).join(' · ');
+}
+function frFillTrkList(){
+  const sel=$('fi_trk'); if(!sel)return;
+  const cur=sel.value;
+  const list=db.tracking.slice().sort((a,b)=>String(b.start_date||'').localeCompare(String(a.start_date||'')));
+  sel.innerHTML='<option value="">— ไม่ผูก —</option>'
+    +list.map(t=>'<option value="'+esc(t.id)+'">'+esc(frTrkLabel(t))+'</option>').join('');
+  if(cur)sel.value=cur;
+}
+function frTrkInfo(){
+  const box=$('fi_trkInfo'); if(!box)return;
+  const t=db.tracking.find(x=>String(x.id)===String($('fi_trk').value));
+  if(!t){ box.innerHTML='ยังไม่ผูก — ถ้าผูกไว้ ระบบจะเขียน <b>ค่าขนส่ง / กำหนดชำระ / เลขใบวางบิล</b> '
+    +'กลับไปที่รายการนั้นในตาราง Shipment ให้เองตอนบันทึก'; return; }
+  box.innerHTML='ผูกกับ <b>'+esc(t.invoice_no||'-')+'</b>'
+    +(t.jst_po?(' · PO '+esc(t.jst_po)):'')+(t.shipping?(' · ขนส่ง '+esc(t.shipping)):'')
+    +(t.draft_bill_no?(' · ใบขน '+esc(t.draft_bill_no)):'')
+    +(t.ship_cost?(' · ค่าขนส่งในตารางตอนนี้ '+money(t.ship_cost)+' บาท'):'')
+    +'<br>บันทึกแล้วจะอัปเดต <b>ค่าขนส่ง = ยอดต้องชำระ</b> · <b>กำหนดชำระค่าขนส่ง</b> · <b>ใบวางบิล = ใบขนเลขที่</b> ให้รายการนี้';
+}
+function frTrkPick(){ frFillFromTrk(false); frTrkInfo(); }
+/* force = ทับของเดิมทั้งหมด (กดปุ่ม) · ไม่ force = เติมแค่ช่องที่ยังว่าง (ตอนเลือกจากลิสต์) */
+function frFillFromTrk(force){
+  const t=db.tracking.find(x=>String(x.id)===String($('fi_trk').value));
+  if(!t){ if(force)alert('เลือกรายการใน ตาราง Shipment ก่อน'); return; }
+  const set=(id,v)=>{ if(v==null||v==='')return; if(force||!$(id).value.trim())$(id).value=v; };
+  set('fi_carrier', t.shipping||'');
+  set('fi_entry',   t.draft_bill_no||'');
+  set('fi_ivsi',    [t.invoice_no||'',t.jst_po||''].filter(Boolean).join(' - '));
+  set('fi_due',     t.ship_due||'');
+  set('fi_po',      t.product_list||'');
+  frTrkInfo(); calcFrInv();
+  if(force)alert('เติมหัวใบจากรายการ '+(t.invoice_no||'')+' แล้ว ✅');
+}
+function frOpenTrk(){ frOpenTrkById($('fi_trk').value); }
+function frOpenTrkById(id){
+  const t=db.tracking.find(x=>String(x.id)===String(id));
+  if(!t)return alert('ยังไม่ได้ผูกกับรายการใน ตาราง Shipment');
+  go('track'); $('trkSearch').value=t.invoice_no||t.draft_bill_no||''; renderTrack();
+  setTimeout(function(){ openTrack(t.id); },120);
+}
+/* กดจากตาราง Shipment → เปิดใบวางบิลของรายการนั้น */
+function openFrInvFromTrack(trackingId){
+  const x=FRINVS.find(v=>String(v.tracking_id)===String(trackingId));
+  if(!x)return alert('รายการนี้ยังไม่มีใบวางบิลที่ผูกไว้');
+  go('frinv'); setTimeout(function(){ openFrInv(x.id); },120);
 }
 
 function openFrInv(id){
@@ -1102,6 +1237,7 @@ function openFrInv(id){
   $('fi_carrier').value=(x&&x.carrier)||''; $('fi_entry').value=(x&&x.entry_no)||'';
   $('fi_book').value=(x&&x.booking_no)||''; $('fi_due').value=(x&&x.due_date)||'';
   $('fi_ivsi').value=(x&&x.ivsi_no)||'';    $('fi_po').value=(x&&x.po_list)||'';
+  frFillTrkList(); if($('fi_trk'))$('fi_trk').value=(x&&x.tracking_id)||''; frTrkInfo();
   FR_ROWS=(x&&Array.isArray(x.items)&&x.items.length)?JSON.parse(JSON.stringify(x.items)):stdRows();
   $('fiEditor').style.display=''; drawFrRows(); calcFrInv();
   $('fiEditor').scrollIntoView({behavior:'smooth',block:'start'});
@@ -1171,12 +1307,33 @@ async function saveFrInv(){
     items:FR_ROWS.map(function(r){return {en:r.en,th:r.th,amt:+r.amt||0,v:!!r.v,w:!!r.w};}),
     sum_amount:+FR_SUM.a.toFixed(2), sum_vat:+FR_SUM.v.toFixed(2),
     sum_wht:+FR_SUM.w.toFixed(2), sum_total:+FR_SUM.t.toFixed(2),
+    tracking_id:($('fi_trk')&&$('fi_trk').value)||null,
     created_by:(typeof ME==='string'?ME:''), updated_at:new Date().toISOString()};
   const q=FR_ID? sb.from('freight_invoices').update(rec).eq('id',FR_ID)
                : sb.from('freight_invoices').insert(rec);
   const {error}=await q;
-  if(error)return alert('บันทึกไม่สำเร็จ: '+error.message);
-  await loadFrInv(); closeFrInv(); alert('บันทึกใบวางบิลแล้ว ✅');
+  if(error){
+    if(/tracking_id/i.test(error.message||''))
+      return alert('บันทึกไม่สำเร็จ: ยังไม่มีคอลัมน์ tracking_id ในตาราง freight_invoices\n\n'
+        +'ให้รันไฟล์ freight_invoice_link.sql ใน Supabase ก่อน แล้วลองอีกครั้ง');
+    return alert('บันทึกไม่สำเร็จ: '+error.message);
+  }
+  /* 🔗 เขียนยอดกลับไปที่ ตาราง Shipment ที่ผูกไว้ — ไม่ต้องไปกรอกซ้ำ 3 ช่อง */
+  let back='';
+  if(rec.tracking_id){
+    const t=db.tracking.find(x=>String(x.id)===String(rec.tracking_id));
+    if(t){
+      const patch={ship_cost:rec.sum_total, ship_due:rec.due_date||t.ship_due||null, billing:rec.entry_no||t.billing||null};
+      const {error:e2}=await sb.from('shipment_tracking').update(patch).eq('id',t.id);
+      if(e2) back=' · ⚠️ อัปเดตตาราง Shipment ไม่สำเร็จ: '+e2.message;
+      else { Object.assign(t,patch);
+             back=' · อัปเดตตาราง Shipment ให้แล้ว (ค่าขนส่ง '+money(rec.sum_total)+' บาท'
+                  +(patch.ship_due?(' · กำหนดชำระ '+patch.ship_due):'')+' · ใบวางบิล '+(patch.billing||'-')+')'; }
+    }
+  }
+  await loadFrInv(); closeFrInv();
+  if(CUR_TAB==='track')renderTrack();
+  alert('บันทึกใบวางบิลแล้ว ✅'+back);
 }
 async function delFrInv(id){
   if(!confirm('ลบใบวางบิลนี้?'))return;
@@ -1527,7 +1684,9 @@ function renderTrack(){
   let h='<table class="trkc">'+_colg+'<thead><tr>'+_th+'</tr></thead><tbody>';
   pageList.forEach(t=>{
     const taxCell=(+t.tax_amount?money(t.tax_amount):'-')+(t.tax_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.tax_amount)?' <span class="pill pending">ค้าง</span>':''));
-    const shpCell=(+t.ship_cost?money(t.ship_cost):'-')+(t.ship_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.ship_cost)?' <span class="pill pending">ค้าง</span>':''));
+    const fi=(typeof FRINVS!=='undefined')?FRINVS.find(v=>String(v.tracking_id||'')===String(t.id)):null;
+    const shpCell=(+t.ship_cost?money(t.ship_cost):'-')+(t.ship_paid?' <span class="pill down">จ่ายแล้ว</span>':((+t.ship_cost)?' <span class="pill pending">ค้าง</span>':''))
+      +(fi?`<br><button class="mini btn" onclick="openFrInvFromTrack('${t.id}')" title="เปิดใบวางบิล ${esc(fi.entry_no||'')} · ต้องชำระ ${money(fi.sum_total)} บาท">🚛 ใบวางบิล</button>`:'');
     const dc=docCount(t);
     const dem=demDaysLeft(t);
     const demBadge=(dem!=null&&dem<=7)?`<br><span class="pill" style="background:#C2410C;color:#fff;white-space:nowrap">${dem<0?'⚠️ DEM เกิน '+(-dem)+' วัน':'⏳ DEM เหลือ '+dem+' วัน'}</span>`:'';
