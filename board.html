@@ -1477,11 +1477,11 @@ $('statusHelpBg').addEventListener('click', e => { if(e.target===$('statusHelpBg
       จึงต้องไล่ดึงทีละหน้าจนหมด และเรียงด้วย id เป็นตัวสำรองกันแถวข้าม/ซ้ำ */
 /* ดึงทั้งตารางแบบไล่ทีละหน้า — เลี่ยงลิมิต 1,000 แถวของ Supabase
    เรียงด้วย id เป็นตัวสำรองเสมอ กันแถวข้าม/ซ้ำตรงรอยต่อหน้า */
-async function fetchAll(table, tune){
+async function fetchAll(table, tune, cols){
   const SIZE=1000, out=[];
   let from=0, guard=0;
   while(guard++ < 60){
-    let q=sb.from(table).select('*');
+    let q=sb.from(table).select(cols||'*');   // ใส่คอลัมน์ได้ — ลด egress
     if(tune)q=tune(q);
     const { data, error } = await q.order('id').range(from, from+SIZE-1);
     if(error){ console.error('['+table+']',error); if(!out.length)throw error; break; }
@@ -1582,10 +1582,10 @@ function subscribeRealtime(){
         maybeShowAnnouncement();
       })
     .subscribe();
-  // แผนรับสินค้า — realtime
+  // แผนรับสินค้า — realtime (ผ่าน planPing ไม่เรียก loadPlan ตรง ๆ)
   sb.channel('plan-changes')
-    .on('postgres_changes',{event:'*',schema:'public',table:'receipt_trips'}, () => loadPlan())
-    .on('postgres_changes',{event:'*',schema:'public',table:'receipt_items'}, () => loadPlan())
+    .on('postgres_changes',{event:'*',schema:'public',table:'receipt_trips'}, planPing)
+    .on('postgres_changes',{event:'*',schema:'public',table:'receipt_items'}, planPing)
     .subscribe();
 }
 
@@ -2660,6 +2660,26 @@ const carrierColor = name => (CARRIERS.find(c=>c.name===name)||{}).color || '#64
 
 let allTrips = [];   // [{...trip, items:[...]}]
 
+/* ══════════════════════════════════════════════════════════════════
+   ⚡ กัน Egress บาน — แท็บแผนรับสินค้า
+
+   ปัญหาเดิม: realtime ผูกกับ loadPlan() ตรง ๆ และ "บันทึกเที่ยวส่ง 1 ใบ"
+   = ลบรายการเดิมทั้งชุด + ใส่ใหม่ → 20 บรรทัด ยิง event ~41 ครั้ง
+   แต่ละครั้งดึงเที่ยวส่ง+รายการ "ทั้งหมดทุกเดือน" ใหม่หมด
+   → 1 การกดบันทึก × ทุกแท็บที่เปิดค้างไว้ = หลายสิบ MB (วันละ GB ได้)
+
+   แก้ 2 ชั้น โดยพฤติกรรมหน้าจอเหมือนเดิม:
+   ① รวบ event ที่มาติดกันใน 700ms → โหลดครั้งเดียว
+   ② ไม่ได้เปิดแท็บนี้อยู่ → ไม่ดึงเลย จำไว้ว่าค้าง แล้วดึงตอนกดเข้าแท็บ
+   ══════════════════════════════════════════════════════════════════ */
+let planTimer=null, PLAN_STALE=false;
+function planPing(){
+  const onTab = $('viewPlan') && $('viewPlan').style.display!=='none';
+  if(!onTab){ PLAN_STALE=true; return; }
+  clearTimeout(planTimer);
+  planTimer=setTimeout(loadPlan, 700);
+}
+
 // ---- แท็บ ----
 $('tabBoard').addEventListener('click', () => switchTab('board'));
 $('tabArr').addEventListener('click',  () => switchTab('arr'));
@@ -2683,15 +2703,21 @@ function switchTab(t){
   if(t==='up')loadUploads();
   /* โหลดครั้งแรกที่เปิดแท็บ · หรือมีคนอื่นแก้ระหว่างที่เราไม่ได้เปิดแท็บนี้ */
   if(t==='arr' && (!ARR_LOADED || ARR_STALE)){ ARR_STALE=false; loadArr(); }
+  if(t==='plan' && PLAN_STALE) loadPlan();   // มีคนแก้ระหว่างที่เราไม่ได้เปิดแท็บนี้
 }
 
 // ---- โหลดข้อมูลแผน ----
+/* คอลัมน์ที่แท็บนี้ใช้จริง — ห้าม select('*') เพราะ Egress คิดตามไบต์ที่ส่งออก */
+const TRIP_COLS='id,plan_date,carrier,created_at,updated_at';
+const TITEM_COLS='id,trip_id,line_no,po_number,sku,pcs_per_carton,cartons,qty_in,cubic,clear_order,note';
+
 async function loadPlan(){
   let trips=null, items=null, e1=null, e2=null;
+  PLAN_STALE=false;
   try{
     [trips, items] = await Promise.all([
-      fetchAll('receipt_trips', q=>q.order('plan_date',{ascending:false}).order('created_at',{ascending:true})),
-      fetchAll('receipt_items', q=>q.order('created_at',{ascending:true}))
+      fetchAll('receipt_trips', q=>q.order('plan_date',{ascending:false}).order('created_at',{ascending:true}), TRIP_COLS),
+      fetchAll('receipt_items', q=>q.order('created_at',{ascending:true}), TITEM_COLS)
     ]);
   }catch(err){ e1=err; }
   if(e1 || e2){
