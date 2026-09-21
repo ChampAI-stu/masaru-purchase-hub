@@ -314,7 +314,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-96</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-97</span>
   </span>
   <!-- ⚠️ ป้าย "🧪 โหมดทดสอบ" ถอดออกตามที่สั่ง (v09-96)
        พฤติกรรมยังคงเดิม — APPROVAL_MODE=false อยู่ (ดูตัวแปรในสคริปต์)
@@ -1250,7 +1250,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v09-96';
+const PAY_VERSION='v09-97';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -1384,7 +1384,7 @@ function toggleWide(id,btn){
 }
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2600);}
 
-let canEdit=false, IS_EXEC=false, IS_MGR=false, ME='', BILLS=[], PAYS=[];
+let canEdit=false, IS_EXEC=false, IS_MGR=false, SHIP_ONLY=false, ME='', BILLS=[], PAYS=[];
 let MASTER=[], POROWS=[], TAXES=[], TRACKS=[], LOGS=[], MEMOS=[];
 
 /* ===== AUTH ===== */
@@ -1396,15 +1396,26 @@ async function boot(){
   const roles=Array.isArray(md.user_roles)?md.user_roles:(md.user_role?[md.user_role]:[]);
   const isExec=roles.includes('pr_exec')||roles.includes('executive');
   const isMgr=roles.includes('pr_manager');
-  // เข้าได้เฉพาะ จัดซื้อ / หัวหน้า / ผู้บริหาร
-  if(!roles.includes('purchase')&&!isMgr&&!isExec){location.replace('index.html');return;}
-  canEdit=true;   // จัดซื้อ + หัวหน้า + ผู้บริหาร แก้ไขได้ทั้งหมด
+  const isShip=roles.includes('shipping');
+  // เข้าได้เฉพาะ จัดซื้อ / หัวหน้า / ผู้บริหาร / ชิปปิ้ง
+  if(!roles.includes('purchase')&&!isMgr&&!isExec&&!isShip){location.replace('index.html');return;}
+  /* ── ฝ่ายชิปปิ้ง ──
+     เห็นเฉพาะแท็บ 🧾 หลักฐานชำระเงินร้านค้า · ดู + พิมพ์ + Export ได้
+     แนบ/ลบสลิป และแท็บอื่น (บิล · แผนจ่าย · เอกสาร · Ksher ฯลฯ) ไม่ให้เห็น */
+  SHIP_ONLY = isShip && !roles.includes('purchase') && !isMgr && !isExec;
+  canEdit = !SHIP_ONLY;   // จัดซื้อ + หัวหน้า + ผู้บริหาร แก้ไขได้ทั้งหมด
   IS_EXEC=isExec;   // ผู้บริหารเท่านั้นที่อนุมัติ/ไม่อนุมัติได้
   IS_MGR=isMgr;     // หัวหน้าจัดซื้อ — ยืนยันปิดป้ายเตือนได้
   ME=session.user.email||'';
-  $('rolePill').textContent = roles.includes('purchase') ? '📦 จัดซื้อ (แก้ไขได้)'
-                            : (isMgr ? '🧑‍💼 หัวหน้า (แก้ไขได้)' : '👑 ผู้บริหาร (แก้ไขได้)');
+  $('rolePill').textContent = SHIP_ONLY ? '🚚 ชิปปิ้ง (ดู/พิมพ์เท่านั้น)'
+                            : (roles.includes('purchase') ? '📦 จัดซื้อ (แก้ไขได้)'
+                            : (isMgr ? '🧑‍💼 หัวหน้า (แก้ไขได้)' : '👑 ผู้บริหาร (แก้ไขได้)'));
   if(!canEdit&&$('syncBtn'))$('syncBtn').style.display='none';
+  if(SHIP_ONLY){
+    document.querySelectorAll('.tab').forEach(el=>{ if(el.dataset.t!=='remit')el.style.display='none'; });
+    if($('gasBtn'))$('gasBtn').style.display='none';     // ตั้งค่าที่เก็บสลิป = งานจัดซื้อ
+    goTab('remit');
+  }
   sb.auth.onAuthStateChange(async(_e,s)=>{
     if(LOGGING_OUT)return;
     if(_e!=='SIGNED_OUT'&&_e!=='USER_DELETED')return;   // INITIAL_SESSION/TOKEN_REFRESHED ไม่ใช่การ logout
@@ -4365,6 +4376,7 @@ async function delDoc(id){
 
 /* ===== TABS ===== */
 function goTab(t){
+  if(SHIP_ONLY) t='remit';        // ชิปปิ้งเห็นแท็บเดียว
   document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('on',el.dataset.t===t));
   ['bills','plan','doc','quot','month','ledger','wallet','remit'].forEach(k=>$('tab-'+k).style.display=k===t?'':'none');
   if(t==='quot')loadQuot();
