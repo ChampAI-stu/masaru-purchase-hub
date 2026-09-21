@@ -2929,18 +2929,26 @@ async function arrPickLoad(){
     ARR_PICK_ERR='';
     const by = {};
     (data||[]).forEach(function(r){
-      if(r.is_extra) return;                       // บรรทัดพ่วงไม่มีลังของตัวเอง
+      /* ★ เก็บ "บรรทัดพ่วง" ไว้ด้วย — ของพ่วงเป็นสินค้าจริงที่คลังต้องรับ
+         (เดิมข้ามทิ้ง ทำให้ดึงเข้าเที่ยวส่งไม่ขึ้น) */
       const nn = r.arrival_notices || {};
-      const left = (+r.boxes||0) - (+r.boxes_in||0);
       const g = by[r.notice_id] || (by[r.notice_id] = {n:Object.assign({id:r.notice_id},nn), items:[], left:0, boxes:0, leftPcs:0});
-      g.items.push(Object.assign({}, r, {left:left}));
-      g.boxes += (+r.boxes||0);
-      if(left>0.0001){ g.left += left; g.leftPcs += tlPcsOf(r).leftPcs; }
+      g.items.push(Object.assign({}, r));
     });
-    ARR_PICK = Object.values(by)
-      .filter(g => g.left>0.0001)                  // ใบที่เข้าครบแล้วไม่ต้องโชว์
+    ARR_PICK = Object.values(by);
+    ARR_PICK.forEach(function(g){
+      g.items.sort((x,y)=>(x.seq||0)-(y.seq||0));
+      const M = arrCalc(g.items);                  // พ่วงต้องรู้บรรทัดแม่ → คิดทั้งใบทีเดียว
+      g.items.forEach(function(it){
+        const m = M[it.id] || arrPcsOf(it, null);
+        it._m = m; it.left = m.leftBox; it.leftPcs = m.leftPcs;
+        g.leftPcs += m.leftPcs;
+        if(!it.is_extra){ g.boxes += m.fullBox; g.left += Math.max(0,m.leftBox); }
+      });
+    });
+    ARR_PICK = ARR_PICK
+      .filter(g => g.leftPcs>0.0001 || g.left>0.0001)   // ใบที่เข้าครบแล้วไม่ต้องโชว์
       .sort((x,y)=>String(x.n.notice_date||'').localeCompare(String(y.n.notice_date||'')));
-    ARR_PICK.forEach(g => g.items.sort((x,y)=>(x.seq||0)-(y.seq||0)));
   }catch(e){ ARR_PICK=[]; ARR_PICK_ERR=e.message; }
 }
 
@@ -2959,7 +2967,7 @@ function arrPickFill(){
   }
   sel.innerHTML = ARR_PICK.map(function(g){
     const d = g.n.notice_date ? fmtDate(g.n.notice_date) : '-';
-    const nItems = g.items.filter(x=>x.left>0.0001).length;
+    const nItems = g.items.filter(x=>x.leftPcs>0.0001).length;
     return '<option value="'+esc(g.n.id)+'">'
       + esc(d) + ' · ' + esc(g.n.carrier||'-')
       + (g.n.notice_no?(' · '+esc(g.n.notice_no)):'')
@@ -2979,7 +2987,7 @@ function arrFindLeft(lineno, po, sku){
       const iref = String(it.line_ref||'').trim().toUpperCase().replace(/[\s\-–—_\/]+$/,'');
       const hit = (ref && iref && iref===ref)
         || (!ref && P && S && String(it.po_number||'').trim()===P && String(it.sku||'').trim()===S);
-      if(hit) return Object.assign(tlPcsOf(it), {notice:g.n});
+      if(hit) return Object.assign({}, it._m || arrPcsOf(it, null), {notice:g.n});
     }
   }
   return null;
@@ -3004,16 +3012,19 @@ function tlLeftPaint(cell, m){
   }
   cell.className='tl-left';
   cell.innerHTML = 'แจ้ง '+arrInt(m.fullPcs)+'<br>เหลือ <b>'+arrInt(m.leftPcs)+'</b>';
-  cell.title = 'แจ้งมา '+arrInt(m.fullPcs)+' ชิ้น ('+arrInt(m.fullBox)+' ลัง)'
-             + ' · รับไปแล้ว '+arrInt(m.fullPcs-m.leftPcs)+' ชิ้น ('+arrInt(m.fullBox-m.leftBox)+' ลัง)'
-             + ' · เหลือรับ '+arrInt(m.leftPcs)+' ชิ้น ('+arrInt(m.leftBox)+' ลัง)';
+  cell.title = m.extra
+    ? ('▸ บรรทัดพ่วง — มาในลังของบรรทัดแม่ · แจ้งมา '+arrInt(m.fullPcs)+' ชิ้น'
+       + ' · รับไปแล้ว '+arrInt(m.fullPcs-m.leftPcs)+' ชิ้น · เหลือรับ '+arrInt(m.leftPcs)+' ชิ้น')
+    : ('แจ้งมา '+arrInt(m.fullPcs)+' ชิ้น ('+arrInt(m.fullBox)+' ลัง)'
+       + ' · รับไปแล้ว '+arrInt(m.fullPcs-m.leftPcs)+' ชิ้น ('+arrInt(m.fullBox-m.leftBox)+' ลัง)'
+       + ' · เหลือรับ '+arrInt(m.leftPcs)+' ชิ้น ('+arrInt(m.leftBox)+' ลัง)');
 }
 
 function addArrLines(){
   const id = $('tpArrPick').value;
   const g = ARR_PICK.find(x=>String(x.n.id)===String(id));
   if(!g){ toast('เลือกใบแจ้งก่อน'); return; }
-  const list = g.items.filter(x=>x.left>0.0001);
+  const list = g.items.filter(x=>x.leftPcs>0.0001);   // ★ รวมบรรทัดพ่วง
   if(!list.length){ toast('ใบนี้เข้าคลังครบแล้ว'); return; }
 
   /* ถ้ามีบรรทัดว่างบรรทัดเดียว ลบทิ้งก่อน */
@@ -3025,19 +3036,26 @@ function addArrLines(){
   /* ขนส่ง/วันที่ยังว่าง → เติมจากใบแจ้งให้ */
   if(!$('tpCarrier').value.trim()) $('tpCarrier').value = g.n.carrier||'';
 
+  /* หาชื่อบรรทัดแม่ เอาไปเขียนในหมายเหตุของพ่วง ให้คลังรู้ว่ามาในลังไหน */
+  let lastMain = null;
   list.forEach(function(it){
-    const m = tlPcsOf(it);
+    const m = it._m || arrPcsOf(it, null);
     const ratio = m.fullBox>0 ? m.leftBox/m.fullBox : 1;
+    if(!it.is_extra) lastMain = it;
+    const head = 'ใบแจ้ง '+(g.n.notice_no||fmtDate(g.n.notice_date));
     addTripLine({
-      lineno: it.line_ref||'',
+      lineno: it.line_ref||(it.is_extra&&lastMain?(lastMain.line_ref||''):''),
       po: it.po_number||'',
       sku: it.sku||'',
       pcs: it.pcs_per_box!=null?it.pcs_per_box:'',
-      cartons: Math.round(m.leftBox*1000)/1000,                  // ลังที่ควรรับรอบนี้ = ลังคงเหลือ
+      /* พ่วงไม่มีลัง/คิวของตัวเอง — เว้นไว้ ไม่ให้ยอดลัง/คิวของเที่ยวส่งบวกซ้ำ */
+      cartons: it.is_extra ? '' : Math.round(m.leftBox*1000)/1000,
       qin: m.leftPcs>0 ? m.leftPcs : '',                         // ★ ของเข้า = ชิ้นที่เหลือรับ
-      cubic: (+it.cbm>0) ? Math.round((+it.cbm)*ratio*10000)/10000 : '',
-      note: 'ใบแจ้ง '+(g.n.notice_no||fmtDate(g.n.notice_date))
-            + ' · แจ้งมา '+arrInt(m.fullPcs)+' ชิ้น รับไปแล้ว '+arrInt(m.fullPcs-m.leftPcs)+' ชิ้น',
+      cubic: (!it.is_extra && +it.cbm>0) ? Math.round((+it.cbm)*ratio*10000)/10000 : '',
+      note: it.is_extra
+        ? (head+' · ▸ พ่วงมาในลังของ '+((lastMain&&lastMain.sku)||'บรรทัดบน')
+           + ' · แจ้งมา '+arrInt(m.fullPcs)+' ชิ้น')
+        : (head+' · แจ้งมา '+arrInt(m.fullPcs)+' ชิ้น รับไปแล้ว '+arrInt(m.fullPcs-m.leftPcs)+' ชิ้น'),
       left4: m
     });
   });
@@ -3288,9 +3306,24 @@ const arrItemsOf = id => ARR_IT.filter(x => String(x.notice_id)===String(id))
    ฐานข้อมูลเก็บเป็นลัง (boxes / boxes_in) เพราะขนส่งคิดเงินตามลัง/คิว
    แต่คลังกับแผนรับสินค้านับเป็นชิ้น → แปลงให้ตรงกันด้วยชิ้น/ลัง
    ไม่มีชิ้น/ลัง ก็เทียบสัดส่วนจากจำนวนลังให้ */
-function arrPcsOf(it){
+function arrPcsOf(it, parentM){
   const boxes=+it.boxes||0, bin=Math.min(+it.boxes_in||0, boxes||Infinity)||0;
-  const leftBox=boxes-bin, ppb=+it.pcs_per_box||0, pcs=+it.pcs||0;
+  const ppb=+it.pcs_per_box||0, pcs=+it.pcs||0;
+
+  /* ── บรรทัดพ่วง ▸ ──
+     ไม่มีลังของตัวเอง (มาในลังเดียวกับบรรทัดแม่) → ความคืบหน้าอ้างอิงบรรทัดแม่
+     แม่เข้าคลังไปแล้วกี่ % ของพ่วงก็เข้าไปแล้วเท่านั้น
+     ★ ต้องนับ ไม่ใช่ข้าม — ของพ่วงเป็นสินค้าจริงที่คลังต้องรับเหมือนกัน */
+  if(it.is_extra){
+    const fullPcs = pcs>0 ? pcs : (ppb>0&&parentM&&parentM.fullBox>0 ? ppb*parentM.fullBox : 0);
+    const ratio = (parentM && parentM.fullBox>0) ? (parentM.inBox/parentM.fullBox) : 0;
+    const inPcs = fullPcs*ratio;
+    return {fullPcs:Math.round(fullPcs), inPcs:Math.round(inPcs),
+            leftPcs:Math.round(Math.max(0,fullPcs-inPcs)),
+            fullBox:0, inBox:0, leftBox:0, ppb:ppb, extra:true, parent:parentM||null};
+  }
+
+  const leftBox=boxes-bin;
   const fullPcs = pcs>0 ? pcs : (ppb>0&&boxes>0 ? ppb*boxes : 0);
   let inPcs;
   if(ppb>0)        inPcs = ppb*bin;
@@ -3298,7 +3331,27 @@ function arrPcsOf(it){
   else             inPcs = 0;
   const leftPcs = Math.max(0, fullPcs-inPcs);
   return {fullPcs:Math.round(fullPcs), inPcs:Math.round(inPcs), leftPcs:Math.round(leftPcs),
-          fullBox:boxes, inBox:bin, leftBox:leftBox, ppb:ppb};
+          fullBox:boxes, inBox:bin, leftBox:leftBox, ppb:ppb, extra:false};
+}
+
+/* คิดทั้งใบทีเดียว — ต้องไล่ตามลำดับ seq เพื่อให้พ่วงรู้ว่าแม่คือบรรทัดไหน
+   คืน Map(id → ยอดชิ้น/ลังของบรรทัดนั้น) */
+function arrCalc(items){
+  const sorted = items.slice().sort((a,b)=>(a.seq||0)-(b.seq||0));
+  const out = {}; let parentM = null;
+  sorted.forEach(function(x){
+    const m = arrPcsOf(x, parentM);
+    if(!x.is_extra) parentM = m;      // บรรทัดปกติ = แม่ของพ่วงที่ตามมา
+    out[x.id] = m;
+  });
+  return out;
+}
+/* ยอดของบรรทัดเดียว โดยหาแม่จากรายการทั้งใบให้เอง */
+function arrM(it){
+  if(!it) return null;
+  const sameNotice = ARR_IT.filter(x=>String(x.notice_id)===String(it.notice_id));
+  const map = arrCalc(sameNotice.length?sameNotice:[it]);
+  return map[it.id] || arrPcsOf(it, null);
 }
 /* ข้อความกำกับ 2 หน่วย ใช้ในทูลทิป */
 const arrBoth = (pcs,box) => arrInt(pcs)+' ชิ้น ('+arrInt(box)+' ลัง)';
@@ -3308,12 +3361,16 @@ const arrBoth = (pcs,box) => arrInt(pcs)+' ชิ้น ('+arrInt(box)+' ลั�
      ไม่งั้น SKU ที่แถมมาในลังเดียวกันจะทำให้ลัง/คิวบวกซ้ำ */
 function arrTotals(items){
   const t = {boxes:0, boxIn:0, pcs:0, pcsIn:0, pcsWait:0, cbm:0, kg:0, cbmWait:0, kgWait:0, n:items.length};
+  const M = arrCalc(items);
   items.forEach(x => {
     t.pcs += +x.pcs||0;
+    /* ★ ยอดชิ้น เข้าคลัง/ค้าง นับ "ทุกบรรทัด" รวมพ่วง — ของพ่วงก็ต้องรับเข้าคลังจริง
+       (ลัง/คิว/น้ำหนัก ยังข้ามพ่วง เพราะพ่วงไม่มีลังของตัวเอง จะนับซ้ำ) */
+    const m = M[x.id] || arrPcsOf(x, null);
+    t.pcsIn += m.inPcs; t.pcsWait += m.leftPcs;
     if(x.is_extra) return;
     const bx = +x.boxes||0, bi = Math.min(+x.boxes_in||0, bx||Infinity)||0;
     t.boxes += bx; t.boxIn += bi;
-    const m = arrPcsOf(x); t.pcsIn += m.inPcs; t.pcsWait += m.leftPcs;   // ★ ยอดชิ้น
     t.cbm += +x.cbm||0; t.kg += +x.weight_kg||0;
     /* คิว/กก. ของส่วนที่ยังค้าง — เทียบสัดส่วนจำนวนลัง (ขนส่งไม่ได้แจ้งคิวรายรอบ) */
     const left = bx>0 ? (bx-bi)/bx : (bi>0?0:1);
@@ -3856,8 +3913,9 @@ function renderArr(){
         g.st==='cancel'?'—':(t.pcsWait>0?arrInt(t.pcsWait):'—')}</td>
       <td></td></tr>`;
 
+    const MI = arrCalc(g.items);
     g.items.forEach(x => {
-      const bx=+x.boxes||0, bi=+x.boxes_in||0, left=bx-bi, m=arrPcsOf(x);
+      const bx=+x.boxes||0, bi=+x.boxes_in||0, left=bx-bi, m=MI[x.id]||arrPcsOf(x,null);
       h += `<tr class="${x.is_extra?'arr-extra':''}" style="box-shadow:inset 7px 0 0 ${col}33">
         <td></td>
         <td>${esc(x.line_ref||'-')}</td>
@@ -3868,10 +3926,10 @@ function renderArr(){
         <td class="n">${x.pcs?arrInt(x.pcs):'-'}</td>
         <td class="n">${x.cbm?arrMoney(x.cbm):'-'}</td>
         <td class="n">${x.weight_kg?arrInt(x.weight_kg):'-'}</td>
-        <td class="n ${bi?'arr-done':''}" title="เข้าคลังแล้ว ${arrBoth(m.inPcs,bi)}${
-          x.in_date?' · รอบล่าสุด '+fmtDate(x.in_date):''}">${m.inPcs?arrInt(m.inPcs):'-'}</td>
-        <td class="n ${left>0&&!x.is_extra&&g.st!=='cancel'?'arr-wait':''}" title="ค้างที่ขนส่ง ${arrBoth(m.leftPcs,left)}">${
-          x.is_extra?'▸':(g.st==='cancel'?'—':(m.leftPcs>0?arrInt(m.leftPcs):'—'))}</td>
+        <td class="n ${m.inPcs?'arr-done':''}" title="${x.is_extra?'พ่วง — เข้าคลังตามบรรทัดแม่ ':'เข้าคลังแล้ว '}${
+          arrBoth(m.inPcs,bi)}${x.in_date?' · รอบล่าสุด '+fmtDate(x.in_date):''}">${m.inPcs?arrInt(m.inPcs):'-'}</td>
+        <td class="n ${m.leftPcs>0&&g.st!=='cancel'?'arr-wait':''}" title="${x.is_extra?'พ่วง — ค้างตามบรรทัดแม่ ':'ค้างที่ขนส่ง '}${
+          arrBoth(m.leftPcs,left>0?left:0)}">${g.st==='cancel'?'—':(m.leftPcs>0?arrInt(m.leftPcs):'—')}</td>
         <td style="font-size:11.5px;color:var(--muted)">${esc(x.note||'')}</td></tr>`;
     });
   });
@@ -4081,14 +4139,16 @@ function openArrIn(id){
   if(currentRole!=='purchase') return;
   ARR_IN_ID = id;
   const n = ARR.find(x=>String(x.id)===String(id))||{};
-  const its = arrItemsOf(id).filter(x=>!x.is_extra);
+  const all = arrItemsOf(id), MIN = arrCalc(all);
+  const its = all.filter(x=>!x.is_extra);
+  const extras = all.filter(x=>x.is_extra);
   $('ar_indate').value = arrToday();
   $('arrInHead').innerHTML = `📅 ${fmtDate(n.notice_date)} · 🚛 ${esc(n.carrier||'-')}
     ${n.notice_no?' · '+esc(n.notice_no):''} — ใส่<b>จำนวนชิ้น</b>ที่เข้าคลังรอบนี้ (ที่ค้างไว้ก่อนไม่ต้องใส่ซ้ำ)`;
   $('arrInBody').innerHTML = its.map(x => {
     /* ★ กรอกเป็นชิ้น — ฐานข้อมูลเก็บเป็นลัง ระบบหารด้วยชิ้น/ลังให้ตอนบันทึก
        รายการที่ไม่ได้ใส่ชิ้น/ลัง แปลงไม่ได้ → ให้กรอกเป็นลังตามเดิม (ป้ายบอกไว้) */
-    const m = arrPcsOf(x), byPcs = m.ppb>0 || m.fullPcs>0;
+    const m = MIN[x.id]||arrPcsOf(x,null), byPcs = m.ppb>0 || m.fullPcs>0;
     const left = byPcs ? m.leftPcs : m.leftBox;
     const full = byPcs ? m.fullPcs : m.fullBox;
     const unit = byPcs ? 'ชิ้น' : 'ลัง';
@@ -4106,6 +4166,11 @@ function openArrIn(id){
         title="${unit}ที่เข้าคลังรอบนี้ (ไม่เกิน ${arrInt(left)} ${unit})">
     </div>`;
   }).join('') || '<div style="color:var(--muted);padding:10px">ไม่มีรายการที่ต้องตัด</div>';
+  /* บรรทัดพ่วงไม่ต้องกรอก — ตัดตามบรรทัดแม่ให้เอง บอกไว้ให้รู้ว่าไม่ได้ลืม */
+  if(extras.length) $('arrInBody').innerHTML += `<div style="margin-top:8px;padding:9px 11px;
+    background:#F8FAFC;border:1px dashed var(--line);border-radius:9px;font-size:11.5px;color:var(--muted)">
+    ▸ บรรทัดพ่วง ${extras.length} รายการ (${extras.map(x=>esc(x.sku||'-')).join(', ')})
+    — <b>ไม่ต้องกรอก</b> ระบบตัดเข้าคลังตามบรรทัดแม่ให้เอง</div>`;
   $('arrInBg').style.display='flex';
 }
 function arrInAll(){
@@ -4193,12 +4258,13 @@ function exportArr(){
     'เข้าคลังแล้ว (ลัง)','ค้างที่ขนส่ง (ลัง)','วันที่เข้าคลัง','บรรทัดพ่วง','หมายเหตุรายการ','หมายเหตุใบแจ้ง']];
   groups.forEach(g => {
     const st = (ARR_ST[arrCalcStatus(g.n,g.items)]||{}).t||'';
+    const ME = arrCalc(g.items);
     g.items.forEach(x => {
-      const bx=+x.boxes||0, bi=+x.boxes_in||0, m=arrPcsOf(x);
+      const bx=+x.boxes||0, bi=+x.boxes_in||0, m=ME[x.id]||arrPcsOf(x,null);
       aoa.push([g.n.notice_date||'', g.n.notice_no||'', g.n.carrier||'', g.n.truck||'', g.n.eta_date||'', st,
         x.line_ref||'', x.po_number||'', x.sku||'', +x.pcs_per_box||'', bx||'', +x.pcs||'',
         +x.cbm||'', +x.weight_kg||'',
-        m.inPcs||'', x.is_extra?'':m.leftPcs,
+        m.inPcs||'', m.leftPcs,
         bi||'', x.is_extra?'':(bx-bi), x.in_date||'',
         x.is_extra?'พ่วง':'', x.note||'', g.n.note||'']);
     });
