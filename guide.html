@@ -161,7 +161,7 @@ code{background:#F1F5F9;padding:1px 5px;border-radius:4px;font-size:11.5px;overf
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v01-23</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v01-25</span>
   <button class="hp-btn o" onclick="window.print()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF">🖨️ พิมพ์คู่มือ</button>
   <a href="index.html" class="pill-top">🏠 หน้ารวม</a>
 </div>
@@ -338,8 +338,12 @@ code{background:#F1F5F9;padding:1px 5px;border-radius:4px;font-size:11.5px;overf
         <div class="muted" style="font-size:11.5px">น้ำหนักมีช่องของตัวเองแล้ว ไม่ต้องแอบใส่ในหมายเหตุเหมือนชีทเดิม</div></td></tr>
     <tr><td><b>ชิ้น/ลัง × ลัง</b></td><td>ระบบเติมช่อง <b>จำนวนชิ้น</b> ให้เอง ถ้ายังไม่ได้พิมพ์ทับ</td></tr>
     <tr><td><b>บรรทัดพ่วง ▸</b></td>
-      <td>SKU ที่แถมมาใน<b>ลังเดียวกับบรรทัดบน</b> (เช่น PTB4-1620 ที่มาในลัง DR30)
-        — นับแค่จำนวนชิ้น <b>ไม่นับลัง/คิว/น้ำหนักซ้ำ</b> ในยอดรวม
+      <td>SKU ที่แถมมาใน<b>ลังเดียวกับบรรทัดบน</b> (เช่น PTB10-2040 ที่มาในลัง SCM-525N)
+        — นับ<b>จำนวนชิ้น</b> และนับใน <b>เข้าคลัง/ค้าง</b> ด้วย (เป็นสินค้าจริงที่คลังต้องรับ)
+        แต่ <b>ไม่นับลัง/คิว/น้ำหนักซ้ำ</b> เพราะไม่มีลังของตัวเอง
+        <div class="muted" style="font-size:11.5px">★ พ่วง<b>เดินตามบรรทัดแม่</b>: แม่เข้าคลังไป 50% พ่วงก็เข้า 50% ให้เอง
+          — ตอน 🚚 ตัดเข้าคลัง จึง<b>ไม่มีช่องให้กรอกพ่วง</b> (มีข้อความบอกไว้) ·
+          ตอนดึงเข้าเที่ยวส่งจะได้บรรทัดพ่วงมาด้วย โดยเว้นช่องลัง/คิวไว้</div>
         <div class="muted" style="font-size:11.5px">ตอนวางจากตาราง แถวที่ไม่มีจำนวนลัง ระบบตั้งเป็นบรรทัดพ่วงให้เอง</div></td></tr>
     <tr><td><b>ตัดเข้าคลัง</b></td>
       <td>ใส่<b>จำนวนชิ้นที่เข้ารอบนี้</b> (ที่เข้าไปแล้วก่อนหน้าไม่ต้องใส่ซ้ำ) · ปุ่ม
@@ -1566,11 +1570,13 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
     <th style="width:86px">จัดซื้อ</th><th style="width:106px">หัวหน้าจัดซื้อ</th><th style="width:90px">ผู้บริหาร</th>
     <th style="width:86px">การตลาด</th><th style="width:80px">ขนส่ง</th></tr></thead><tbody>
     <tr><td>📋 Purchase Board</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
-      <td class="hp-chk">✔<div class="muted" style="font-size:10.5px">จำกัด</div></td><td class="hp-x">✕</td></tr>
+      <td class="hp-chk">✔<div class="muted" style="font-size:10.5px">จำกัด</div></td>
+      <td class="hp-chk">✔<div class="muted" style="font-size:10.5px">ทุกแท็บ · ดูอย่างเดียว</div></td></tr>
     <tr><td>📝 ใบขอซื้อ (PR)</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
       <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
     <tr><td>💳 วางแผนจ่ายเงิน</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
-      <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
+      <td class="hp-x">✕</td>
+      <td class="hp-chk">✔<div class="muted" style="font-size:10.5px">แท็บ 🧾 หลักฐานฯ เท่านั้น</div></td></tr>
     <tr><td>✅ ขออนุมัติชำระเงิน</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
       <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
     <tr><td>🚢 Shipment นำเข้า</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
@@ -1586,6 +1592,22 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
   </tbody></table></div>
   <div class="hp-info">ℹ️ การ์ดในหน้ารวมขึ้นตามตาราง <code>portal_apps</code> — ถ้าควรเห็นแต่ไม่เห็น
     ให้ผู้ดูแลตรวจว่าแถวของระบบนั้นใส่บทบาทครบไหม (ไม่ใช่ปัญหาของตัวระบบ)</div>
+  <div class="hp-tw"><table class="hp-t"><thead><tr><th style="width:150px">🚚 ฝ่ายชิปปิ้ง</th><th>ทำอะไรได้ / ไม่ได้</th></tr></thead><tbody>
+    <tr><td><b>📋 Purchase Board</b></td>
+      <td>เห็น<b>ครบทั้ง 5 แท็บ</b> (Purchase Board · 📦 แจ้งสินค้าขาเข้า · 🚚 แผนรับสินค้า · 📈 On-Time · 📜 ประวัติอัพโหลด)
+        + กระดิ่งแจ้งเตือนของค้างที่ขนส่ง
+        <div class="muted" style="font-size:11.5px">🔒 <b>ดูอย่างเดียว</b> — ไม่มีปุ่มเพิ่ม/แก้/ลบ PO · นำเข้า Excel · เพิ่มเที่ยวส่ง ·
+          เพิ่ม/แก้ใบแจ้ง · ตัดเข้าคลัง · แก้ประกาศ · และ<b>ไม่เห็นคอลัมน์ราคา</b> (เหมือนการตลาด)
+          · Export Excel ยังกดได้</div></td></tr>
+    <tr><td><b>💳 วางแผนจ่ายเงิน</b></td>
+      <td>เห็นเฉพาะแท็บ <b>🧾 หลักฐานชำระเงินร้านค้า</b> — ค้นหา/กรองวันที่ · ดูสลิปที่แนบไว้ ·
+        🖨️ พิมพ์หลักฐาน (รายงวด/รวมทั้งช่วง) · 📥 Export Excel
+        <div class="muted" style="font-size:11.5px">🔒 ไม่เห็นแท็บอื่นเลย (บิล · แผนจ่ายรายวัน · เอกสารประจำวัน · ใบเสนอราคา ·
+          สรุปเดือน · ตารางสรุปบันทึก · Ksher Wallet) · <b>แนบ/ลบสลิปไม่ได้</b> · ตั้งค่าที่เก็บสลิปไม่ได้</div></td></tr>
+    <tr><td><b>🚢 Shipment · 📖 คู่มือ</b></td><td>เหมือนเดิม (เข้าได้ตามปกติ)</td></tr>
+  </tbody></table></div>
+  <div class="hp-warn">⚠️ ถ้าคนในฝ่ายชิปปิ้งมีบทบาท <code>purchase</code> ติดมาด้วย จะได้สิทธิ์<b>แก้ไขเต็ม</b>ตามบทบาทจัดซื้อ
+    — ต้องการให้ดูอย่างเดียวจริง ให้ตั้งบัญชีนั้นมีแค่ <code>shipping</code></div>
 
   <h3 class="hh">ทำอะไรได้ในแต่ละระบบ</h3>
   <div class="hp-tw"><table class="hp-t"><thead><tr><th>การกระทำ</th>
