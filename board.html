@@ -434,6 +434,9 @@
   .arr-mini:hover{background:#F1F5F9}
   .arr-mini.go{background:var(--navy);color:#fff;border-color:var(--navy)}
   .arr-mini.rd{color:var(--red);border-color:#f3c6c9}
+  /* ⤵ ส่งเข้าระบบตรวจค่าขนส่ง — กดได้เมื่อ "เข้าคลังครบ" แล้วเท่านั้น (ลำดับงาน) */
+  .arr-mini.rdy{background:var(--green-bg);color:var(--green);border-color:#bcdcc4;font-weight:800}
+  .arr-mini.off{opacity:.42}
   /* แถวกรอกในฟอร์มใบแจ้ง — คอลัมน์เดียวกับตารางหน้าจอ */
   .arr-lh,.arr-ln{display:grid;gap:5px;align-items:center;
     grid-template-columns:86px 66px 1fr 50px 48px 58px 62px 58px 110px 24px}
@@ -4131,7 +4134,11 @@ function renderArr(){
         ${canEdit?`<span class="arr-act">
           ${g.st!=='cancel'&&t.boxWait>0?`<button class="arr-mini go" onclick="openArrIn('${n.id}')" title="ตัดเข้าคลัง — บันทึกว่าของเข้าคลังแล้วกี่ลัง">🚚</button>`:''}
           <button class="arr-mini" onclick="openArr('${n.id}')" title="แก้ไขใบแจ้ง">✏️</button>
-          <button class="arr-mini" onclick="arrToFreight('${n.id}')" title="ส่งรายการเข้าระบบตรวจสอบค่าขนส่ง เพื่อให้คลังใส่ขนาดกล่องแล้วเทียบกับที่ขนส่งคิด">⤵</button>
+          <button class="arr-mini ${g.st==='done'?'rdy':'off'}" onclick="arrToFreight('${n.id}')" title="${
+            g.st==='done'
+              ? 'พร้อมส่งแล้ว — ส่งรายการเข้าระบบตรวจสอบค่าขนส่ง เพื่อให้คลังใส่ขนาดกล่องแล้วเทียบกับที่ขนส่งคิด'
+              : (g.st==='cancel' ? 'ใบนี้ยกเลิกแล้ว — ส่งไม่ได้'
+                 : 'ต้อง 🚚 ตัดเข้าคลังให้ครบก่อน (ค้างอีก '+arrInt(t.pcsWait)+' ชิ้น) แล้วจึงกดส่งเข้าระบบตรวจค่าขนส่งได้')}">⤵</button>
         </span>`:''}
         ${n.note?`<div class="arr-sub">📝 ${esc(n.note)}</div>`:''}</td>
       <td class="n"></td>
@@ -4540,7 +4547,25 @@ async function saveArrIn(){
 async function arrToFreight(id){
   if(currentRole!=='purchase') return;
   const n = ARR.find(x=>String(x.id)===String(id)); if(!n) return;
-  const its = arrItemsOf(id).filter(x => !x.is_extra && (+x.boxes||0)>0);
+
+  /* ══ ลำดับงานที่ถูกต้อง: ตัดเข้าคลังให้ครบก่อน → แล้วค่อยส่งเข้าระบบตรวจค่าขนส่ง ══
+     เพราะค่าขนส่งต้องคิดจาก "ของที่รับเข้าคลังจริง" ถ้าส่งไปก่อน
+     พอของตามมาอีกตู้ ตัวเลขลัง/คิวในระบบตรวจค่าขนส่งจะไม่ครบ ต้องไปแก้มือ */
+  const all = arrItemsOf(id), tt = arrTotals(all), st = arrCalcStatus(n, all);
+  if(st==='cancel') return toast('ใบนี้ยกเลิกแล้ว — ส่งเข้าระบบตรวจค่าขนส่งไม่ได้');
+  if(st!=='done'){
+    const go = confirm('⚠️ ยังตัดเข้าคลังไม่ครบ — ยังส่งเข้าระบบตรวจค่าขนส่งไม่ได้\n\n'
+      + 'ใบแจ้ง '+(n.notice_no||fmtDate(n.notice_date))+' · '+(n.carrier||'')+'\n'
+      + 'เข้าคลังแล้ว '+arrInt(tt.pcsIn)+' ชิ้น ('+arrInt(tt.boxIn)+' ลัง)\n'
+      + 'ยังค้างอีก '+arrInt(tt.pcsWait)+' ชิ้น ('+arrInt(tt.boxWait)+' ลัง)\n\n'
+      + 'ลำดับที่ถูกต้อง: 🚚 ตัดเข้าคลังให้ครบ → สถานะขึ้น ✅ เข้าคลังครบ → ค่อยกด ⤵\n'
+      + '(ค่าขนส่งต้องคิดจากของที่รับเข้าคลังจริง ไม่งั้นลัง/คิวไม่ครบ)\n\n'
+      + 'กด OK เพื่อเปิดหน้า 🚚 ตัดเข้าคลัง ตอนนี้เลย');
+    if(go) openArrIn(id);
+    return;
+  }
+
+  const its = all.filter(x => !x.is_extra && (+x.boxes||0)>0);
   if(!its.length) return toast('ใบนี้ไม่มีรายการที่มีจำนวนลัง');
   if(!confirm('ส่ง '+its.length+' รายการเข้าระบบตรวจสอบค่าขนส่ง?\n\n'
     +'ระบบจะสร้างแถวรอไว้ให้ (ขนส่ง '+(n.carrier||'')+' · วันแจ้งเข้า '+n.notice_date+')\n'
