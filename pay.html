@@ -360,7 +360,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-99</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-00</span>
   </span>
   <!-- ⚠️ ป้าย "🧪 โหมดทดสอบ" ถอดออกตามที่สั่ง (v09-96)
        พฤติกรรมยังคงเดิม — APPROVAL_MODE=false อยู่ (ดูตัวแปรในสคริปต์)
@@ -1300,7 +1300,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v09-99';
+const PAY_VERSION='v10-00';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -5546,19 +5546,53 @@ function prDedupe(arr){
   });
   return out;
 }
-/* หา PR ตามเลขใบ (pay_bills.ref_pr) → คืน {p, items} */
+/* ⚠️ ช่อง "อ้างอิง PR" (pay_bills.ref_pr) เป็นช่องพิมพ์อิสระ
+      บิลใบเดียวอ้าง PR ได้หลายใบ ปกติคั่นด้วยคอมมา เช่น  PR-6809-001, PR-6809-002
+      → ต้องแยกเลขก่อนค้น ไม่งั้นเอาทั้งก้อนไปค้นแล้วหาไม่เจอทุกใบ
+      รองรับตัวคั่น ,  ;  /  |  ขึ้นบรรทัดใหม่ และเว้นวรรคติดกัน 2 ช่องขึ้นไป */
+function refSplit(s){
+  return String(s||'').split(/[,;/|\r\n\t]+|\s{2,}/)
+    .map(function(x){return x.trim();}).filter(Boolean)
+    .filter(function(x,i,a){return a.indexOf(x)===i;});
+}
+/* หา PR ตามเลขใบ (ทีละใบ) → คืน {p, items} */
 const PR_CACHE={};
 async function prLoad(prNo){
   const key=String(prNo||'').trim(); if(!key)return null;
-  if(PR_CACHE[key])return PR_CACHE[key];
+  if(PR_CACHE[key]!==undefined)return PR_CACHE[key];
   const {data:hs,error}=await sb.from('pr').select('*')
     .eq('pr_number',key).order('created_at',{ascending:false}).limit(1);
-  if(error||!hs||!hs.length)return null;
+  if(error||!hs||!hs.length){ PR_CACHE[key]=null; return null; }
   const p=hs[0];
   const {data:its}=await sb.from('pr_items').select('*').eq('pr_id',p.id).order('seq');
   const out={p, items:prDedupe(its)};
   PR_CACHE[key]=out;
   return out;
+}
+/* หา PR หลายใบจากข้อความอ้างอิงก้อนเดียว → {found:[{p,items}], missing:[เลขที่หาไม่เจอ]}
+   ใบที่หาไม่เจอไม่ทำให้ทั้งชุดพัง — ข้ามแล้วรายงานกลับไปให้ตามเก็บ
+   seen = กันใบเดียวกันซ้ำ (คนละบิลอ้าง PR ใบเดียวกันได้)                    */
+async function prLoadMany(raw,seen){
+  seen=seen||{};
+  const found=[], missing=[];
+  const push=function(r){
+    if(!r)return false;
+    const k=String(r.p.id);
+    if(!seen[k]){ seen[k]=1; found.push(r); }
+    return true;
+  };
+  for(const no of refSplit(raw)){
+    if(await prLoad(no).then(push))continue;
+    /* เผื่อพิมพ์คั่นด้วยเว้นวรรคช่องเดียว เช่น "PR-001 PR-002" */
+    if(/\s/.test(no)){
+      const subs=no.split(/\s+/).filter(Boolean);
+      let hit=0;
+      for(const s of subs){ if(await prLoad(s).then(push))hit++; }
+      if(hit)continue;
+    }
+    missing.push(no);
+  }
+  return {found, missing};
 }
 function prSheetHtml(p,items){
   const cs=curSym(p.currency);
@@ -5629,10 +5663,15 @@ async function printPrOfBill(billId){
   const b=billOf(billId);
   const pr=String(b.ref_pr||'').trim();
   if(!pr)return alert('บิลนี้ยังไม่ได้ผูกเลขใบขอซื้อ (PR)\n\nใส่ได้ที่ช่อง "อ้างอิง PR" ตอนแก้บิล');
-  toast('กำลังเตรียมใบขอซื้อ '+pr+'…');
-  const r=await prLoad(pr);
-  if(!r)return alert('ไม่พบใบขอซื้อเลข '+pr+' ในระบบ\n\nเช็คเลขใบที่หน้า 📋 ใบขอซื้อ');
-  printSheetsHtml([prSheetHtml(r.p,r.items)],{land:true,empty:'ไม่มีใบขอซื้อให้พิมพ์'});
+  const nos=refSplit(pr);
+  toast('กำลังเตรียมใบขอซื้อ'+(nos.length>1?(' '+nos.length+' ใบ'):(' '+pr))+'…');
+  const {found,missing}=await prLoadMany(pr);
+  if(!found.length)
+    return alert('ไม่พบใบขอซื้อเลข '+missing.join(', ')+' ในระบบ\n\nเช็คเลขใบที่หน้า 📋 ใบขอซื้อ');
+  if(missing.length&&!confirm('บิลนี้อ้าง PR '+nos.length+' ใบ แต่หาไม่เจอ '+missing.length+' ใบ\n\n'
+      +'ไม่พบ: '+missing.join(', ')+'\n\nพิมพ์เฉพาะ '+found.length+' ใบที่เจอไหม?'))return;
+  printSheetsHtml(found.map(function(r){return prSheetHtml(r.p,r.items);}),
+                  {land:true,empty:'ไม่มีใบขอซื้อให้พิมพ์'});
 }
 
 /* ─── กระดาษสลิป / หลักฐานการจ่าย ─── */
@@ -5708,11 +5747,13 @@ async function printDayPack(){
     const cover=$('dcSheet')&&$('dcSheet').innerHTML.trim();
     if(cover)parts.push(cover);
 
-    /* ② ใบเสนอราคา — ตัดซ้ำตาม PO (ใบเสนอราคาไม่ใช่รายงวด) */
+    /* ② ใบเสนอราคา — ตัดซ้ำตาม PO (ใบเสนอราคาไม่ใช่รายงวด)
+          บิลใบเดียวอาจกรอก PO หลายเลขคั่นคอมมา → แยกก่อนเหมือน PR */
     const pos=[], seenPo={};
     rows.forEach(function(p){
-      const po=billOf(p.bill_id).po_number||'';
-      const k=nzPo(po); if(!k||seenPo[k])return; seenPo[k]=1; pos.push(po);
+      refSplit(billOf(p.bill_id).po_number||'').forEach(function(po){
+        const k=nzPo(po); if(!k||seenPo[k])return; seenPo[k]=1; pos.push(po);
+      });
     });
     const missQ=[];
     for(const po of pos){
@@ -5722,18 +5763,24 @@ async function printDayPack(){
       if(h)parts.push(h); else missQ.push(po);
     }
 
-    /* ③ ใบขอซื้อ (PR) — ตัดซ้ำตามเลข PR (PR ก็ไม่ใช่รายงวด) */
-    const prs=[], seenPr={};
-    rows.forEach(function(p){
-      const r=String(billOf(p.bill_id).ref_pr||'').trim();
-      if(!r||seenPr[r])return; seenPr[r]=1; prs.push(r);
-    });
-    const missP=[];
-    for(const no of prs){
-      const r=await prLoad(no);
-      if(!r){ missP.push(no); continue; }
-      parts.push(prSheetHtml(r.p,r.items));
+    /* ③ ใบขอซื้อ (PR) — ตัดซ้ำ "ตามใบ" ไม่ใช่ตามข้อความในช่อง
+          บิล A อ้าง "PR-001, PR-002" · บิล B อ้าง "PR-002" → ได้ 2 ใบ ไม่ใช่ 3 ใบ
+          seenPr ส่งต่อทุกรอบ จึงกันซ้ำข้ามบิลให้เอง                        */
+    const seenPr={}, prFound=[], missP=[];
+    let nPrRef=0;
+    for(const p of rows){
+      const raw=String(billOf(p.bill_id).ref_pr||'').trim();
+      if(!raw)continue;
+      nPrRef+=refSplit(raw).length;
+      const r=await prLoadMany(raw,seenPr);
+      r.found.forEach(function(x){ prFound.push(x); });
+      r.missing.forEach(function(n){ if(missP.indexOf(n)<0)missP.push(n); });
     }
+    /* เรียงตามเลขใบ เพื่อให้ลำดับในชุดคงที่ทุกครั้งที่พิมพ์ */
+    prFound.sort(function(a,b){
+      return String(a.p.pr_number||'').localeCompare(String(b.p.pr_number||''));
+    });
+    prFound.forEach(function(r){ parts.push(prSheetHtml(r.p,r.items)); });
 
     /* ④ สลิป / หลักฐานการจ่าย — อันนี้เป็นรายงวดจริง */
     let nSlip=0;
@@ -5745,12 +5792,13 @@ async function printDayPack(){
     const warn=[];
     if(missQ.length)warn.push('• ไม่พบใบเสนอราคาของ PO: '+missQ.join(', '));
     if(missP.length)warn.push('• ไม่พบใบขอซื้อเลข: '+missP.join(', '));
-    if(!prs.length)warn.push('• งวดที่เลือกยังไม่ได้ผูกเลข PR — ไม่มีใบขอซื้อในชุด');
+    if(!nPrRef)warn.push('• งวดที่เลือกยังไม่ได้ผูกเลข PR — ไม่มีใบขอซื้อในชุด');
     if(!nSlip)warn.push('• ยังไม่มีสลิป/หลักฐานการจ่ายที่แนบไว้');
     const sum='📦 ชุดเอกสารวันที่ '+($('dcDate').value||'')+'\n\n'
       +'• ใบปะหน้า '+(cover?'1':'0')+' ใบ\n'
       +'• ใบเสนอราคา '+(pos.length-missQ.length)+' ใบ (จาก '+pos.length+' PO)\n'
-      +'• ใบขอซื้อ (PR) '+(prs.length-missP.length)+' ใบ\n'
+      +'• ใบขอซื้อ (PR) '+prFound.length+' ใบ'
+        +(prFound.length?(' — '+prFound.map(function(r){return r.p.pr_number;}).join(', ')):'')+'\n'
       +'• หน้าสลิป '+nSlip+' หน้า\n'
       +(warn.length?('\n⚠️ หมายเหตุ\n'+warn.join('\n')+'\n'):'')
       +'\nพิมพ์เลยไหม?';
