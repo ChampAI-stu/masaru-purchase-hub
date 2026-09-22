@@ -81,6 +81,19 @@ tr:nth-child(even) td{background:#F8FAFD}
 .rem-op:disabled{background:#F1F5F9;border-color:#E2E8F0;color:#94A3B8;
   cursor:not-allowed;text-decoration:line-through}
 .rem-op.extra{border-style:dashed}
+/* ═══ ช่องติ๊ก "ไม่ต้องแจ้งเตือน" ═══
+   ติ๊กแล้วแถวปุ่มช่วงเวลาถูกล็อกไว้ให้เห็น (ไม่ซ่อนทิ้ง) → รู้ว่าปิดเตือนอยู่ ไม่ใช่ระบบพัง */
+.norem{display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+  background:#F7F9FC;border:1px solid var(--line);border-radius:16px;padding:5px 12px 5px 9px;
+  font-size:12px;font-weight:700;color:#475569;margin-bottom:7px;transition:.12s}
+.norem:hover{border-color:#94A3B8;background:#F1F5F9}
+.norem input{width:15px;height:15px;margin:0;cursor:pointer;accent-color:#B45309}
+.norem.on{background:#FDF3DC;border-color:#E6D08A;color:#7A5A10}
+.remwrap.off{opacity:.42;pointer-events:none;filter:grayscale(1)}
+.nrbtn{border:1px solid var(--line);background:#fff;color:#475569;border-radius:14px;
+  padding:3px 11px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;line-height:1.5}
+.nrbtn:hover{border-color:#94A3B8;background:#F8FAFC}
+.nrbtn.on{background:#FDF3DC;border-color:#E6D08A;color:#7A5A10}
 .lockpill{display:none;font-size:11px;font-weight:700;color:#7A5A10;background:#FDF3DC;
   border:1px solid #E6D08A;border-radius:12px;padding:2px 9px;margin-left:7px;vertical-align:middle}
 .modal-foot{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center;
@@ -161,7 +174,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-60</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-61</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -260,9 +273,15 @@ tr:nth-child(even) td{background:#F8FAFD}
                    onchange="calHint(curReq())" oninput="calHint(curReq())">
           </div>
           <div style="margin:8px 0 0">
-            <div class="muted" style="font-size:11.5px;margin-bottom:5px">🔔 เตือนล่วงหน้า
-              <span style="font-size:11px">— เลือกได้ไม่เกิน 4 · กดซ้ำเพื่อเอาออก</span></div>
-            <div id="r_remChips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+            <label class="norem" id="r_noRemBox"
+              title="ติ๊กไว้ = ใบนี้ยังขึ้นปฏิทินตามปกติ แต่ไม่มีการเตือนล่วงหน้า">
+              <input type="checkbox" id="r_noRem" onchange="noRemToggle()">
+              <span>🔕 ใบนี้ไม่ต้องแจ้งเตือน</span></label>
+            <div class="remwrap" id="r_remWrap">
+              <div class="muted" style="font-size:11.5px;margin-bottom:5px">🔔 เตือนล่วงหน้า
+                <span style="font-size:11px">— เลือกได้ไม่เกิน 4 · กดซ้ำเพื่อเอาออก</span></div>
+              <div id="r_remChips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+            </div>
           </div>
           <div id="r_calHint" class="muted" style="font-size:11px;margin-top:3px"></div></div>
         <div class="fld"><label>ความเร่งด่วน</label>
@@ -1516,7 +1535,8 @@ function reqTable(rows,opts){
       <td>${thShort(r.req_date)}</td>
       <td${late?' style="color:var(--red);font-weight:700"':''}>${thShort(r.due_date)}
         ${r.due_time?`<div class="muted" style="font-size:10.5px;font-weight:400">${esc(r.due_time)} น.${
-          r.cal_event_id?' 📅':''}</div>`:''}</td>
+          r.cal_event_id?' 📅':''}${noRemOf(r)?' <span title="ใบนี้ติ๊กไว้ว่าไม่ต้องแจ้งเตือน">🔕</span>':''}</div>`
+        :(noRemOf(r)?`<div class="muted" style="font-size:10.5px" title="ใบนี้ติ๊กไว้ว่าไม่ต้องแจ้งเตือน">🔕</div>`:'')}</td>
       <td>${esc(coShort(r.pay_type))}</td>
       <td style="font-size:11.5px">${esc(r.channel||'-')}</td>
       <td class="num">${(r.items||[]).length}</td>
@@ -1733,8 +1753,12 @@ function calHint(r){
   const list=remGet(), rem=remTxt(list);
   const who=REM_EVENTS?' (ทุกคนที่เห็นปฏิทินเด้งพร้อมกัน)':'';
   if(!list.length){
-    el.innerHTML='<span style="color:#B45309">⚠️ ยังไม่ได้ตั้งเวลาเตือน</span> — '
-      +'ใบนี้จะขึ้นปฏิทินแต่<b>ไม่มีอะไรเตือน</b> · กดปุ่มช่วงเวลาด้านบนเพื่อเลือก';
+    el.innerHTML = noRemOn()
+      ? '<span style="color:#7A5A10">🔕 ปิดการเตือนไว้ตามที่ติ๊ก</span> — '
+        +'ใบนี้ยัง<b>ขึ้นปฏิทินตามปกติ</b> แค่ไม่มีการเตือนล่วงหน้า'
+      : '<span style="color:#B45309">⚠️ ยังไม่ได้ตั้งเวลาเตือน</span> — '
+        +'ใบนี้จะขึ้นปฏิทินแต่<b>ไม่มีอะไรเตือน</b> · กดปุ่มช่วงเวลาด้านบนเพื่อเลือก '
+        +'หรือติ๊ก <b>🔕 ไม่ต้องแจ้งเตือน</b> ให้ชัดเจน';
     return;
   }
   el.innerHTML = ((r&&r.cal_event_id)
@@ -2168,7 +2192,11 @@ function viewReq(id){
       <div><div class="muted" style="font-size:11px">วันที่ยื่น</div><b>${thDate(r.req_date)}</b></div>
       <div><div class="muted" style="font-size:11px">กำหนดชำระ</div>
         <b>${thDate(r.due_date)}${r.due_time?(' · '+esc(r.due_time)+' น.'):''}</b>
-        <div class="muted" style="font-size:11px;margin-top:1px">🔔 ${esc(remTxt(calRemOf(r)))}</div>
+        <div class="muted" style="font-size:11px;margin-top:1px">${remBadge(r)}
+          ${canEditReq(r)?`<button class="nrbtn${noRemOf(r)?' on':''}" style="margin-left:5px"
+            onclick="quickNoRem('${id}',${noRemOf(r)?'false':'true'})"
+            title="${noRemOf(r)?'กดเพื่อเปิดการเตือนกลับ (ใช้ค่าตั้งต้น)':'กดเพื่อปิดการเตือนของใบนี้'}"
+            >${noRemOf(r)?'🔔 เปิดเตือน':'🔕 ไม่ต้องแจ้งเตือน'}</button>`:''}</div>
         ${r.cal_link?`<div style="font-size:11px;margin-top:2px"><a href="${esc(r.cal_link)}" target="_blank"
           rel="noopener" style="color:var(--blue);font-weight:700">📅 เปิดบนปฏิทิน ↗</a></div>`
         :(r.cal_event_id?'<div class="muted" style="font-size:11px;margin-top:2px">📅 อยู่บนปฏิทิน</div>':'')}</div>
@@ -2991,11 +3019,47 @@ function remDraw(){
       +' onclick="remToggle('+m+')">'+(on?'✓ ':'')+esc(remLabel(m))+'</button>';
   }).join('')
   +(REM_LIST.length?'':'<span class="muted" style="font-size:11.5px;padding:6px 4px">'
-      +'← ยังไม่เลือก = ไม่เตือน</span>');
+      +(noRemOn()?'🔕 ปิดการเตือนไว้ — ถอนติ๊กด้านบนเพื่อเปิด'
+                 :'← ยังไม่เลือก = ไม่เตือน')+'</span>');
   calHint(curReq());
+}
+/* ═══════════════════════════════════════════════════════════════════
+   🔕 "ใบนี้ไม่ต้องแจ้งเตือน"
+   ──────────────────────────────────────────────────────────────────
+   เดิมจะปิดเตือนต้องกดเอาช่วงเวลาออกทีละอันจนหมด (สูงสุด 4 ครั้ง)
+   และไม่มีอะไรบอกว่า "ตั้งใจปิด" หรือ "ยังไม่ได้ตั้ง" — คนมักลืมว่าปิดไว้
+   ✅ ติ๊กช่องเดียวจบ · จำช่วงเวลาที่เลือกไว้ให้ ถอนติ๊กแล้วได้คืนเหมือนเดิม
+   เก็บที่คอลัมน์เดิม cal_remind:
+      null = ยังไม่เคยตั้ง → ใช้ค่าตั้งต้น   ·   [] = ตั้งใจไม่เตือน
+   ⇒ ไม่ต้องรัน SQL เพิ่ม (payapprove_remind.sql ที่รันไปแล้วรองรับอยู่)
+   ⚠️ ปิดแค่ "การเตือน" — ใบยังขึ้นปฏิทินให้เห็นตามปกติ
+   ═══════════════════════════════════════════════════════════════════ */
+let REM_KEEP=[];                 // จำช่วงเวลาก่อนติ๊ก ไว้คืนให้ตอนถอนติ๊ก
+const noRemOn=()=>!!($('r_noRem')&&$('r_noRem').checked);
+function noRemPaint(){
+  const cb=$('r_noRem'), box=$('r_noRemBox'), wrap=$('r_remWrap');
+  if(!cb)return;
+  if(box)box.classList.toggle('on',cb.checked);
+  if(wrap)wrap.classList.toggle('off',cb.checked);
+}
+function noRemToggle(){
+  const cb=$('r_noRem'); if(!cb)return;
+  if(cb.checked){
+    if(REM_LIST.length)REM_KEEP=REM_LIST.slice();   // เก็บของเดิมไว้ก่อนล้าง
+    REM_LIST=[];
+  }else{
+    /* ถอนติ๊ก → คืนค่าที่เคยเลือก ถ้าไม่มีก็ใช้ค่าตั้งต้น
+       แล้วคัดช่วงที่ใช้ไม่ได้กับกำหนดชำระตอนนี้ออก (เลยเวลา / ใกล้เกินไป) */
+    const back=(REM_KEEP.length?REM_KEEP:calRem()).filter(m=>!remWhyNot(m));
+    REM_LIST=[...new Set(back)].slice(0,REM_MAX);
+  }
+  noRemPaint(); remDraw();
 }
 function remToggle(m){
   m=Math.round(+m||0);
+  /* กดปุ่มช่วงเวลาตอนที่ติ๊กปิดอยู่ = เจตนาจะเปิดเตือน → ถอนติ๊กให้เลย
+     (ปุ่มถูก pointer-events:none บังอยู่ แต่เผื่อเรียกจากโค้ด/คีย์บอร์ด) */
+  if(noRemOn()){ $('r_noRem').checked=false; REM_KEEP=[]; noRemPaint(); }
   const i=REM_LIST.indexOf(m);
   if(i>=0){ REM_LIST.splice(i,1); remDraw(); return; }
   const why=remWhyNot(m);
@@ -3011,13 +3075,52 @@ function remSet(arr){
     ? arr.map(Number).filter(x=>!isNaN(x)&&x>=0&&x<=REM_CAP).map(Math.round)
     : calRem();
   REM_LIST=[...new Set(a)].slice(0,REM_MAX);
+  /* array ว่าง = ใบนี้ตั้งไว้ว่าไม่เตือน → ติ๊กช่องให้เห็นชัด ไม่ใช่ปล่อยว่างเงียบ ๆ */
+  const cb=$('r_noRem');
+  if(cb){ cb.checked = Array.isArray(arr) && REM_LIST.length===0; }
+  REM_KEEP=[];
+  noRemPaint();
   remDraw();
 }
-const remGet=()=>REM_LIST.slice().sort((a,b)=>b-a);
+/* ติ๊ก 🔕 ไว้ = ส่ง [] ลงฐานข้อมูลเสมอ (ไม่ใช่ null ที่แปลว่า "ใช้ค่าตั้งต้น") */
+const remGet=()=>noRemOn()?[]:REM_LIST.slice().sort((a,b)=>b-a);
 /* ค่าที่จะใช้จริงตอนส่งขึ้นปฏิทิน */
 function calRemOf(r){
   const a=(r&&Array.isArray(r.cal_remind))?r.cal_remind.map(Number).filter(x=>x>0):null;
   return a?a:calRem();
+}
+/* ใบนี้ถูกตั้งว่า "ไม่ต้องแจ้งเตือน" ไหม
+   ต้องเป็น array ว่างจริง ๆ เท่านั้น — null คือ "ยังไม่เคยตั้ง" คนละความหมาย */
+const noRemOf=r=>!!(r&&Array.isArray(r.cal_remind)&&r.cal_remind.filter(x=>+x>0).length===0);
+function remBadge(r){
+  return noRemOf(r)
+    ? '<span style="color:#7A5A10;font-weight:700">🔕 ไม่ต้องแจ้งเตือน</span>'
+    : '🔔 '+esc(remTxt(calRemOf(r)));
+}
+/* ปุ่มสลับเร็วในหน้าดูใบ — ไม่ต้องเปิดฟอร์มแก้ทั้งใบเพื่อปิดเตือนอันเดียว
+   ⚠️ อัปเดตแค่คอลัมน์ cal_remind ไม่แตะฟิลด์อื่นของใบ */
+async function quickNoRem(id,off){
+  const r=REQS.find(x=>String(x.id)===String(id));
+  if(!r)return toast('ไม่พบคำขอนี้',true);
+  const val = off ? [] : calRem();
+  window.SELF_WRITING=true;
+  const {error}=await sb.from('pay_requests')
+    .update({cal_remind:val}).eq('id',id).select('id').single();
+  window.SELF_WRITING=false;
+  if(error){
+    return toast(/cal_remind/i.test(error.message||'')
+      ? 'ตั้งไม่ได้ — ยังไม่ได้รันไฟล์ payapprove_remind.sql'
+      : ('บันทึกไม่ได้: '+error.message), true);
+  }
+  r.cal_remind=val;                       // อัปเดตในหน่วยความจำ ไม่ต้องดึงทั้งตารางใหม่
+  addLog(id,'updated', off?'ปิดการแจ้งเตือนของใบนี้ (🔕 ไม่ต้องแจ้งเตือน)'
+                           :'เปิดการแจ้งเตือนกลับ ('+remTxt(val)+')');
+  toast(off?'ปิดการแจ้งเตือนใบนี้แล้ว 🔕':'เปิดการแจ้งเตือนกลับแล้ว 🔔');
+  viewReq(id); renderList();
+  /* ใบที่อยู่บนปฏิทินแล้ว ต้องดันขึ้นไปทับ ไม่งั้นเตือนเก่ายังค้างอยู่ใน event */
+  if(r.cal_event_id && calOn()){
+    try{ await calPush(r); }catch(e){ console.warn('[cal] อัปเดต event ไม่สำเร็จ',(e&&e.message)||e); }
+  }
 }
 
 /* หัวข้อ event — อ่านบนปฏิทินแล้วรู้ทันทีว่าใบไหน ยอดเท่าไหร่ ขั้นไหน */
@@ -3223,7 +3326,9 @@ async function calBackfill(){
   if(!confirm('จะส่ง '+pend.length+' ใบขึ้นปฏิทิน\n\n'
     +(fresh?('• ยังไม่เคยขึ้นปฏิทิน '+fresh+' ใบ\n'):'')
     +(fix?('• ขึ้นแล้วแต่ยังไม่มี event เตือน '+fix+' ใบ (จะเติมให้)\n'):'')
-    +'\nใบที่เลยกำหนดไปแล้วจะขึ้นเป็นกิจกรรมย้อนหลัง (ไม่เตือน แต่เห็นในปฏิทิน)\n\nยืนยันไหม?'))return;
+    +'\nใบที่เลยกำหนดไปแล้วจะขึ้นเป็นกิจกรรมย้อนหลัง (ไม่เตือน แต่เห็นในปฏิทิน)'
+    +'\nใบที่ติ๊ก 🔕 ไม่ต้องแจ้งเตือน จะขึ้นปฏิทินแต่ไม่สร้างรายการเตือน'
+    +'\n\nยืนยันไหม?'))return;
   let ok=0,bad=0;
   for(let i=0;i<pend.length;i++){
     $('cal_stat').textContent='กำลังส่ง '+(i+1)+'/'+pend.length+' …';
