@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-00</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-01</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -463,7 +463,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
     <a class="mapc" href="#s1" onclick="return goSec('s1')" style="border-left-color:#94A3B8"><div class="n">📋 Purchase Board</div>
       <div class="f">board.html</div><div class="d">ประตูรับข้อมูลจาก ERP · ติดตามสถานะ PO/SKU · แผนรับสินค้าเข้าคลัง · รายงานตรงเวลา</div></a>
     <a class="mapc" href="#s2" onclick="return goSec('s2')" style="border-left-color:#B7791F"><div class="n">📝 ใบขอซื้อ (PR)</div>
-      <div class="f">pr.html</div><div class="d">ออกใบขอซื้อ · ตรวจราคาอัตโนมัติ · อนุมัติ 2 ชั้น · ออกเลข PO · ราคากลางต่อ SKU</div></a>
+      <div class="f">pr.html</div><div class="d">ออกใบขอซื้อ · ตรวจราคาอัตโนมัติ · อนุมัติ 2 ชั้น · ออกเลข PO · ราคากลางต่อ SKU · สมุดบันทึกคอมเมนต์ตีกลับ</div></a>
     <a class="mapc" href="#s3" onclick="return goSec('s3')" style="border-left-color:#2E75B6"><div class="n">💳 วางแผนจ่ายเงิน</div>
       <div class="f">pay.html</div><div class="d">บิลค่าสินค้า · แบ่งงวดจ่าย · ใบปะหน้ารายวัน · ใบเสนอราคา · Ksher Wallet</div></a>
     <a class="mapc" href="#s4" onclick="return goSec('s4')" style="border-left-color:#1E7145"><div class="n">✅ ขออนุมัติชำระเงิน</div>
@@ -900,11 +900,49 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
     <tr><td><span class="pill" style="background:#E9F6EE;color:#1E7145">อนุมัติ</span></td><td>จัดซื้อออกเลข PO</td>
       <td><span class="hp-x">✕</span> แก้ได้แต่เลข PO</td></tr>
     <tr><td><span class="pill" style="background:#FCE4E4;color:#D0212B">ตีกลับ</span></td><td>ผู้ยื่นต้องแก้แล้วส่งใหม่</td>
-      <td><span class="hp-chk">✔</span> กด <b>✏️ แก้ไขและส่งใหม่</b></td></tr>
+      <td><span class="hp-chk">✔</span> กด <b>✏️ แก้ไขและส่งใหม่</b>
+        <br><span class="muted">คอมเมนต์ที่ถูกติไม่หาย ดูย้อนได้ที่กล่อง ↩️ ท้ายใบ</span></td></tr>
   </tbody></table></div>
   <div class="hp-tip">💡 <b>⏪ ย้อนกลับ 1 ขั้น</b> มีให้ตามบทบาท — จัดซื้อย้อน “รอหัวหน้า → ยังไม่ส่ง”,
     หัวหน้าย้อน “รอผู้บริหาร → รอหัวหน้า”, ผู้บริหารย้อน “อนุมัติ → รอผู้บริหาร”
     · <b>ใบที่อนุมัติแล้วและออกเลข PO ไปแล้ว ย้อนไม่ได้</b> ต้องลบเลข PO ออกก่อน</div>
+
+  <h3 class="hh">🧾 สมุดบันทึก — คอมเมนต์ตีกลับ และใครเพิ่ม/ลบอะไร</h3>
+  <p class="tx">เดิมคอมเมนต์ตีกลับเก็บไว้ช่องเดียว (<code>pr.reject_note</code>) จึง<b>หายง่ายมาก</b> —
+    ตีกลับรอบ 2 ทับรอบ 1 · จัดซื้อแก้ใบแล้วบันทึกก็ถูกล้าง · กด ⏪ ย้อนกลับก็ถูกล้างอีก
+    ย้อนดูไม่ได้เลยว่าหัวหน้าหรือผู้บริหารเคยติอะไรไว้
+    <br>ตอนนี้ทุกการเคลื่อนไหวเขียนลงตาราง <code>pr_logs</code> ซึ่ง<b>เขียนเพิ่มได้เท่านั้น แก้/ลบไม่ได้</b></p>
+  <table class="kv"><thead><tr><th>ดูที่ไหน</th><th>เห็นอะไร</th></tr></thead><tbody>
+    <tr><td><b>ในหน้าใบ (กด "เปิด")</b></td>
+      <td>กล่องแดง <b>↩️ คอมเมนต์ตีกลับ</b> ท้ายใบ — ขึ้น<b>ทุกรอบ</b> เรียงรอบล่าสุดอยู่บน
+        มีป้ายบอกว่าเป็น <b>หัวหน้า</b> หรือ <b>ผู้บริหาร</b> · ชื่อคน · วันเวลา
+        · รอบที่ยังค้างอยู่มีป้าย <b>รอบที่ค้างอยู่</b>
+        <br>ใต้กล่องคือ <b>🧾 บันทึกของใบนี้</b> ไทม์ไลน์ทุกเหตุการณ์ของใบนั้น</td></tr>
+    <tr><td><b>แท็บ 🧾 สมุดบันทึก</b></td>
+      <td>ทุกใบรวมกัน จัดกลุ่มตามเลขใบ · กรองตาม <b>ประเภท / บทบาทที่ทำ / ช่วงเวลา</b>
+        · ค้นข้อความในคอมเมนต์ได้ · <b>📥 Export Excel</b>
+        · ใบที่ถูกลบมีป้าย <b>🗑️ ถูกลบแล้ว</b> — บันทึกยังอยู่ ใบหายไปแล้วก็ยังตามได้</td></tr>
+    <tr><td><b>เก็บอะไรบ้าง</b></td>
+      <td>➕ สร้างใบ · ✏️ แก้ไขใบ · 📨 ส่งอนุมัติ · ✅ อนุมัติ (แยกชั้นหัวหน้า/ผู้บริหาร) ·
+        ↩️ ตีกลับ + คอมเมนต์เต็ม ๆ · ⏪ ย้อนสถานะ · ✍️ ลงนาม/ยกเลิกลายเซ็น ·
+        📑 ออกเลข PO · 🗑️ ลบใบ
+        <br>ทุกแถวมี <b>ชื่อคน · บทบาท · อีเมล · เวลา · สถานะเดิม → สถานะใหม่</b></td></tr>
+    <tr><td><b>✏️ แก้ไขใบ บอกละเอียดถึงรายการ</b></td>
+      <td>เทียบรายการก่อน-หลังให้เอง (จับคู่ด้วย SKU + supplier) แล้วบอกเป็นบรรทัด
+        <br><span style="color:#1E7145;font-weight:600">+ เพิ่ม MS-AG45 เครื่องเจียร × 200</span>
+        <br><span style="color:#C41F29;font-weight:600">− ลบ MS-DR20 ไขควงไฟฟ้า × 300</span>
+        <br>✎ MS-DR12: จำนวน 500 → 400 · ราคา/หน่วย 210 → 205</td></tr>
+    <tr><td><b>🗑️ ลบใบ</b></td>
+      <td>ก่อนลบระบบถ่ายภาพใบไว้ — สถานะตอนลบ · ยอดรวม · เลข PO · <b>รายการสินค้าทั้งใบที่หายไป</b>
+        แล้วบันทึกพร้อมชื่อผู้ลบ · กล่องยืนยันบอกล่วงหน้าว่าการลบจะถูกบันทึก</td></tr>
+  </tbody></table>
+  <div class="hp-warn">⚠️ ต้องรันไฟล์ <code>pr_activity_log.sql</code> บน Supabase ก่อน
+    (SQL Editor → วางทั้งไฟล์ → Run · รันซ้ำได้)
+    <br>ยังไม่รัน = ระบบยังทำงานปกติทุกอย่าง แต่<b>ไม่เก็บประวัติ</b> และจะขึ้นเตือนให้เห็นทั้งในหน้าใบและแท็บสมุดบันทึก
+    <br>ตอนรัน ระบบจะย้ายคอมเมนต์ตีกลับที่<b>ยังเหลืออยู่ในช่องเดิม</b>เข้าสมุดบันทึกให้เป็นแถวแรก
+    — ส่วนที่ถูกล้างไปก่อนหน้านี้กู้ไม่ได้ (ข้อมูลหายไปก่อนมีตารางนี้)</div>
+  <div class="hp-info">ℹ️ สมุดบันทึกเปิดให้<b>ทุกบทบาทดูได้</b> เพราะเป็นหลักฐานร่วม —
+    จัดซื้อเห็นว่าหัวหน้าติอะไร หัวหน้าเห็นว่าจัดซื้อแก้อะไรไปแล้ว</div>
 
   <h3 class="hh">กับดักของระบบนี้</h3>
   <table class="kv"><tbody>
@@ -2095,7 +2133,7 @@ const GROUPS=[
     {id:'s0', ic:'🗺️', nm:'ภาพรวมทั้งระบบ', fl:'ข้อมูลไหลจากไหนไปไหน + อ่านอะไรก่อน'}]},
   {t:'🛒 งานจัดซื้อ', items:[
     {id:'s1', ic:'📋', nm:'Purchase Board', fl:'board.html · นำเข้า Excel · ติดตาม PO · แผนรับสินค้า'},
-    {id:'s2', ic:'📝', nm:'ใบขอซื้อ (PR)', fl:'pr.html · ขอซื้อ · อนุมัติ 2 ชั้น · ออกเลข PO'}]},
+    {id:'s2', ic:'📝', nm:'ใบขอซื้อ (PR)', fl:'pr.html · ขอซื้อ · อนุมัติ 2 ชั้น · ออกเลข PO · สมุดบันทึก'}]},
   {t:'💵 งานจ่ายเงิน', items:[
     {id:'s3', ic:'💳', nm:'วางแผนจ่ายเงิน', fl:'pay.html · บิล · งวดจ่าย · ใบปะหน้า · ใบเสนอราคา'},
     {id:'s4', ic:'✅', nm:'ขออนุมัติชำระเงิน', fl:'payapprove.html · ยื่น · อนุมัติ · แจ้งโอน'}]},
