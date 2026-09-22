@@ -130,6 +130,48 @@ th.sort-active{color:var(--gold)}
 .qt-picblock{break-inside:auto;page-break-inside:auto}
 .qt-picblock>div:first-child{break-after:avoid;page-break-after:avoid}
 /* (การพิมพ์ใบปะหน้า ย้ายไปใช้กลไกกลาง #printRoot / body.printing-sheet ด้านล่างแล้ว) */
+
+/* ===== 📄 ใบขอซื้อ (PR) — ย้ายฟอร์มมาจากหน้าใบขอซื้อ เพื่อปริ้นรวมชุดเดียวกันได้ =====
+   ===== 🧾 ชุดเอกสารประจำวัน: ใบปะหน้า → ใบเสนอราคา → ใบขอซื้อ → สลิป ===== */
+.doc-break{break-before:page;page-break-before:always}
+.pr-sheet{background:#fff;color:#111;padding:22px 26px;border:1px solid var(--line);border-radius:8px;
+  font-size:12px;line-height:1.55}
+.pr-sheet .pr-ban{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;
+  border-bottom:2.5px solid #1F3864;padding-bottom:8px;margin-bottom:10px}
+.pr-sheet .pr-co{font-weight:800;color:#1F3864;font-size:13.5px}
+.pr-sheet .pr-addr{font-size:10.5px;color:#475569;line-height:1.5}
+.pr-sheet .pr-t1{font-size:19px;font-weight:800;color:#1F3864;text-align:right;line-height:1.15}
+.pr-sheet .pr-t2{font-size:11px;color:#64748B;text-align:right}
+.pr-sheet .pr-t3{font-size:9.5px;color:#94A3B8;text-align:right}
+.pr-sheet table{width:100%;border-collapse:collapse;table-layout:fixed}
+.pr-sheet table.pr-info td{border:1px solid #CBD5E1;padding:4px 7px;font-size:11px;word-break:break-word}
+.pr-sheet table.pr-info td.k{background:#EEF2F8;color:#1F3864;font-weight:700;width:11%}
+.pr-sheet table.pr-items{margin-top:9px}
+.pr-sheet table.pr-items th{border:1px solid #94A3B8;background:#1F3864;color:#fff;padding:4px 5px;
+  font-size:10px;font-weight:700;text-align:center}
+.pr-sheet table.pr-items td{border:1px solid #CBD5E1;padding:3px 5px;font-size:10.5px;word-break:break-word}
+.pr-sheet table.pr-items td.c{text-align:center}
+.pr-sheet table.pr-items td.r{text-align:right;white-space:nowrap}
+.pr-sheet table.pr-items tr:nth-child(even) td{background:#F8FAFC}
+.pr-sheet table.pr-items tfoot td{background:#EEF2F8;font-weight:800;color:#1F3864}
+.pr-sheet .pr-sign{display:flex;gap:26px;margin-top:26px;break-inside:avoid;page-break-inside:avoid}
+.pr-sheet .pr-sign .bx{flex:1;text-align:center}
+.pr-sheet .pr-sign .role{font-weight:700;color:#1F3864;margin-bottom:30px;font-size:11px}
+.pr-sheet .pr-sign .nm{font-size:11px;font-weight:600;min-height:16px;margin:0 16px -2px}
+.pr-sheet .pr-sign .ln{border-top:1px dotted #475569;margin:0 16px 5px}
+.pr-sheet .pr-sign .dt{font-size:9.5px;color:#64748B}
+.pr-sheet .pr-foot{margin-top:10px;font-size:9.5px;color:#94A3B8;text-align:right}
+.pr-sheet tr,.pr-sheet thead{break-inside:avoid;page-break-inside:avoid}
+.pr-sheet table.pr-items thead{display:table-header-group}
+/* หน้าสลิป/หลักฐานการจ่าย */
+.sl-sheet{background:#fff;color:#111;padding:20px 24px;border:1px solid var(--line);border-radius:8px}
+.sl-sheet .sl-hd{border-bottom:2px solid #1F3864;padding-bottom:6px;margin-bottom:10px}
+.sl-sheet .sl-ti{font-size:15px;font-weight:800;color:#1F3864}
+.sl-sheet .sl-meta{font-size:11px;color:#475569;line-height:1.7;margin-top:3px}
+.sl-sheet .sl-one{border:1px solid #CBD5E1;border-radius:6px;padding:7px;margin-bottom:9px;
+  text-align:center;break-inside:avoid;page-break-inside:avoid}
+.sl-sheet .sl-one .cap{font-size:10.5px;color:#334155;text-align:left;margin-bottom:4px}
+.sl-sheet .sl-one img{max-width:100%;max-height:108mm;object-fit:contain}
 /* ===== ใบเสนอราคา: ฟอร์มซ้าย · ตัวอย่างใบขวา (ตรึงไว้ ไม่ต้องเลื่อนไปมา) ===== */
 .qt-bar{background:#fff;padding:0 0 10px;margin-bottom:8px;border-bottom:1px solid var(--line)}
 .qt-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,700px);gap:18px;align-items:start}
@@ -183,10 +225,14 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   html,body.printing-sheet,body.printing-sheet>#printRoot{background:#fff!important}
   body.printing-sheet #printRoot{padding:0!important;margin:0!important;border:0!important;box-shadow:none!important}
   /* ---- กระดาษทุกชนิด: ถอดกรอบ/เงา/ความกว้างจำกัด/พื้นหลังของพรีวิวออก ---- */
-  body.printing-sheet #printRoot>*{
+  body.printing-sheet #printRoot>*,
+  body.printing-sheet #printRoot .doc-pack>*{
     width:100%!important;max-width:none!important;margin:0!important;padding:0!important;
     border:0!important;border-radius:0!important;box-shadow:none!important;
     background:#fff!important;overflow:visible!important;max-height:none!important}
+  /* ปริ้นทั้งชุด — เอกสารแต่ละใบขึ้นหน้าใหม่ (ใบแรกไม่ต้องเว้น) */
+  body.printing-sheet #printRoot .doc-pack>.doc-break{break-before:page!important;page-break-before:always!important}
+  body.printing-sheet #printRoot .doc-pack>*:first-child{break-before:auto!important;page-break-before:auto!important}
   /* ---- แบ่งหน้าอัตโนมัติ (ใช้กับทุกตารางในกระดาษ) ---- */
   body.printing-sheet #printRoot table{page-break-inside:auto;break-inside:auto}
   body.printing-sheet #printRoot thead{display:table-header-group}
@@ -314,7 +360,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-98</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v09-99</span>
   </span>
   <!-- ⚠️ ป้าย "🧪 โหมดทดสอบ" ถอดออกตามที่สั่ง (v09-96)
        พฤติกรรมยังคงเดิม — APPROVAL_MODE=false อยู่ (ดูตัวแปรในสคริปต์)
@@ -1042,6 +1088,8 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
           <button class="btn mini ghost" onclick="$('dcPaper').style.display='none'">✕ ปิด</button>
           <button class="btn mini" onclick="saveDoc()">💾 บันทึกเอกสาร</button>
           <button class="btn" onclick="printDcSheet()">🖨️ พิมพ์ / PDF</button>
+          <button class="btn" onclick="printDayPack()" style="background:#B01722"
+            title="ปริ้นทั้งชุด: ใบปะหน้า + ใบเสนอราคา + ใบขอซื้อ (PR) + สลิป — ย้อนหลังได้ตามวันที่ที่เลือก">🗂️ ปริ้นทั้งชุด</button>
         </div>
         <div class="scroll" style="background:#F4F6FA;border-radius:9px;padding:12px">
           <div id="dcSheet"></div>
@@ -1252,7 +1300,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v09-98';
+const PAY_VERSION='v09-99';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -3019,7 +3067,10 @@ function renderPlan(){
           <td>${esc(p.responsible||'-')}</td>
           <td style="font-size:12px;max-width:220px">${p.note?esc(p.note):'<span class="muted">-</span>'}</td>
           <td>${stPill(p.status)}</td>
-          <td style="white-space:nowrap"><button class="btn mini ghost" onclick="openLineMsg('${p.id}')" title="ข้อความแจ้งจ่ายสำหรับส่งไลน์">💬</button> ${stBtns(p,'setPayStatus')}${(canEdit&&p.status!=='paid')?`<button class="btn mini ghost" onclick="editPay('${p.id}','${p.bill_id}')">✏️ แก้</button> <button class="btn mini red" onclick="planDel('${p.id}')">ลบ</button>`:''}${p.status==='paid'?'<span class="muted" style="font-size:11.5px">🔒 ล็อก</span>':''}</td></tr>`;});
+          <td style="white-space:nowrap"><button class="btn mini ghost" onclick="openLineMsg('${p.id}')" title="ข้อความแจ้งจ่ายสำหรับส่งไลน์">💬</button>
+          <button class="btn mini ghost" onclick="printQuotOfPO('${esc(b.po_number||'')}')" title="ปริ้นใบเสนอราคาของ PO ${esc(b.po_number||'')}">💱</button>
+          <button class="btn mini ghost" onclick="printPrOfBill('${p.bill_id}')" title="ปริ้นใบขอซื้อ (PR) ${esc(b.ref_pr||'')||'ของบิลนี้'}">📄</button>
+          ${stBtns(p,'setPayStatus')}${(canEdit&&p.status!=='paid')?`<button class="btn mini ghost" onclick="editPay('${p.id}','${p.bill_id}')">✏️ แก้</button> <button class="btn mini red" onclick="planDel('${p.id}')">ลบ</button>`:''}${p.status==='paid'?'<span class="muted" style="font-size:11.5px">🔒 ล็อก</span>':''}</td></tr>`;});
       h+='</tbody></table>';
     });
   });
@@ -5373,12 +5424,22 @@ function printSheet(src,opt){
   if(z<1)root.style.zoom=z;
   document.body.classList.add('printing-sheet');
 
+  /* ใบที่คอลัมน์เยอะ (ใบขอซื้อ 14 คอลัมน์) ขอกระดาษนอน — ใส่ @page ชั่วคราวแล้วถอนทีหลัง */
+  let pgSty=null;
+  if(opt.land){
+    pgSty=document.createElement('style');
+    pgSty.id='paySheetPage';
+    pgSty.textContent='@media print{@page{size:A4 landscape;margin:10mm}}';
+    document.head.appendChild(pgSty);
+  }
+
   let finished=false;
   const done=function(){
     if(finished)return; finished=true;
     document.body.classList.remove('printing-sheet');
     root.style.zoom='';
     root.innerHTML='';
+    if(pgSty&&pgSty.parentNode)pgSty.parentNode.removeChild(pgSty);
     window.removeEventListener('afterprint',done);
   };
   window.addEventListener('afterprint',done);
@@ -5400,6 +5461,305 @@ function printSheet(src,opt){
 function printQuot(srcEl){
   printSheet(srcEl||$('qtSheet')||($('qtPaper')&&$('qtPaper').querySelector('.qt-sheet')),
              {empty:'ยังไม่มีใบให้พิมพ์'});
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   🗂️ พิมพ์เอกสารประกอบการจ่าย — ใบเสนอราคา · ใบขอซื้อ (PR) · สลิป
+   ─────────────────────────────────────────────────────────────────
+   ⚠️ ใบเสนอราคา และ PR "ไม่ได้แยกตามงวด" — ผูกกับ PO / เลข PR
+      ดังนั้นตอนปริ้นทั้งชุด ต้องตัดซ้ำตาม PO และตาม PR
+      (จ่าย 3 งวดของ PO เดียว → ใบเสนอราคาใบเดียว ไม่ใช่ 3 ใบ)
+   ปุ่มรายงวดในแผนจ่ายรายวัน = ปริ้นใบของ PO/PR ที่งวดนั้นอ้างถึง
+   ══════════════════════════════════════════════════════════════════ */
+const nzPo=x=>String(x||'').trim().toUpperCase().replace(/[\s_-]+/g,'');
+
+/* โหลดใบเสนอราคาเมื่อจำเป็น (ผู้ใช้อาจไม่เคยเปิดแท็บใบเสนอราคาในรอบนี้) */
+async function ensureQuots(){
+  if(QUOTS&&QUOTS.length)return QUOTS;
+  if($('qtList'))await loadQuot();
+  else{
+    const {data}=await sb.from('quotations')
+      .select('id,po_number,po_date,ref_pr,vendor,deliver_by,currency,ship_fee,total,title_note,note,responsible,items,pic_count')
+      .order('created_at',{ascending:false}).limit(500);
+    QUOTS=data||[];
+  }
+  return QUOTS;
+}
+/* ใบเสนอราคาล่าสุดของ PO นั้น (QUOTS เรียง created_at ใหม่→เก่า อยู่แล้ว) */
+function quotOfPO(po){
+  const k=nzPo(po); if(!k)return null;
+  return (QUOTS||[]).find(x=>nzPo(x.po_number)===k)||null;
+}
+/* ─── สร้าง HTML กระดาษใบเสนอราคาโดยไม่รบกวนฟอร์มที่ผู้ใช้เปิดอยู่ ───
+   drawQuot() อ่านค่าจากช่องกรอก q_* + ตัวแปร QT_ROWS/QT_PICS
+   จึงต้อง "จำค่าเดิม → ใส่ค่าใบที่จะพิมพ์ → วาด → คืนค่าเดิม" ทุกครั้ง */
+const QF=['q_po','q_date','q_pr','q_vendor','q_deliver','q_cur','q_ship','q_title','q_note','q_resp'];
+async function quotSheetHtml(x){
+  if(!x||!$('qtPaper'))return '';
+  if(x.pic_count>0&&!Array.isArray(x.pics))await ensurePics(x);
+  const snapF={}; QF.forEach(id=>{ if($(id))snapF[id]=$(id).value; });
+  const snapR=QT_ROWS, snapP=QT_PICS, snapI=QT_ID, snapD=QT_PICS_DIRTY;
+  const snapHTML=$('qtPaper').innerHTML;
+  let html='';
+  try{
+    if($('q_po'))$('q_po').value=x.po_number||'';
+    if($('q_date'))$('q_date').value=x.po_date||'';
+    if($('q_pr'))$('q_pr').value=x.ref_pr||'';
+    if($('q_vendor'))$('q_vendor').value=x.vendor||'';
+    if($('q_deliver'))$('q_deliver').value=x.deliver_by||'SEA';
+    if($('q_cur'))$('q_cur').value=x.currency||'CNY';
+    if($('q_ship'))$('q_ship').value=x.ship_fee||0;
+    if($('q_title'))$('q_title').value=x.title_note||'';
+    if($('q_note'))$('q_note').value=x.note||'';
+    if($('q_resp'))$('q_resp').value=x.responsible||'';
+    QT_ROWS=Array.isArray(x.items)?JSON.parse(JSON.stringify(x.items)):[];
+    QT_PICS=Array.isArray(x.pics)?JSON.parse(JSON.stringify(x.pics)):[];
+    drawQuot();
+    html=$('qtPaper').innerHTML;
+  }finally{
+    QF.forEach(id=>{ if($(id)&&snapF[id]!==undefined)$(id).value=snapF[id]; });
+    QT_ROWS=snapR; QT_PICS=snapP; QT_ID=snapI; QT_PICS_DIRTY=snapD;
+    $('qtPaper').innerHTML=snapHTML;          // คืนกระดาษพรีวิวเดิมเป๊ะ
+  }
+  // id ซ้ำในหน้าเดียวไม่ได้ (qtSheet) — ตัดออกจากสำเนาที่จะเอาไปพิมพ์
+  return html.replace(/\sid="qtSheet"/g,'');
+}
+/* ปุ่ม 💱 รายงวด — ปริ้นใบเสนอราคาของ PO ที่งวดนั้นอ้างถึง */
+async function printQuotOfPO(po){
+  if(!po)return toast('งวดนี้ไม่มีเลข PO');
+  toast('กำลังเตรียมใบเสนอราคา…');
+  await ensureQuots();
+  const x=quotOfPO(po);
+  if(!x)return alert('ไม่พบใบเสนอราคาของ PO '+po+'\n\nสร้างได้ที่แท็บ 💱 ใบเสนอราคา');
+  const html=await quotSheetHtml(x);
+  if(!html)return toast('สร้างใบไม่สำเร็จ');
+  printSheetsHtml([html],{empty:'ไม่มีใบเสนอราคาให้พิมพ์'});
+}
+
+/* ─── ใบขอซื้อ (PR) — ย้ายฟอร์มพิมพ์จากหน้า pr.html มาไว้ที่นี่ ─── */
+function prDedupe(arr){
+  const seen=new Set(), out=[];
+  (arr||[]).forEach(it=>{
+    const k=(it.seq!=null?'s'+it.seq
+      :(it.sku||'')+'|'+(it.supplier||'')+'|'+it.unit_price+'|'+it.order_qty);
+    if(seen.has(k))return; seen.add(k); out.push(it);
+  });
+  return out;
+}
+/* หา PR ตามเลขใบ (pay_bills.ref_pr) → คืน {p, items} */
+const PR_CACHE={};
+async function prLoad(prNo){
+  const key=String(prNo||'').trim(); if(!key)return null;
+  if(PR_CACHE[key])return PR_CACHE[key];
+  const {data:hs,error}=await sb.from('pr').select('*')
+    .eq('pr_number',key).order('created_at',{ascending:false}).limit(1);
+  if(error||!hs||!hs.length)return null;
+  const p=hs[0];
+  const {data:its}=await sb.from('pr_items').select('*').eq('pr_id',p.id).order('seq');
+  const out={p, items:prDedupe(its)};
+  PR_CACHE[key]=out;
+  return out;
+}
+function prSheetHtml(p,items){
+  const cs=curSym(p.currency);
+  let rows=(items||[]).map((it,i)=>`<tr>
+    <td class="c">${it.seq!=null?it.seq:(i+1)}</td>
+    <td><b>${esc(it.sku)}</b></td>
+    <td>${esc(it.product_name)}</td>
+    <td>${esc(it.supplier)}</td>
+    <td class="r">${money(it.current_stock)}</td>
+    <td class="r">${money(it.pending_qty)}</td>
+    <td class="r">${money(it.order_qty)}</td>
+    <td class="r">${money2(it.unit_price)}</td>
+    <td class="r">${money2(it.total_cny)}</td>
+    <td class="r">${money2(it.total_thb)}</td>
+    <td class="c">${esc(it.shipping_method||p.shipping_method)}</td>
+    <td class="c">${esc(it.order_type)}</td>
+    <td class="c">${esc(it.po_number)||'-'}</td>
+    <td>${esc(it.remark)}</td></tr>`).join('');
+  if(!rows)rows='<tr><td colspan="14" class="c" style="color:#888">— ไม่พบรายการในใบขอซื้อนี้ —</td></tr>';
+  const dd=p.pr_date?new Date(p.pr_date).toLocaleDateString('th-TH',
+    {day:'2-digit',month:'2-digit',year:'numeric'}):'-';
+  const sign=[['requester','ผู้ขอซื้อ'],['reviewer','ผู้ตรวจสอบ'],['approver','ผู้อนุมัติ']]
+    .map(function(a){
+      const s=(p.signatures&&p.signatures[a[0]])||{};
+      const nm=s.name?esc(s.name):'&nbsp;';
+      const dt=s.date?new Date(s.date).toLocaleDateString('th-TH'):'____ / ____ / ____';
+      return '<div class="bx"><div class="role">'+a[1]+'</div><div class="nm">'+nm+'</div>'
+        +'<div class="ln"></div><div class="dt">วันที่ '+dt+'</div></div>';
+    }).join('');
+  return `<div class="pr-sheet">
+    <div class="pr-ban">
+      <div><div class="pr-co">บริษัท มาซารุ มาร์เก็ตติ้ง จำกัด (สำนักงานใหญ่)</div>
+        <div class="pr-addr">475/4-5 ถนนทหารบก ตำบลบ่อพลับ อำเภอเมืองนครปฐม จังหวัดนครปฐม 73000</div></div>
+      <div><div class="pr-t1">ใบขอซื้อ</div><div class="pr-t2">Purchase Request</div>
+        <div class="pr-t3">FM-PH-01 (Rev.2)</div></div>
+    </div>
+    <table class="pr-info"><tr>
+      <td class="k">เลขที่ใบขอซื้อ</td><td><b>${esc(p.pr_number)}</b></td>
+      <td class="k">วันที่ขอซื้อ</td><td>${esc(dd)}</td>
+      <td class="k">ประเภทเอกสาร</td><td>${esc(p.doc_type||'ใบขอซื้อปกติ')}</td>
+    </tr><tr>
+      <td class="k">ผู้ขอซื้อ</td><td>${esc(p.requester)}</td>
+      <td class="k">แผนก</td><td>${esc(p.department)}</td>
+      <td class="k">ช่องทางขนส่งหลัก</td><td>${esc(p.shipping_method)}</td>
+    </tr><tr>
+      <td class="k">สกุลเงิน</td><td>${esc(p.currency)}</td>
+      <td class="k">เรท (B/¥)</td><td>${esc(p.exchange_rate)}</td>
+      <td class="k">วิธีชำระเงิน</td><td>${esc(p.payment_method)}</td>
+    </tr></table>
+    <table class="pr-items"><thead><tr>
+      <th style="width:4%">ลำดับ</th><th style="width:9%">รหัสสินค้า</th><th style="width:13%">ชื่อสินค้า</th>
+      <th style="width:9%">Supplier</th><th style="width:6%">สต็อก<br>ปัจจุบัน</th>
+      <th style="width:6%">Pending</th><th style="width:6%">จำนวน<br>สั่ง</th>
+      <th style="width:7%">ราคา/หน่วย<br>(${cs})</th><th style="width:8%">ราคารวม<br>(${cs})</th>
+      <th style="width:8%">ราคารวม<br>(฿)</th><th style="width:5%">ขนส่ง</th>
+      <th style="width:5%">ประเภท</th><th style="width:7%">เลขที่ PO</th><th>หมายเหตุ</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td colspan="8" class="r">รวมทั้งสิ้น</td>
+        <td class="r">${money2(p.total_cny)}</td><td class="r">${money2(p.total_thb)}</td>
+        <td colspan="4"></td></tr></tfoot></table>
+    ${p.note?`<div class="pr-info" style="border:1px solid #CBD5E1;border-radius:6px;margin-top:9px;padding:7px 10px;font-size:11px;white-space:pre-wrap"><b style="color:#1F3864">หมายเหตุ</b><br>${esc(p.note)}</div>`:''}
+    <div class="pr-sign">${sign}</div>
+    <div class="pr-foot">พิมพ์เมื่อ ${esc(new Date().toLocaleString('th-TH'))} · MASARU Purchase Hub</div>
+  </div>`;
+}
+/* ปุ่ม 📄 รายงวด — ปริ้นใบขอซื้อของบิลนั้น (อ้างจาก pay_bills.ref_pr) */
+async function printPrOfBill(billId){
+  const b=billOf(billId);
+  const pr=String(b.ref_pr||'').trim();
+  if(!pr)return alert('บิลนี้ยังไม่ได้ผูกเลขใบขอซื้อ (PR)\n\nใส่ได้ที่ช่อง "อ้างอิง PR" ตอนแก้บิล');
+  toast('กำลังเตรียมใบขอซื้อ '+pr+'…');
+  const r=await prLoad(pr);
+  if(!r)return alert('ไม่พบใบขอซื้อเลข '+pr+' ในระบบ\n\nเช็คเลขใบที่หน้า 📋 ใบขอซื้อ');
+  printSheetsHtml([prSheetHtml(r.p,r.items)],{land:true,empty:'ไม่มีใบขอซื้อให้พิมพ์'});
+}
+
+/* ─── กระดาษสลิป / หลักฐานการจ่าย ─── */
+function slipSheetHtml(p){
+  const its=slipList(p).filter(it=>!/pdf/i.test(it.mime||'')&&!/\.pdf(\?|$)/i.test(it.url||''));
+  const pdfs=slipList(p).filter(it=>/pdf/i.test(it.mime||'')||/\.pdf(\?|$)/i.test(it.url||''));
+  if(!its.length&&!pdfs.length)return '';
+  const b=billOf(p.bill_id);
+  const pics=its.map(function(it,i){
+    const src=it.id?('https://drive.google.com/thumbnail?id='+encodeURIComponent(it.id)+'&sz=w1600'):(it.url||'');
+    return '<div class="sl-one"><div class="cap">'+(i+1)+'. '+esc(it.name||'สลิป')+'</div>'
+      +'<img src="'+esc(src)+'" loading="eager"></div>';
+  }).join('');
+  const note=pdfs.length
+    ? '<div style="font-size:10.5px;color:#B01722;margin-top:6px">📄 มีไฟล์ PDF แนบอีก '+pdfs.length
+      +' ไฟล์ — เปิดพิมพ์แยกจากปุ่ม 🧾 ในตารางสลิป</div>' : '';
+  return `<div class="sl-sheet">
+    <div class="sl-hd"><div class="sl-ti">🧾 หลักฐานการจ่ายเงิน</div>
+      <div class="sl-meta">
+        วันที่จ่าย <b>${esc(p.pay_date||'-')}</b> · งวด <b>${esc(p.installment||p.note||'-')}</b><br>
+        PO <b>${esc(b.po_number||'-')}</b> · ผู้ขาย <b>${esc(b.vendor||'-')}</b>
+        · ยอด <b>${money2(p.amount)} ${curSym(b.currency)}</b>
+        ${p.channel?(' · ช่องทาง '+esc(p.channel)):''}
+      </div></div>
+    ${pics}${note}</div>`;
+}
+
+/* ─── พิมพ์ HTML หลายใบรวมเป็นงานเดียว ─── */
+function printSheetsHtml(parts,opt){
+  opt=opt||{};
+  const list=(parts||[]).filter(function(h){return h&&String(h).trim();});
+  if(!list.length){ alert(opt.empty||'ยังไม่มีเอกสารให้พิมพ์'); return; }
+  const wrap=document.createElement('div');
+  wrap.className='doc-pack';
+  /* เอา "ตัวกระดาษ" ขึ้นมาเป็นลูกชั้นแรกของ .doc-pack ตรง ๆ
+     เพราะกฎ @media print ที่ถอดกรอบ/ความกว้างจำกัด มองแค่ลูกชั้นแรก
+     ถ้าห่อกล่องอีกชั้น ใบจะแคบกว่าเดิม (ใบเสนอราคาเคยออกมาแคบ)      */
+  list.forEach(function(h,i){
+    const tmp=document.createElement('div');
+    tmp.innerHTML=String(h).trim();
+    const kids=[].slice.call(tmp.children);
+    const first=kids.length===1?kids[0]:null;
+    if(first){
+      if(i)first.classList.add('doc-break');
+      wrap.appendChild(first);
+    }else{                                 // เผื่อ HTML ที่มีหลายก้อน (เช่นใบปะหน้า)
+      const box=document.createElement('div');
+      if(i)box.className='doc-break';
+      while(tmp.firstChild)box.appendChild(tmp.firstChild);
+      wrap.appendChild(box);
+    }
+  });
+  if(!wrap.children.length){ alert(opt.empty||'ยังไม่มีเอกสารให้พิมพ์'); return; }
+  printSheet(wrap,opt);
+}
+
+/* ─── 🗂️ ปริ้นทั้งชุดของวันที่ที่เลือก (ย้อนหลังได้) ───
+   ลำดับ: ใบปะหน้า → ใบเสนอราคา (ไม่ซ้ำ PO) → ใบขอซื้อ (ไม่ซ้ำ PR) → สลิป */
+let PACK_BUSY=false;
+async function printDayPack(){
+  if(PACK_BUSY)return;
+  const rows=docSelected();
+  if(!rows.length)return alert('วันที่ '+($('dcDate').value||'')+' ยังไม่ได้เลือกรายการ\n\n'
+    +'เลือกงวดที่จะทำเอกสารก่อน แล้วกดปริ้นทั้งชุดอีกครั้ง');
+  PACK_BUSY=true;
+  try{
+    toast('กำลังรวบรวมเอกสาร…');
+    await ensureQuots();
+
+    /* ① ใบปะหน้า — ใช้กระดาษที่พรีวิวอยู่ (สร้างใหม่ถ้ายังไม่มี) */
+    if(!$('dcSheet')||!$('dcSheet').innerHTML.trim())await buildDoc();
+    const parts=[];
+    const cover=$('dcSheet')&&$('dcSheet').innerHTML.trim();
+    if(cover)parts.push(cover);
+
+    /* ② ใบเสนอราคา — ตัดซ้ำตาม PO (ใบเสนอราคาไม่ใช่รายงวด) */
+    const pos=[], seenPo={};
+    rows.forEach(function(p){
+      const po=billOf(p.bill_id).po_number||'';
+      const k=nzPo(po); if(!k||seenPo[k])return; seenPo[k]=1; pos.push(po);
+    });
+    const missQ=[];
+    for(const po of pos){
+      const x=quotOfPO(po);
+      if(!x){ missQ.push(po); continue; }
+      const h=await quotSheetHtml(x);
+      if(h)parts.push(h); else missQ.push(po);
+    }
+
+    /* ③ ใบขอซื้อ (PR) — ตัดซ้ำตามเลข PR (PR ก็ไม่ใช่รายงวด) */
+    const prs=[], seenPr={};
+    rows.forEach(function(p){
+      const r=String(billOf(p.bill_id).ref_pr||'').trim();
+      if(!r||seenPr[r])return; seenPr[r]=1; prs.push(r);
+    });
+    const missP=[];
+    for(const no of prs){
+      const r=await prLoad(no);
+      if(!r){ missP.push(no); continue; }
+      parts.push(prSheetHtml(r.p,r.items));
+    }
+
+    /* ④ สลิป / หลักฐานการจ่าย — อันนี้เป็นรายงวดจริง */
+    let nSlip=0;
+    rows.forEach(function(p){
+      const h=slipSheetHtml(p);
+      if(h){ parts.push(h); nSlip++; }
+    });
+
+    const warn=[];
+    if(missQ.length)warn.push('• ไม่พบใบเสนอราคาของ PO: '+missQ.join(', '));
+    if(missP.length)warn.push('• ไม่พบใบขอซื้อเลข: '+missP.join(', '));
+    if(!prs.length)warn.push('• งวดที่เลือกยังไม่ได้ผูกเลข PR — ไม่มีใบขอซื้อในชุด');
+    if(!nSlip)warn.push('• ยังไม่มีสลิป/หลักฐานการจ่ายที่แนบไว้');
+    const sum='📦 ชุดเอกสารวันที่ '+($('dcDate').value||'')+'\n\n'
+      +'• ใบปะหน้า '+(cover?'1':'0')+' ใบ\n'
+      +'• ใบเสนอราคา '+(pos.length-missQ.length)+' ใบ (จาก '+pos.length+' PO)\n'
+      +'• ใบขอซื้อ (PR) '+(prs.length-missP.length)+' ใบ\n'
+      +'• หน้าสลิป '+nSlip+' หน้า\n'
+      +(warn.length?('\n⚠️ หมายเหตุ\n'+warn.join('\n')+'\n'):'')
+      +'\nพิมพ์เลยไหม?';
+    if(!confirm(sum))return;
+    printSheetsHtml(parts,{empty:'ไม่มีเอกสารให้พิมพ์'});
+  }catch(e){
+    console.error('[pack]',e);
+    alert('รวบรวมเอกสารไม่สำเร็จ: '+(e&&e.message||e));
+  }finally{ PACK_BUSY=false; }
 }
 
 /* ==================================================================
