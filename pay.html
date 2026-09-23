@@ -360,7 +360,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-01</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-02</span>
   </span>
   <!-- ⚠️ ป้าย "🧪 โหมดทดสอบ" ถอดออกตามที่สั่ง (v09-96)
        พฤติกรรมยังคงเดิม — APPROVAL_MODE=false อยู่ (ดูตัวแปรในสคริปต์)
@@ -1300,7 +1300,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v10-01';
+const PAY_VERSION='v10-02';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -4037,15 +4037,12 @@ function histBlock(rows){
      บิลใบเดียวมักแตกงวดจ่ายคนละนาม — เช่น 19644 งวด 1,2,4 นามบุคคล แต่งวด 3 MASARU
      เดิมบล็อกหมายเหตุบอกแค่ วันที่ / ยอด / ค้าง คนตรวจต้องไปเปิด "ประวัติงวดจ่าย" เองถึงจะรู้
      ⚠️ ยึด pay_type ของ "งวด" ไม่ใช่ company ของบิล — เงินออกในนามใครเป็นเรื่องของงวด
-     งวดที่จ่ายคนละนามกับใบปะหน้าใบนี้ → ใส่กรอบ ให้สะดุดตาตอนตรวจ */
-  const ptSelf=[...new Set(rows.map(p=>p.pay_type).filter(Boolean))];
-  const ptMine=ptSelf.length===1?ptSelf[0]:'';   // ปนหลายนาม = ไม่มีนาม "ของใบนี้" ให้เทียบ
+     🚫 ห้ามใส่กรอบ/กล่อง/พื้นหลังรอบชื่อ — ใบนี้เอาไปปริ้นจริง เส้นกรอบกลางบรรทัดอ่านแล้วสะดุด
+        ทุกงวดใช้รูปแบบเดียวกันหมด ตัวหนาอย่างเดียว ให้คนอ่านกวาดตาเทียบชื่อเอง */
   const ptTag=function(p){
     const v=String(p.pay_type||'').trim();
-    if(!v)return ' <span style="color:#854F0B">\u00b7 จ่ายในนาม (ยังไม่ระบุ)</span>';
-    return ptMine&&v!==ptMine
-      ? ' \u00b7 จ่ายในนาม <b style="border:1px solid #64748B;border-radius:4px;padding:0 5px">'+esc(v)+'</b>'
-      : ' \u00b7 จ่ายในนาม <b>'+esc(v)+'</b>';
+    return v ? ' \u00b7 จ่ายในนาม <b>'+esc(v)+'</b>'
+             : ' <span style="color:#854F0B">\u00b7 จ่ายในนาม (ยังไม่ระบุ)</span>';
   };
   const dth=s=>{if(!s)return '-';const [y,m,dd]=String(s).split('-');return `${dd}.${m}.${y}`;};
   const unit=c=>c==='THB'?'บาท':(c==='USD'?'ดอลลาร์':'หยวน');
