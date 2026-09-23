@@ -67,6 +67,11 @@
   .sum-label{font-size:12px;color:var(--muted)}
   .sum-val{font-size:24px;font-weight:700;margin-top:3px}
   .sum-sub{font-size:11px;color:var(--muted);margin-top:1px}
+  /* ตัวเลขในบรรทัดรองที่กดกรองตารางได้ — ให้รู้ว่ากดได้ ไม่ใช่ข้อความเฉย ๆ */
+  .sum-go{background:none;border:none;padding:0;font:inherit;color:#B45309;font-weight:700;
+    cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px}
+  .sum-go:hover{color:#8A3F06}
+  .sum-go.ok{color:#1E7145}
 
   /* toolbar */
   .toolbar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
@@ -789,6 +794,9 @@ body.price-on .sl-price{display:block}
       <div class="sum-card"><div class="sum-label">✅ เข้าคลังแล้ว (เดือนที่เลือก)</div>
         <div class="sum-val" id="arrInBox">0</div>
         <div class="sum-sub" id="arrInSub">จากที่แจ้งมา 0 ลัง</div></div>
+      <div class="sum-card"><div class="sum-label">🚚 จัดเที่ยวส่งแล้ว</div>
+        <div class="sum-val" id="arrPlanVal">0</div>
+        <div class="sum-sub" id="arrPlanSub">—</div></div>
       <div class="sum-card"><div class="sum-label">📋 ใบแจ้งในเดือน</div>
         <div class="sum-val" id="arrNotice">0</div>
         <div class="sum-sub" id="arrNoticeSub">ยังไม่ครบ 0 ใบ</div></div>
@@ -820,6 +828,7 @@ body.price-on .sl-price{display:block}
         <option value="waiting">🟠 ค้างที่ขนส่ง</option>
         <option value="partial">🟡 เข้าคลังบางส่วน</option>
         <option value="plan">🚚 จัดเที่ยวส่งแล้ว</option>
+        <option value="noplan">⏳ ยังไม่ได้จัดเที่ยวส่ง</option>
         <option value="sent">📤 ส่งตรวจค่าขนส่งแล้ว (ที่ซ่อนอยู่)</option>
         <option value="done">✅ เข้าคลังครบ</option>
         <option value="cancel">⚪ ยกเลิก</option>
@@ -1358,7 +1367,7 @@ const SUPABASE_KEY = 'sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentRole = null; let ROLE_LABEL = '';
-const BOARD_VERSION='v05-03';
+const BOARD_VERSION='v05-04';
 try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
 console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
@@ -4288,6 +4297,24 @@ function arrSetDue(v){
    เดิมใช้ 2 เท่าของเกณฑ์ ซึ่งพอเกณฑ์เป็น 7 จะกลายเป็น 14 วัน ช้าเกินจะตามของ */
 const arrHotDays = () => ARR_DUE + 3;
 
+/* ══════════════════════════════════════════════════════════════════
+   ⏳ ใบที่ยัง "ต้องจัดเที่ยวส่ง"
+   ──────────────────────────────────────────────────────────────────
+   = ยังมีของค้างที่ขนส่ง และยังจัดเที่ยวไม่ครบยอดค้าง
+   ใช้กติกาเดียวกับที่แจ้งเตือนของค้างใช้ตัดใบออก (!pl.full)
+   ⇒ ตัวเลขบนการ์ด · ตัวกรองในตาราง · กล่องเตือน จะพูดตรงกันเสมอ
+   ══════════════════════════════════════════════════════════════════ */
+function arrNeedTrip(g){
+  return g.st!=='cancel' && g.st!=='done' && g.t.boxWait>0.0001 && !(g.pl && g.pl.full);
+}
+/* กดตัวเลขบนการ์ด → กรองตารางให้ดูเฉพาะกลุ่มนั้น */
+function arrFilterTo(v){
+  const el=$('arrStatus'); if(!el) return;
+  el.value = (el.value===v ? '' : v);
+  renderArr();
+  const tb=$('arrTb'); if(tb) tb.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
 /* ใบที่ค้างเกินกำหนด เรียงค้างนานสุดก่อน */
 function arrOverdue(groups){
   /* ★ ใบที่จัดเที่ยวส่งไว้ครบแล้ว ไม่ต้องเตือนให้ตามของอีก — มีคิววันรับแล้ว */
@@ -4585,6 +4612,7 @@ function renderArr(){
     rows = rows.filter(g => ids.includes(String(g.n.id)));
   }
   else if(st==='plan') rows = rows.filter(g => g.pl.pcs>0.0001);
+  else if(st==='noplan') rows = rows.filter(arrNeedTrip);
   else if(st==='sent'){ /* กรองไว้แล้วด้านบน — โชว์เฉพาะใบที่ส่งตรวจค่าขนส่งแล้ว */ }
   else if(st) rows = rows.filter(g => g.st===st);
   if(q) rows = rows.filter(g =>
@@ -4617,9 +4645,29 @@ function renderArr(){
 
   /* ★ ตัวเลขหลักเป็น "ชิ้น" · ลัง/คิว/กก. ย้ายไปบรรทัดรอง */
   $('arrWaitBox').textContent = arrInt(sum.pcsWait) + ' ชิ้น';
+  /* ยอดจัดเที่ยวย้ายไปการ์ดของตัวเองแล้ว — ตรงนี้เหลือหน่วยของ "ค้างที่ขนส่ง" ล้วน ๆ */
   $('arrWaitSub').textContent = arrInt(sum.boxWait) + ' ลัง · ' + arrMoney(sum.cbmWait) + ' คิว · '
-                              + arrInt(sum.kgWait) + ' กก.'
-                              + (sum.plan>0.0001 ? ' · 🚚 จัดเที่ยวแล้ว '+arrInt(sum.plan)+' ชิ้น' : '');
+                              + arrInt(sum.kgWait) + ' กก.';
+
+  /* 🚚 จัดเที่ยวส่งแล้ว / ⏳ ยังไม่ได้จัด — คิดจาก "ของที่ยังค้างที่ขนส่ง" เท่านั้น
+     (ของที่เข้าคลังไปแล้วไม่ต้องจัดเที่ยวอีก จึงไม่นับเป็นตัวหาร) */
+  const planPcs = Math.min(sum.plan, sum.pcsWait);
+  const openPcs = Math.max(0, sum.pcsWait - planPcs);
+  const nPlan   = all.filter(g => g.pl && g.pl.pcs>0.0001).length;
+  const nNeed   = all.filter(arrNeedTrip).length;
+  const pct     = sum.pcsWait>0.0001 ? Math.round(planPcs/sum.pcsWait*100) : 0;
+  $('arrPlanVal').textContent = arrInt(planPcs) + ' ชิ้น';
+  $('arrPlanVal').style.color = (sum.pcsWait>0.0001 && openPcs<=0.0001) ? 'var(--green)' : '';
+  $('arrPlanSub').innerHTML = sum.pcsWait<=0.0001
+    ? 'ไม่มีของค้างที่ขนส่ง 🎉'
+    : (nPlan ? '<button class="sum-go ok" onclick="arrFilterTo(\'plan\')" '
+        +'title="กดเพื่อดูเฉพาะใบที่จัดเที่ยวส่งแล้ว">'+nPlan+' ใบ</button> · ' : '')
+      + pct + '% ของที่ค้าง'
+      + (openPcs>0.0001
+          ? '<br>⏳ ยังไม่ได้จัดเที่ยว <button class="sum-go" onclick="arrFilterTo(\'noplan\')" '
+            +'title="กดเพื่อดูเฉพาะใบที่ยังต้องจัดเที่ยวส่ง">'
+            +arrInt(openPcs)+' ชิ้น · '+nNeed+' ใบ</button>'
+          : '<br><b style="color:var(--green)">✅ จัดเที่ยวครบทุกใบแล้ว</b>');
   $('arrInBox').textContent   = arrInt(sum.pcsIn) + ' ชิ้น';
   $('arrInSub').textContent   = arrInt(sum.boxIn) + ' ลัง · จากที่แจ้งมา ' + arrInt(sum.pcs) + ' ชิ้น';
   /* นับเฉพาะใบที่ยังอยู่ในตาราง (ใบที่ส่งตรวจค่าขนส่งแล้วถูกซ่อน จึงไม่นับ) */
