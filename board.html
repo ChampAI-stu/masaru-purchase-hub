@@ -77,6 +77,11 @@
      ทศนิยม 4 ตำแหน่งทำให้ตัวเลขยาว จึงย่อ font ลงหน่อยและกันไม่ให้ตัดบรรทัดกลางตัวเลข */
   .sum-val.cbm-main{font-size:22px;white-space:nowrap;letter-spacing:-.3px;color:#1D4ED8}
   .sum-val .u{font-size:.6em;font-weight:600;color:#6B8BD6;margin-left:3px}
+  /* จำนวนชิ้น — ข้อมูลประกอบ ไม่ใช่ตัวชี้วัดหลักของแท็บนี้ จึงเล็กและจางกว่ารอบข้าง */
+  /* จำนวนชิ้น = ข้อมูลประกอบ ไม่ใช่ตัวชี้วัด → เล็กและจางกว่าตัวอื่นเสมอ
+     ใช้ opacity แทนการตรึงสีเทา เพราะต้องจางลงได้ทั้งบนพื้นขาว
+     และบนกล่องเตือนพื้นส้ม/แดง (สีเทาตายตัวจะกลืนพื้นจนอ่านไม่ออก) */
+  .pcs-s{font-size:.88em;font-weight:400;opacity:.62}
   @media(max-width:1280px){ .sum-val.cbm-main{font-size:19px} }
   @media(max-width:1024px){ .sum-val.cbm-main{font-size:17px} }
 
@@ -1374,7 +1379,7 @@ const SUPABASE_KEY = 'sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentRole = null; let ROLE_LABEL = '';
-const BOARD_VERSION='v05-08';
+const BOARD_VERSION='v05-09';
 try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
 console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
@@ -4021,6 +4026,8 @@ function arrM(it){
 }
 /* ข้อความกำกับ 2 หน่วย ใช้ในทูลทิป */
 const arrBoth = (pcs,box) => arrInt(pcs)+' ชิ้น ('+arrInt(box)+' ลัง)';
+/* จำนวนชิ้นแบบ "ตัวเล็กจาง" — ใช้ทุกที่ในแท็บแจ้งสินค้าขาเข้า ให้คิวเป็นพระเอกเสมอ */
+const arrPcsS = n => '<span class="pcs-s">' + arrInt(n) + ' ชิ้น</span>';
 
 /* ── ยอดรวมของใบแจ้ง ──
    ★ บรรทัดพ่วง (is_extra) นับแค่จำนวนชิ้น ไม่นับลัง/คิว/น้ำหนัก
@@ -4392,7 +4399,7 @@ function renderArrAlert(groups){
   const kgW  = due.reduce((a,g)=>a+g.t.kgWait,0);
   box.innerHTML = `<div class="arr-alert ${hot.length?'red':'amber'}">
     <h4>${hot.length?'🔴':'🟠'} มีของค้างที่ขนส่งเกิน ${ARR_DUE} วัน — ${due.length} ใบแจ้ง
-      · ${arrMoney(cbmW)} คิว · ${arrInt(boxW)} ลัง</h4>
+      · ${arrMoney(cbmW)} คิว · ${arrInt(boxW)} ลัง ${arrPcsS(pcsW)}</h4>
     <div style="font-size:12.5px;color:var(--muted)">
       ${hot.length?`<b style="color:var(--red)">ค้างเกิน ${arrHotDays()} วัน ${hot.length} ใบ — ควรโทรตามขนส่งวันนี้</b> · `:''}
       แจ้งคลังให้เตรียมพื้นที่ไว้ก่อนได้เลย</div>
@@ -4400,7 +4407,7 @@ function renderArrAlert(groups){
       <span class="arr-al-day ${g.days>=arrHotDays()?'r':'a'}">ค้าง ${g.days} วัน</span>
       <b>${esc(g.n.carrier||'-')}</b>
       <span style="color:var(--muted)">แจ้ง ${fmtDate(g.n.notice_date)}${g.n.notice_no?' · '+esc(g.n.notice_no):''}</span>
-      <span>ค้าง <b>${arrMoney(g.t.cbmWait)}</b> คิว · ${arrInt(g.t.boxWait)} ลัง</span>
+      <span>ค้าง <b>${arrMoney(g.t.cbmWait)}</b> คิว · ${arrInt(g.t.boxWait)} ลัง ${arrPcsS(g.t.pcsWait)}</span>
       ${g.pl&&g.pl.pcs>0.0001?`<span class="arr-pl">🚚 จัดเที่ยวแล้ว ${arrMoney(g.pl.cbm||0)} คิว${
         g.pl.date?' · '+fmtDate(g.pl.date):''}</span>`:''}
       <div style="flex:1"></div>
@@ -4578,20 +4585,23 @@ function renderArrStrip(groups){
   const keys = Object.keys(by).sort((a,b)=>by[b].boxWait-by[a].boxWait || a.localeCompare(b));
   if(!keys.length){ el.innerHTML=''; return; }
   const tot = keys.reduce((a,k)=>({n:a.n+by[k].n, boxWait:a.boxWait+by[k].boxWait,
-    cbmWait:a.cbmWait+by[k].cbmWait}),{n:0,boxWait:0,cbmWait:0});
+    cbmWait:a.cbmWait+by[k].cbmWait, pcsWait:a.pcsWait+by[k].pcsWait}),
+    {n:0,boxWait:0,cbmWait:0,pcsWait:0});
   el.innerHTML =
     '<button class="arr-chip'+(ARR_CAR?'':' on')+'" style="border-left-color:var(--navy)" onclick="arrPickCar(\'\')">'
       +'<b>ทุกบริษัทขนส่ง</b>'
-      +'<span class="s">'+tot.n+' ใบ · ค้าง '+arrMoney(tot.cbmWait)+' คิว</span></button>'
+      +'<span class="s">'+tot.n+' ใบ · ค้าง '+arrMoney(tot.cbmWait)+' คิว '
+        +arrPcsS(tot.pcsWait)+'</span></button>'
     + keys.map(function(k){
         const p=by[k], c=arrColor(k);
         return '<button class="arr-chip'+(ARR_CAR===k?' on':'')+'" style="border-left-color:'+c+'"'
           +' onclick="arrPickCar('+JSON.stringify(k).replace(/"/g,'&quot;')+')">'
           +'<b style="color:'+c+'">🚛 '+esc(k)+'</b>'
-          +'<span class="s">'+p.n+' ใบ · แจ้งมา '+arrMoney(p.cbm)+' คิว ('+arrInt(p.boxes)+' ลัง)</span>'
+          +'<span class="s">'+p.n+' ใบ · แจ้งมา '+arrMoney(p.cbm)+' คิว ('+arrInt(p.boxes)+' ลัง) '
+            +arrPcsS(p.pcs)+'</span>'
           +(p.boxWait>0.0001
             ? '<span class="w">ค้าง <b style="color:#1D4ED8">'+arrMoney(p.cbmWait)+' คิว</b>'
-              +' · '+arrInt(p.boxWait)+' ลัง'
+              +' · '+arrInt(p.boxWait)+' ลัง '+arrPcsS(p.pcsWait)
               +(p.due?(' · <span style="color:var(--red)">เกินกำหนด '+p.due+' ใบ</span>'):'')+'</span>'
             : '<span class="s" style="color:var(--green);font-weight:700">✅ เข้าคลังครบ</span>')
           +'</button>';
@@ -4674,7 +4684,8 @@ function renderArr(){
   $('arrWaitBox').title = 'คิว = ปริมาตรที่ต้องเตรียมพื้นที่คลัง และเป็นฐานคิดค่าขนส่ง';
   /* ★ บรรทัดที่ 2 ของการ์ดนี้ = ของค้างก้อนนี้ จัดเที่ยวส่งไปแล้วเท่าไหร่ / เหลือต้องจัดอีกเท่าไหร่
         (ตัวเลขชุดเดียวกับการ์ด 🚚 — เอามาไว้ตรงนี้ด้วยเพราะเป็นที่ที่คนดูยอดค้างเป็นอันดับแรก) */
-  $('arrWaitSub').innerHTML = arrInt(sum.boxWait) + ' ลัง · ' + arrInt(sum.kgWait) + ' กก.'
+  $('arrWaitSub').innerHTML = arrInt(sum.boxWait) + ' ลัง · ' + arrInt(sum.kgWait) + ' กก. '
+    + arrPcsS(sum.pcsWait)
     + (sum.cbmWait>0.0001
         ? '<br><span style="color:#1E7145">🚚 จัดเที่ยวแล้ว ' + arrMoney(planCbm) + ' คิว</span>'
           + (openCbm>0.0001
@@ -4693,16 +4704,17 @@ function renderArr(){
     ? 'ไม่มีของค้างที่ขนส่ง 🎉'
     : (nPlan ? '<button class="sum-go ok" onclick="arrFilterTo(\'plan\')" '
         +'title="กดเพื่อดูเฉพาะใบที่จัดเที่ยวส่งแล้ว">'+nPlan+' ใบ</button> · ' : '')
-      + pct + '% ของที่ค้าง'
+      + pct + '% ของที่ค้าง ' + arrPcsS(planPcs)
       + (openCbm>0.0001
           ? '<br>⏳ ยังไม่ได้จัดเที่ยว <button class="sum-go" onclick="arrFilterTo(\'noplan\')" '
             +'title="กดเพื่อดูเฉพาะใบที่ยังต้องจัดเที่ยวส่ง">'
-            +arrMoney(openCbm)+' คิว · '+nNeed+' ใบ</button>'
+            +arrMoney(openCbm)+' คิว · '+nNeed+' ใบ</button> '+arrPcsS(openPcs)
           : '<br><b style="color:var(--green)">✅ จัดเที่ยวครบทุกใบแล้ว</b>');
   const cbmIn = Math.max(0, sum.cbm - sum.cbmWait);
   $('arrInBox').className = 'sum-val cbm-main';
   $('arrInBox').innerHTML = arrMoney(cbmIn) + '<span class="u">คิว</span>';
-  $('arrInSub').textContent = arrInt(sum.boxIn) + ' ลัง · จากที่แจ้งมา ' + arrMoney(sum.cbm) + ' คิว';
+  $('arrInSub').innerHTML = arrInt(sum.boxIn) + ' ลัง · จากที่แจ้งมา ' + arrMoney(sum.cbm) + ' คิว '
+                          + arrPcsS(sum.pcsIn);
   /* นับเฉพาะใบที่ยังอยู่ในตาราง (ใบที่ส่งตรวจค่าขนส่งแล้วถูกซ่อน จึงไม่นับ) */
   const nSentAll = ARR.filter(x=>x.freight_sent_at).length;
   $('arrNotice').textContent  = ARR.length - nSentAll;
@@ -4711,9 +4723,10 @@ function renderArr(){
   const oldDays = oldest ? arrDaysWait(oldest.n.notice_date) : 0;
   $('arrOld').textContent    = oldest ? (oldDays + ' วัน') : '-';
   $('arrOld').style.color    = (oldest && oldDays>=ARR_DUE) ? 'var(--red)' : '';
-  $('arrOldSub').textContent = oldest
+  $('arrOldSub').innerHTML = oldest
     ? (esc(oldest.n.carrier||'-') + ' · แจ้ง ' + fmtDate(oldest.n.notice_date)
-       + ' · ค้าง ' + arrMoney(oldest.t.cbmWait) + ' คิว (' + arrInt(oldest.t.boxWait) + ' ลัง)')
+       + ' · ค้าง ' + arrMoney(oldest.t.cbmWait) + ' คิว (' + arrInt(oldest.t.boxWait) + ' ลัง) '
+       + arrPcsS(oldest.t.pcsWait))
     : 'ไม่มีของค้างที่ขนส่ง 🎉';
 
   if(!rows.length){
