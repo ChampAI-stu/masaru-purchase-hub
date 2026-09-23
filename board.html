@@ -149,6 +149,7 @@
     #arrPrint tr.g{break-after:avoid;page-break-after:avoid}   /* หัวใบไม่ตกค้างท้ายหน้าเดี่ยว ๆ */
   }
   #arrPrint{font-size:9px;color:#000;background:#fff}
+  #arrPrint .pcs-s{opacity:1;color:#666}   /* บนกระดาษ: เทาเข้มพอให้ถ่ายเอกสารติด */
   #arrPrint .rp-hd{display:flex;align-items:flex-end;gap:10px;border-bottom:2.5px solid #14315C;padding-bottom:6px;margin-bottom:8px}
   #arrPrint .rp-ti{font-size:15px;font-weight:800;color:#14315C;line-height:1.25}
   #arrPrint .rp-sub{font-size:9px;color:#444;margin-top:2px}
@@ -1379,7 +1380,7 @@ const SUPABASE_KEY = 'sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentRole = null; let ROLE_LABEL = '';
-const BOARD_VERSION='v05-09';
+const BOARD_VERSION='v05-10';
 try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
 console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
@@ -5279,8 +5280,10 @@ function arrPdfSum(list){
     return {n:a.n+1, boxes:a.boxes+g.t.boxes, pcs:a.pcs+g.t.pcs, cbm:a.cbm+g.t.cbm, kg:a.kg+g.t.kg,
             pcsIn:a.pcsIn+g.t.pcsIn, boxIn:a.boxIn+g.t.boxIn,
             pcsWait:a.pcsWait+g.t.pcsWait, boxWait:a.boxWait+g.t.boxWait,
-            cbmWait:a.cbmWait+g.t.cbmWait, kgWait:a.kgWait+g.t.kgWait, plan:a.plan+g.pl.pcs};
-  },{n:0,boxes:0,pcs:0,cbm:0,kg:0,pcsIn:0,boxIn:0,pcsWait:0,boxWait:0,cbmWait:0,kgWait:0,plan:0});
+            cbmWait:a.cbmWait+g.t.cbmWait, kgWait:a.kgWait+g.t.kgWait,
+            plan:a.plan+g.pl.pcs, planCbm:a.planCbm+(g.pl.cbm||0)};
+  },{n:0,boxes:0,pcs:0,cbm:0,kg:0,pcsIn:0,boxIn:0,pcsWait:0,boxWait:0,cbmWait:0,kgWait:0,
+     plan:0,planCbm:0});
 }
 function arrPdf(){
   if(!ARR_LOADED){ toast('รอโหลดข้อมูลก่อน'); return; }
@@ -5315,7 +5318,7 @@ function arrPdf(){
     s.over = c.list.filter(g => g.st!=='done' && g.t.boxWait>0.0001 && !g.pl.full
                                 && arrDaysWait(g.n.notice_date)>=ARR_DUE).length;
     return {k:c.k, s:s};
-  }).sort((a,b)=>b.s.pcsWait-a.s.pcsWait);
+  }).sort((a,b)=>b.s.cbmWait-a.s.cbmWait);
 
   let h = `<div class="rp-hd">
     <div><div class="rp-ti">รายงานสินค้าขาเข้า — แจ้งจากบริษัทขนส่ง</div>
@@ -5325,12 +5328,12 @@ function arrPdf(){
       <br>เกณฑ์เตือน: ค้างเกิน ${ARR_DUE} วัน</div></div>`;
 
   h += `<div class="rp-kpi">
-    <div class="rp-k"><span>ค้างที่ขนส่ง (ยังไม่เข้าคลัง)</span><b>${arrInt(S.pcsWait)} ชิ้น</b>
-      <span>${arrInt(S.boxWait)} ลัง · ${arrMoney(S.cbmWait)} คิว · ${arrInt(S.kgWait)} กก.</span></div>
-    <div class="rp-k"><span>จัดเที่ยวส่งไว้แล้ว</span><b>${arrInt(S.plan)} ชิ้น</b>
-      <span>รอของถึงคลัง · ไม่ต้องตามขนส่ง</span></div>
-    <div class="rp-k"><span>เข้าคลังแล้ว (เดือนนี้)</span><b>${arrInt(S.pcsIn)} ชิ้น</b>
-      <span>${arrInt(S.boxIn)} ลัง · จากที่แจ้งมา ${arrInt(S.pcs)} ชิ้น</span></div>
+    <div class="rp-k"><span>ค้างที่ขนส่ง (ยังไม่เข้าคลัง)</span><b>${arrMoney(S.cbmWait)} คิว</b>
+      <span>${arrInt(S.boxWait)} ลัง · ${arrInt(S.kgWait)} กก. ${arrPcsS(S.pcsWait)}</span></div>
+    <div class="rp-k"><span>จัดเที่ยวส่งไว้แล้ว</span><b>${arrMoney(Math.min(S.planCbm,S.cbmWait))} คิว</b>
+      <span>รอของถึงคลัง · ไม่ต้องตามขนส่ง ${arrPcsS(S.plan)}</span></div>
+    <div class="rp-k"><span>เข้าคลังแล้ว (เดือนนี้)</span><b>${arrMoney(Math.max(0,S.cbm-S.cbmWait))} คิว</b>
+      <span>${arrInt(S.boxIn)} ลัง · จากที่แจ้งมา ${arrMoney(S.cbm)} คิว ${arrPcsS(S.pcsIn)}</span></div>
     <div class="rp-k"><span>ใบแจ้งในรายงาน</span><b>${S.n} ใบ</b>
       <span>ยังไม่ครบ ${live.filter(g=>g.st!=='done').length} ใบ · เกินกำหนด ${due.length} ใบ</span></div>
   </div>`;
@@ -5340,7 +5343,8 @@ function arrPdf(){
       <div class="rp-warn">` + due.slice(0,12).map(function(g){
         return '<b>ค้าง '+g.days+' วัน</b> · '+esc(g.n.carrier||'-')+' · แจ้ง '+fmtDate(g.n.notice_date)
              + (g.n.notice_no?(' · '+esc(g.n.notice_no)):'')
-             + ' — ค้าง <b>'+arrInt(g.t.pcsWait)+'</b> ชิ้น ('+arrInt(g.t.boxWait)+' ลัง · '+arrMoney(g.t.cbmWait)+' คิว)';
+             + ' — ค้าง <b>'+arrMoney(g.t.cbmWait)+'</b> คิว ('+arrInt(g.t.boxWait)+' ลัง) '
+             + arrPcsS(g.t.pcsWait);
       }).join('<br>')
       + (due.length>12?('<br><i>และอีก '+(due.length-12)+' ใบ</i>'):'') + `</div>`;
   }
@@ -5349,21 +5353,23 @@ function arrPdf(){
     <colgroup><col style="width:17%"><col style="width:7%"><col style="width:11%"><col style="width:9%">
       <col style="width:11%"><col style="width:9%"><col style="width:9%"><col style="width:9%">
       <col style="width:9%"><col style="width:9%"></colgroup>
-    <thead><tr><th>บริษัทขนส่ง</th><th>ใบแจ้ง</th><th>แจ้งมา (ชิ้น)</th><th>ลัง</th>
-      <th>เข้าคลัง (ชิ้น)</th><th>ค้าง (ชิ้น)</th><th>ค้าง (ลัง)</th><th>ค้าง (คิว)</th>
-      <th>จัดเที่ยวแล้ว</th><th>เกินกำหนด</th></tr></thead><tbody>`;
+    <thead><tr><th>บริษัทขนส่ง</th><th>ใบแจ้ง</th><th>แจ้งมา (คิว)</th><th>ลัง</th>
+      <th>เข้าคลัง (คิว)</th><th>ค้าง (คิว)</th><th>ค้าง (ลัง)</th><th>ค้าง (ชิ้น)</th>
+      <th>จัดเที่ยวแล้ว (คิว)</th><th>เกินกำหนด</th></tr></thead><tbody>`;
   cars.forEach(function(c){
-    h += `<tr><td>${esc(c.k)}</td><td class="n">${c.s.n}</td><td class="n">${arrInt(c.s.pcs)}</td>
-      <td class="n">${arrInt(c.s.boxes)}</td><td class="n dn">${arrInt(c.s.pcsIn)}</td>
-      <td class="n wt">${arrInt(c.s.pcsWait)}</td><td class="n">${arrInt(c.s.boxWait)}</td>
-      <td class="n">${arrMoney(c.s.cbmWait)}</td>
-      <td class="n pl">${c.s.plan>0.0001?arrInt(c.s.plan):'-'}</td>
+    h += `<tr><td>${esc(c.k)}</td><td class="n">${c.s.n}</td><td class="n">${arrMoney(c.s.cbm)}</td>
+      <td class="n">${arrInt(c.s.boxes)}</td>
+      <td class="n dn">${arrMoney(Math.max(0,c.s.cbm-c.s.cbmWait))}</td>
+      <td class="n wt">${arrMoney(c.s.cbmWait)}</td><td class="n">${arrInt(c.s.boxWait)}</td>
+      <td class="n"><span class="pcs-s">${arrInt(c.s.pcsWait)}</span></td>
+      <td class="n pl">${c.s.planCbm>0.0001?arrMoney(Math.min(c.s.planCbm,c.s.cbmWait)):'-'}</td>
       <td class="n">${c.s.over?('<b>'+c.s.over+' ใบ</b>'):'-'}</td></tr>`;
   });
-  h += `<tr class="sum"><td>รวมทั้งหมด</td><td class="n">${S.n}</td><td class="n">${arrInt(S.pcs)}</td>
-    <td class="n">${arrInt(S.boxes)}</td><td class="n">${arrInt(S.pcsIn)}</td>
-    <td class="n">${arrInt(S.pcsWait)}</td><td class="n">${arrInt(S.boxWait)}</td>
-    <td class="n">${arrMoney(S.cbmWait)}</td><td class="n">${arrInt(S.plan)}</td>
+  h += `<tr class="sum"><td>รวมทั้งหมด</td><td class="n">${S.n}</td><td class="n">${arrMoney(S.cbm)}</td>
+    <td class="n">${arrInt(S.boxes)}</td><td class="n">${arrMoney(Math.max(0,S.cbm-S.cbmWait))}</td>
+    <td class="n">${arrMoney(S.cbmWait)}</td><td class="n">${arrInt(S.boxWait)}</td>
+    <td class="n"><span class="pcs-s">${arrInt(S.pcsWait)}</span></td>
+    <td class="n">${arrMoney(Math.min(S.planCbm,S.cbmWait))}</td>
     <td class="n">${due.length} ใบ</td></tr></tbody></table>`;
 
   /* ── รายละเอียดรายใบแจ้ง ── */
