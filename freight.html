@@ -162,7 +162,7 @@ tr.round td{background:#FFFCF4!important}
   <div class="sp"></div>
   <span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง"
     style="background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px"
-    id="verBadge">v01-11</span>
+    id="verBadge">v01-12</span>
   <div class="pill-top" id="rolePill">…</div>
   <button class="btn-top" onclick="location.href='index.html'">🏠 หน้ารวม</button>
   <button class="btn-top" onclick="doLogout()">ออกจากระบบ</button>
@@ -487,6 +487,8 @@ tr.round td{background:#FFFCF4!important}
       <div style="flex:1"></div>
       <button class="btn mini ghost" id="dimPushBtn" style="display:none" onclick="dimPush()"
         title="บิล FCL พิมพ์ ก×ย×ส ต่อกล่องมาให้ — ส่งไปใส่เป็น 'ขนาดที่ขนส่งคิด' ในรายการรับสินค้าที่ยังว่าง จะได้ไม่ต้องพิมพ์ซ้ำ">⤴ ส่งขนาดเข้ารายการรับสินค้า</button>
+      <button class="btn mini ghost" onclick="pickOpen()"
+        title="ดึงเลขที่รายการ / PO / สินค้า / กล่อง จากแท็บ 📋 รายการตรวจสอบ — ไม่ต้องพิมพ์เอง">📥 ดึงจากรายการตรวจสอบ</button>
       <button class="btn mini ghost" onclick="pasteOpen()" title="ก็อปตารางจาก PDF/Excel มาวางทีเดียวหลายบรรทัด">📋 วางจากตาราง</button>
       <button class="btn mini ghost" onclick="addLine()">➕ เพิ่มบรรทัด</button>
     </div>
@@ -516,6 +518,30 @@ tr.round td{background:#FFFCF4!important}
         <button class="btn mini" id="pasteAdd" onclick="pasteCommit()" disabled>⤵ เพิ่มเข้าตาราง</button>
       </div>
     </div>
+    <!-- กล่องดึงจากรายการตรวจสอบ -->
+    <div id="pickBox" style="display:none;background:#F1F6FB;border:1px solid #BFD4E8;border-radius:10px;padding:12px;margin-top:10px">
+      <div style="font-weight:700;font-size:13px;margin-bottom:4px">📥 ดึงจากรายการตรวจสอบ</div>
+      <div class="muted" style="font-size:11.5px;line-height:1.6;margin-bottom:8px">
+        ติ๊กรายการที่อยู่ในใบวางบิลใบนี้ → ระบบเติม <b>เลขที่รายการ · PO · สินค้า · กล่อง</b> ให้
+        <br>⚠️ <b>คิว · เรท · ยอด ไม่ดึงมาให้</b> — สามช่องนั้นต้องพิมพ์จากบิลขนส่ง ระบบถึงจะเทียบกับที่คลังวัดแล้วจับส่วนต่างได้
+      </div>
+      <div class="row" style="gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+        <input id="pickQ" placeholder="🔍 ค้นหา เลขที่รายการ / PO / SKU" oninput="pickDraw()"
+          style="flex:1;min-width:180px;padding:5px 9px;font-size:12.5px">
+        <input id="pickInv" placeholder="เลขใบแจ้งหนี้ (ใส่ให้ทุกบรรทัดที่ดึง)"
+          style="flex:1;min-width:180px;padding:5px 9px;font-size:12.5px">
+        <label class="muted" style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer">
+          <input type="checkbox" id="pickAllRows" onchange="pickDraw()" style="width:15px;height:15px">
+          แสดงรายการที่วางบิลไปแล้วด้วย</label>
+      </div>
+      <div class="scroll" style="max-height:min(38vh,420px)"><div id="pickBody"></div></div>
+      <div class="row" style="margin-top:8px;justify-content:flex-end;align-items:center">
+        <span class="muted" id="pickCount" style="font-size:12px;margin-right:auto"></span>
+        <button class="btn mini ghost" onclick="$('pickBox').style.display='none'">ปิด</button>
+        <button class="btn mini" id="pickAdd" onclick="pickCommit()" disabled>⤵ เพิ่มเข้าตาราง</button>
+      </div>
+    </div>
+
     <datalist id="svcList"></datalist>
 
     <!-- ผลตรวจ 6 อย่าง -->
@@ -555,7 +581,7 @@ const SUPABASE_KEY='sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์โหลดไฟล์ใหม่แล้วหรือยัง
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ (ทั้งในป้ายด้านบนและตัวแปรนี้) */
-const FR_VERSION='v01-11';
+const FR_VERSION='v01-12';
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1665,7 +1691,8 @@ async function loadItemIndex(mo){
   const mos=[]; for(let i=-3;i<=1;i++){ const x=new Date(d); x.setMonth(x.getMonth()+i);
     mos.push(x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')); }
   const {data,error}=await sb.from('freight_items')
-    .select('id,carrier,item_no,po_number,sku,boxes,gr_month,w_fw,l_fw,h_fw').in('gr_month',mos);
+    .select('id,carrier,item_no,po_number,sku,boxes,gr_month,arrive_date,w_wh,l_wh,h_wh,w_fw,l_fw,h_fw')
+    .in('gr_month',mos);
   ITEMIDX=error?[]:(data||[]);
 }
 async function loadBills(){
@@ -1829,6 +1856,8 @@ function openBill(id){
     $('b_status').value='open'; set('b_note',''); BL=[]; $('billMeta').textContent=''; $('b_rev').innerHTML='';
   }
   $('pasteBox').style.display='none'; $('pasteTxt').value=''; $('pastePrev').innerHTML=''; $('pasteAdd').disabled=true;
+  PICK=[]; if($('pickBox'))$('pickBox').style.display='none';
+  if($('pickAllRows'))$('pickAllRows').checked=false;
   renderLines(); $('billBg').style.display='flex';
 }
 function billCalc(){
@@ -1846,6 +1875,8 @@ function setLine(i,k,v){
   const L=BL[i]; if(!L)return;
   const NUM=['boxes','kg','cbm','rate','amount','extra_fee','w','l','h'];
   L[k]=NUM.includes(k)?num(v):v;
+  /* พิมพ์กล่องเองแล้ว = ยืนยันกับบิลขนส่งแล้ว → เลิกเตือนว่า "ดึงมาจากคลัง" */
+  if(k==='boxes')delete L._boxWh;
   /* ใส่คิว+เรทแล้วยังไม่มียอด → คิดให้ (แก้ทับได้) · ใส่ ก×ย×ส แล้วยังไม่มีคิว → คิดคิวให้ */
   if(['w','l','h','boxes'].includes(k)&&num(L.w)&&num(L.l)&&num(L.h)&&num(L.boxes)&&!L._cbmTouched)
     L.cbm=+(num(L.w)*num(L.l)*num(L.h)/1e6*num(L.boxes)).toFixed(6);
@@ -1888,7 +1919,9 @@ function renderLines(keepI,keepK){
       +'<td style="font-size:11px;line-height:1.5">'
         +(a.flags.length?a.flags.map(f=>'<div'+(f.lvl==='red'?' style="color:var(--red);font-weight:700"':(f.lvl==='warn'?' style="color:#B7791F"':' class="muted"'))+'>'
           +LVL_ICON[f.lvl]+' '+esc(f.m)+'</div>').join('')
-          :'<span class="diff-ok">✅ ผ่าน</span>')
+          /* กล่องที่ดึงมาจากคลังยังไม่ใช่ "ตรวจผ่าน" — มันตรงเพราะลอกมา ไม่ใช่เพราะบิลตรง */
+          :(L._boxWh?'<div style="color:#B7791F">📥 กล่องดึงจากคลัง — ยังไม่ได้เทียบกับบิลขนส่ง</div>'
+                    :'<span class="diff-ok">✅ ผ่าน</span>'))
         +(a.item&&!red.some(f=>f.c==='BOX')?'<div class="muted">🔗 คลังรับ '+money(a.item.boxes)+' กล่อง'+(a.item.multi?' ('+a.item.ids.length+' รายการ)':'')+'</div>':'')
         +(a.over!=null&&Math.abs(a.over)>0.5?'<div style="color:'+(a.over>0?'var(--red)':'#2E75B6')+'">'+(a.over>0?'+':'')+money2(a.over)+' ฿ จากที่ควรเป็น</div>':'')
       +'</td>'
@@ -2023,6 +2056,126 @@ async function delBill(){
   BILLS=BILLS.filter(x=>String(x.id)!==String(BILL_ID)); BLINES=BLINES.filter(x=>String(x.bill_id)!==String(BILL_ID));
   REFIDX=null; await loadRefIndex();
   renderBills(); renderAlerts(); $('billBg').style.display='none'; toast('ลบแล้ว');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   📥 ดึงจาก "รายการตรวจสอบ" — แทนการนั่งพิมพ์เลขที่รายการ/PO/สินค้า/กล่อง ใหม่
+   ───────────────────────────────────────────────────────────────
+   ดึงมาแค่ "ช่องระบุตัวรายการ + กล่อง" เท่านั้น
+   🚫 ห้ามดึง คิว / เรท / ยอด มาเติมให้เด็ดขาด
+      สามช่องนั้นคือตัวเลขที่ "ขนส่งเรียกเก็บ" ซึ่งระบบเอาไปเทียบกับที่คลังวัดจริง
+      ถ้าเติมจากฝั่งคลัง ส่วนต่างจะเป็น 0 ทุกบรรทัด = ระบบตรวจค่าขนส่งหมดความหมาย
+   กล่องดึงมาให้ (พิมพ์ซ้ำบ่อย ผิดง่าย) แต่ติดธง _boxWh ไว้ →
+      บรรทัดนั้นยังไม่ขึ้น "ผ่าน" จนกว่าคนจะยืนยันกับบิลขนส่ง (แตะช่องกล่อง 1 ครั้ง)
+   ═══════════════════════════════════════════════════════════════ */
+let PICK=[];                                   // id รายการที่ติ๊กไว้
+const cbmWhOf=it=>cbm1(it.w_wh,it.l_wh,it.h_wh)*(num(it.boxes)||0);
+/* เลขที่รายการที่ถูกใช้ไปแล้ว — ในใบนี้ (cur) และในใบวางบิลใบอื่น (other) */
+function pickUsed(){
+  const cur=new Set(BL.map(L=>norm(L.line_ref)).filter(Boolean));
+  /* รายการที่ไม่มีเลขที่รายการ (ช่อง "ปิล/รายการ" ว่าง) เทียบด้วย PO แทน
+     ไม่งั้นกดดึงซ้ำจะได้บรรทัดซ้ำเงียบ ๆ เพราะ line_ref ว่างทั้งคู่ */
+  const noRef=new Set(BL.filter(L=>!String(L.line_ref||'').trim())
+    .map(L=>String(L.po_number||'').trim()).filter(Boolean));
+  return {cur:cur, noRef:noRef, other:(REFIDX||{})};
+}
+function pickState(it,car,used){
+  const ref=norm(it.item_no), po=String(it.po_number||'').trim();
+  if(ref){ if(used.cur.has(ref))return 'in'; }                     // อยู่ในใบนี้แล้ว
+  else if(po&&used.noRef.has(po))return 'in';
+  if(!ref)return 'free';                                          // ไม่มีเลข = เทียบใบอื่นไม่ได้
+  const o=((used.other[(it.carrier||car)+'|'+ref])||[])
+    .filter(r=>String(r.bill_id)!==String(BILL_ID||''));
+  return o.length?'billed':'free';
+}
+function pickCands(){
+  const car=$('b_carrier').value;
+  const q=String(($('pickQ')&&$('pickQ').value)||'').trim().toUpperCase();
+  const showAll=!!($('pickAllRows')&&$('pickAllRows').checked);
+  const used=pickUsed();
+  return (ITEMIDX||[])
+    .filter(it=>!car||!it.carrier||it.carrier===car)
+    .map(function(it){ return {it:it, st:pickState(it,car,used)}; })
+    .filter(x=>showAll||x.st==='free')
+    .filter(function(x){
+      if(!q)return true;
+      return ((x.it.item_no||'')+' '+(x.it.po_number||'')+' '+(x.it.sku||'')).toUpperCase().indexOf(q)>=0;
+    })
+    .sort((a,b)=>String(b.it.arrive_date||'').localeCompare(String(a.it.arrive_date||''))
+                 ||String(a.it.item_no||'').localeCompare(String(b.it.item_no||'')));
+}
+function pickOpen(){
+  $('pickBox').style.display=''; PICK=[];
+  if($('pickQ'))$('pickQ').value='';
+  /* ใบแจ้งหนี้: ถ้าบรรทัดสุดท้ายมีอยู่แล้ว ใช้ต่อเลย จะได้ไม่ต้องพิมพ์ซ้ำ */
+  const last=BL[BL.length-1];
+  if($('pickInv'))$('pickInv').value=(last&&last.inv_no)||'';
+  pickDraw();
+  setTimeout(()=>{ const e=$('pickQ'); if(e)e.focus(); },30);
+}
+function pickToggle(id){
+  const i=PICK.indexOf(String(id));
+  if(i>=0)PICK.splice(i,1); else PICK.push(String(id));
+  pickDraw();
+}
+function pickSetAll(on){
+  PICK=on?pickCands().filter(x=>x.st==='free').map(x=>String(x.it.id)):[];
+  pickDraw();
+}
+function pickDraw(){
+  const rows=pickCands();
+  const ST={free:['','—'], in:['#2E75B6','➕ อยู่ในใบนี้แล้ว'], billed:['var(--red)','🧾 วางบิลไปแล้ว']};
+  let h='<table style="min-width:760px"><thead><tr>'
+    +'<th style="width:34px"><input type="checkbox" onchange="pickSetAll(this.checked)" '
+    +'title="เลือกทุกรายการที่ยังวางบิลได้" style="width:15px;height:15px"></th>'
+    +'<th>วันที่เข้า</th><th>เลขที่รายการ</th><th>PO</th><th>สินค้า</th>'
+    +'<th class="num">กล่อง</th><th class="num">คิวคลัง</th><th>สถานะ</th></tr></thead><tbody>';
+  rows.forEach(function(x){
+    const it=x.it, on=PICK.indexOf(String(it.id))>=0, lock=x.st!=='free';
+    const cw=cbmWhOf(it);
+    h+='<tr'+(on?' style="background:#EAF3FB"':'')+'>'
+      +'<td><input type="checkbox"'+(on?' checked':'')+(lock?' disabled':'')
+        +' onchange="pickToggle(\''+esc(String(it.id))+'\')" style="width:15px;height:15px"></td>'
+      +'<td style="font-size:12px">'+esc(thDate(it.arrive_date))+'</td>'
+      +'<td style="font-size:12.5px">'+(it.item_no?esc(it.item_no)
+          :'<span class="muted">— ไม่มีเลขที่รายการ —</span>')+'</td>'
+      +'<td style="font-size:12.5px">'+esc(it.po_number||'-')+'</td>'
+      +'<td style="font-size:12px">'+esc(it.sku||'-')+'</td>'
+      +'<td class="num">'+money(it.boxes)+'</td>'
+      +'<td class="num muted">'+(cw>0?cbmFmt(cw):'—')+'</td>'
+      +'<td style="font-size:11.5px;color:'+ST[x.st][0]+'">'+ST[x.st][1]+'</td></tr>';
+  });
+  h+='</tbody></table>';
+  $('pickBody').innerHTML=rows.length?h
+    :'<div class="empty">ไม่มีรายการให้ดึง — เปลี่ยนคำค้น หรือติ๊ก "แสดงรายการที่วางบิลไปแล้วด้วย"'
+     +'<br><span class="muted">รายการมาจากแท็บ 📋 รายการตรวจสอบ ช่วงเดือนของใบวางบิล (ย้อนหลัง 3 เดือน)</span></div>';
+  $('pickCount').textContent=PICK.length?('เลือกไว้ '+PICK.length+' รายการ'):('แสดง '+rows.length+' รายการ');
+  $('pickAdd').disabled=!PICK.length;
+  $('pickAdd').textContent='⤵ เพิ่มเข้าตาราง'+(PICK.length?(' ('+PICK.length+')'):'');
+}
+function pickCommit(){
+  if(!PICK.length)return;
+  const inv=String(($('pickInv')&&$('pickInv').value)||'').trim();
+  const last=BL[BL.length-1];
+  const byId={}; (ITEMIDX||[]).forEach(it=>{ byId[String(it.id)]=it; });
+  const list=PICK.map(id=>byId[id]).filter(Boolean)
+    .sort((a,b)=>String(a.arrive_date||'').localeCompare(String(b.arrive_date||''))
+                 ||String(a.item_no||'').localeCompare(String(b.item_no||'')));
+  let n=0;
+  list.forEach(function(it){
+    const L=blankLine();
+    L.inv_no=inv||(last?last.inv_no:'')||'';
+    L.svc=(last&&last.svc)||'';                  // ประเภทบริการตามบรรทัดก่อนหน้า แก้ทีหลังได้
+    L.line_ref=it.item_no||'';
+    L.po_number=it.po_number||'';
+    L.description=it.sku||'';
+    L.boxes=num(it.boxes);
+    L._boxWh=true;                               // ⚠️ กล่องมาจากคลัง ยังไม่ได้ยืนยันกับบิลขนส่ง
+    BL.push(L); n++;
+  });
+  PICK=[]; $('pickBox').style.display='none';
+  renderLines();
+  toast('ดึง '+n+' รายการเข้าตารางแล้ว — เหลือกรอก คิว · เรท · ยอด จากบิลขนส่ง');
 }
 
 /* ═══════════════════════════════════════════════════════════════
