@@ -1920,7 +1920,11 @@ function renderTrack(){
     const dc=docCount(t);
     const dem=demDaysLeft(t);
     const demBadge=(dem!=null&&dem<=7)?`<br><span class="pill" style="background:#C2410C;color:#fff;white-space:nowrap">${dem<0?'⚠️ DEM เกิน '+(-dem)+' วัน':'⏳ DEM เหลือ '+dem+' วัน'}</span>`:'';
-    h+=`<tr><td><b>${esc(t.invoice_no||'')}</b>${t.shipment_id?` <button class="mini btn" onclick="openInvoiceFromTrack('${t.shipment_id}')" title="เปิดใบ INV จริง">📄 ใบ</button>`:''}<br>${t.start_date?`<span class="muted">${esc(t.start_date)}</span>`:'<span class="pill" style="background:#FCE4E4;color:#B01722;font-size:10px">⚠️ ยังไม่ระบุวันที่</span>'}</td>
+    const lb=trkLinkBad(t);
+    const invBtn = !t.shipment_id ? ''
+      : (lb ? ` <button class="mini btn" style="background:#FCE4E4;color:#B01722;border-color:#F0B6BC" onclick="trkRelink('${t.id}')" title="${lb.gone?'ใบ INV ที่ผูกไว้ถูกลบไปแล้ว':'ใบที่ผูกไว้ตอนนี้เลข '+esc(lb.now)+' ไม่ตรงกับแถวนี้'} — กดเพื่อซ่อมการผูก">⚠️ ผูกผิดใบ</button>`
+            : ` <button class="mini btn" onclick="openInvoiceFromTrack('${t.shipment_id}')" title="เปิดใบ INV จริง">📄 ใบ</button>`);
+    h+=`<tr><td><b>${esc(t.invoice_no||'')}</b>${invBtn}<br>${t.start_date?`<span class="muted">${esc(t.start_date)}</span>`:'<span class="pill" style="background:#FCE4E4;color:#B01722;font-size:10px">⚠️ ยังไม่ระบุวันที่</span>'}</td>
       <td>${trkSkuCell(t)}</td>
       <td>${esc(t.bl_no||'')}</td>
       <td>${tag(t.import_company,coColor(t.import_company))}</td>
@@ -2168,6 +2172,7 @@ function useDraft(){
   $('f_cname').value=d.cname||'';$('f_caddr').value=d.caddr||'';
   $('f_term').value=d.term||'EXW';$('f_port').value=d.port||'';$('f_logi').value=d.logi||0;$('f_cur').value=d.cur||'CNY';
   curItems=JSON.parse(JSON.stringify(d.items||[]));
+  if(o.sid)autoInvNo='';              // ★ ร่างของเอกสารที่บันทึกแล้ว — เลขเป็นเลขจริง
   renderLines();renderDoc();
   invplLoading=false;
   asStat('↩︎ ใช้ร่างแล้ว — ตรวจข้อมูลให้ครบก่อนกด 💾 บันทึก','#B45309');
@@ -2249,10 +2254,31 @@ function nextInvNo(dateStr){
   let n=1; while(used.has(n)) n++;               // หาเลขว่างที่น้อยที่สุด (เติมเลขที่ลบไปแล้ว)
   return prefix+String(n).padStart(3,'0');        // เช่น PO2608001
 }
-function regenInvNo(){ autoInvNo=nextInvNo($('f_date').value); $('f_invno').value=autoInvNo; renderDoc(); }
+function regenInvNo(){
+  /* กดเอง = ตั้งใจออกเลขใหม่ — แต่ถ้าเอกสารบันทึกลงระบบแล้ว ต้องถามก่อน
+     เพราะการเปลี่ยนเลขใบที่บันทึกแล้ว = เปลี่ยนชื่อเอกสาร แถวในตาราง Shipment จะไม่ตรงกันทันที */
+  const id=comboVal('loadShipment');
+  if(id){
+    const s0=db.shipments.find(x=>x.id===id)||{};
+    if(!confirm('เอกสารนี้บันทึกลงระบบแล้ว (เลข '+(s0.invno||'')+')\n\n'
+      +'ออกเลขใหม่ = เปลี่ยนเลขของเอกสารใบเดิม ไม่ใช่สร้างใบใหม่\n'
+      +'ถ้าต้องการใบใหม่ ให้กด "สร้างใหม่" แทน\n\nยืนยันเปลี่ยนเลข?'))return;
+  }
+  autoInvNo=nextInvNo($('f_date').value); $('f_invno').value=autoInvNo; renderDoc();
+}
 function onDateChange(){
-  // ถ้าเลขยังเป็นเลขที่ระบบออกให้ (ไม่ได้แก้เอง) ให้รันใหม่ตามเดือนของวันที่ใหม่
-  if($('f_invno').value===autoInvNo){ autoInvNo=nextInvNo($('f_date').value); $('f_invno').value=autoInvNo; }
+  /* ═══ ⚠️ จุดที่เคยทำให้ "ข้อมูลสลับ" ═══
+     เดิมเช็คแค่ f_invno === autoInvNo แล้วออกเลขใหม่ทับให้เลย
+     แต่ autoInvNo ไม่เคยถูกล้างหลังบันทึก/หลังเปิดเอกสารเก่า →
+     บันทึกใบ PO2609018 เสร็จ (autoInvNo ยังเป็น PO2609018 ค้างอยู่)
+     แล้วไปแก้ "วันที่" ต่อ → ระบบออกเลขใหม่ทับเงียบ ๆ เป็น PO2609029
+     Auto Save เขียนลง DB ใน 5 วิ → แถวในตาราง Shipment ยังชื่อ PO2609018
+     แต่ใบที่ผูกไว้กลายเป็น PO2609029 = ที่เห็นว่าข้อมูลสลับ
+     ✅ ออกเลขใหม่ได้เฉพาะ "เอกสารที่ยังไม่เคยบันทึก" เท่านั้น */
+  const saved=!!comboVal('loadShipment');
+  if(!saved && autoInvNo && $('f_invno').value===autoInvNo){
+    autoInvNo=nextInvNo($('f_date').value); $('f_invno').value=autoInvNo;
+  }
   renderDoc();
 }
 function newShipmentForm(){
@@ -2271,6 +2297,7 @@ function loadShipmentToForm(){
   $('f_invno').value=s.invno;$('f_date').value=s.date||'';$('f_sname').value=s.sname||'';$('f_stel').value=s.stel||'';
   $('f_scomp').value=s.scomp||'';$('f_saddr').value=s.saddr||'';$('f_slic').value=s.slic||'';$('f_stax').value=s.stax||'';$('f_cname').value=s.cname||'';$('f_caddr').value=s.caddr||'';
   $('f_term').value=s.term||'';$('f_port').value=s.port||'';$('f_logi').value=s.logi||0;$('f_cur').value=(s.cur==='RMB'?'CNY':(s.cur||'CNY'));
+  autoInvNo='';                       // ★ เลขของเอกสารที่บันทึกแล้ว = เลขจริง ห้ามออกใหม่ทับ
   curItems=JSON.parse(JSON.stringify(s.items||[]));renderLines();renderDoc();
   invplLoading=false; asStat('เปิดเอกสาร '+(s.invno||'')+' แล้ว');
 }
@@ -2368,8 +2395,21 @@ async function saveShipment(){
   const d=formData();if(!d.invno)return alert('กรอก Invoice/PO No.');
   const rec={invno:d.invno,date:d.date||null,sname:d.sname,stel:d.stel,scomp:d.scomp,saddr:d.saddr,slic:d.slic||null,stax:d.stax||null,cname:d.cname,caddr:d.caddr,term:d.term,port:d.port||null,logi:d.logi,cur:d.cur,items:slimItems(d.items)};
   const id=comboVal('loadShipment');
-  let shipmentId=id, ok=false;
-  if(id){ ok=await dbWrite(()=>sb.from('shipments').update(rec).eq('id',id)); }
+  let shipmentId=id, ok=false, oldNo='';
+  if(id){
+    const s0=db.shipments.find(x=>x.id===id)||{};
+    oldNo=String(s0.invno||'').trim();
+    /* เปลี่ยนเลขใบที่บันทึกไว้แล้ว = แถวในตาราง Shipment เดิมจะชี้ผิดใบทันที — ต้องให้คนยืนยัน */
+    if(oldNo && oldNo!==String(d.invno||'').trim()){
+      const tk=db.tracking.filter(t=>String(t.shipment_id||'')===String(id)
+        ||(t.invoice_no&&String(t.invoice_no).trim()===oldNo));
+      if(!confirm('กำลังเปลี่ยนเลขเอกสาร\n\n  '+oldNo+'  →  '+d.invno+'\n\n'
+        +'นี่คือการเปลี่ยนเลขของใบเดิม ไม่ใช่สร้างใบใหม่'
+        +(tk.length?('\nแถวในตาราง Shipment '+tk.length+' แถวจะถูกแก้เลขตามให้'):'')
+        +'\n\nถ้าตั้งใจจะทำใบใหม่ ให้กดยกเลิก แล้วกด "สร้างใหม่"\n\nยืนยันเปลี่ยนเลข?'))return;
+    }
+    ok=await dbWrite(()=>sb.from('shipments').update(rec).eq('id',id));
+  }
   else{
     try{ const {data,error}=await sb.from('shipments').insert(rec).select('id').single();
       if(error)throw error; shipmentId=data.id; ok=true; }
@@ -2378,7 +2418,8 @@ async function saveShipment(){
   if(!ok)return;
   clearTimeout(asTimer);
   await reload('shipments');
-  const linked=await upsertTrackingFromInvoice(d,shipmentId);   // ผูกเข้าตาราง Shipment + แนบใบจริง
+  autoInvNo='';                       // ★ บันทึกแล้ว = เลขจริง ห้ามออกใหม่ทับตอนแก้วันที่
+  const linked=await upsertTrackingFromInvoice(d,shipmentId,oldNo);   // ผูกเข้าตาราง Shipment + แนบใบจริง
   await reload('tracking');
   // ✅ คงเอกสารที่เพิ่งบันทึกไว้บนหน้าจอ (ไม่ล้างฟอร์ม) — รีเฟรชเฉพาะรายการ dropdown
   invplLoading=true;
@@ -2391,9 +2432,26 @@ async function saveShipment(){
   asStat('✅ บันทึกแล้ว '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+(linked?' · อัปเดตตาราง Shipment แล้ว':''),'#1E7145');
 }
 function invProductList(items){return (items||[]).map(it=>{const p=prod(it.sku)||{};return `${it.sku}${it.qty?(' = '+money(it.qty)+' '+(p.unit||'ชุด')):''}`;}).join('\n');}
-async function upsertTrackingFromInvoice(d,shipmentId){
+async function upsertTrackingFromInvoice(d,shipmentId,oldNo){
   const plist=invProductList(d.items);
   const co=(d.cname||'').trim();
+  /* ① เปลี่ยนเลขใบ → แก้เลขในแถวเดิมตามไปด้วย (ไม่ใช่ทิ้งแถวเก่าไว้แล้วสร้างแถวใหม่)
+        แถวเก่าที่ค้างคือต้นเหตุที่กด 📄 ใบ แล้วเปิดไปเจอคนละเลข */
+  if(oldNo && oldNo!==String(d.invno||'').trim()){
+    const olds=db.tracking.filter(t=>String(t.shipment_id||'')===String(shipmentId)
+      ||(t.invoice_no&&String(t.invoice_no).trim()===oldNo));
+    for(const t of olds){
+      await dbWrite(()=>sb.from('shipment_tracking')
+        .update({invoice_no:d.invno, shipment_id:shipmentId}).eq('id',t.id));
+    }
+    if(olds.length)return true;
+  }
+  /* ② กันแถวอื่นค้างชี้มาที่ใบนี้ — 1 ใบ INV ผูกได้แถวเดียว */
+  const strays=db.tracking.filter(t=>String(t.shipment_id||'')===String(shipmentId)
+    && String(t.invoice_no||'').trim()!==String(d.invno||'').trim());
+  for(const t of strays){
+    await dbWrite(()=>sb.from('shipment_tracking').update({shipment_id:null}).eq('id',t.id));
+  }
   const existing=db.tracking.find(t=>t.invoice_no && t.invoice_no===d.invno);
   if(existing){
     const patch={shipment_id:shipmentId};
@@ -2405,6 +2463,38 @@ async function upsertTrackingFromInvoice(d,shipmentId){
   return await dbWrite(()=>sb.from('shipment_tracking').insert({
     invoice_no:d.invno, start_date:d.date||todayStr(), product_list:plist||null,   // ห้ามปล่อยว่าง ไม่งั้นแถวจะหลุดจากการเรียงวันที่
     import_company:co||null, op_status:'กำลังผลิต', shipment_id:shipmentId}));
+}
+/* ═══════════════════════════════════════════════════════════════
+   🔗 ตรวจว่าแถวนี้ยังชี้ไปที่ใบ INV ใบเดิมอยู่ไหม
+   ───────────────────────────────────────────────────────────────
+   เคสที่เจอจริง: แถว PO2609018 แต่กด 📄 ใบ แล้วเปิดไปเจอ PO2609029
+   เกิดจากใบที่ผูกไว้ถูกเปลี่ยนเลขทีหลัง (ดูคำอธิบายใน onDateChange)
+   โค้ดใหม่กันไม่ให้เกิดอีก — ส่วนแถวที่เพี้ยนไปแล้วใช้ปุ่ม 🔗 ซ่อม
+   ═══════════════════════════════════════════════════════════════ */
+function trkLinkBad(t){
+  if(!t||!t.shipment_id)return null;
+  const s=db.shipments.find(x=>String(x.id)===String(t.shipment_id));
+  if(!s)return {gone:true};
+  const a=String(t.invoice_no||'').trim().toUpperCase(), b=String(s.invno||'').trim().toUpperCase();
+  return (a&&b&&a!==b)?{now:s.invno}:null;
+}
+async function trkRelink(tid){
+  const t=db.tracking.find(x=>String(x.id)===String(tid)); if(!t)return;
+  const bad=trkLinkBad(t); if(!bad)return alert('แถวนี้ผูกถูกต้องอยู่แล้ว');
+  const mine=String(t.invoice_no||'').trim();
+  const hit=db.shipments.find(x=>String(x.invno||'').trim().toUpperCase()===mine.toUpperCase());
+  if(hit){
+    if(!confirm('แถว '+mine+' ผูกอยู่กับใบ '+(bad.now||'(ถูกลบ)')+'\n\n'
+      +'พบใบ INV เลข '+hit.invno+' ในระบบ — ผูกแถวนี้กับใบนั้นแทนไหม?'))return;
+    const ok=await dbWrite(()=>sb.from('shipment_tracking').update({shipment_id:hit.id}).eq('id',t.id));
+    if(ok){ await reload('tracking'); renderTrack(); alert('ผูกใหม่เรียบร้อย'); }
+    return;
+  }
+  if(!confirm('แถว '+mine+' ผูกอยู่กับใบ '+(bad.now||'(ถูกลบ)')+' ซึ่งคนละเลขกัน\n'
+    +'และไม่พบใบ INV เลข '+mine+' ในระบบ\n\n'
+    +'ยกเลิกการผูกของแถวนี้ไหม? (ข้อมูลในแถวยังอยู่ครบ แค่ไม่มีปุ่มเปิดใบ)'))return;
+  const ok=await dbWrite(()=>sb.from('shipment_tracking').update({shipment_id:null}).eq('id',t.id));
+  if(ok){ await reload('tracking'); renderTrack(); alert('ยกเลิกการผูกแล้ว'); }
 }
 function openInvoiceFromTrack(sid){
   if(!sid)return;
