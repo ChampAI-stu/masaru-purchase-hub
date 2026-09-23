@@ -72,6 +72,13 @@
     cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px}
   .sum-go:hover{color:#8A3F06}
   .sum-go.ok{color:#1E7145}
+  /* ═══ ตัวเลขหลักของการ์ด = "คิว" ═══
+     คิวคือหน่วยที่ใช้จองพื้นที่คลังและคิดค่าขนส่ง — ชิ้น/ลัง/กก. เป็นข้อมูลประกอบ
+     ทศนิยม 4 ตำแหน่งทำให้ตัวเลขยาว จึงย่อ font ลงหน่อยและกันไม่ให้ตัดบรรทัดกลางตัวเลข */
+  .sum-val.cbm-main{font-size:22px;white-space:nowrap;letter-spacing:-.3px;color:#1D4ED8}
+  .sum-val .u{font-size:.6em;font-weight:600;color:#6B8BD6;margin-left:3px}
+  @media(max-width:1280px){ .sum-val.cbm-main{font-size:19px} }
+  @media(max-width:1024px){ .sum-val.cbm-main{font-size:17px} }
 
   /* toolbar */
   .toolbar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
@@ -1367,7 +1374,7 @@ const SUPABASE_KEY = 'sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentRole = null; let ROLE_LABEL = '';
-const BOARD_VERSION='v05-04';
+const BOARD_VERSION='v05-07';
 try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
 console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
@@ -4098,7 +4105,7 @@ function arrPlanOf(it, exceptTrip){
 
 /* ยอด "จัดเที่ยวแล้ว" ของทั้งใบ — ตัดไม่ให้เกินยอดค้างของแต่ละบรรทัด */
 function arrPlanTot(items, M, exceptTrip){
-  const pl = {pcs:0, date:'', by:{}, full:false};
+  const pl = {pcs:0, cbm:0, date:'', by:{}, full:false};
   let wait = 0;
   items.forEach(function(x){
     const m = M[x.id] || arrPcsOf(x, null);
@@ -4108,6 +4115,9 @@ function arrPlanTot(items, M, exceptTrip){
     if(take > 0.0001){
       pl.by[x.id] = {pcs:take, date:p.date, carrier:p.carrier};
       pl.pcs += take;
+      /* คิวที่จัดเที่ยวไปแล้ว — ปันตามสัดส่วนชิ้นของบรรทัดนั้น
+         (ข้ามบรรทัดพ่วง เพราะไม่มีลัง/คิวของตัวเอง จะนับซ้ำกับบรรทัดแม่) */
+      if(!x.is_extra && m.fullPcs > 0) pl.cbm += (+x.cbm||0) * (take/m.fullPcs);
       if(p.date > pl.date) pl.date = p.date;
     }
   });
@@ -4578,6 +4588,7 @@ function renderArrStrip(groups){
           +'<span class="s">'+p.n+' ใบ · แจ้งมา '+arrInt(p.pcs)+' ชิ้น ('+arrInt(p.boxes)+' ลัง)</span>'
           +(p.boxWait>0.0001
             ? '<span class="w">ค้าง '+arrInt(p.pcsWait)+' ชิ้น · '+arrInt(p.boxWait)+' ลัง'
+              +' · <b style="color:#1D4ED8">'+arrMoney(p.cbmWait)+' คิว</b>'
               +(p.due?(' · <span style="color:var(--red)">เกินกำหนด '+p.due+' ใบ</span>'):'')+'</span>'
             : '<span class="s" style="color:var(--green);font-weight:700">✅ เข้าคลังครบ</span>')
           +'</button>';
@@ -4625,10 +4636,10 @@ function renderArr(){
   const all = ALLG.filter(g => g.st!=='cancel' && !SENT(g));
   const sum = all.reduce((a,g) => ({
     boxWait:a.boxWait+g.t.boxWait, cbmWait:a.cbmWait+g.t.cbmWait, kgWait:a.kgWait+g.t.kgWait,
-    boxIn:a.boxIn+g.t.boxIn, boxes:a.boxes+g.t.boxes,
+    boxIn:a.boxIn+g.t.boxIn, boxes:a.boxes+g.t.boxes, cbm:a.cbm+g.t.cbm,
     pcsWait:a.pcsWait+g.t.pcsWait, pcsIn:a.pcsIn+g.t.pcsIn, pcs:a.pcs+g.t.pcs,
-    plan:a.plan+g.pl.pcs
-  }), {boxWait:0,cbmWait:0,kgWait:0,boxIn:0,boxes:0,pcsWait:0,pcsIn:0,pcs:0,plan:0});
+    plan:a.plan+g.pl.pcs, planCbm:a.planCbm+(g.pl.cbm||0)
+  }), {boxWait:0,cbmWait:0,kgWait:0,boxIn:0,boxes:0,cbm:0,pcsWait:0,pcsIn:0,pcs:0,plan:0,planCbm:0});
   const unfinished = all.filter(g => g.st!=='done');
   const oldest = unfinished.filter(g=>g.t.boxWait>0)
     .sort((a,b)=>String(a.n.notice_date||'').localeCompare(String(b.n.notice_date||'')))[0];
@@ -4643,33 +4654,53 @@ function renderArr(){
     dueList.filter(g=>g.days>=arrHotDays()).length
     + otherList.filter(p=>arrDaysWait(p.date)>=arrHotDays()).length);
 
-  /* ★ ตัวเลขหลักเป็น "ชิ้น" · ลัง/คิว/กก. ย้ายไปบรรทัดรอง */
-  $('arrWaitBox').textContent = arrInt(sum.pcsWait) + ' ชิ้น';
-  /* ยอดจัดเที่ยวย้ายไปการ์ดของตัวเองแล้ว — ตรงนี้เหลือหน่วยของ "ค้างที่ขนส่ง" ล้วน ๆ */
-  $('arrWaitSub').textContent = arrInt(sum.boxWait) + ' ลัง · ' + arrMoney(sum.cbmWait) + ' คิว · '
-                              + arrInt(sum.kgWait) + ' กก.';
-
-  /* 🚚 จัดเที่ยวส่งแล้ว / ⏳ ยังไม่ได้จัด — คิดจาก "ของที่ยังค้างที่ขนส่ง" เท่านั้น
-     (ของที่เข้าคลังไปแล้วไม่ต้องจัดเที่ยวอีก จึงไม่นับเป็นตัวหาร) */
+  /* ยอดจัดเที่ยว — คิดก่อน เพราะใช้ทั้งการ์ด "ค้างที่ขนส่ง" และการ์ด "จัดเที่ยวส่งแล้ว" */
+  const planCbm = Math.min(sum.planCbm, sum.cbmWait);
+  const openCbm = Math.max(0, sum.cbmWait - planCbm);
   const planPcs = Math.min(sum.plan, sum.pcsWait);
   const openPcs = Math.max(0, sum.pcsWait - planPcs);
   const nPlan   = all.filter(g => g.pl && g.pl.pcs>0.0001).length;
   const nNeed   = all.filter(arrNeedTrip).length;
-  const pct     = sum.pcsWait>0.0001 ? Math.round(planPcs/sum.pcsWait*100) : 0;
-  $('arrPlanVal').textContent = arrInt(planPcs) + ' ชิ้น';
-  $('arrPlanVal').style.color = (sum.pcsWait>0.0001 && openPcs<=0.0001) ? 'var(--green)' : '';
-  $('arrPlanSub').innerHTML = sum.pcsWait<=0.0001
+  const pct     = sum.cbmWait>0.0001 ? Math.round(planCbm/sum.cbmWait*100) : 0;
+
+  /* ★ ตัวเลขหลักของทุกการ์ด = คิว (หน่วยที่ใช้จองพื้นที่คลัง + คิดค่าขนส่ง)
+        ชิ้น/ลัง/กก. ย้ายลงบรรทัดรองทั้งหมด */
+  $('arrWaitBox').className = 'sum-val cbm-main';
+  $('arrWaitBox').innerHTML = arrMoney(sum.cbmWait) + '<span class="u">คิว</span>';
+  $('arrWaitBox').title = 'คิว = ปริมาตรที่ต้องเตรียมพื้นที่คลัง และเป็นฐานคิดค่าขนส่ง';
+  /* ★ บรรทัดที่ 2 ของการ์ดนี้ = ของค้างก้อนนี้ จัดเที่ยวส่งไปแล้วเท่าไหร่ / เหลือต้องจัดอีกเท่าไหร่
+        (ตัวเลขชุดเดียวกับการ์ด 🚚 — เอามาไว้ตรงนี้ด้วยเพราะเป็นที่ที่คนดูยอดค้างเป็นอันดับแรก) */
+  $('arrWaitSub').innerHTML = arrInt(sum.pcsWait) + ' ชิ้น · ' + arrInt(sum.boxWait) + ' ลัง · '
+    + arrInt(sum.kgWait) + ' กก.'
+    + (sum.cbmWait>0.0001
+        ? '<br><span style="color:#1E7145">🚚 จัดเที่ยวแล้ว ' + arrMoney(planCbm) + ' คิว</span>'
+          + (openCbm>0.0001
+              ? ' · <button class="sum-go" onclick="arrFilterTo(\'noplan\')" '
+                +'title="กดเพื่อดูเฉพาะใบที่ยังต้องจัดเที่ยวส่ง">⏳ ยังไม่จัดเที่ยว '
+                +arrMoney(openCbm)+' คิว</button>'
+              : ' · <b style="color:var(--green)">✅ ครบแล้ว</b>')
+        : '');
+
+  /* 🚚 จัดเที่ยวส่งแล้ว / ⏳ ยังไม่ได้จัด — คิดจาก "ของที่ยังค้างที่ขนส่ง" เท่านั้น
+     (ของที่เข้าคลังไปแล้วไม่ต้องจัดเที่ยวอีก จึงไม่นับเป็นตัวหาร) */
+  $('arrPlanVal').className = 'sum-val cbm-main';
+  $('arrPlanVal').innerHTML = arrMoney(planCbm) + '<span class="u">คิว</span>';
+  $('arrPlanVal').style.color = (sum.cbmWait>0.0001 && openCbm<=0.0001) ? 'var(--green)' : '';
+  $('arrPlanSub').innerHTML = sum.cbmWait<=0.0001
     ? 'ไม่มีของค้างที่ขนส่ง 🎉'
     : (nPlan ? '<button class="sum-go ok" onclick="arrFilterTo(\'plan\')" '
         +'title="กดเพื่อดูเฉพาะใบที่จัดเที่ยวส่งแล้ว">'+nPlan+' ใบ</button> · ' : '')
-      + pct + '% ของที่ค้าง'
-      + (openPcs>0.0001
+      + pct + '% ของที่ค้าง · ' + arrInt(planPcs) + ' ชิ้น'
+      + (openCbm>0.0001
           ? '<br>⏳ ยังไม่ได้จัดเที่ยว <button class="sum-go" onclick="arrFilterTo(\'noplan\')" '
             +'title="กดเพื่อดูเฉพาะใบที่ยังต้องจัดเที่ยวส่ง">'
-            +arrInt(openPcs)+' ชิ้น · '+nNeed+' ใบ</button>'
+            +arrMoney(openCbm)+' คิว · '+arrInt(openPcs)+' ชิ้น · '+nNeed+' ใบ</button>'
           : '<br><b style="color:var(--green)">✅ จัดเที่ยวครบทุกใบแล้ว</b>');
-  $('arrInBox').textContent   = arrInt(sum.pcsIn) + ' ชิ้น';
-  $('arrInSub').textContent   = arrInt(sum.boxIn) + ' ลัง · จากที่แจ้งมา ' + arrInt(sum.pcs) + ' ชิ้น';
+  const cbmIn = Math.max(0, sum.cbm - sum.cbmWait);
+  $('arrInBox').className = 'sum-val cbm-main';
+  $('arrInBox').innerHTML = arrMoney(cbmIn) + '<span class="u">คิว</span>';
+  $('arrInSub').textContent = arrInt(sum.pcsIn) + ' ชิ้น · ' + arrInt(sum.boxIn) + ' ลัง'
+                            + ' · จากที่แจ้งมา ' + arrMoney(sum.cbm) + ' คิว';
   /* นับเฉพาะใบที่ยังอยู่ในตาราง (ใบที่ส่งตรวจค่าขนส่งแล้วถูกซ่อน จึงไม่นับ) */
   const nSentAll = ARR.filter(x=>x.freight_sent_at).length;
   $('arrNotice').textContent  = ARR.length - nSentAll;
