@@ -560,6 +560,8 @@ body.price-on .sl-price{display:block}
       <button class="logout-btn" id="statusHelpBtn">ℹ️ สถานะ PO</button>
       <button class="logout-btn" id="editAnnounceBtn" style="display:none">📢 แก้ประกาศ</button>
       <span class="role-pill" id="rolePill">—</span>
+      <span id="bdVer" title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง"
+        style="background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:3px 10px;font-size:11.5px;color:#fff"></span>
       <button class="logout-btn" id="portalBtn" style="display:none" title="กลับหน้ารวม">🏠 หน้ารวม</button>
       <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
     </div>
@@ -571,6 +573,7 @@ body.price-on .sl-price{display:block}
     <button class="tab-btn" id="tabPlan">🚚 แผนรับสินค้า</button>
     <button class="tab-btn" id="tabRep">📈 รายงาน On-Time</button>
     <button class="tab-btn" id="tabUp">📜 ประวัติการอัพโหลด</button>
+    <button class="tab-btn" id="tabLog">🧾 ประวัติการแก้ไข</button>
   </div>
 
   <div id="viewBoard">
@@ -604,10 +607,15 @@ body.price-on .sl-price{display:block}
         <option value="__soon__">🔥 ใกล้เข้า (≤7 วัน)</option>
         <option value="__over__">⚠️ เลยกำหนด</option>
       </select>
+      <select class="filter-sel" id="respFilter" style="max-width:190px"
+        title="กรองเฉพาะรายการของคนใดคนหนึ่ง">
+        <option value="">👤 ผู้รับผิดชอบทั้งหมด</option>
+      </select>
       <button class="add-btn" id="importBtn" style="display:none;background:#1E7145">📥 นำเข้า Excel</button>
       <button class="add-btn" id="addBtn" style="display:none">+ เพิ่ม PO</button>
       <button class="add-btn" id="poUpdateBtn" style="display:none;background:#2E75B6">🔄 อัพเดท PO</button>
-      <button class="add-btn" id="bulkModeBtn" style="display:none;background:#fff;color:var(--red);border:1px solid var(--red)">🗑️ ลบที่เลือก</button>
+      <button class="add-btn" id="bulkModeBtn" style="display:none;background:#fff;color:var(--red);border:1px solid var(--red)">☑️ เลือกหลายรายการ</button>
+      <button class="add-btn" id="bulkRespBtn" style="display:none;background:#1F3864">👤 ตั้งผู้รับผิดชอบ (0)</button>
       <button class="add-btn" id="bulkDelBtn" style="display:none;background:var(--red)">🗑️ ลบที่เลือก (0)</button>
       <button class="add-btn" id="bulkCancelBtn" style="display:none;background:#fff;color:var(--text);border:1px solid var(--line)">ยกเลิก</button>
       <input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="display:none">
@@ -630,6 +638,7 @@ body.price-on .sl-price{display:block}
               <th class="sortable" data-sort="delivered_at">วันที่นำส่งคลัง<span class="sort-ind"></span></th>
               <th class="sortable" data-sort="status">สถานะ PO<span class="sort-ind"></span></th>
               <th class="sortable" data-sort="carrier" id="carrierHead">บริษัทขนส่ง<span class="sort-ind"></span></th>
+              <th class="sortable" data-sort="responsible" id="respHead">👤 ผู้รับผิดชอบ<span class="sort-ind"></span></th>
               <th>หมายเหตุ</th>
               <th class="sortable" data-sort="updated_at">วันที่อัพเดท<span class="sort-ind"></span></th>
               <th id="priceHead" style="display:none">ราคาสินค้า (¥)</th>
@@ -706,6 +715,52 @@ body.price-on .sl-price{display:block}
     <div id="repMonth"></div>
     <div id="repSplit"></div>
     <div id="repTable"></div>
+  </div>
+</div>
+
+<div id="viewLog" style="display:none">
+  <div class="container">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0">
+      <h2 style="margin:0">🧾 ประวัติการแก้ไข — ใครทำอะไรกับบอร์ด</h2>
+      <div style="flex:1"></div>
+      <button class="wk-btn" onclick="loadPoLogs()">🔄 รีเฟรช</button>
+      <button class="wk-btn" style="background:#1E7145;color:#fff;border-color:#1E7145"
+        onclick="exportPoLogs()">📥 Export Excel</button>
+    </div>
+    <div style="color:var(--muted);font-size:13px;line-height:1.8;margin-bottom:12px">
+      เก็บทุกการเคลื่อนไหวของแถว PO: เพิ่ม · แก้ไข (บอกทีละฟิลด์ว่าจากอะไรเป็นอะไร) ·
+      ลบ · นำเข้าไฟล์ทับ · ตัดเข้าคลัง · อัพเดตราคากลาง · เปลี่ยนผู้รับผิดชอบ
+      <br>บันทึกแก้ย้อนหลังไม่ได้ (ฐานข้อมูลอนุญาตแค่เขียนเพิ่ม) · แถวที่ถูกลบไปแล้วประวัติยังอยู่
+    </div>
+    <div class="toolbar">
+      <div class="search-wrap">
+        <span class="search-ico">🔍</span>
+        <input type="text" id="lgSearch" placeholder="ค้นหา เลข PO / SKU / อีเมลคนทำ / ข้อความ..."
+               oninput="renderPoLogs()">
+      </div>
+      <select class="filter-sel" id="lgKind" onchange="renderPoLogs()" style="max-width:190px">
+        <option value="">ทุกประเภท</option>
+        <option value="create">➕ เพิ่มรายการ</option>
+        <option value="edit">✏️ แก้ไข</option>
+        <option value="responsible">👤 เปลี่ยนผู้รับผิดชอบ</option>
+        <option value="receive">📦 ตัดเข้าคลัง</option>
+        <option value="price">💰 อัพเดตราคากลาง</option>
+        <option value="import">📥 นำเข้าไฟล์</option>
+        <option value="delete">🗑️ ลบรายการ</option>
+        <option value="bulk_delete">🗑️ ลบหลายรายการ</option>
+      </select>
+      <select class="filter-sel" id="lgWho" onchange="renderPoLogs()" style="max-width:220px">
+        <option value="">ทุกคน</option>
+      </select>
+      <select class="filter-sel" id="lgRange" onchange="loadPoLogs()" style="max-width:160px">
+        <option value="30">30 วันล่าสุด</option>
+        <option value="90" selected>90 วันล่าสุด</option>
+        <option value="180">180 วันล่าสุด</option>
+        <option value="9999">ทั้งหมด</option>
+      </select>
+    </div>
+    <div id="lgSum" style="color:var(--muted);font-size:13px;margin:10px 0"></div>
+    <div id="lgBody"></div>
   </div>
 </div>
 
@@ -1022,6 +1077,60 @@ body.price-on .sl-price{display:block}
 </div>
 
 <!-- ============ MODAL ============ -->
+<style>
+/* ── 👤 ผู้รับผิดชอบ ── */
+.resp-tag{display:inline-block;background:#EEF3FA;color:#1F3864;border:1px solid #CFDCEE;
+  border-radius:14px;padding:2px 10px;font-size:12px;font-weight:600;white-space:nowrap;
+  max-width:150px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.resp-none{color:var(--muted);font-size:12px}
+.resp-me{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 11px;
+  font-size:12.5px;font-weight:600;color:#1F3864;cursor:pointer;white-space:nowrap;font-family:inherit}
+.resp-me:hover{border-color:#94A3B8;background:#F8FAFC}
+/* ── 🧾 ประวัติการแก้ไข ── */
+.lg-btn{background:none;border:1px solid transparent;border-radius:7px;padding:3px 6px;
+  cursor:pointer;font-size:14px;line-height:1;opacity:.55;transition:.12s}
+.lg-btn:hover{opacity:1;border-color:var(--line);background:#F4F7FB}
+.pl-card{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+.pl-hd{background:#F4F7FB;padding:9px 14px;border-bottom:1px solid var(--line);
+  display:flex;gap:9px;align-items:center;flex-wrap:wrap;font-size:13px}
+.pl-hd b{color:#1F3864}
+.pl-body{padding:6px 14px 12px}
+.pl-ev{position:relative;padding:9px 0 9px 24px;border-top:1px solid #EEF2F7}
+.pl-ev:first-child{border-top:0}
+.pl-ev::before{content:"";position:absolute;left:3px;top:15px;width:9px;height:9px;
+  border-radius:50%;background:#CBD5E1}
+.pl-ev.k-create::before{background:#2E75B6}
+.pl-ev.k-delete::before,.pl-ev.k-bulk_delete::before{background:#111}
+.pl-ev.k-receive::before{background:var(--green)}
+.pl-ev.k-responsible::before{background:#7A5A10}
+.pl-ev.k-import::before{background:#8B5CF6}
+.pl-ev .hd{font-size:13px;font-weight:700;color:#1F3864;display:flex;gap:8px;
+  align-items:baseline;flex-wrap:wrap}
+.pl-ev .hd .tm{font-weight:400;color:var(--muted);font-size:11.5px}
+.pl-ev .ch{font-size:12.5px;line-height:1.85;color:#475569;margin-top:2px}
+.pl-ev .ch .f{font-weight:700;color:#334155}
+.pl-ev .ch .a{color:#94A3B8;text-decoration:line-through}
+.pl-ev .ch .b{color:#1E7145;font-weight:600}
+.pl-ev .nt{font-size:12.5px;color:#475569;margin-top:2px;white-space:pre-wrap}
+.pl-warn{background:#FEF9E7;border:1px solid #EFDFA8;border-left:4px solid #B7791F;
+  border-radius:9px;padding:11px 14px;font-size:13px;line-height:1.8;margin:10px 0}
+#logModalBg .modal{max-width:760px}
+</style>
+
+<!-- ════════ Modal: ประวัติการแก้ไขของแถวเดียว ════════ -->
+<div class="modal-bg" id="logModalBg">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="logModalTitle">🧾 ประวัติการแก้ไข</h2>
+      <button class="modal-close" onclick="document.getElementById('logModalBg').style.display='none'">&times;</button>
+    </div>
+    <div id="logModalBody" style="max-height:62vh;overflow:auto"></div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="document.getElementById('logModalBg').style.display='none'">ปิด</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modalBg">
   <div class="modal">
     <div class="modal-head">
@@ -1054,10 +1163,21 @@ body.price-on .sl-price{display:block}
         <input type="date" id="mDelivered">
       </div>
     </div>
-    <div class="m-field">
-      <label>บริษัทขนส่ง</label>
-      <input type="text" id="mCarrier" list="carrierList" placeholder="เลือก/พิมพ์">
-      <datalist id="carrierList"></datalist>
+    <div class="m-row">
+      <div class="m-field">
+        <label>บริษัทขนส่ง</label>
+        <input type="text" id="mCarrier" list="carrierList" placeholder="เลือก/พิมพ์">
+        <datalist id="carrierList"></datalist>
+      </div>
+      <div class="m-field">
+        <label>👤 ผู้รับผิดชอบ</label>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="mResp" list="respList" placeholder="ใครตามรายการนี้"
+                 style="flex:1 1 auto;min-width:0">
+          <button type="button" class="resp-me" id="mRespMe" title="ใส่ชื่อของคุณเอง">ฉันเอง</button>
+        </div>
+        <datalist id="respList"></datalist>
+      </div>
     </div>
     <div class="m-field">
       <label>หมายเหตุ</label>
@@ -1238,6 +1358,9 @@ const SUPABASE_KEY = 'sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentRole = null; let ROLE_LABEL = '';
+const BOARD_VERSION='v05-00';
+try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
+console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
 let canSeePrice = false, canEditPrice = false, ME_EMAIL = 'purchase', MASTERP = {};   // ราคาสินค้า (เห็นเฉพาะจัดซื้อ/หัวหน้า/ผู้บริหาร)
 let pendingFlash = new Set();   // id แถวที่เพิ่งเปลี่ยน รอ flash
@@ -1358,6 +1481,9 @@ async function updatePortalBtn(roles){
 
 function enterApp(session){
   const meta = session.user?.app_metadata || {};
+  /* เก็บไว้ใช้กับ "ผู้รับผิดชอบ" และลงชื่อในประวัติการแก้ไข */
+  MY_EMAIL = (session.user && session.user.email) || '';
+  MY_NAME  = ((session.user && session.user.user_metadata) || {}).full_name || '';
   const roles = (Array.isArray(meta.user_roles) && meta.user_roles.length)
     ? meta.user_roles
     : (meta.user_role ? [meta.user_role] : []);
@@ -1390,6 +1516,7 @@ function enterApp(session){
   $('tabRep').style.display = inner ? '' : 'none';
   $('tabArr').style.display = inner ? '' : 'none';   // 📦 แจ้งสินค้าขาเข้า
   $('tabUp').style.display  = inner ? '' : 'none';
+  $('tabLog').style.display = inner ? '' : 'none';   // 🧾 ประวัติการแก้ไข
   // role UI
   if(currentRole === 'purchase'){
     $('rolePill').textContent = ROLE_LABEL;
@@ -1554,18 +1681,30 @@ async function fetchAll(table, tune, cols){
 /* คอลัมน์ที่หน้านี้ใช้จริง — ตาราง purchase_orders มี 44 คอลัมน์จาก ERP
    แต่บอร์ดใช้แค่ 15 · Egress คิดตามไบต์ที่ส่งออก จึงห้ามใช้ select('*') */
 const PO_COLS='id,po_number,sku,quantity,received_qty,eta,status,note,price,vendor,'
-  +'carrier,delivered_at,created_by,updated_at,created_at';
+  +'carrier,delivered_at,created_by,updated_at,created_at,responsible';
+/* ยังไม่ได้รัน board_responsible_log.sql → คอลัมน์ responsible ไม่มี
+   ต้องไม่ทำให้บอร์ดโหลดไม่ขึ้นทั้งหน้า — ตัดคอลัมน์ออกแล้วโหลดใหม่ พร้อมบอกให้ไปรันไฟล์ */
+let PO_COLS_USE=PO_COLS, RESP_READY=true;
 async function loadOrders(){
   const SIZE=1000, all=[];
   let from=0, guard=0;
   while(guard++ < 60){
     const { data, error } = await sb.from('purchase_orders')
-      .select(PO_COLS)
+      .select(PO_COLS_USE)
       .order('updated_at',{ascending:false,nullsFirst:false})
       .order('created_at',{ascending:false})
       .order('id')
       .range(from, from+SIZE-1);
     if(error){
+      /* ยังไม่ได้รัน board_responsible_log.sql — ตัด responsible ออกแล้วโหลดใหม่
+         (ห้ามปล่อยให้บอร์ดว่างทั้งหน้าเพราะคอลัมน์ใหม่ตัวเดียว) */
+      if(RESP_READY && /responsible/i.test(error.message||'')){
+        RESP_READY=false;
+        PO_COLS_USE=PO_COLS.replace(',responsible','');
+        console.warn('[board] ยังไม่มีคอลัมน์ responsible — รันไฟล์ board_responsible_log.sql');
+        toast('ยังไม่ได้เพิ่มช่องผู้รับผิดชอบ — รันไฟล์ board_responsible_log.sql ก่อน', true);
+        from=0; all.length=0; continue;
+      }
       console.error(error);
       toast('โหลดข้อมูล PO ไม่สำเร็จ: '+error.message, true);
       if(!all.length) return;
@@ -1576,6 +1715,7 @@ async function loadOrders(){
     from += SIZE;
   }
   allOrders = all;
+  fillRespLists();             // เติมรายชื่อผู้รับผิดชอบในตัวกรอง/ช่องกรอก
   newsClear();                 // โหลดล่าสุดแล้ว → เก็บแถบแจ้งเตือน
   render();
   stampUpdate();
@@ -1649,27 +1789,267 @@ function subscribeRealtime(){
 }
 
 // ===== RENDER =====
+/* ═══════════════════════════════════════════════════════════════════
+   👤 ผู้รับผิดชอบ + 🧾 ประวัติการแก้ไข
+   ──────────────────────────────────────────────────────────────────
+   ทำไมต้องมี — เดิมบอร์ดรู้แค่ created_by (คนนำเข้าไฟล์) ซึ่งมักเป็นคนเดียว
+   ทั้งตาราง ของค้างแล้วไล่ไม่ถูกว่าใครตาม และไม่มีหลักฐานว่าใครแก้อะไร
+   ต้องรันไฟล์ board_responsible_log.sql ก่อน
+   ═══════════════════════════════════════════════════════════════════ */
+let MY_EMAIL='', MY_NAME='';
+/* ชื่อที่จะใส่ในช่อง "ฉันเอง" — ใช้ชื่อจริงถ้ามี ไม่งั้นใช้ชื่อหน้าอีเมล */
+function meName(){
+  if(MY_NAME && MY_NAME!==MY_EMAIL) return MY_NAME;
+  return String(MY_EMAIL||'').split('@')[0] || '';
+}
+/* รายชื่อผู้รับผิดชอบที่เคยใช้ — เอาจากข้อมูลที่โหลดมาแล้ว ไม่ยิงคิวรีเพิ่ม */
+function respNames(){
+  const set=new Set();
+  (allOrders||[]).forEach(o=>{ const v=(o.responsible||'').trim(); if(v)set.add(v); });
+  const me=meName(); if(me)set.add(me);
+  return [...set].sort((a,b)=>a.localeCompare(b,'th'));
+}
+function fillRespLists(){
+  const names=respNames();
+  const dl=$('respList');
+  if(dl)dl.innerHTML=names.map(n=>'<option value="'+esc(n)+'">').join('');
+  const sel=$('respFilter');
+  if(sel){
+    const keep=sel.value;
+    const nEmpty=(allOrders||[]).filter(o=>!(o.responsible||'').trim()).length;
+    sel.innerHTML='<option value="">👤 ผู้รับผิดชอบทั้งหมด</option>'
+      +(nEmpty?('<option value="__none__">— ยังไม่ระบุ ('+nEmpty+') —</option>'):'')
+      +names.map(n=>{
+          const c=(allOrders||[]).filter(o=>(o.responsible||'').trim()===n).length;
+          return '<option value="'+esc(n)+'">'+esc(n)+(c?(' ('+c+')'):'')+'</option>';
+        }).join('');
+    if([...sel.options].some(o=>o.value===keep))sel.value=keep;
+  }
+}
+
+/* ── สมุดบันทึก ── */
+const PL_LABEL={create:'➕ เพิ่มรายการ',edit:'✏️ แก้ไข',delete:'🗑️ ลบรายการ',
+  bulk_delete:'🗑️ ลบหลายรายการ',import:'📥 นำเข้าไฟล์',receive:'📦 ตัดเข้าคลัง',
+  price:'💰 อัพเดตราคากลาง',responsible:'👤 เปลี่ยนผู้รับผิดชอบ'};
+const PL_FIELD={po_number:'เลขที่ PO',sku:'SKU',quantity:'จำนวน',received_qty:'จำนวนที่เข้า',
+  eta:'วันที่คาดเข้า',delivered_at:'วันที่นำส่งคลัง',status:'สถานะ PO',carrier:'บริษัทขนส่ง',
+  note:'หมายเหตุ',price:'ราคา (¥)',responsible:'ผู้รับผิดชอบ',vendor:'ผู้ขาย'};
+let PL_MISSING=false;
+/* ภาพของแถวตอนถูกลบ — poDiff ใช้ไม่ได้เพราะ after เป็น {} (ไม่มีคีย์ให้เทียบเลย)
+   ต้องไล่จากค่าที่ "เคยมี" แทน ไม่งั้นบันทึกการลบจะว่างเปล่า ไม่รู้ว่าลบอะไรไป */
+function poGone(o){
+  const out=[];
+  Object.keys(PL_FIELD).forEach(function(f){
+    const a=(o&&o[f]!=null&&o[f]!=='')?String(o[f]):'';
+    if(a)out.push({f:f,a:a,b:''});
+  });
+  return out;
+}
+/* เทียบก่อน-หลัง → เก็บเฉพาะฟิลด์ที่เปลี่ยนจริง (a=ก่อน b=หลัง) */
+function poDiff(before,after){
+  const out=[];
+  Object.keys(PL_FIELD).forEach(function(f){
+    if(!(f in after))return;
+    const a=(before&&before[f]!=null&&before[f]!=='')?String(before[f]):'';
+    const b=(after[f]!=null&&after[f]!=='')?String(after[f]):'';
+    if(a!==b)out.push({f:f,a:a,b:b});
+  });
+  return out;
+}
+/* เขียนบันทึก — ห้ามทำให้งานหลักพัง จึงไม่ throw และไม่บล็อกการบันทึก */
+async function poLog(kind,o){
+  o=o||{};
+  try{
+    const {error}=await sb.from('po_logs').insert({
+      kind:kind, po_id:o.id||null, po_number:o.po_number||null, sku:o.sku||null,
+      note:(o.note||'').trim()||null, changes:o.changes||[],
+      by_email:MY_EMAIL||null, by_role:currentRole||null});
+    if(error){
+      if(/does not exist|schema cache/i.test(error.message||'')){
+        PL_MISSING=true;
+        console.warn('[ประวัติ] ยังไม่มีตาราง po_logs — รันไฟล์ board_responsible_log.sql');
+      }else console.warn('[ประวัติ]',error.message);
+      return false;
+    }
+    PL_MISSING=false; return true;
+  }catch(e){ console.warn('[ประวัติ]',(e&&e.message)||e); return false; }
+}
+function plTime(t){
+  if(!t)return '-';
+  const d=new Date(t);
+  return d.toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'2-digit'})
+       +' '+d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+}
+function plChanges(r){
+  const c=Array.isArray(r.changes)?r.changes:[];
+  if(!c.length)return '';
+  const gone=/delete/.test(r.kind||'');
+  return '<div class="ch">'+c.map(function(x){
+    /* เคสลบ: ไม่ต้องมีลูกศร → แค่ไล่ว่าค่าที่หายไปคืออะไร */
+    if(gone)return '<div><span class="f">'+esc(PL_FIELD[x.f]||x.f)+'</span>: '
+      +'<span class="a">'+esc(x.a)+'</span></div>';
+    return '<div><span class="f">'+esc(PL_FIELD[x.f]||x.f)+'</span>: '
+      +(x.a?('<span class="a">'+esc(x.a)+'</span> → '):'')
+      +'<span class="b">'+esc(x.b||'(ว่าง)')+'</span></div>';
+  }).join('')+'</div>';
+}
+function plEvent(r){
+  return '<div class="pl-ev k-'+esc(r.kind)+'"><div class="hd">'
+    +(PL_LABEL[r.kind]||esc(r.kind))
+    +'<span class="tm">'+esc(plTime(r.created_at))+' · '
+    +esc(r.by_email||'(ไม่ทราบ)')+(r.by_role?(' · '+esc(r.by_role)):'')+'</span></div>'
+    +plChanges(r)
+    +(r.note?('<div class="nt">'+esc(r.note)+'</div>'):'')+'</div>';
+}
+
+/* ── ประวัติของแถวเดียว (ปุ่ม 🧾 ในตาราง) ── */
+window.openPoLog = async function(id){
+  const o=(allOrders||[]).find(x=>x.id===id)||{};
+  $('logModalTitle').textContent='🧾 ประวัติ — '+(o.sku||'')+(o.po_number?(' · PO '+o.po_number):'');
+  $('logModalBody').innerHTML='<div style="padding:22px;text-align:center;color:var(--muted)">กำลังโหลด…</div>';
+  $('logModalBg').style.display='flex';
+  const {data,error}=await sb.from('po_logs')
+    .select('kind,note,by_email,by_role,changes,created_at')
+    .eq('po_id',id).order('created_at',{ascending:false}).limit(200);
+  if(error){
+    $('logModalBody').innerHTML = /does not exist|schema cache/i.test(error.message||'')
+      ? '<div class="pl-warn">⚠️ ยังไม่ได้สร้างตารางประวัติ — รันไฟล์ '
+        +'<code>board_responsible_log.sql</code> บน Supabase ก่อน แล้วลองใหม่</div>'
+      : '<div class="pl-warn">โหลดไม่ได้: '+esc(error.message)+'</div>';
+    return;
+  }
+  const rows=data||[];
+  $('logModalBody').innerHTML = rows.length
+    ? '<div class="pl-body" style="padding:0">'+rows.map(plEvent).join('')+'</div>'
+    : '<div style="padding:22px;text-align:center;color:var(--muted)">'
+      +'ยังไม่มีประวัติของรายการนี้<br>'
+      +'<span style="font-size:12.5px">แถวที่นำเข้ามาก่อนเปิดใช้ระบบประวัติจะยังไม่มีบันทึก '
+      +'— จะเริ่มเก็บตั้งแต่การแก้ไขครั้งถัดไป</span></div>';
+};
+
+/* ── หน้ารวมประวัติทั้งบอร์ด ── */
+let PLOGS=[];
+async function loadPoLogs(){
+  const box=$('lgBody'); if(!box)return;
+  box.innerHTML='<div style="padding:22px;text-align:center;color:var(--muted)">กำลังโหลด…</div>';
+  const days=parseInt(($('lgRange')&&$('lgRange').value)||'90',10);
+  let q=sb.from('po_logs')
+    .select('po_id,po_number,sku,kind,note,by_email,by_role,changes,created_at')
+    .order('created_at',{ascending:false}).limit(1500);
+  if(days<9999)q=q.gte('created_at',new Date(Date.now()-days*86400000).toISOString());
+  const {data,error}=await q;
+  if(error){
+    PLOGS=[];
+    box.innerHTML = /does not exist|schema cache/i.test(error.message||'')
+      ? '<div class="pl-warn">⚠️ ยังไม่ได้สร้างตารางประวัติ — รันไฟล์ '
+        +'<code>board_responsible_log.sql</code> บน Supabase (SQL Editor → วางทั้งไฟล์ → Run) '
+        +'แล้วกด 🔄 รีเฟรช</div>'
+      : '<div class="pl-warn">โหลดไม่ได้: '+esc(error.message)+'</div>';
+    $('lgSum').textContent='';
+    return;
+  }
+  PLOGS=data||[];
+  const who=$('lgWho');
+  if(who){
+    const keep=who.value;
+    const names=[...new Set(PLOGS.map(x=>x.by_email).filter(Boolean))].sort();
+    who.innerHTML='<option value="">ทุกคน</option>'
+      +names.map(n=>'<option value="'+esc(n)+'">'+esc(n)+'</option>').join('');
+    if(names.indexOf(keep)>=0)who.value=keep;
+  }
+  renderPoLogs();
+}
+function plFiltered(){
+  const q=(($('lgSearch')&&$('lgSearch').value)||'').trim().toLowerCase();
+  const k=($('lgKind')&&$('lgKind').value)||'';
+  const w=($('lgWho')&&$('lgWho').value)||'';
+  return PLOGS.filter(function(x){
+    if(k&&x.kind!==k)return false;
+    if(w&&(x.by_email||'')!==w)return false;
+    if(!q)return true;
+    return [x.po_number,x.sku,x.by_email,x.note,JSON.stringify(x.changes||[])]
+      .join(' ').toLowerCase().includes(q);
+  });
+}
+function renderPoLogs(){
+  const box=$('lgBody'); if(!box)return;
+  const rows=plFiltered();
+  const nDel=rows.filter(x=>/delete/.test(x.kind)).length;
+  const nEd=rows.filter(x=>x.kind==='edit').length;
+  $('lgSum').innerHTML='พบ <b>'+rows.length+'</b> บันทึก · แก้ไข <b>'+nEd+'</b> ครั้ง · ลบ <b>'+nDel
+    +'</b> ครั้ง · จาก '+PLOGS.length+' บันทึกในช่วงที่เลือก';
+  if(!rows.length){
+    box.innerHTML='<div style="padding:22px;text-align:center;color:var(--muted)">ไม่พบบันทึกที่ตรงเงื่อนไข</div>';
+    return;
+  }
+  /* จัดกลุ่มตาม PO+SKU เพื่อให้อ่านเป็นเรื่องเดียวกัน ไม่ใช่รายการยาวปะปน */
+  const g={}, order=[];
+  rows.forEach(function(x){
+    const k=(x.po_number||'(ไม่มีเลข PO)')+' · '+(x.sku||'—');
+    if(!g[k]){ g[k]=[]; order.push(k); }
+    g[k].push(x);
+  });
+  box.innerHTML=order.slice(0,120).map(function(k){
+    const list=g[k];
+    const gone=list.some(x=>/delete/.test(x.kind));
+    return '<div class="pl-card"><div class="pl-hd"><b>'+esc(k)+'</b>'
+      +(gone?'<span class="resp-tag" style="background:#111;color:#fff;border-color:#111">🗑️ ถูกลบแล้ว</span>':'')
+      +'<span style="color:var(--muted);font-size:12px">'+list.length+' บันทึก</span></div>'
+      +'<div class="pl-body">'+list.slice(0,25).map(plEvent).join('')
+      +(list.length>25?('<div style="color:var(--muted);font-size:12px;padding:6px 0">'
+         +'…อีก '+(list.length-25)+' บันทึก</div>'):'')+'</div></div>';
+  }).join('')
+  +(order.length>120?('<div style="color:var(--muted);padding:12px">แสดง 120 รายการแรก '
+     +'— ใช้ตัวกรองหรือช่องค้นหาเพื่อดูให้แคบลง</div>'):'');
+}
+function exportPoLogs(){
+  const rows=plFiltered();
+  if(!rows.length){ toast('ไม่มีบันทึกให้ส่งออก'); return; }
+  const out=rows.map(function(r){
+    const c=Array.isArray(r.changes)?r.changes:[];
+    return {
+      'วันเวลา':plTime(r.created_at),
+      'เลขที่ PO':r.po_number||'', 'SKU':r.sku||'',
+      'ประเภท':(PL_LABEL[r.kind]||r.kind||'').replace(/^\S+\s/,''),
+      'ผู้ทำ':r.by_email||'', 'บทบาท':r.by_role||'',
+      'สิ่งที่เปลี่ยน':c.map(x=>(PL_FIELD[x.f]||x.f)+': '+(x.a||'(ว่าง)')+' → '+(x.b||'(ว่าง)')).join(' | '),
+      'หมายเหตุ':r.note||''
+    };
+  });
+  const ws=XLSX.utils.json_to_sheet(out);
+  ws['!cols']=[{wch:17},{wch:14},{wch:16},{wch:16},{wch:26},{wch:12},{wch:62},{wch:36}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'po_logs');
+  XLSX.writeFile(wb,'MASARU_ประวัติการแก้ไขบอร์ด.xlsx');
+  toast('ส่งออกแล้ว 📥');
+}
+
 function render(){
   const hideCarrier = (currentRole==='marketing');
   {const _ch=document.getElementById('carrierHead'); if(_ch)_ch.style.display=hideCarrier?'none':'';}
   const q = $('searchInput').value.toLowerCase().trim();
   const sf = $('statusFilter').value;
+  const rf = ($('respFilter') && $('respFilter').value) || '';
   let rows = allOrders.filter(o => {
     const matchQ = !q || (o.sku||'').toLowerCase().includes(q)
       || (o.note||'').toLowerCase().includes(q)
-      || (o.po_number||'').toLowerCase().includes(q);
+      || (o.po_number||'').toLowerCase().includes(q)
+      || (o.responsible||'').toLowerCase().includes(q);
     let matchS;
     if(sf === '__soon__')      matchS = etaState(o.eta, o.status) === 'soon';
     else if(sf === '__over__') matchS = etaState(o.eta, o.status) === 'over';
     else                       matchS = !sf || o.status === sf;
-    return matchQ && matchS;
+    /* __none__ = ยังไม่ระบุผู้รับผิดชอบ — เป็นตัวกรองที่ใช้บ่อยสุด (ของไม่มีเจ้าภาพ) */
+    const matchR = !rf || (rf==='__none__' ? !(o.responsible||'').trim()
+                                           : (o.responsible||'').trim()===rf);
+    return matchQ && matchS && matchR;
   });
   rows = applySort(rows);
   updateSortArrows();
   renderSummary();
   const tb = $('tableBody');
   if(rows.length === 0){
-    let colspan = currentRole==='purchase' ? (selectionMode?12:11) : (currentRole==='marketing'?9:10);
+    let colspan = currentRole==='purchase' ? (selectionMode?13:12) : (currentRole==='marketing'?10:11);
     if(canSeePrice) colspan += 1;
     tb.innerHTML = `<tr><td colspan="${colspan}"><div class="empty">
       <div class="big">📋</div>ยังไม่มีรายการ${q||sf?'ที่ตรงกับการค้นหา':''}</div></td></tr>`;
@@ -1685,6 +2065,7 @@ function render(){
     const est = etaState(o.eta, o.status);   // '', 'soon', 'over'
     const actions = currentRole==='purchase' ? `<td><div class="row-actions">
         <button class="act-btn" onclick="openEdit('${o.id}')">✏️</button>
+        <button class="lg-btn" title="ดูประวัติการแก้ไขของรายการนี้" onclick="openPoLog('${o.id}')">🧾</button>
         <button class="act-btn act-del" onclick="delOrder('${o.id}')">🗑️</button>
       </div></td>` : '';
     const rowClass = est==='over' ? 'row-over' : (est==='soon' ? 'row-soon' : '');
@@ -1728,6 +2109,9 @@ function render(){
       <td>${o.delivered_at?fmtDate(o.delivered_at):'<span style="color:var(--muted)">—</span>'}</td>
       <td><span class="badge ${STATUS_CLASS[o.status]||''}">${STATUS_ICON[o.status]||''} ${esc(o.status)}</span></td>
       ${hideCarrier?'':`<td>${o.carrier?`<span class="carrier-tag" style="background:${carrierColor(o.carrier)}">${esc(o.carrier)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>`}
+      <td>${(o.responsible||'').trim()
+        ? `<span class="resp-tag" title="ผู้รับผิดชอบ: ${esc(o.responsible)}">${esc(o.responsible)}</span>`
+        : '<span class="resp-none">— ยังไม่ระบุ —</span>'}</td>
       <td><span class="note">${o.note?esc(o.note):'—'}</span></td>
       <td style="font-size:12px;color:var(--muted);white-space:nowrap">${fmtDateTime(o.updated_at)}</td>
       ${priceCell}
@@ -1833,6 +2217,38 @@ $('selectAllPage').addEventListener('change', e => {
 $('bulkModeBtn').addEventListener('click', () => setSelectionMode(true));
 $('bulkCancelBtn').addEventListener('click', () => setSelectionMode(false));
 $('bulkDelBtn').addEventListener('click', bulkDelete);
+$('bulkRespBtn').addEventListener('click', bulkSetResp);
+$('mRespMe').addEventListener('click', ()=>{ $('mResp').value=meName(); $('mResp').focus(); });
+$('respFilter').addEventListener('change', ()=>{ currentPage=1; render(); });
+
+/* ตั้งผู้รับผิดชอบทีเดียวหลายแถว — วันนึงมี 3,000–5,000 รายการ ทำทีละแถวไม่ไหว */
+async function bulkSetResp(){
+  const ids=[...selectedIds];
+  if(!ids.length)return;
+  if(!RESP_READY)return toast('ยังไม่ได้เพิ่มช่องผู้รับผิดชอบ — รันไฟล์ board_responsible_log.sql ก่อน', true);
+  const names=respNames();
+  const who=prompt('ตั้งผู้รับผิดชอบให้ '+ids.length+' รายการที่เลือก\n\n'
+    +(names.length?('คนที่เคยใช้: '+names.slice(0,12).join(', ')+'\n\n'):'')
+    +'พิมพ์ชื่อ แล้วกดตกลง · เว้นว่างแล้วกดตกลง = ล้างผู้รับผิดชอบออก', meName());
+  if(who===null)return;                       // กดยกเลิก
+  const val=who.trim()||null;
+  const snap=ids.map(i=>allOrders.find(x=>x.id===i)).filter(Boolean);
+  $('bulkRespBtn').disabled=true;
+  const { error } = await sb.from('purchase_orders')
+    .update({responsible:val, updated_at:new Date().toISOString()}).in('id', ids);
+  $('bulkRespBtn').disabled=false;
+  if(error){ toast('ตั้งไม่สำเร็จ: '+error.message); return; }
+  snap.forEach(function(o){
+    const a=(o.responsible||''), b=(val||'');
+    if(a===b)return;                          // ไม่เปลี่ยน ไม่ต้องบันทึก
+    poLog('responsible',{id:o.id, po_number:o.po_number, sku:o.sku,
+      changes:[{f:'responsible',a:a,b:b}], note:'ตั้งพร้อมกัน '+ids.length+' รายการ'});
+  });
+  toast(val?('ตั้งผู้รับผิดชอบเป็น "'+val+'" ให้ '+ids.length+' รายการแล้ว')
+           :('ล้างผู้รับผิดชอบของ '+ids.length+' รายการแล้ว'));
+  setSelectionMode(false);
+  loadOrders();
+}
 
 function setSelectionMode(on){
   selectionMode = on;
@@ -1845,12 +2261,14 @@ function setSelectionMode(on){
 
 function updateBulkUI(){
   const n = selectedIds.size;
-  const del = $('bulkDelBtn');
+  const del = $('bulkDelBtn'), rsp = $('bulkRespBtn');
   if(currentRole==='purchase' && selectionMode && n > 0){
     del.style.display = 'block';
     del.textContent = `🗑️ ลบที่เลือก (${n})`;
+    if(rsp){ rsp.style.display='block'; rsp.textContent=`👤 ตั้งผู้รับผิดชอบ (${n})`; }
   } else {
     del.style.display = 'none';
+    if(rsp) rsp.style.display = 'none';
   }
   const checks = [...$('tableBody').querySelectorAll('.row-check')];
   const sa = $('selectAllPage');
@@ -1868,10 +2286,16 @@ async function bulkDelete(){
   if(ids.length === 0) return;
   if(!confirm(`ต้องการลบ ${ids.length} รายการที่เลือกใช่หรือไม่?`)) return;
   $('bulkDelBtn').disabled = true;
+  const snap = ids.map(i=>allOrders.find(x=>x.id===i)).filter(Boolean);
   const { error } = await sb.from('purchase_orders').delete().in('id', ids);
   $('bulkDelBtn').disabled = false;
   if(error){ toast('ลบไม่สำเร็จ: '+error.message); return; }
-  toast(`ลบ ${ids.length} รายการเรียบร้อย`);
+  /* ลงบันทึกทีละแถว เพื่อให้ตามเจอจากเลข PO/SKU ได้ตรง ๆ ไม่ใช่ก้อนเดียว */
+  snap.forEach(function(o){
+    poLog('bulk_delete',{id:o.id, po_number:o.po_number, sku:o.sku,
+      changes:poGone(o), note:'ลบพร้อมกัน '+ids.length+' รายการ'});
+  });
+  toast(`ลบ ${ids.length} รายการเรียบร้อย — บันทึกไว้ในประวัติแล้ว`);
   setSelectionMode(false);   // ออกจากโหมดเลือก
   loadOrders();
 }
@@ -1912,6 +2336,7 @@ function openAdd(){
   $('modalTitle').textContent = 'เพิ่ม PO ใหม่';
   $('editId').value=''; $('mPO').value=''; $('mEta').value=''; $('carrierList').innerHTML=CARRIERS.map(c=>`<option value="${c.name}">`).join(''); $('mCarrier').value='';
   $('mStatus').value='อยู่ระหว่างสั่งซื้อ'; $('mNote').value='';
+  fillRespLists(); $('mResp').value=meName();   // ใบใหม่ = คนที่สร้างรับผิดชอบไปก่อน แก้ได้
   $('skuLines').innerHTML='';
   addSkuLine();                          // เริ่มด้วย 1 บรรทัดว่าง
   $('addSkuLineBtn').style.display='block';
@@ -1928,6 +2353,7 @@ window.openEdit = function(id){
       $('mDelivered').value=new Date().toISOString().slice(0,10);
   }; $('mStatus').value=o.status||'อยู่ระหว่างสั่งซื้อ'; $('mNote').value=o.note||'';
   $('carrierList').innerHTML=CARRIERS.map(c=>`<option value="${c.name}">`).join(''); $('mCarrier').value=o.carrier||'';
+  fillRespLists(); $('mResp').value=o.responsible||'';
   $('skuLines').innerHTML='';
   addSkuLine({ sku:o.sku, qty:o.quantity, recv:(o.received_qty!=null)?o.received_qty:null, price:(o.price!=null)?o.price:null });
   $('addSkuLineBtn').style.display='none';   // แก้ไขทีละรายการ ไม่เพิ่มหลาย SKU
@@ -1962,6 +2388,8 @@ async function saveOrder(){
     note: $('mNote').value.trim() || null,
     updated_at: new Date().toISOString()
   };
+  /* ยังไม่ได้รัน SQL → ห้ามส่งคอลัมน์ที่ไม่มี ไม่งั้นบันทึกไม่ผ่านทั้งใบ */
+  if(RESP_READY) shared.responsible = $('mResp').value.trim() || null;
   const lines = collectSkuLines();
   if(lines.length === 0){ toast('กรุณากรอก SKU อย่างน้อย 1 ตัว'); return; }
 
@@ -1972,16 +2400,27 @@ async function saveOrder(){
   if(id){
     // แก้ไข: อัพเดทแถวเดียว (SKU แรก)
     const ln = lines[0];
-    ({ error } = await sb.from('purchase_orders')
-      .update({ ...shared, sku: ln.sku, quantity: ln.qty, received_qty: ln.recv, price: ln.price }).eq('id', id));
+    const before = allOrders.find(x=>x.id===id) || {};
+    const after = { ...shared, sku: ln.sku, quantity: ln.qty, received_qty: ln.recv, price: ln.price };
+    ({ error } = await sb.from('purchase_orders').update(after).eq('id', id));
+    if(!error){
+      const ch = poDiff(before, after);
+      if(ch.length){
+        /* เปลี่ยนแค่ผู้รับผิดชอบอย่างเดียว → แยกประเภทให้กรองง่าย */
+        const onlyResp = ch.length===1 && ch[0].f==='responsible';
+        poLog(onlyResp?'responsible':'edit',
+          {id:id, po_number:after.po_number, sku:after.sku, changes:ch});
+      }
+    }
   } else {
     // เพิ่มใหม่: สร้างหลายแถว แถวละ SKU (ใช้ header PO ร่วมกัน)
-    const email = (await sb.auth.getUser()).data.user?.email || 'purchase';
+    const email = MY_EMAIL || (await sb.auth.getUser()).data.user?.email || 'purchase';
     for(const ln of lines){
-      const res = await sb.from('purchase_orders')
-        .insert({ ...shared, sku: ln.sku, quantity: ln.qty, received_qty: ln.recv, price: ln.price, created_by: email })
-        .select('id').single();
+      const row = { ...shared, sku: ln.sku, quantity: ln.qty, received_qty: ln.recv, price: ln.price, created_by: email };
+      const res = await sb.from('purchase_orders').insert(row).select('id').single();
       if(res.error){ error = res.error; break; }
+      poLog('create',{id:(res.data||{}).id, po_number:row.po_number, sku:row.sku,
+        changes:poDiff({},row)});
     }
   }
 
@@ -1994,10 +2433,14 @@ async function saveOrder(){
 
 window.delOrder = async function(id){
   const o = allOrders.find(x=>x.id===id);
-  if(!confirm(`ต้องการลบ "${o?.sku||'รายการนี้'}" ใช่หรือไม่?`)) return;
+  if(!confirm(`ต้องการลบ "${o?.sku||'รายการนี้'}" ใช่หรือไม่?\n\n(การลบจะถูกบันทึกในประวัติ พร้อมชื่อผู้ลบ)`)) return;
   const { error } = await sb.from('purchase_orders').delete().eq('id', id);
   if(error){ toast('ลบไม่สำเร็จ: '+error.message); return; }
-  toast('ลบเรียบร้อย');
+  /* ถ่ายภาพแถวไว้ก่อนหาย — ลบแล้วอ่านย้อนไม่ได้อีก */
+  poLog('delete',{id:id, po_number:(o||{}).po_number, sku:(o||{}).sku,
+    changes:poGone(o||{}), note:'ลบรายการทิ้ง (จำนวน '+((o||{}).quantity||0)
+      +' · สถานะ '+((o||{}).status||'-')+')'});
+  toast('ลบเรียบร้อย — บันทึกไว้ในประวัติแล้ว');
   loadOrders();
 };
 
@@ -2744,22 +3187,26 @@ $('tabBoard').addEventListener('click', () => switchTab('board'));
 $('tabArr').addEventListener('click',  () => switchTab('arr'));
 $('tabPlan').addEventListener('click', () => switchTab('plan'));
 $('tabUp').addEventListener('click',   () => switchTab('up'));
+$('tabLog').addEventListener('click',  () => switchTab('log'));
 $('tabRep').addEventListener('click',  () => switchTab('rep'));
 function switchTab(t){
   // การตลาดเข้า 3 แท็บนี้ไม่ได้ แม้จะเรียกฟังก์ชันตรงๆ (ข้อมูลภายในฝ่ายจัดซื้อ)
-  if((t==='rep'||t==='up'||t==='arr') && currentRole!=='purchase' && currentRole!=='shipping') t='board';
+  if((t==='rep'||t==='up'||t==='arr'||t==='log') && currentRole!=='purchase' && currentRole!=='shipping') t='board';
   $('viewBoard').style.display = t==='board' ? 'block' : 'none';
   $('viewArr').style.display   = t==='arr'   ? 'block' : 'none';
   $('viewPlan').style.display  = t==='plan'  ? 'block' : 'none';
   $('viewUp').style.display    = t==='up'    ? 'block' : 'none';
+  $('viewLog').style.display   = t==='log'   ? 'block' : 'none';
   $('viewRep').style.display   = t==='rep'   ? 'block' : 'none';
   $('tabBoard').classList.toggle('active', t==='board');
   $('tabArr').classList.toggle('active',   t==='arr');
   $('tabPlan').classList.toggle('active',  t==='plan');
   $('tabUp').classList.toggle('active',    t==='up');
+  $('tabLog').classList.toggle('active',   t==='log');
   $('tabRep').classList.toggle('active',   t==='rep');
   if(t==='rep')renderReport();
   if(t==='up')loadUploads();
+  if(t==='log')loadPoLogs();
   /* โหลดครั้งแรกที่เปิดแท็บ · หรือมีคนอื่นแก้ระหว่างที่เราไม่ได้เปิดแท็บนี้ */
   if(t==='arr' && (!ARR_LOADED || ARR_STALE)){ ARR_STALE=false; loadArr(); }
   if(t==='plan' && PLAN_STALE) loadPlan();   // มีคนแก้ระหว่างที่เราไม่ได้เปิดแท็บนี้
