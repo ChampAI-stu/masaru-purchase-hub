@@ -1358,11 +1358,16 @@ const SUPABASE_KEY = 'sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentRole = null; let ROLE_LABEL = '';
-const BOARD_VERSION='v05-00';
+const BOARD_VERSION='v05-01';
 try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
 console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
 let canSeePrice = false, canEditPrice = false, ME_EMAIL = 'purchase', MASTERP = {};   // ราคาสินค้า (เห็นเฉพาะจัดซื้อ/หัวหน้า/ผู้บริหาร)
+/* 👤 ผู้รับผิดชอบ + 🧾 ประวัติการแก้ไข = ข้อมูลภายในฝ่ายจัดซื้อ
+   เห็นได้เฉพาะ จัดซื้อ · หัวหน้าจัดซื้อ · ผู้บริหาร เท่านั้น
+   ⚠️ ชิปปิ้ง/การตลาด ไม่เห็น — และต้อง "ไม่ดึงคอลัมน์มาด้วย" ไม่ใช่แค่ซ่อนด้วย CSS
+      เพราะข้อมูลที่โหลดมาแล้วเปิดดูได้จาก devtools */
+let canSeeResp = false;
 let pendingFlash = new Set();   // id แถวที่เพิ่งเปลี่ยน รอ flash
 let sortState = { key: null, dir: 'asc' };   // การเรียงคอลัมน์
 let currentPage = 1;
@@ -1508,6 +1513,13 @@ function enterApp(session){
   // ราคาสินค้า: เห็น+แก้ได้ เฉพาะ จัดซื้อ/หัวหน้า/ผู้บริหาร
   canSeePrice  = canManage;
   canEditPrice = canManage;
+  // 👤 ผู้รับผิดชอบ + 🧾 ประวัติการแก้ไข: กติกาเดียวกับราคา
+  canSeeResp   = canManage;
+  if(!canSeeResp){
+    PO_COLS_USE = PO_COLS.replace(',responsible','');   // ไม่ดึงมาตั้งแต่ต้น
+    const _rh=$('respHead'); if(_rh)_rh.style.display='none';
+    const _rf=$('respFilter'); if(_rf){ _rf.value=''; _rf.style.display='none'; }
+  }
   $('loginScreen').style.display='none';
   $('app').style.display='block';
   updatePortalBtn(roles);   // โชว์ปุ่มหน้ารวมเฉพาะคนที่เข้าได้หลายเว็บ
@@ -1516,7 +1528,7 @@ function enterApp(session){
   $('tabRep').style.display = inner ? '' : 'none';
   $('tabArr').style.display = inner ? '' : 'none';   // 📦 แจ้งสินค้าขาเข้า
   $('tabUp').style.display  = inner ? '' : 'none';
-  $('tabLog').style.display = inner ? '' : 'none';   // 🧾 ประวัติการแก้ไข
+  $('tabLog').style.display = canSeeResp ? '' : 'none';   // 🧾 ประวัติการแก้ไข (มีชื่อผู้รับผิดชอบ + ราคา)
   // role UI
   if(currentRole === 'purchase'){
     $('rolePill').textContent = ROLE_LABEL;
@@ -1809,7 +1821,14 @@ function respNames(){
   const me=meName(); if(me)set.add(me);
   return [...set].sort((a,b)=>a.localeCompare(b,'th'));
 }
+/* ซ่อนช่องผู้รับผิดชอบทั้งบล็อกในโมดัล เมื่อบทบาทไม่มีสิทธิ์ */
+function respFieldShow(){
+  const el=$('mResp'); if(!el)return;
+  const box=el.closest('.m-field');
+  if(box)box.style.display=canSeeResp?'':'none';
+}
 function fillRespLists(){
+  if(!canSeeResp)return;          // ไม่มีสิทธิ์ = ไม่ต้องมีรายชื่อในตัวกรอง/ช่องกรอก
   const names=respNames();
   const dl=$('respList');
   if(dl)dl.innerHTML=names.map(n=>'<option value="'+esc(n)+'">').join('');
@@ -1904,6 +1923,7 @@ function plEvent(r){
 
 /* ── ประวัติของแถวเดียว (ปุ่ม 🧾 ในตาราง) ── */
 window.openPoLog = async function(id){
+  if(!canSeeResp)return toast('ไม่มีสิทธิ์ดูประวัติการแก้ไข');
   const o=(allOrders||[]).find(x=>x.id===id)||{};
   $('logModalTitle').textContent='🧾 ประวัติ — '+(o.sku||'')+(o.po_number?(' · PO '+o.po_number):'');
   $('logModalBody').innerHTML='<div style="padding:22px;text-align:center;color:var(--muted)">กำลังโหลด…</div>';
@@ -1931,6 +1951,7 @@ window.openPoLog = async function(id){
 let PLOGS=[];
 async function loadPoLogs(){
   const box=$('lgBody'); if(!box)return;
+  if(!canSeeResp){ box.innerHTML='<div class="pl-warn">ไม่มีสิทธิ์ดูประวัติการแก้ไข</div>'; return; }
   box.innerHTML='<div style="padding:22px;text-align:center;color:var(--muted)">กำลังโหลด…</div>';
   const days=parseInt(($('lgRange')&&$('lgRange').value)||'90',10);
   let q=sb.from('po_logs')
@@ -2027,6 +2048,8 @@ function exportPoLogs(){
 function render(){
   const hideCarrier = (currentRole==='marketing');
   {const _ch=document.getElementById('carrierHead'); if(_ch)_ch.style.display=hideCarrier?'none':'';}
+  {const _rh=document.getElementById('respHead'); if(_rh)_rh.style.display=canSeeResp?'':'none';}
+  {const _rf=document.getElementById('respFilter'); if(_rf)_rf.style.display=canSeeResp?'':'none';}
   const q = $('searchInput').value.toLowerCase().trim();
   const sf = $('statusFilter').value;
   const rf = ($('respFilter') && $('respFilter').value) || '';
@@ -2034,14 +2057,16 @@ function render(){
     const matchQ = !q || (o.sku||'').toLowerCase().includes(q)
       || (o.note||'').toLowerCase().includes(q)
       || (o.po_number||'').toLowerCase().includes(q)
-      || (o.responsible||'').toLowerCase().includes(q);
+      /* คนที่ไม่เห็นคอลัมน์ ก็ไม่ควรค้นเจอด้วยชื่อผู้รับผิดชอบ */
+      || (canSeeResp && (o.responsible||'').toLowerCase().includes(q));
     let matchS;
     if(sf === '__soon__')      matchS = etaState(o.eta, o.status) === 'soon';
     else if(sf === '__over__') matchS = etaState(o.eta, o.status) === 'over';
     else                       matchS = !sf || o.status === sf;
     /* __none__ = ยังไม่ระบุผู้รับผิดชอบ — เป็นตัวกรองที่ใช้บ่อยสุด (ของไม่มีเจ้าภาพ) */
-    const matchR = !rf || (rf==='__none__' ? !(o.responsible||'').trim()
-                                           : (o.responsible||'').trim()===rf);
+    const matchR = !canSeeResp || !rf
+      || (rf==='__none__' ? !(o.responsible||'').trim()
+                          : (o.responsible||'').trim()===rf);
     return matchQ && matchS && matchR;
   });
   rows = applySort(rows);
@@ -2049,7 +2074,7 @@ function render(){
   renderSummary();
   const tb = $('tableBody');
   if(rows.length === 0){
-    let colspan = currentRole==='purchase' ? (selectionMode?13:12) : (currentRole==='marketing'?10:11);
+    let colspan = currentRole==='purchase' ? (selectionMode?13:12) : (currentRole==='marketing'?9:10);
     if(canSeePrice) colspan += 1;
     tb.innerHTML = `<tr><td colspan="${colspan}"><div class="empty">
       <div class="big">📋</div>ยังไม่มีรายการ${q||sf?'ที่ตรงกับการค้นหา':''}</div></td></tr>`;
@@ -2065,7 +2090,7 @@ function render(){
     const est = etaState(o.eta, o.status);   // '', 'soon', 'over'
     const actions = currentRole==='purchase' ? `<td><div class="row-actions">
         <button class="act-btn" onclick="openEdit('${o.id}')">✏️</button>
-        <button class="lg-btn" title="ดูประวัติการแก้ไขของรายการนี้" onclick="openPoLog('${o.id}')">🧾</button>
+        ${canSeeResp?`<button class="lg-btn" title="ดูประวัติการแก้ไขของรายการนี้" onclick="openPoLog('${o.id}')">🧾</button>`:''}
         <button class="act-btn act-del" onclick="delOrder('${o.id}')">🗑️</button>
       </div></td>` : '';
     const rowClass = est==='over' ? 'row-over' : (est==='soon' ? 'row-soon' : '');
@@ -2109,9 +2134,9 @@ function render(){
       <td>${o.delivered_at?fmtDate(o.delivered_at):'<span style="color:var(--muted)">—</span>'}</td>
       <td><span class="badge ${STATUS_CLASS[o.status]||''}">${STATUS_ICON[o.status]||''} ${esc(o.status)}</span></td>
       ${hideCarrier?'':`<td>${o.carrier?`<span class="carrier-tag" style="background:${carrierColor(o.carrier)}">${esc(o.carrier)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>`}
-      <td>${(o.responsible||'').trim()
+      ${canSeeResp?`<td>${(o.responsible||'').trim()
         ? `<span class="resp-tag" title="ผู้รับผิดชอบ: ${esc(o.responsible)}">${esc(o.responsible)}</span>`
-        : '<span class="resp-none">— ยังไม่ระบุ —</span>'}</td>
+        : '<span class="resp-none">— ยังไม่ระบุ —</span>'}</td>`:''}
       <td><span class="note">${o.note?esc(o.note):'—'}</span></td>
       <td style="font-size:12px;color:var(--muted);white-space:nowrap">${fmtDateTime(o.updated_at)}</td>
       ${priceCell}
@@ -2225,6 +2250,7 @@ $('respFilter').addEventListener('change', ()=>{ currentPage=1; render(); });
 async function bulkSetResp(){
   const ids=[...selectedIds];
   if(!ids.length)return;
+  if(!canSeeResp)return toast('ไม่มีสิทธิ์ตั้งผู้รับผิดชอบ');
   if(!RESP_READY)return toast('ยังไม่ได้เพิ่มช่องผู้รับผิดชอบ — รันไฟล์ board_responsible_log.sql ก่อน', true);
   const names=respNames();
   const who=prompt('ตั้งผู้รับผิดชอบให้ '+ids.length+' รายการที่เลือก\n\n'
@@ -2265,7 +2291,7 @@ function updateBulkUI(){
   if(currentRole==='purchase' && selectionMode && n > 0){
     del.style.display = 'block';
     del.textContent = `🗑️ ลบที่เลือก (${n})`;
-    if(rsp){ rsp.style.display='block'; rsp.textContent=`👤 ตั้งผู้รับผิดชอบ (${n})`; }
+    if(rsp){ rsp.style.display=canSeeResp?'block':'none'; rsp.textContent=`👤 ตั้งผู้รับผิดชอบ (${n})`; }
   } else {
     del.style.display = 'none';
     if(rsp) rsp.style.display = 'none';
@@ -2336,7 +2362,8 @@ function openAdd(){
   $('modalTitle').textContent = 'เพิ่ม PO ใหม่';
   $('editId').value=''; $('mPO').value=''; $('mEta').value=''; $('carrierList').innerHTML=CARRIERS.map(c=>`<option value="${c.name}">`).join(''); $('mCarrier').value='';
   $('mStatus').value='อยู่ระหว่างสั่งซื้อ'; $('mNote').value='';
-  fillRespLists(); $('mResp').value=meName();   // ใบใหม่ = คนที่สร้างรับผิดชอบไปก่อน แก้ได้
+  respFieldShow(); fillRespLists();
+  $('mResp').value=canSeeResp?meName():'';   // ใบใหม่ = คนที่สร้างรับผิดชอบไปก่อน แก้ได้
   $('skuLines').innerHTML='';
   addSkuLine();                          // เริ่มด้วย 1 บรรทัดว่าง
   $('addSkuLineBtn').style.display='block';
@@ -2353,7 +2380,7 @@ window.openEdit = function(id){
       $('mDelivered').value=new Date().toISOString().slice(0,10);
   }; $('mStatus').value=o.status||'อยู่ระหว่างสั่งซื้อ'; $('mNote').value=o.note||'';
   $('carrierList').innerHTML=CARRIERS.map(c=>`<option value="${c.name}">`).join(''); $('mCarrier').value=o.carrier||'';
-  fillRespLists(); $('mResp').value=o.responsible||'';
+  respFieldShow(); fillRespLists(); $('mResp').value=o.responsible||'';
   $('skuLines').innerHTML='';
   addSkuLine({ sku:o.sku, qty:o.quantity, recv:(o.received_qty!=null)?o.received_qty:null, price:(o.price!=null)?o.price:null });
   $('addSkuLineBtn').style.display='none';   // แก้ไขทีละรายการ ไม่เพิ่มหลาย SKU
@@ -2389,7 +2416,7 @@ async function saveOrder(){
     updated_at: new Date().toISOString()
   };
   /* ยังไม่ได้รัน SQL → ห้ามส่งคอลัมน์ที่ไม่มี ไม่งั้นบันทึกไม่ผ่านทั้งใบ */
-  if(RESP_READY) shared.responsible = $('mResp').value.trim() || null;
+  if(RESP_READY && canSeeResp) shared.responsible = $('mResp').value.trim() || null;
   const lines = collectSkuLines();
   if(lines.length === 0){ toast('กรุณากรอก SKU อย่างน้อย 1 ตัว'); return; }
 
@@ -3191,7 +3218,9 @@ $('tabLog').addEventListener('click',  () => switchTab('log'));
 $('tabRep').addEventListener('click',  () => switchTab('rep'));
 function switchTab(t){
   // การตลาดเข้า 3 แท็บนี้ไม่ได้ แม้จะเรียกฟังก์ชันตรงๆ (ข้อมูลภายในฝ่ายจัดซื้อ)
-  if((t==='rep'||t==='up'||t==='arr'||t==='log') && currentRole!=='purchase' && currentRole!=='shipping') t='board';
+  if((t==='rep'||t==='up'||t==='arr') && currentRole!=='purchase' && currentRole!=='shipping') t='board';
+  /* 🧾 ประวัติการแก้ไข มีทั้งชื่อผู้รับผิดชอบและราคา → เฉพาะจัดซื้อ/หัวหน้า/ผู้บริหาร */
+  if(t==='log' && !canSeeResp) t='board';
   $('viewBoard').style.display = t==='board' ? 'block' : 'none';
   $('viewArr').style.display   = t==='arr'   ? 'block' : 'none';
   $('viewPlan').style.display  = t==='plan'  ? 'block' : 'none';
