@@ -1358,7 +1358,7 @@ const SUPABASE_KEY = 'sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentRole = null; let ROLE_LABEL = '';
-const BOARD_VERSION='v05-01';
+const BOARD_VERSION='v05-02';
 try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
 console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
@@ -3526,10 +3526,14 @@ function arrPickFill(){
       + ' — คงเหลือ ' + arrInt(g.leftPcs) + ' ชิ้น (' + arrInt(g.left) + ' ลัง · ' + nItems + ' รายการ)'
       + '</option>';
   }).join('');
+  /* บอกให้ชัดว่าตัวเลข "n รายการ" ในวงเล็บ = เฉพาะที่ดึงได้ ไม่ใช่จำนวนบรรทัดทั้งใบ
+     ไม่งั้นเปิดใบที่มี 6 บรรทัดแล้วได้ 2 จะเข้าใจว่าระบบพัง */
   $('tpArrHint').innerHTML = 'เลือกใบแจ้งที่ขนส่งจะส่งเข้าคลังรอบนี้ → ดึงรายการที่<b>ยังค้างที่ขนส่ง</b>มาให้ พร้อมเติม'
     + ' จำนวนลัง/ชิ้น/คิว ตาม<b>จำนวนคงเหลือ</b> (แก้ทับได้ · กรอกมือเพิ่มด้านล่างก็ได้)'
-    + '<br>🚚 ของที่จัดเที่ยวส่งอื่นไว้แล้วถูกหักออกจากคงเหลือให้แล้ว — ดึงซ้ำไม่ได้'
-    + ' · ▸ บรรทัดพ่วงจะถูกดึงมาด้วยทุกครั้ง';
+    + '<br>เลข <b>“n รายการ”</b> ในวงเล็บคือ<b>จำนวนที่ยังดึงได้</b> ไม่ใช่จำนวนบรรทัดทั้งใบ —'
+    + ' บรรทัดที่<b>จัดเที่ยวส่งอื่นไว้แล้ว 🚚</b> หรือ<b>เข้าคลังครบแล้ว</b> จะไม่ถูกนับและไม่ถูกดึงซ้ำ'
+    + '<br>▸ บรรทัดพ่วงถูกดึงมาด้วยทุกครั้ง · บรรทัดที่ใบแจ้งให้มาแต่<b>จำนวนลัง ไม่มีจำนวนชิ้น</b>'
+    + ' ก็ดึงได้ (ช่อง “ของเข้า” จะว่างไว้ให้กรอกเอง)';
 }
 
 /* หาจำนวนแจ้งมา/คงเหลือ ของบรรทัดที่กรอกไว้ (ใช้ตอนเปิดแก้เที่ยวเดิม) */
@@ -3628,12 +3632,27 @@ function addArrLines(){
         ? (head+' · ▸ พ่วงมาในลังของ '+((par&&par.sku)||'บรรทัดบน')
            + (m.unknown ? ' · ⚠️ ใบแจ้งไม่ได้ระบุจำนวน — กรอกจำนวนเอง'
                         : ' · แจ้งมา '+arrInt(m.fullPcs)+' ชิ้น'))
-        : (head+' · แจ้งมา '+arrInt(m.fullPcs)+' ชิ้น รับไปแล้ว '+arrInt(m.fullPcs-m.leftPcs)+' ชิ้น'),
+        : (m.unknown
+           ? (head+' · ⚠️ ใบแจ้งไม่ได้ระบุจำนวนชิ้น (มาเป็น '+arrInt(m.leftBox)+' ลัง) — กรอกช่อง "ของเข้า" เอง')
+           : (head+' · แจ้งมา '+arrInt(m.fullPcs)+' ชิ้น รับไปแล้ว '+arrInt(m.fullPcs-m.leftPcs)+' ชิ้น')),
       left4: m
     });
   });
-  toast('ดึง '+list.length+' รายการที่ยังค้าง จากใบแจ้ง '+(g.n.notice_no||fmtDate(g.n.notice_date))+' แล้ว'
-        + (nUnknown?(' — มีพ่วง '+nUnknown+' รายการที่ใบแจ้งไม่ได้ระบุจำนวน กรุณากรอกช่อง "ของเข้า"'):''));
+  /* ★ บอกให้ครบว่า "ข้ามอะไรไปบ้าง เพราะอะไร"
+        เดิมบอกแค่จำนวนที่ดึงมา คนเห็นใบมี 6 รายการแต่ได้ 2 แล้วงงว่าระบบพัง */
+  const skipped = g.items.filter(x=>!x.pickable);
+  const nPlan = skipped.filter(x=>((x._m||{}).planPcs||0)>0).length;   // จัดเที่ยวอื่นไว้แล้ว
+  const nDone = skipped.length - nPlan;                               // เข้าคลังครบแล้ว
+  let msg = 'ดึง '+list.length+' รายการที่ยังค้าง จากใบแจ้ง '
+          + (g.n.notice_no||fmtDate(g.n.notice_date)) + ' แล้ว';
+  if(nUnknown) msg += ' — มี '+nUnknown+' รายการที่ใบแจ้งไม่ได้ระบุจำนวน กรุณากรอกช่อง "ของเข้า"';
+  if(skipped.length){
+    const why = [];
+    if(nPlan) why.push('จัดเที่ยวส่งอื่นไว้แล้ว '+nPlan);
+    if(nDone) why.push('เข้าคลังครบแล้ว '+nDone);
+    msg += ' · ข้าม '+skipped.length+' รายการ ('+why.join(' · ')+')';
+  }
+  toast(msg);
 }
 
 function closeTrip(){ $('tripBg').style.display='none'; }
@@ -3917,8 +3936,14 @@ function arrPcsOf(it, parentM){
   else if(boxes>0) inPcs = fullPcs*bin/boxes;
   else             inPcs = 0;
   const leftPcs = Math.max(0, fullPcs-inPcs);
+  /* ★ เคสของจริงที่หลุด: ขนส่งแจ้งมาเป็น "ลัง" แต่ไม่ได้ใส่จำนวนชิ้น/ชิ้นต่อลัง
+        เช่น "สินค้าตัวอย่าง", "อะไหล่ช่าง" — 1 ลัง · ชิ้น = —
+        เดิม fullPcs=0 → leftPcs=0 → openPcs=0 → pickable=false → หายจากตัวเลือกเงียบ ๆ
+        ทั้งที่คลังต้องรับลังนั้นจริง (และยอด "ลัง" ในหัวข้อก็นับรวมไว้แล้ว = ขัดกันเอง)
+     ⇒ ติดธง unknown เหมือนบรรทัดพ่วง → ดึงเข้าเที่ยวส่งได้ แล้วกรอกจำนวนมือ */
   return {fullPcs:Math.round(fullPcs), inPcs:Math.round(inPcs), leftPcs:Math.round(leftPcs),
-          fullBox:boxes, inBox:bin, leftBox:leftBox, ppb:ppb, extra:false};
+          fullBox:boxes, inBox:bin, leftBox:leftBox, ppb:ppb, extra:false,
+          unknown: !(fullPcs>0) && leftBox>0};
 }
 
 /* คิดทั้งใบทีเดียว — พ่วงต้องรู้ว่าแม่คือบรรทัดไหน
