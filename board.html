@@ -1358,7 +1358,7 @@ const SUPABASE_KEY = 'sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentRole = null; let ROLE_LABEL = '';
-const BOARD_VERSION='v05-02';
+const BOARD_VERSION='v05-03';
 try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
 console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
@@ -4215,7 +4215,7 @@ function bellList(){
   /* ของค้างเกินกำหนด — ปักไว้บนสุดเสมอ ไม่นับเป็น "ยังไม่อ่าน" */
   const dueBox = $('bellDue');
   if(dueBox){
-    const nDue = (ARR_BOOT||[]).filter(p => p.wait>0.0001 && p.date && arrDaysWait(p.date)>=ARR_DUE).length;
+    const nDue = arrBootDue().length;        // ★ กติกาเดียวกับกล่องเตือนในแท็บ
     dueBox.innerHTML = nDue
       ? `<div class="bell-due" onclick="bellGoTab()">⏰ มีของค้างที่ขนส่งเกิน ${ARR_DUE} วัน ${nDue} ใบ — กดดูในแท็บ 📦</div>`
       : '';
@@ -4298,12 +4298,24 @@ function arrOverdue(groups){
                .sort((a,b) => b.days - a.days);
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   ⏰ ของค้างเกินกำหนด — ตัวกรองกลาง ใช้ร่วมกันทุกที่
+   ──────────────────────────────────────────────────────────────────
+   เคยมีเลขไม่ตรงกัน: ป้ายบนแท็บขึ้น 6 แต่เปิดเข้าไปกล่องเตือนบอก 4
+   เพราะเดิมนับกันคนละที่ คนละกติกา —
+     · กล่องเตือนในแท็บ  หักใบที่ "จัดเที่ยวส่งครบแล้ว" ออก (มีคิววันรับแล้ว ไม่ต้องตามของ)
+     · ป้ายบนแท็บ/กระดิ่ง ไม่ได้หัก → เลขสูงกว่าเสมอ
+   ⇒ รวมมาไว้ที่เดียว ใครจะนับก็ต้องผ่านฟังก์ชันนี้ จะได้ไม่หลุดกันอีก
+   ══════════════════════════════════════════════════════════════════ */
+function arrBootDue(){
+  return (ARR_BOOT||[]).filter(p => p.wait>0.0001 && !p.full && p.date
+                                    && arrDaysWait(p.date) >= ARR_DUE);
+}
 /* ใบค้างเกินกำหนดที่อยู่เดือนอื่น (ไม่ใช่เดือนที่กรองอยู่) */
 function arrOtherDue(){
   if(!ARR_BOOT) return [];
   const mo = $('arrMonth').value || arrMonthNow();
-  return ARR_BOOT.filter(p => p.month!==mo && p.wait>0.0001 && p.date
-                              && arrDaysWait(p.date) >= ARR_DUE);
+  return arrBootDue().filter(p => p.month!==mo);
 }
 
 /* กล่องแจ้งเตือนบนหัวแท็บ */
@@ -4317,6 +4329,7 @@ function renderArrAlert(groups){
          (รวม ${arrInt(other.reduce((a,p)=>a+p.wait,0))} ลัง) — เปลี่ยนตัวกรองเดือนเพื่อดู</div>`
     : '';
   if(!due.length){
+    arrSetBadge(other.length, other.filter(p => arrDaysWait(p.date) >= arrHotDays()).length);
     if(other.length){
       box.innerHTML = `<div class="arr-alert amber"><h4>🟠 เดือนนี้ไม่มีของค้างเกิน ${ARR_DUE} วัน</h4>${otherLine}</div>`;
       return;
@@ -4328,6 +4341,11 @@ function renderArrAlert(groups){
       : '';
     return;
   }
+  /* ★ เห็นของจริงในแท็บแล้ว — ซิงก์ป้ายบนแท็บให้ตรงกับกล่องนี้ทันที
+        (นับรวมใบเกินกำหนดของเดือนอื่นที่ยังไม่ได้เปิดดูด้วย) */
+  arrSetBadge(due.length + other.length,
+              due.filter(g => g.days >= arrHotDays()).length
+              + other.filter(p => arrDaysWait(p.date) >= arrHotDays()).length);
   const hot = due.filter(g => g.days >= arrHotDays());
   const boxW = due.reduce((a,g)=>a+g.t.boxWait,0);
   const pcsW = due.reduce((a,g)=>a+g.t.pcsWait,0);
@@ -4361,7 +4379,9 @@ function arrSetBadge(nDue, nHot){
   const b = $('arrBadge'); if(!b) return;
   b.className = 'tab-bdg' + (nDue?' on':'') + (nHot?'':' warn');
   b.textContent = nDue || '';
-  b.title = nDue ? ('ค้างที่ขนส่งเกิน '+ARR_DUE+' วัน '+nDue+' ใบแจ้ง') : '';
+  b.title = nDue ? ('ค้างที่ขนส่งเกิน '+ARR_DUE+' วัน '+nDue+' ใบแจ้ง'
+    +(nHot?(' · ในนี้เกิน '+arrHotDays()+' วัน '+nHot+' ใบ'):'')
+    +'\n(ไม่นับใบที่จัดเที่ยวส่งครบแล้ว)') : '';
 }
 
 /* เลื่อนไปที่ใบนั้นในตาราง + ไฮไลต์ให้เห็น */
@@ -4379,21 +4399,31 @@ function arrJump(id){
 async function arrBadgeBoot(){
   try{
     arrDueLoad();
+    /* ดึงคอลัมน์เท่าที่ arrCalc / arrTotals / arrPlanTot ต้องใช้ — จะได้คิดด้วยสูตรเดียวกับในแท็บ
+       (เดิมดึงแค่ 4 คอลัมน์แล้วบวกลังเอง เลยคิดเรื่องเที่ยวส่งไม่ได้ → เลขไม่ตรงกัน) */
     const { data, error } = await sb.from('arrival_items')
-      .select('boxes,boxes_in,is_extra,notice_id,arrival_notices!inner(notice_date,notice_month,status)')
+      .select('id,notice_id,seq,is_extra,line_ref,po_number,sku,boxes,boxes_in,pcs,pcs_per_box,cbm,weight_kg,'
+             +'arrival_notices!inner(notice_date,notice_month,status)')
       .in('arrival_notices.status', ['waiting','partial']);
     if(error || !data) return;            // ยังไม่ได้รัน SQL / ไม่มีสิทธิ์ → เงียบไว้
     const byN = {};
-    data.forEach(r => {
-      if(r.is_extra) return;
-      const k = r.notice_id;
+    data.forEach(function(r){
       const nn = r.arrival_notices || {};
-      const p = byN[k] || (byN[k] = {wait:0, date:nn.notice_date, month:nn.notice_month});
-      p.wait += (+r.boxes||0) - (+r.boxes_in||0);
+      const p = byN[r.notice_id] || (byN[r.notice_id] =
+        {items:[], date:nn.notice_date, month:nn.notice_month});
+      p.items.push(r);
     });
-    ARR_BOOT = Object.values(byN);
-    const list = ARR_BOOT.filter(p => p.wait>0.0001 && p.date && arrDaysWait(p.date) >= ARR_DUE);
-    arrSetBadge(list.length, list.filter(p => arrDaysWait(p.date) >= arrHotDays()).length);
+    const keys = Object.keys(byN);
+    /* ยิงถามเที่ยวส่งเฉพาะตอนมีใบเกินกำหนดจริง — ไม่มีก็ไม่ต้องเปลืองรอบอ่าน */
+    const anyDue = keys.some(k => byN[k].date && arrDaysWait(byN[k].date) >= ARR_DUE);
+    if(anyDue && !ARR_PL_OK) await arrPlanLoad();
+    ARR_BOOT = keys.map(function(k){
+      const p = byN[k], M = arrCalc(p.items), t = arrTotals(p.items);
+      const pl = arrPlanTot(p.items, M, '');
+      return {wait:t.boxWait, pcsWait:t.pcsWait, date:p.date, month:p.month, full:!!pl.full};
+    });
+    const due = arrBootDue();
+    arrSetBadge(due.length, due.filter(p => arrDaysWait(p.date) >= arrHotDays()).length);
   }catch(e){ /* ไม่ให้กระทบหน้าอื่น */ }
 }
 
