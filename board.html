@@ -1382,7 +1382,7 @@ const SUPABASE_KEY = 'sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentRole = null; let ROLE_LABEL = '';
-const BOARD_VERSION='v05-11';
+const BOARD_VERSION='v05-12';
 try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
 console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
@@ -3573,6 +3573,9 @@ async function arrPickLoad(){
         const m = Object.assign({}, m0, {planPcs:planPcs, planDate:p.date,
                                          openPcs:Math.max(0, m0.leftPcs-planPcs)});
         it._m = m; it.left = m.leftBox; it.leftPcs = m.leftPcs; it.openPcs = m.openPcs;
+        /* จำไว้ว่าใบนี้ถูกจัดเที่ยวไปแล้วเท่าไหร่ · วันไหน — ใช้บอกเหตุผลตอนดึงไม่ได้ */
+        g.planPcs = (g.planPcs||0) + planPcs;
+        if(p.date && p.date > (g.planDate||'')) g.planDate = p.date;
         /* พ่วงที่ยังไม่รู้จำนวน (unknown) ต้องดึงได้ด้วย แล้วกรอกจำนวนมือ */
         it.pickable = m.openPcs>0.0001 || !!m.unknown;
         g.leftPcs += m.openPcs;
@@ -3584,9 +3587,17 @@ async function arrPickLoad(){
         }
       });
     });
-    ARR_PICK = ARR_PICK
-      .filter(g => g.leftPcs>0.0001 || g.left>0.0001 || g.unknown)   // ใบที่จัดครบแล้วไม่ต้องโชว์
-      .sort((x,y)=>String(x.n.notice_date||'').localeCompare(String(y.n.notice_date||'')));
+    /* ★ เดิม filter ใบที่ "ดึงไม่ได้แล้ว" ทิ้งไปเลย → ผู้ใช้หาใบไม่เจอในดรอปดาวน์
+          แล้วสรุปว่า "ดึงรายการเที่ยวมาทำไม่ได้" ทั้งที่ระบบตั้งใจกันดึงซ้ำ
+       ✅ เก็บไว้แต่ติดธง done + เหตุผล แล้วไปแสดงเป็นตัวเลือกที่กดไม่ได้ พร้อมบอกวิธีแก้ */
+    ARR_PICK.forEach(function(g){
+      g.open = (g.leftPcs>0.0001 || g.left>0.0001 || g.unknown);
+      if(!g.open) g.why = (g.planPcs>0.0001)
+        ? ('🚚 จัดเที่ยวส่งครบแล้ว' + (g.planDate?(' · '+fmtDate(g.planDate)):''))
+        : '✅ เข้าคลังครบแล้ว';
+    });
+    ARR_PICK.sort((x,y)=>(x.open===y.open?0:(x.open?-1:1))
+      || String(x.n.notice_date||'').localeCompare(String(y.n.notice_date||'')));
   }catch(e){ ARR_PICK=[]; ARR_PICK_ERR=e.message; }
 }
 
@@ -3603,15 +3614,24 @@ function arrPickFill(){
     $('tpArrHint').innerHTML = 'ไม่มีของค้างที่ขนส่งแล้ว 🎉 — ถ้าจะทำเที่ยวส่งเอง กด <b>+ เพิ่มรายการ</b> ด้านล่างแล้วกรอกมือได้';
     return;
   }
-  sel.innerHTML = ARR_PICK.map(function(g){
-    const d = g.n.notice_date ? fmtDate(g.n.notice_date) : '-';
-    const nItems = g.items.filter(x=>x.pickable).length;
-    return '<option value="'+esc(g.n.id)+'">'
-      + esc(d) + ' · ' + esc(g.n.carrier||'-')
-      + (g.n.notice_no?(' · '+esc(g.n.notice_no)):'')
-      + ' — คงเหลือ ' + arrInt(g.leftPcs) + ' ชิ้น (' + arrInt(g.left) + ' ลัง · ' + nItems + ' รายการ)'
-      + '</option>';
-  }).join('');
+  const head = g => (g.n.notice_date?fmtDate(g.n.notice_date):'-') + ' · ' + esc(g.n.carrier||'-')
+    + (g.n.notice_no?(' · '+esc(g.n.notice_no)):'');
+  const open = ARR_PICK.filter(g=>g.open), done = ARR_PICK.filter(g=>!g.open);
+  let h = open.length
+    ? open.map(function(g){
+        const nItems = g.items.filter(x=>x.pickable).length;
+        return '<option value="'+esc(g.n.id)+'">' + head(g)
+          + ' — คงเหลือ ' + arrInt(g.leftPcs) + ' ชิ้น (' + arrInt(g.left) + ' ลัง · ' + nItems + ' รายการ)'
+          + '</option>';
+      }).join('')
+    : '<option value="">— ใบแจ้งที่ค้างอยู่ จัดเที่ยวครบหมดแล้ว —</option>';
+  /* กลุ่มที่ดึงไม่ได้ — โชว์ให้เห็นว่ามีอยู่ แต่กดเลือกไม่ได้ (กันดึงซ้ำ 2 เที่ยว) */
+  if(done.length){
+    h += '<optgroup label="ดึงซ้ำไม่ได้ — จัดเที่ยวไว้แล้ว/เข้าคลังครบ">'
+      + done.map(g=>'<option value="" disabled>' + head(g) + ' — ' + esc(g.why||'') + '</option>').join('')
+      + '</optgroup>';
+  }
+  sel.innerHTML = h;
   /* บอกให้ชัดว่าตัวเลข "n รายการ" ในวงเล็บ = เฉพาะที่ดึงได้ ไม่ใช่จำนวนบรรทัดทั้งใบ
      ไม่งั้นเปิดใบที่มี 6 บรรทัดแล้วได้ 2 จะเข้าใจว่าระบบพัง */
   $('tpArrHint').innerHTML = 'เลือกใบแจ้งที่ขนส่งจะส่งเข้าคลังรอบนี้ → ดึงรายการที่<b>ยังค้างที่ขนส่ง</b>มาให้ พร้อมเติม'
@@ -3619,7 +3639,9 @@ function arrPickFill(){
     + '<br>เลข <b>“n รายการ”</b> ในวงเล็บคือ<b>จำนวนที่ยังดึงได้</b> ไม่ใช่จำนวนบรรทัดทั้งใบ —'
     + ' บรรทัดที่<b>จัดเที่ยวส่งอื่นไว้แล้ว 🚚</b> หรือ<b>เข้าคลังครบแล้ว</b> จะไม่ถูกนับและไม่ถูกดึงซ้ำ'
     + '<br>▸ บรรทัดพ่วงถูกดึงมาด้วยทุกครั้ง · บรรทัดที่ใบแจ้งให้มาแต่<b>จำนวนลัง ไม่มีจำนวนชิ้น</b>'
-    + ' ก็ดึงได้ (ช่อง “ของเข้า” จะว่างไว้ให้กรอกเอง)';
+    + ' ก็ดึงได้ (ช่อง “ของเข้า” จะว่างไว้ให้กรอกเอง)'
+    + '<br>ใบที่อยู่ในกลุ่ม <b>“ดึงซ้ำไม่ได้”</b> คือจัดเที่ยวไว้ครบแล้ว — ถ้าจะย้ายมาเที่ยวนี้'
+    + ' ให้ไป<b>ลบบรรทัดออกจากเที่ยวเดิมก่อน</b> แล้วกลับมาดึงใหม่ (ระบบกันไม่ให้ของชุดเดียวอยู่ 2 เที่ยวพร้อมกัน)';
 }
 
 /* หาจำนวนแจ้งมา/คงเหลือ ของบรรทัดที่กรอกไว้ (ใช้ตอนเปิดแก้เที่ยวเดิม) */
