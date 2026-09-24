@@ -485,6 +485,19 @@
 body.price-on .sku-lines-head,body.price-on .sku-line{grid-template-columns:1fr 68px 68px 88px 34px}
 body.price-on .sl-price-col{display:block}
 body.price-on .sl-price{display:block}
+/* ═══ 📣 หัวหน้าทีมการตลาด — ซ่อนข้อมูลเชิงขนส่ง/ปริมาตรในแท็บ 📦 ═══
+   ซ่อนทั้งแถบสรุปบนหัว (แจ้งเตือน · การ์ด KPI · แถบรายบริษัทขนส่ง)
+   และคอลัมน์ คิว / น้ำหนัก ในตาราง
+   ★ ใช้ CSS ไม่ใช่เงื่อนไขตอนวาด HTML — ตัววาดตารางจึงเหมือนเดิมทุกบทบาท
+     ไม่มีทางวาดคอลัมน์เหลื่อมกัน (ทุกแถวมีเซลล์ครบเท่ากันอยู่แล้ว แค่ซ่อน)
+   ★ ปุ่ม PDF / Export ซ่อนด้วย เพราะไฟล์ที่ออกมามีคิว/น้ำหนักอยู่ข้างใน */
+body.mkt-lead #arrAlert,
+body.mkt-lead #arrSummary,
+body.mkt-lead #arrStrip,
+body.mkt-lead #arrPdfBtn,
+body.mkt-lead #arrXlsBtn,
+body.mkt-lead .arr-cbm,
+body.mkt-lead .arr-kg{display:none !important}
 .upd-price-btn{margin-left:6px;background:#D0212B;color:#fff;border:0;padding:5px 9px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;animation:pulsePrice 1.2s ease-in-out infinite}
 .upd-price-btn:hover{background:#a5121b;animation:none}
 @keyframes pulsePrice{0%,100%{box-shadow:0 0 0 0 rgba(208,33,43,.55)}50%{box-shadow:0 0 0 6px rgba(208,33,43,0)}}
@@ -800,7 +813,7 @@ body.price-on .sl-price{display:block}
 <div id="viewArr" style="display:none">
   <div class="container">
     <div id="arrAlert"></div>
-    <div class="summary" style="margin-top:14px">
+    <div class="summary" id="arrSummary" style="margin-top:14px">
       <div class="sum-card"><div class="sum-label">📦 ค้างที่ขนส่ง (ยังไม่เข้าคลัง)</div>
         <div class="sum-val" id="arrWaitBox">0</div>
         <div class="sum-sub" id="arrWaitSub">0 คิว · 0 กก.</div></div>
@@ -846,9 +859,9 @@ body.price-on .sl-price{display:block}
         <option value="done">✅ เข้าคลังครบ</option>
         <option value="cancel">⚪ ยกเลิก</option>
       </select>
-      <button class="add-btn" onclick="arrPdf()" style="background:#B01722"
+      <button class="add-btn" id="arrPdfBtn" onclick="arrPdf()" style="background:#B01722"
         title="ทำรายงานสำหรับพิมพ์ / บันทึกเป็น PDF (ตามตัวกรองที่เลือกอยู่)">🖨️ รายงาน PDF</button>
-      <button class="add-btn" onclick="exportArr()" style="background:#1E7145">📥 Export Excel</button>
+      <button class="add-btn" id="arrXlsBtn" onclick="exportArr()" style="background:#1E7145">📥 Export Excel</button>
       <button class="add-btn" id="arrAddBtn" onclick="openArr()" style="display:none">+ เพิ่มใบแจ้ง</button>
       <button class="wk-btn" onclick="loadArr()" title="โหลดใหม่">🔄</button>
     </div>
@@ -1389,7 +1402,7 @@ let currentRole = null; let ROLE_LABEL = '';
      แล้วใช้ธง MKT_LEAD เปิดเฉพาะแท็บ 📦 + กระดิ่งเพิ่มให้ทีหลัง
    ⚠️ อย่าเผลอไปแตะ canSeePrice / canSeeResp ให้ true — ตกลงกันว่าไม่ให้เห็นต้นทุน */
 let MKT_LEAD = false;
-const BOARD_VERSION='v05-13';
+const BOARD_VERSION='v05-14';
 try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
 console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
@@ -1589,6 +1602,7 @@ function enterApp(session){
   }
   if($('priceHead')) $('priceHead').style.display = canSeePrice ? '' : 'none';
   if(canSeePrice) document.body.classList.add('price-on');
+  if(MKT_LEAD) document.body.classList.add('mkt-lead');   // 📣 ซ่อนแถบสรุป + คิว/น้ำหนัก
   captureMe();
   if(inner || MKT_LEAD){
     $('bellWrap').style.display='';   // 🔔 กระดิ่งสินค้าขาเข้า (การตลาดธรรมดาไม่เห็นแท็บนี้ จึงไม่มีกระดิ่ง)
@@ -4846,8 +4860,8 @@ function renderArr(){
     <th style="width:78px">วันแจ้งเข้า</th><th style="width:76px">เลขที่รายการ</th><th style="width:46px">PO</th>
     <th>SKU</th><th class="n" style="width:44px" title="จำนวนชิ้นต่อลัง">ชิ้น/ลัง</th>
     <th class="n" style="width:40px">ลัง</th>
-    <th class="n" style="width:62px">ชิ้น</th><th class="n" style="width:54px">คิว</th>
-    <th class="n" style="width:52px">น้ำหนัก</th>
+    <th class="n" style="width:62px">ชิ้น</th><th class="n arr-cbm" style="width:54px">คิว</th>
+    <th class="n arr-kg" style="width:52px">น้ำหนัก</th>
     <th class="n" style="width:64px">เข้าคลัง<br><span style="font-weight:400;font-size:9.5px">(ชิ้น)</span></th>
     <th class="n" style="width:64px">ค้าง<br><span style="font-weight:400;font-size:9.5px">(ชิ้น)</span></th>
     <th style="width:104px">หมายเหตุ</th>
@@ -4889,8 +4903,8 @@ function renderArr(){
       <td class="n"></td>
       <td class="n"><b>${arrInt(t.boxes)}</b></td>
       <td class="n">${arrInt(t.pcs)}</td>
-      <td class="n"><b>${arrMoney(t.cbm)}</b></td>
-      <td class="n">${t.kg?arrInt(t.kg):'-'}</td>
+      <td class="n arr-cbm"><b>${arrMoney(t.cbm)}</b></td>
+      <td class="n arr-kg">${t.kg?arrInt(t.kg):'-'}</td>
       <td class="n ${t.pcsIn?'arr-done':''}" title="เข้าคลังแล้ว ${arrBoth(t.pcsIn,t.boxIn)}">${arrInt(t.pcsIn)}</td>
       <td class="n ${t.pcsWait>0&&g.st!=='cancel'?(g.pl.full?'arr-planq':'arr-wait'):''}" title="ค้างที่ขนส่ง ${
         arrBoth(t.pcsWait,t.boxWait)}${g.pl.pcs>0.0001?' · จัดเที่ยวส่งแล้ว '+arrInt(g.pl.pcs)+' ชิ้น':''}">${
@@ -4909,8 +4923,8 @@ function renderArr(){
         <td class="n">${x.pcs_per_box?arrInt(x.pcs_per_box):'-'}</td>
         <td class="n">${bx?arrInt(bx):'-'}</td>
         <td class="n">${x.pcs?arrInt(x.pcs):'-'}</td>
-        <td class="n">${x.cbm?arrMoney(x.cbm):'-'}</td>
-        <td class="n">${x.weight_kg?arrInt(x.weight_kg):'-'}</td>
+        <td class="n arr-cbm">${x.cbm?arrMoney(x.cbm):'-'}</td>
+        <td class="n arr-kg">${x.weight_kg?arrInt(x.weight_kg):'-'}</td>
         <td class="n ${m.inPcs?'arr-done':''}" title="${x.is_extra?'พ่วง — เข้าคลังตามบรรทัดแม่ ':'เข้าคลังแล้ว '}${
           arrBoth(m.inPcs,bi)}${x.in_date?' · รอบล่าสุด '+fmtDate(x.in_date):''}">${m.inPcs?arrInt(m.inPcs):'-'}</td>
         <td class="n ${m.leftPcs>0&&g.st!=='cancel'?(P&&P.pcs>=m.leftPcs-0.0001?'arr-planq':'arr-wait'):''}" title="${
@@ -4928,7 +4942,7 @@ function renderArr(){
     {boxes:0,pcs:0,cbm:0,kg:0,boxIn:0,boxWait:0,pcsIn:0,pcsWait:0});
   h += `<tr class="arr-sum"><td colspan="5">รวม ${rows.length} ใบแจ้ง</td>
     <td class="n">${arrInt(gt.boxes)}</td><td class="n">${arrInt(gt.pcs)}</td>
-    <td class="n">${arrMoney(gt.cbm)}</td><td class="n">${arrInt(gt.kg)}</td>
+    <td class="n arr-cbm">${arrMoney(gt.cbm)}</td><td class="n arr-kg">${arrInt(gt.kg)}</td>
     <td class="n" title="เข้าคลังแล้ว ${arrBoth(gt.pcsIn,gt.boxIn)}">${arrInt(gt.pcsIn)}</td>
     <td class="n" title="ค้างที่ขนส่ง ${arrBoth(gt.pcsWait,gt.boxWait)}">${arrInt(gt.pcsWait)}</td><td></td></tr></tbody>`;
   $('arrTb').innerHTML = h;
