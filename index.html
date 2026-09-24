@@ -1408,6 +1408,7 @@
           <select id="suRole">
             <option value="purchase">จัดซื้อ</option>
             <option value="marketing">การตลาด</option>
+            <option value="marketing_lead">หัวหน้าทีมการตลาด</option>
             <option value="head_purchase">หัวหน้าจัดซื้อ</option>
             <option value="shipping">ขนส่ง (Shipping)</option>
             <option value="executive">ผู้บริหาร</option>
@@ -1493,7 +1494,7 @@ const $ = id => document.getElementById(id);
 const APPS_FALLBACK = [
   { key:'board', icon:'📋', title:'Purchase Board',
     desc:'ติดตามสถานะ PO / SKU + แผนรับสินค้า แบบเรียลไทม์',
-    url:'board.html', roles:['purchase','marketing','shipping'] },
+    url:'board.html', roles:['purchase','marketing','marketing_lead','shipping'] },
   { key:'pr', icon:'📝', title:'ใบขอซื้อ (PR)',
     desc:'ออกใบขอซื้อ + ตรวจ AI + อนุมัติ + พิมพ์ PDF',
     url:'pr.html', roles:['purchase'] },
@@ -1534,8 +1535,10 @@ async function loadApps(){
   }catch(e){ return APPS_FALLBACK; }
 }
 
-const ROLE_LABEL = { purchase:'จัดซื้อ', marketing:'การตลาด', pr_manager:'หัวหน้า (อนุมัติ)', pr_exec:'ผู้บริหาร', executive:'ผู้บริหาร', shipping:'ขนส่ง (Shipping)' };
-const ALLOWED = ['purchase','marketing','pr_manager','pr_exec','executive','shipping'];   // บทบาทที่เข้าหน้ารวมได้
+const ROLE_LABEL = { purchase:'จัดซื้อ', marketing:'การตลาด', marketing_lead:'หัวหน้าทีมการตลาด', pr_manager:'หัวหน้า (อนุมัติ)', pr_exec:'ผู้บริหาร', executive:'ผู้บริหาร', shipping:'ขนส่ง (Shipping)' };
+/* marketing_lead = หัวหน้าทีมการตลาด — เห็นการ์ดเท่าการตลาด (Purchase Board)
+   ต่างกันที่ในตัว board.html เปิดแท็บ 📦 แจ้งสินค้าขาเข้า ให้ดูอย่างเดียว */
+const ALLOWED = ['purchase','marketing','marketing_lead','pr_manager','pr_exec','executive','shipping'];   // บทบาทที่เข้าหน้ารวมได้
 const isExecRole = r => r==='pr_exec' || r==='executive';   // ผู้บริหาร
 // 🔑 หัวหน้าจัดซื้อ + ผู้บริหาร = เห็นทุกระบบ ไม่ต้องไล่ใส่ทีละระบบใน portal_apps
 const seeAllRole = r => isExecRole(r) || r==='pr_manager';
