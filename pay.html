@@ -360,7 +360,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-05</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-07</span>
   </span>
   <!-- ⚠️ ป้าย "🧪 โหมดทดสอบ" ถอดออกตามที่สั่ง (v09-96)
        พฤติกรรมยังคงเดิม — APPROVAL_MODE=false อยู่ (ดูตัวแปรในสคริปต์)
@@ -806,7 +806,10 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
       <div class="fld"><label>จำนวนชิ้น</label>
         <input id="f_qty" type="number" step="1" oninput="calcBillTotal()" placeholder="เช่น 1000"></div>
       <div class="fld"><label>ราคาต่อหน่วย</label>
-        <input id="f_unit" type="number" step="0.0001" oninput="calcBillTotal()" placeholder="เช่น 142.00"></div>
+        <input id="f_unit" type="number" step="0.0001" oninput="calcBillTotal()" placeholder="เช่น 142.00">
+        <div class="muted" style="font-size:11.5px;margin-top:3px">
+          บิลที่<b>เพิ่มมือ</b> (ไม่มีใน Purchase Board) ต้องกรอก <b>จำนวนชิ้น + ราคาต่อหน่วย</b>
+          ช่องพวกนี้บน<b>ใบปะหน้าภายในประเทศ</b>จึงจะขึ้น · ค่าบริการก้อนเดียวใส่ 1 × ยอดเต็มได้</div></div>
       <div class="fld"><label>ยอดเต็มของบิล ★</label>
         <input id="f_total" type="number" step="0.01">
         <div id="f_calcHint" class="muted" style="font-size:11.5px;margin-top:3px"></div></div>
@@ -1307,7 +1310,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v10-05';
+const PAY_VERSION='v10-07';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -4103,6 +4106,44 @@ function docNoteBlock(){
 function printDcSheet(){
   printSheet($('dcSheet'),{empty:'ยังไม่มีใบปะหน้าให้พิมพ์'});
 }
+/* ══════════════════════════════════════════════════════════════════
+   🔎 หา จำนวนสั่ง / จำนวนเข้า / ราคาต่อหน่วย ของ SKU หนึ่งตัวในบิล
+   ──────────────────────────────────────────────────────────────────
+   ไล่ลำดับ:
+     ① PO เดียวกัน + SKU ตรง (แม่นสุด)
+     ② SKU ตรง PO ไหนก็ได้ — เอาใบล่าสุด
+     ③ ราคามาตรฐานจาก sku_master
+     ④ บิลมี SKU เดียว → ใช้ค่าที่กรอกในบิลเอง
+   ★ ข้อ ④ คือหัวใจของบิลที่ "เพิ่มมือ" (ค่าขนส่ง · ค่าแม่พิมพ์ · ค่าซ่อม · ค่าบริการ)
+     พวกนี้ไม่มีใน Purchase Board เลย ①②③ จึงว่างทั้งหมด
+     ที่เจอจริง: บิล "เทส / ค่าขนสินค้า" 2,500 บาท → ช่องจำนวน/ราคา ว่างทั้งแถว
+   ⚠️ ④ ใช้ได้เฉพาะบิล SKU เดียว — บิลหลาย SKU แยกจำนวน/ราคารายตัวไม่ได้
+      (b.qty / b.unit_price เป็นยอดของทั้งบิล ไม่ใช่ของ SKU ใด SKU หนึ่ง)
+   ══════════════════════════════════════════════════════════════════ */
+function docLook(b, sk, nSkus){
+  const nz=x=>String(x||'').trim().toUpperCase().replace(/[\s_]+/g,'');
+  const k=nz(sk), po=nz(b&&b.po_number);
+  const pos=POROWS.filter(r=>nz(r.po_number)===po);
+  let qty='', got='', price='';
+  const inPo=pos.find(x=>nz(x.sku)===k);                       // ①
+  if(inPo){ if(num(inPo.quantity))qty=inPo.quantity;
+            if(num(inPo.received_qty))got=inPo.received_qty;
+            if(num(inPo.price))price=inPo.price; }
+  if(qty===''||price===''){                                    // ②
+    const any=POROWS.filter(x=>nz(x.sku)===k&&(num(x.quantity)||num(x.price))).pop();
+    if(any){ if(qty===''&&num(any.quantity))qty=any.quantity;
+             if(price===''&&num(any.price))price=any.price; }
+  }
+  if(price===''){                                              // ③
+    const m=MASTER.find(x=>nz(x.sku)===k&&num(x.standard_price)>0);
+    if(m)price=m.standard_price;
+  }
+  if(nSkus===1&&b){                                            // ④
+    if(qty===''  &&num(b.qty))       qty=b.qty;
+    if(price===''&&num(b.unit_price))price=b.unit_price;
+  }
+  return {quantity:qty, received:got, price:price};
+}
 function buildDocDomestic(rows,coName,thDate){
   const detail=$('dcDetail')&&$('dcDetail').checked;
   const lines=[];
@@ -4114,13 +4155,17 @@ function buildDocDomestic(rows,coName,thDate){
     const amt=+p.amount||0;
     if(detail&&skus.length){
       skus.forEach((sk,i)=>{
-        const r=POROWS.find(x=>String(x.po_number||'')===po&&String(x.sku||'').trim()===sk)||{};
-        lines.push({po, name:sk, ordered:num(r.quantity)||'', got:num(r.received_qty)||'',
-          unit:num(r.price)||'', ship:i===0?ship:'', amt:i===0?amt+ship:'', note:i===0?(p.note||''):'',
+        const f=docLook(b, sk, skus.length);
+        lines.push({po, name:sk, ordered:f.quantity, got:f.received,
+          unit:f.price, ship:i===0?ship:'', amt:i===0?amt+ship:'', note:i===0?(p.note||''):'',
           span:i===0?skus.length:0});
       });
     }else{
-      lines.push({po, name:String(b.sku||b.vendor||''), ordered:'', got:'', unit:'',
+      /* ไม่ติ๊ก "แยกรายการ SKU" → 1 งวด 1 แถว
+         บิล SKU เดียวยังเติมจำนวน/ราคาให้ได้ (บิลหลาย SKU เติมไม่ได้ ปล่อยว่างตามเดิม) */
+      const f=(skus.length===1)?docLook(b, skus[0], 1):{quantity:'',received:'',price:''};
+      lines.push({po, name:String(b.sku||b.vendor||''),
+        ordered:f.quantity, got:f.received, unit:f.price,
         ship, amt:amt+ship, note:p.note||'', span:1});
     }
   });
@@ -4201,13 +4246,16 @@ async function checkDocData(){
   }
   const btn=$('dcCheckBtn'), btxt=btn?btn.textContent:'';
   if(btn){ btn.disabled=true; btn.textContent='⏳ กำลังดึงข้อมูล...'; }
+  let loadFail=false;
   try{
     await ensurePoFor(rows.map(p=>billOf(p.bill_id).po_number));
     await ensureMaster();
-  }catch(e){ /* ดึงไม่ได้ก็ให้ไปเจอข้อความด้านล่างแทนที่จะเงียบ */ }
+  }catch(e){ loadFail=true; }
   finally{ if(btn){ btn.disabled=false; btn.textContent=btxt; } }
-  /* ยังว่างอยู่ = โหลดตารางไม่สำเร็จ ไม่ใช่ข้อมูลผิด — อย่าไปโทษทีละบรรทัด */
-  if(!POROWS.length)
+  /* ⚠️ "ดึงมาแล้วได้ 0 แถว" ไม่เท่ากับ "โหลดไม่สำเร็จ"
+        วันที่มีแต่บิลเพิ่มมือ (ค่าขนส่ง/ค่าบริการ) หรือบอร์ดยังว่าง ก็ได้ 0 แถวเหมือนกัน
+        ถ้าเหมาว่าโหลดพังจะไปบล็อกการตรวจทั้งที่ทุกอย่างปกติ — ต้องดูที่ "ดึงพังจริงไหม" */
+  if(loadFail && !POROWS.length)
     return alert('ตรวจไม่ได้ — ยังโหลดข้อมูล Purchase Board ไม่สำเร็จ\n\n'
       +'ลองกดรีเฟรชหน้า (F5) แล้วกดตรวจใหม่อีกครั้ง\n'
       +'ถ้ายังไม่ได้ แปลว่าสิทธิ์เข้าถึงตาราง purchase_orders มีปัญหา');
@@ -4219,25 +4267,36 @@ async function checkDocData(){
     const skus=String(b.sku||'').split(',').map(x=>x.trim()).filter(Boolean);
     skus.forEach(sk=>{
       const k=nz(sk);
+      /* ★ ถามด้วยฟังก์ชันเดียวกับที่วาดใบจริง (docLook) — ผลตรวจจะได้ตรงกับที่เห็นบนใบเป๊ะ
+            เดิมตรวจเองแยกทาง เลยบอกว่า "ไม่พบ PO" ทั้งที่บนใบขึ้นค่าจากบิลให้แล้ว */
+      const f=docLook(b, sk, skus.length);
+      if(f.quantity!==''||f.price!==''){ ok.push(b.po_number+' · '+sk); return; }
       const r=pos.find(x=>nz(x.sku)===k);
-      if(r&&(num(r.quantity)||num(r.price)))ok.push(b.po_number+' · '+sk);
-      else{
-        const any=POROWS.find(x=>nz(x.sku)===k);
-        const m=MASTER.find(x=>nz(x.sku)===k&&num(x.standard_price)>0);
-        miss.push('· '+b.po_number+' / '+sk+'  → '
-          +(!pos.length?'ไม่พบ PO นี้ใน Purchase Board'
-            :(!r?'PO มีอยู่ แต่ไม่มี SKU นี้ในใบ'
-              :'มีแถวแต่จำนวน+ราคาเป็น 0'))
-          +(any?' (มี SKU นี้ใน PO อื่น → ใช้ราคานั้นแทน)':'')
-          +(m?' (มีราคามาตรฐานใน sku_master → ใช้แทน)':''));
+      const any=POROWS.find(x=>nz(x.sku)===k);
+      const m=MASTER.find(x=>nz(x.sku)===k&&num(x.standard_price)>0);
+      let why;
+      if(!pos.length){
+        /* บิลเพิ่มมือ (ค่าขนส่ง/ค่าแม่พิมพ์/ค่าบริการ) ไม่มีวันมีใน Purchase Board
+           → บอกวิธีที่ทำได้จริง แทนที่จะบอกแค่ว่าไม่พบ */
+        why = 'ไม่มี PO นี้ใน Purchase Board'
+            + (skus.length===1
+                ? ' → กรอก "จำนวนชิ้น" + "ราคาต่อหน่วย" ในบิล แล้วช่องนี้จะขึ้นเอง'
+                : ' และบิลนี้มีหลาย SKU จึงเติมจากบิลเองไม่ได้ → ต้องมีใน Purchase Board');
       }
+      else if(!r) why='PO มีอยู่ แต่ไม่มี SKU นี้ในใบ';
+      else why='มีแถวแต่จำนวน+ราคาเป็น 0';
+      miss.push('· '+b.po_number+' / '+sk+'  → '+why
+        +(any?' (มี SKU นี้ใน PO อื่น → ใช้ราคานั้นแทน)':'')
+        +(m?' (มีราคามาตรฐานใน sku_master → ใช้แทน)':''));
     });
   });
   alert('ตรวจข้อมูลใบปะหน้า\n\n'
-    +'✅ ดึงจาก PO ได้ครบ: '+ok.length+' รายการ\n'
-    +'⚠️ ดึงไม่ได้: '+miss.length+' รายการ\n\n'
+    +'✅ ช่องจำนวน/ราคาขึ้นครบ: '+ok.length+' รายการ\n'
+    +'⚠️ ยังว่างอยู่: '+miss.length+' รายการ\n\n'
     +(miss.length?miss.slice(0,25).join('\n')+(miss.length>25?'\n… และอีก '+(miss.length-25):''):'')
-    +'\n\nจำนวนสินค้า/ราคาต่อหน่วยมาจาก Purchase Board เท่านั้น\nถ้า PO ยังไม่ได้นำเข้าไฟล์ ช่องพวกนี้จะว่าง');
+    +'\n\nที่มาของจำนวน/ราคา เรียงตามลำดับ:\n'
+    +'  ① PO+SKU ตรงกันใน Purchase Board  ② SKU ตรง PO ไหนก็ได้\n'
+    +'  ③ ราคามาตรฐานใน sku_master  ④ ค่าที่กรอกในบิลเอง (เฉพาะบิล SKU เดียว)');
 }
 
 async function buildDoc(show){
@@ -4280,28 +4339,9 @@ function buildDocInner(show){
       const po=nz(b.po_number);
       const pos=POROWS.filter(r=>nz(r.po_number)===po);
       const skus=String(b.sku||'').split(',').map(x=>x.trim()).filter(Boolean);
-      /* หาจำนวน/ราคาแบบไล่ลำดับ:
-         ① PO เดียวกัน + SKU ตรง  ② SKU ตรง (PO ไหนก็ได้ เอาใบล่าสุด)  ③ ราคามาตรฐานจาก sku_master */
-      const look=sk=>{
-        const k=nz(sk);
-        let qty='', price='';
-        const inPo=pos.find(x=>nz(x.sku)===k);          // ① PO เดียวกัน + SKU ตรง
-        if(inPo){ if(num(inPo.quantity))qty=inPo.quantity; if(num(inPo.price))price=inPo.price; }
-        if(qty===''||price===''){                        // ② SKU ตรง (PO ไหนก็ได้ เอาใบล่าสุด)
-          const any=POROWS.filter(x=>nz(x.sku)===k&&(num(x.quantity)||num(x.price))).pop();
-          if(any){ if(qty==='' &&num(any.quantity))qty=any.quantity;
-                   if(price===''&&num(any.price))price=any.price; }
-        }
-        if(price===''){                                  // ③ ราคามาตรฐานจาก sku_master
-          const m=MASTER.find(x=>nz(x.sku)===k&&num(x.standard_price)>0);
-          if(m)price=m.standard_price;
-        }
-        if(skus.length===1){                             // ④ บิล SKU เดียว → ใช้ค่าที่กรอกในบิลเอง
-          if(qty===''  &&num(b.qty))       qty=b.qty;
-          if(price===''&&num(b.unit_price))price=b.unit_price;
-        }
-        return {quantity:qty, price:price};
-      };
+      /* ใช้ docLook ตัวเดียวกับใบในประเทศ — สูตรหาจำนวน/ราคาต้องมีที่เดียว
+         (เคยแยกกันแล้วฝั่งในประเทศไม่มีทางถอย ทำให้บิลที่เพิ่มมือขึ้นช่องว่าง) */
+      const look=sk=>docLook(b, sk, skus.length);
       if(skus.length){
         its=skus.map(sk=>{ const f=look(sk); return {sku:sk, quantity:f.quantity, price:f.price}; });
       }else if(pos.length){
