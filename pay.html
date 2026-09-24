@@ -360,7 +360,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-03</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-04</span>
   </span>
   <!-- ⚠️ ป้าย "🧪 โหมดทดสอบ" ถอดออกตามที่สั่ง (v09-96)
        พฤติกรรมยังคงเดิม — APPROVAL_MODE=false อยู่ (ดูตัวแปรในสคริปต์)
@@ -427,6 +427,8 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
         </select>
         <button class="btn ghost mini" onclick="clearBillFilter()">ล้างตัวกรอง</button>
         <div style="flex:1"></div>
+        <button class="btn" id="addBillBtn" onclick="openBill()" style="background:#1F3864"
+          title="เพิ่มบิลเองทีละใบ — ใช้กับบิลที่ไม่มีใน Purchase Board เช่น ค่าแม่พิมพ์ ค่าตัวอย่าง ค่าซ่อม">➕ เพิ่มบิล</button>
         <button class="btn" id="syncBtn" onclick="openSync()" style="background:#1E7145">🔄 ซิงก์จาก Purchase Board</button>
         <button class="btn ghost" onclick="runAudit()" style="border-color:#D0212B;color:#D0212B"
           title="ตรวจจับ PR ที่ถูกใช้ซ้ำหลาย PO · บิลซ้ำ · ยอดไม่ตรง Purchase Board">🔍 ตรวจสอบ</button>
@@ -1300,7 +1302,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v10-03';
+const PAY_VERSION='v10-04';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -1461,6 +1463,7 @@ async function boot(){
                             : (roles.includes('purchase') ? '📦 จัดซื้อ (แก้ไขได้)'
                             : (isMgr ? '🧑‍💼 หัวหน้า (แก้ไขได้)' : '👑 ผู้บริหาร (แก้ไขได้)'));
   if(!canEdit&&$('syncBtn'))$('syncBtn').style.display='none';
+  if(!canEdit&&$('addBillBtn'))$('addBillBtn').style.display='none';
   if(SHIP_ONLY){
     document.querySelectorAll('.tab').forEach(el=>{ if(el.dataset.t!=='remit')el.style.display='none'; });
     if($('gasBtn'))$('gasBtn').style.display='none';     // ตั้งค่าที่เก็บสลิป = งานจัดซื้อ
@@ -1837,7 +1840,8 @@ function renderBills(){
     <div class="kpi ${odCnt?'red':''}"><div class="lbl">${odCnt?'⛔ เลยกำหนด ยังไม่ส่งยอด':'งวดที่วางแผนไว้'}</div>
       <div class="val" ${odCnt?'style="cursor:pointer" onclick="goTab(\'doc\')" title="ไปที่เอกสารประจำวัน"':''}>${odCnt||planCnt}</div></div>
     <div class="kpi green"><div class="lbl">จ่ายแล้วเดือนนี้ (฿)</div><div class="val">${money(paidMonth)}</div></div>`;
-  if(!list.length){$('billTable').innerHTML='<div class="empty">ยังไม่มีบิล'+(canEdit?' — กด "🔄 ซิงก์จาก Purchase Board"':'')+'</div>';return;}
+  if(!list.length){$('billTable').innerHTML='<div class="empty">ยังไม่มีบิล'
+    +(canEdit?' — กด "🔄 ซิงก์จาก Purchase Board" หรือ "➕ เพิ่มบิล" เพื่อใส่เอง':'')+'</div>';return;}
   let h='<table><thead><tr>'
     +bTh('po_number','PO')
     +bTh('company','บริษัท')
@@ -1903,7 +1907,9 @@ function openBill(id){
   if(id&&!found){console.warn('[pay] openBill: ไม่พบบิล',id);alert('ไม่พบบิลนี้ — อาจถูกลบหรือข้อมูลยังไม่อัปเดต\nกำลังรีเฟรชให้ใหม่ แล้วลองกด "แก้" อีกครั้ง');loadAll();return;}
   editBillId=found?found.id:null;
   const b=found||{};
-  $('billTitle').textContent=id?'แก้ไขบิล '+(b.po_number||''):'เพิ่มบิล';
+  /* โหมดเพิ่ม (ไม่ส่ง id) — ทุกช่องด้านล่าง fallback เป็นค่าว่าง/ค่าตั้งต้นอยู่แล้ว
+     จึงล้างของใบก่อนหน้าให้เองครบ · ปุ่มลบอยู่ในตาราง ไม่ได้อยู่ในฟอร์ม จึงไม่ต้องซ่อน */
+  $('billTitle').textContent=id?'แก้ไขบิล '+(b.po_number||''):'➕ เพิ่มบิลใหม่';
   $('f_po').value=b?.po_number||'';
   // บิลเก่าที่ยังเป็น JMF ต้องคงค่าไว้ ไม่งั้น select จะเด้งเป็น LIKESHOP แล้วบันทึกทับโดยไม่รู้ตัว
   setSelKeep('f_co', b?.company||'LIKESHOP', CO_OPTS);
