@@ -200,6 +200,8 @@
     <div class="topbar-right no-print">
       <span class="live-pill" id="livePill" title="สถานะการเชื่อมต่อข้อมูลสด"><i></i> กำลังเชื่อมต่อ…</span>
       <button class="logout-btn" id="refreshBtn" title="โหลดข้อมูลใหม่ทันที">🔄 รีเฟรช</button>
+      <span id="cstVer" title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง"
+        style="background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px">—</span>
       <span class="role-pill" id="rolePill">—</span>
       <button class="logout-btn" id="portalBtn" title="กลับหน้ารวม">🏠 หน้ารวม</button>
       <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
@@ -684,6 +686,8 @@ function comboSet(id,val){
 }
 function comboVal(id){const inp=$(id);return inp?(inp.dataset.val||''):'';}
 
+const COST_VERSION='v01-01';
+try{ const _v=document.getElementById('cstVer'); if(_v)_v.textContent=COST_VERSION; }catch(e){}
 let db={master:[],hist:[],expMap:{},shipcosts:[],shipments:[],products:[],tracking:[],parties:[],budget:[],po:[],taxsum:[]};
 let currentRole='view', canEdit=false;
 
@@ -2490,11 +2494,94 @@ async function trkRelink(tid){
     if(ok){ await reload('tracking'); renderTrack(); alert('ผูกใหม่เรียบร้อย'); }
     return;
   }
-  if(!confirm('แถว '+mine+' ผูกอยู่กับใบ '+(bad.now||'(ถูกลบ)')+' ซึ่งคนละเลขกัน\n'
-    +'และไม่พบใบ INV เลข '+mine+' ในระบบ\n\n'
-    +'ยกเลิกการผูกของแถวนี้ไหม? (ข้อมูลในแถวยังอยู่ครบ แค่ไม่มีปุ่มเปิดใบ)'))return;
-  const ok=await dbWrite(()=>sb.from('shipment_tracking').update({shipment_id:null}).eq('id',t.id));
-  if(ok){ await reload('tracking'); renderTrack(); alert('ยกเลิกการผูกแล้ว'); }
+  /* ไม่มีใบ INV เลขเดียวกับแถวนี้ในระบบ = ใบถูกเปลี่ยนเลขไป (หรือแถวนี้เป็นแถวซ้ำที่ค้างไว้)
+     เคสนี้ "ยกเลิกการผูก" ไม่ใช่คำตอบเดียว — เปิดกล่องให้เลือกวิธีซ่อมเอง */
+  trkFixBox(t, bad);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   🔗 กล่องซ่อมการผูกใบ INV
+   ──────────────────────────────────────────────────────────────────
+   สถานการณ์: แถวชื่อ A แต่ใบที่ผูกไว้ชื่อ B และไม่มีใบชื่อ A ในระบบ
+   = ใบเดียวกันที่ถูกเปลี่ยนเลขไป → ต้องเลือกว่า "เลขไหนคือเลขจริง"
+   ⚠️ ถ้ามีแถวอื่นชื่อ B อยู่แล้ว การแก้เลขจะทำให้เลขซ้ำ/แถวนั้นเคว้ง
+      จึงปิดปุ่มนั้นไว้พร้อมบอกเหตุผล แทนที่จะปล่อยให้กดแล้วพังทีหลัง
+   ══════════════════════════════════════════════════════════════════ */
+function trkFixClose(){ const b=document.getElementById('trkFixBg'); if(b)b.remove(); }
+function trkFixBox(t, bad){
+  const mine = String(t.invoice_no||'').trim();
+  const sv   = db.shipments.find(x=>String(x.id)===String(t.shipment_id));
+  const now  = String((sv&&sv.invno)||'').trim();
+  /* แถวอื่นที่ใช้เลขของ "ใบ" อยู่แล้ว — ตัวชี้ว่าแถวนี้คือแถวซ้ำที่ค้างไว้ */
+  const dup  = db.tracking.find(x=>String(x.id)!==String(t.id)
+                 && String(x.invoice_no||'').trim().toUpperCase()===now.toUpperCase());
+  trkFixClose();
+  const bg=document.createElement('div'); bg.id='trkFixBg';
+  bg.style.cssText='position:fixed;inset:0;background:#0B1B33CC;z-index:9000;'
+    +'display:flex;align-items:center;justify-content:center;padding:20px';
+  const B=(id,on,title,sub)=>'<button '+(on?'':'disabled ')+'id="'+id+'" style="'
+    +'display:block;width:100%;text-align:left;margin-bottom:9px;padding:11px 14px;border-radius:10px;'
+    +'border:1px solid '+(on?'#BFD4E8':'#E2E8F0')+';background:'+(on?'#F4F9FF':'#F8FAFC')+';'
+    +'cursor:'+(on?'pointer':'not-allowed')+';font-family:inherit;opacity:'+(on?'1':'.6')+'">'
+    +'<b style="font-size:13.5px;color:'+(on?'#14315C':'#94A3B8')+'">'+title+'</b>'
+    +'<div style="font-size:11.5px;color:#64748B;margin-top:3px;line-height:1.55">'+sub+'</div></button>';
+  bg.innerHTML='<div style="background:#fff;border-radius:14px;padding:20px 22px;max-width:560px;width:100%;'
+    +'max-height:90vh;overflow:auto;font-size:13px;color:#1F2937">'
+    +'<h3 style="margin:0 0 10px;font-size:16px;color:#14315C">🔗 ซ่อมการผูกใบ INV</h3>'
+    +'<table style="width:100%;font-size:12.5px;margin-bottom:10px;border-collapse:collapse">'
+      +'<tr><td style="padding:3px 0;color:#64748B;width:170px">แถวในตาราง Shipment</td>'
+        +'<td><b>'+esc(mine||'(ไม่มีเลข)')+'</b>'+(t.start_date?(' <span style="color:#94A3B8">· '
+        +esc(t.start_date)+'</span>'):'')+'</td></tr>'
+      +'<tr><td style="padding:3px 0;color:#64748B">ใบ INV ที่ผูกอยู่ตอนนี้</td>'
+        +'<td><b style="color:#B01722">'+esc(now||'(ถูกลบไปแล้ว)')+'</b>'+(sv&&sv.date?(' <span style="color:#94A3B8">· '
+        +esc(sv.date)+'</span>'):'')+'</td></tr></table>'
+    +'<div style="background:#FFF7E6;border:1px solid #F0D9A8;border-radius:9px;padding:9px 12px;'
+      +'font-size:12px;line-height:1.65;margin-bottom:13px">'
+      +(dup
+        ? '⚠️ มีแถวอื่นในตารางชื่อ <b>'+esc(now)+'</b> อยู่แล้ว — แถวนี้น่าจะเป็น<b>แถวซ้ำที่ค้างไว้</b> '
+          +'ตอนใบถูกเปลี่ยนเลข<br>ถ้าใช่ ให้<b>ยกเลิกการผูก</b>แล้วลบแถวนี้ด้วยปุ่ม 🗑 ในคอลัมน์จัดการ'
+        : 'ไม่พบใบ INV เลข <b>'+esc(mine)+'</b> ในระบบ — แปลว่าเป็น<b>ใบเดียวกัน</b>ที่ถูกเปลี่ยนเลขไป '
+          +'เลือกว่าจะยึดเลขไหนเป็นตัวจริง')
+      +'</div>'
+    +B('trkFixA', !dup && !!mine && !!sv,
+       '① แก้เลขใบ INV กลับเป็น '+esc(mine),
+       dup ? 'ปิดไว้ — มีแถว '+esc(now)+' ใช้เลขนี้อยู่ แก้แล้วแถวนั้นจะไม่มีใบผูก'
+           : 'ใช้เมื่อเลขในตาราง Shipment คือเลขจริง (ใบถูกเปลี่ยนเลขไปโดยไม่ตั้งใจ) — <b>แนะนำ</b>')
+    +B('trkFixB', !dup && !!now,
+       '② แก้เลขแถวนี้เป็น '+esc(now),
+       dup ? 'ปิดไว้ — จะมี 2 แถวชื่อ '+esc(now)+' ซ้ำกัน'
+           : 'ใช้เมื่อเลขในใบ INV คือเลขจริง · ระวังถ้าเลขเดิมถูกอ้างในระบบอื่น (ค่าขนส่ง/ภาษี) ไว้แล้ว')
+    +B('trkFixC', true, '③ ยกเลิกการผูกของแถวนี้',
+       'ข้อมูลในแถวยังอยู่ครบ แค่ไม่มีปุ่มเปิดใบ — ใช้เมื่อเป็นคนละใบกันจริง ๆ หรือแถวนี้เป็นแถวซ้ำ')
+    +'<div style="text-align:right;margin-top:6px">'
+      +'<button onclick="trkFixClose()" style="padding:8px 18px;border-radius:9px;border:1px solid #CBD5E1;'
+      +'background:#fff;cursor:pointer;font-family:inherit;font-size:13px">ปิด</button></div></div>';
+  document.body.appendChild(bg);
+  bg.addEventListener('click', e=>{ if(e.target===bg) trkFixClose(); });
+  const go=(id,fn)=>{ const el=document.getElementById(id); if(el&&!el.disabled)el.onclick=fn; };
+  go('trkFixA', async()=>{
+    if(!confirm('เปลี่ยนเลขใบ INV\n\n  '+now+'  →  '+mine+'\n\nยืนยัน?'))return;
+    trkFixClose();
+    const ok=await dbWrite(()=>sb.from('shipments').update({invno:mine}).eq('id',sv.id));
+    if(!ok)return;
+    await reload('shipments'); await reload('tracking');
+    comboInit('loadShipment', db.shipments.map(x=>({id:x.id,label:x.invno+' · '+(x.date||'')})),
+      ()=>loadShipmentToForm(), '— ค้นหา/เลือกเอกสาร —');
+    renderTrack(); alert('แก้เลขใบ INV เป็น '+mine+' แล้ว — แถวกับใบตรงกันแล้ว');
+  });
+  go('trkFixB', async()=>{
+    if(!confirm('เปลี่ยนเลขแถวในตาราง Shipment\n\n  '+mine+'  →  '+now+'\n\nยืนยัน?'))return;
+    trkFixClose();
+    const ok=await dbWrite(()=>sb.from('shipment_tracking').update({invoice_no:now}).eq('id',t.id));
+    if(!ok)return;
+    await reload('tracking'); renderTrack(); alert('แก้เลขแถวเป็น '+now+' แล้ว');
+  });
+  go('trkFixC', async()=>{
+    trkFixClose();
+    const ok=await dbWrite(()=>sb.from('shipment_tracking').update({shipment_id:null}).eq('id',t.id));
+    if(!ok)return;
+    await reload('tracking'); renderTrack(); alert('ยกเลิกการผูกแล้ว');
+  });
 }
 function openInvoiceFromTrack(sid){
   if(!sid)return;
