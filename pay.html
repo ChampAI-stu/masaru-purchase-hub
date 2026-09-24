@@ -360,7 +360,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-07</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-08</span>
   </span>
   <!-- ⚠️ ป้าย "🧪 โหมดทดสอบ" ถอดออกตามที่สั่ง (v09-96)
        พฤติกรรมยังคงเดิม — APPROVAL_MODE=false อยู่ (ดูตัวแปรในสคริปต์)
@@ -707,6 +707,8 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
           <option value="">— ทุกสกุลเงิน —</option>
           <option value="CNY">¥ CNY</option><option value="USD">$ USD</option><option value="THB">฿ THB</option>
         </select>
+        <select id="lgCh" onchange="LG_PAGE=1;renderLedger()" style="max-width:200px"
+          title="กรองตามช่องทางที่โอนเงินออก"><option value="">— ทุกช่องทางการโอน —</option></select>
         <div style="flex:1"></div>
         <button class="btn mini" onclick="exportLedger()">📥 Export Excel</button>
       </div>
@@ -1310,7 +1312,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v10-07';
+const PAY_VERSION='v10-08';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -6188,19 +6190,36 @@ function ledgerRows(){
   // เลือกช่องเดียว = ดูเฉพาะวันนั้นวันเดียว
   const from=f||t, to=t||f;
   const pt=$('lgPt').value, st=$('lgSt').value||'sp', cu=$('lgCur').value;
+  const ch=($('lgCh')&&$('lgCh').value)||'';
   const okSt=x=>st==='all'?x!=='rejected':(st==='sp'?(x==='submitted'||x==='paid'):x===st);
   return PAYS.filter(p=>okSt(p.status))
     .filter(p=>!from||String(p.pay_date||'')>=from)
     .filter(p=>!to||String(p.pay_date||'')<=to)
     .filter(p=>!pt||(p.pay_type||'')===pt)
     .filter(p=>!cu||((billOf(p.bill_id).currency||'CNY')===cu))
+    .filter(p=>!ch||((p.channel||'')===ch))
     .filter(p=>{ if(!q)return true; const b=billOf(p.bill_id);
-      return ((b.po_number||'')+' '+(b.vendor||'')+' '+(b.sku||'')+' '+(p.payee||'')+' '+(p.pay_type||''))
+      /* ★ ค้นหาครอบช่องทางการโอนด้วย — พิมพ์ "Ksher" แล้วต้องเจอ ไม่ใช่ต้องไปเลือกดรอปดาวน์อย่างเดียว */
+      return ((b.po_number||'')+' '+(b.vendor||'')+' '+(b.sku||'')+' '+(p.payee||'')+' '
+              +(p.pay_type||'')+' '+(p.channel||''))
         .toLowerCase().includes(q);})
     .sort((a,b)=>String(b.pay_date||'').localeCompare(String(a.pay_date||'')));
 }
+/* เติมตัวเลือกช่องทางจากข้อมูลจริง + ช่องทางมาตรฐาน (CH_OPTS)
+   สร้างจากข้อมูลอย่างเดียวไม่พอ — ช่องทางที่เพิ่งเพิ่มแต่ยังไม่มีใครใช้จะไม่โผล่
+   คงค่าที่เลือกไว้เสมอ ไม่งั้นกรองอยู่แล้วเด้งกลับเป็น "ทุกช่องทาง" ทุกครั้งที่ตารางวาดใหม่ */
+function fillLedgerCh(){
+  const el=$('lgCh'); if(!el)return;
+  const used=[...new Set(PAYS.map(p=>p.channel).filter(Boolean))];
+  const list=[...new Set([...(typeof CH_OPTS!=='undefined'?CH_OPTS:[]), ...used])].sort();
+  const cur=el.value;
+  el.innerHTML='<option value="">— ทุกช่องทางการโอน —</option>'
+    +list.map(c=>'<option'+(c===cur?' selected':'')+'>'+esc(c)+'</option>').join('');
+  el.value=cur;
+}
 function renderLedger(){
   if(!$('lgBody'))return;
+  fillLedgerCh();
   const rows=ledgerRows();
   // แยกยอดตามสกุลเงิน — ห้ามบวกข้ามสกุล
   const by={}; rows.forEach(p=>{const c=billOf(p.bill_id).currency||'CNY';by[c]=(by[c]||0)+(+p.amount||0);});
