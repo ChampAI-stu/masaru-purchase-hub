@@ -1382,7 +1382,14 @@ const SUPABASE_KEY = 'sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentRole = null; let ROLE_LABEL = '';
-const BOARD_VERSION='v05-12';
+/* 🆕 หัวหน้าทีมการตลาด (role: marketing_lead)
+   = ฝ่ายการตลาดทุกอย่าง + เปิดแท็บ 📦 แจ้งสินค้าขาเข้า ให้ "ดูอย่างเดียว"
+   ★ ตั้ง currentRole='marketing' ไว้เหมือนเดิม ทุกกติกาของการตลาดจึงมีผลครบ
+     (ซ่อนคอลัมน์ขนส่ง · ไม่เห็นราคา · ไม่เห็นผู้รับผิดชอบ · ไม่มีปุ่มแก้ไข)
+     แล้วใช้ธง MKT_LEAD เปิดเฉพาะแท็บ 📦 + กระดิ่งเพิ่มให้ทีหลัง
+   ⚠️ อย่าเผลอไปแตะ canSeePrice / canSeeResp ให้ true — ตกลงกันว่าไม่ให้เห็นต้นทุน */
+let MKT_LEAD = false;
+const BOARD_VERSION='v05-13';
 try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
 console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
@@ -1519,8 +1526,9 @@ function enterApp(session){
   const isExec = roles.includes('pr_exec') || roles.includes('executive');
   const isMgr  = roles.includes('pr_manager');
   const isShip = roles.includes('shipping');
-  // อนุญาตเฉพาะบัญชีที่มีสิทธิ์ purchase/marketing/shipping/หัวหน้า/ผู้บริหาร
-  if(!roles.includes('purchase') && !roles.includes('marketing') && !isShip && !isMgr && !isExec){
+  const isMktLead = roles.includes('marketing_lead');
+  // อนุญาตเฉพาะบัญชีที่มีสิทธิ์ purchase/marketing/marketing_lead/shipping/หัวหน้า/ผู้บริหาร
+  if(!roles.includes('purchase') && !roles.includes('marketing') && !isMktLead && !isShip && !isMgr && !isExec){
     location.replace('index.html');   // ไม่มีสิทธิ์ → กลับหน้ารวม HUB
     return;
   }
@@ -1529,11 +1537,14 @@ function enterApp(session){
        การตลาด → ดูอย่างเดียว และเห็นแค่ 2 แท็บแรกเหมือนเดิม */
   const canManage = roles.includes('purchase') || isMgr || isExec;
   currentRole = canManage ? 'purchase' : (isShip ? 'shipping' : 'marketing');
+  /* หัวหน้าทีมการตลาด — มีผลเฉพาะตอนไม่ได้เป็นจัดซื้อ/หัวหน้า/ผู้บริหาร/ชิปปิ้งอยู่แล้ว */
+  MKT_LEAD = isMktLead && !canManage && !isShip;
   ROLE_LABEL = roles.includes('purchase') ? '\ud83d\udce6 \u0e1d\u0e48\u0e32\u0e22\u0e08\u0e31\u0e14\u0e0b\u0e37\u0e49\u0e2d'
              : (isMgr ? '\ud83e\uddd1\u200d\ud83d\udcbc \u0e2b\u0e31\u0e27\u0e2b\u0e19\u0e49\u0e32'
              : (isExec ? '\ud83d\udc51 \u0e1c\u0e39\u0e49\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23'
              : (isShip ? '\ud83d\ude9a \u0e0a\u0e34\u0e1b\u0e1b\u0e34\u0e49\u0e07 (\u0e14\u0e39\u0e2d\u0e22\u0e48\u0e32\u0e07\u0e40\u0e14\u0e35\u0e22\u0e27)'
-             : '\ud83d\udc41\ufe0f \u0e1d\u0e48\u0e32\u0e22\u0e01\u0e32\u0e23\u0e15\u0e25\u0e32\u0e14')));
+             : (MKT_LEAD ? '\ud83d\udce3 \u0e2b\u0e31\u0e27\u0e2b\u0e19\u0e49\u0e32\u0e17\u0e35\u0e21\u0e01\u0e32\u0e23\u0e15\u0e25\u0e32\u0e14'
+             : '\ud83d\udc41\ufe0f \u0e1d\u0e48\u0e32\u0e22\u0e01\u0e32\u0e23\u0e15\u0e25\u0e32\u0e14'))));
   // ราคาสินค้า: เห็น+แก้ได้ เฉพาะ จัดซื้อ/หัวหน้า/ผู้บริหาร
   canSeePrice  = canManage;
   canEditPrice = canManage;
@@ -1550,7 +1561,9 @@ function enterApp(session){
   // 🔒 รายงาน On-Time + ประวัติการอัพโหลด = ข้อมูลภายในฝ่ายจัดซื้อ ไม่ให้การตลาดเห็น
   const inner = (currentRole === 'purchase' || currentRole === 'shipping');
   $('tabRep').style.display = inner ? '' : 'none';
-  $('tabArr').style.display = inner ? '' : 'none';   // 📦 แจ้งสินค้าขาเข้า
+  /* 📦 แจ้งสินค้าขาเข้า — เปิดให้หัวหน้าทีมการตลาดด้วย (ดูอย่างเดียว)
+     ไม่มีราคา/ต้นทุน/ผู้รับผิดชอบในแท็บนี้เลย จึงเปิดได้โดยไม่หลุดข้อมูลภายใน */
+  $('tabArr').style.display = (inner || MKT_LEAD) ? '' : 'none';
   $('tabUp').style.display  = inner ? '' : 'none';
   $('tabLog').style.display = canSeeResp ? '' : 'none';   // 🧾 ประวัติการแก้ไข (มีชื่อผู้รับผิดชอบ + ราคา)
   // role UI
@@ -1572,13 +1585,13 @@ function enterApp(session){
   } else if(currentRole === 'shipping'){
     $('rolePill').textContent = '🚚 ชิปปิ้ง (ดูอย่างเดียว)';
   } else {
-    $('rolePill').textContent = '👁️ ฝ่ายการตลาด';
+    $('rolePill').textContent = MKT_LEAD ? '📣 หัวหน้าทีมการตลาด' : '👁️ ฝ่ายการตลาด';
   }
   if($('priceHead')) $('priceHead').style.display = canSeePrice ? '' : 'none';
   if(canSeePrice) document.body.classList.add('price-on');
   captureMe();
-  if(currentRole==='purchase' || currentRole==='shipping'){
-    $('bellWrap').style.display='';   // 🔔 กระดิ่งสินค้าขาเข้า (การตลาดไม่เห็นแท็บนี้ จึงไม่ต้องมีกระดิ่ง)
+  if(inner || MKT_LEAD){
+    $('bellWrap').style.display='';   // 🔔 กระดิ่งสินค้าขาเข้า (การตลาดธรรมดาไม่เห็นแท็บนี้ จึงไม่มีกระดิ่ง)
     arrBadgeBoot();                   // ⏰ ป้ายของค้างเกินกำหนดบนแท็บ 📦
     subscribeArrival();               // ฟังการเปลี่ยนแปลงแบบ realtime
   }
@@ -3303,8 +3316,10 @@ $('tabUp').addEventListener('click',   () => switchTab('up'));
 $('tabLog').addEventListener('click',  () => switchTab('log'));
 $('tabRep').addEventListener('click',  () => switchTab('rep'));
 function switchTab(t){
-  // การตลาดเข้า 3 แท็บนี้ไม่ได้ แม้จะเรียกฟังก์ชันตรงๆ (ข้อมูลภายในฝ่ายจัดซื้อ)
-  if((t==='rep'||t==='up'||t==='arr') && currentRole!=='purchase' && currentRole!=='shipping') t='board';
+  // การตลาดเข้าแท็บพวกนี้ไม่ได้ แม้จะเรียกฟังก์ชันตรงๆ (ข้อมูลภายในฝ่ายจัดซื้อ)
+  const _inner = (currentRole==='purchase' || currentRole==='shipping');
+  if((t==='rep'||t==='up') && !_inner) t='board';
+  if(t==='arr' && !_inner && !MKT_LEAD) t='board';   // 📦 หัวหน้าทีมการตลาดเข้าได้
   /* 🧾 ประวัติการแก้ไข มีทั้งชื่อผู้รับผิดชอบและราคา → เฉพาะจัดซื้อ/หัวหน้า/ผู้บริหาร */
   if(t==='log' && !canSeeResp) t='board';
   $('viewBoard').style.display = t==='board' ? 'block' : 'none';
