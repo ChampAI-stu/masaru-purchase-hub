@@ -360,7 +360,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-04</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-05</span>
   </span>
   <!-- ⚠️ ป้าย "🧪 โหมดทดสอบ" ถอดออกตามที่สั่ง (v09-96)
        พฤติกรรมยังคงเดิม — APPROVAL_MODE=false อยู่ (ดูตัวแปรในสคริปต์)
@@ -853,9 +853,14 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
       <div class="fld"><label>ช่องทางการโอน ★</label>
         <select id="p_channel" onchange="toggleKuser()">
           <option value="">— เลือกช่องทาง —</option>
-          <option value="JMF CARGO">JMF CARGO</option>
-          <option value="Ksher Payment Co.Ltd.">Ksher Payment Co.Ltd.</option>
-          <option value="ธนาคาร (SWIFT Code)">ธนาคาร (SWIFT Code)</option>
+          <optgroup label="โอนต่างประเทศ">
+            <option value="JMF CARGO">JMF CARGO</option>
+            <option value="Ksher Payment Co.Ltd.">Ksher Payment Co.Ltd.</option>
+            <option value="ธนาคาร (SWIFT Code)">ธนาคาร (SWIFT Code)</option>
+          </optgroup>
+          <optgroup label="ในประเทศ">
+            <option value="ค่าใช้จ่ายภายในประเทศ">ค่าใช้จ่ายภายในประเทศ</option>
+          </optgroup>
         </select></div>
       <div class="fld" id="fld_kuser" style="display:none"><label>User Ksher ที่ใช้โอน ★</label>
         <select id="p_kuser" onchange="kuserSync()">
@@ -1302,7 +1307,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v10-04';
+const PAY_VERSION='v10-05';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -2062,7 +2067,10 @@ function toggleKuser(){
   $('fld_kuser').style.display = on?'':'none';
   if(!on)$('p_kuser').value='';
 }
-const CH_OPTS=['JMF CARGO','Ksher Payment Co.Ltd.','ธนาคาร (SWIFT Code)'];
+/* ช่องทางการโอนที่มีให้เลือก — ต้องตรงกับ <option> ใน #p_channel
+   ไม่ตรง setSelKeep จะเติมป้าย "(ค่าเดิม)" ให้ เพราะคิดว่าเป็นค่าเก่าที่เลิกใช้แล้ว
+   'ค่าใช้จ่ายภายในประเทศ' = จ่ายในไทย ไม่ได้โอนออกนอก (ค่าแม่พิมพ์ · ค่าซ่อม · ค่าบริการ ฯลฯ) */
+const CH_OPTS=['JMF CARGO','Ksher Payment Co.Ltd.','ธนาคาร (SWIFT Code)','ค่าใช้จ่ายภายในประเทศ'];
 const PT_OPTS=['LIKESHOP','MASARU','DAIKI','นามบุคคล'];
 /* เดาประเภทการจ่ายเงินจากบริษัทของบิล ให้เลือกไว้ล่วงหน้า */
 function defaultPayType(bid){
