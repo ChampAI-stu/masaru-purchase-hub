@@ -1255,6 +1255,8 @@ body.price-on .sl-price{display:block}
 
     <div id="importPreview" style="display:none">
       <div style="font-weight:600;color:var(--navy);margin-bottom:8px">ตัวอย่างข้อมูล (<span id="importCount">0</span> รายการ)</div>
+      <div id="importOverWarn" style="display:none;background:#FCE4E4;border:1px solid #F0B6BC;
+        color:#B01722;border-radius:9px;padding:9px 12px;font-size:12.5px;margin-bottom:8px"></div>
       <div style="max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:9px">
         <table style="font-size:12px"><thead><tr>
           <th style="padding:8px 10px">เลขที่ PO</th><th style="padding:8px 10px">SKU</th>
@@ -1380,7 +1382,7 @@ const SUPABASE_KEY = 'sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentRole = null; let ROLE_LABEL = '';
-const BOARD_VERSION='v05-10';
+const BOARD_VERSION='v05-11';
 try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
 console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
@@ -2130,7 +2132,13 @@ function render(){
       const ordered = o.quantity || 0;
       const style = (ordered>0 && recv>=ordered) ? 'color:var(--green);font-weight:600'
                   : (recv>0 ? 'color:var(--amber);font-weight:600' : 'color:var(--muted)');
-      recvCell = `<span style="${style}">${recv.toLocaleString()}</span>`;
+      /* ★ แถวที่รับเกินอยู่แล้ว (หลุดมาก่อนจะมีการบล็อก) — ต้องเห็นเพื่อตามแก้
+            ของจริงที่เจอ: PO 19586 สั่ง 2,000 เข้า 2,580 / สั่ง 1,500 เข้า 3,000 */
+      recvCell = overRecv(ordered, recv)
+        ? `<span style="color:var(--red);font-weight:700" title="รับเกินจำนวนสั่ง ${
+            (recv-ordered).toLocaleString()} ชิ้น — ตรวจว่าคีย์สลับ/ตัดซ้ำหรือของมาเกินจริง">${
+            recv.toLocaleString()} 🚫</span>`
+        : `<span style="${style}">${recv.toLocaleString()}</span>`;
     }
     const checkCell = (currentRole==='purchase' && selectionMode)
       ? `<td style="text-align:center"><input type="checkbox" class="row-check" data-id="${o.id}" ${selectedIds.has(o.id)?'checked':''} style="cursor:pointer;width:16px;height:16px"></td>`
@@ -2441,6 +2449,11 @@ async function saveOrder(){
   if(RESP_READY && canSeeResp) shared.responsible = $('mResp').value.trim() || null;
   const lines = collectSkuLines();
   if(lines.length === 0){ toast('กรุณากรอก SKU อย่างน้อย 1 ตัว'); return; }
+  /* 🚫 ทางที่ 1 — กรอกในโมดัล */
+  {
+    const bad = lines.filter(ln => overRecv(ln.qty, ln.recv));
+    if(bad.length){ overAlert(bad.map(ln=>overTxt(ln.sku, ln.qty, ln.recv))); return; }
+  }
 
   const id = $('editId').value;
   $('modalSave').disabled = true; $('modalSave').textContent='กำลังบันทึก...';
@@ -2641,11 +2654,30 @@ function showImportPreview(){
   const skipped = window._skippedVoid || 0;
   if(skipped > 0) toast(`ข้ามรายการโมฆะ ${skipped} รายการ`);
   const provisional = r => computeStatusMerged(r._erp, r.quantity||0, r.received_qty, null);
-  $('importPreviewBody').innerHTML = importRecords.slice(0,50).map(r => `<tr>
+  /* เตือนตั้งแต่หน้าตัวอย่าง — เทียบกับแถวที่โหลดไว้ในหน้า (ค่าจริงไปเช็คอีกทีตอนกดยืนยัน) */
+  const exOf = r => allOrders.find(o => String(o.po_number||'')===String(r.po_number||'')
+                                     && String(o.sku||'')===String(r.sku||''));
+  const rowOver = r => {
+    const ex = exOf(r);
+    const q = r.quantity     != null ? r.quantity     : (ex ? ex.quantity     : 0);
+    const v = r.received_qty != null ? r.received_qty : (ex ? ex.received_qty : null);
+    return overRecv(q, v);
+  };
+  const nOver = importRecords.filter(rowOver).length;
+  const ovBox = $('importOverWarn');
+  if(ovBox){
+    ovBox.style.display = nOver ? '' : 'none';
+    ovBox.innerHTML = nOver ? ('🚫 <b>มี '+nOver+' รายการที่จำนวนที่เข้า &gt; จำนวนสั่ง</b> — '
+      +'นำเข้าไม่ได้จนกว่าจะแก้ไฟล์ (แถวสีแดงด้านล่าง)') : '';
+  }
+  $('importPreviewBody').innerHTML = importRecords.slice(0,50).map(r => `<tr${
+    rowOver(r)?' style="background:#FDECEC"':''}>
     <td style="padding:7px 10px">${esc(r.po_number||'—')}</td>
     <td style="padding:7px 10px">${esc(r.sku)}</td>
     <td style="padding:7px 10px">${r.quantity||'—'}</td>
-    <td style="padding:7px 10px">${r.received_qty!=null?r.received_qty:0}</td>
+    <td style="padding:7px 10px">${rowOver(r)
+      ? '<b style="color:var(--red)">'+(r.received_qty!=null?r.received_qty:0)+' 🚫</b>'
+      : (r.received_qty!=null?r.received_qty:0)}</td>
     <td style="padding:7px 10px">${r.price!=null?Number(r.price).toLocaleString():'—'}</td>
     <td style="padding:7px 10px">${r.eta?fmtDate(r.eta):'—'}</td>
     <td style="padding:7px 10px">${esc(provisional(r))}</td>
@@ -2665,6 +2697,24 @@ function showImportPreview(){
 }
 
 // คำนวณสถานะจากค่าที่รวมแล้ว: เข้าครบ→เข้าคลังแล้ว / บางส่วน→คงเดิม
+/* ══════════════════════════════════════════════════════════════════
+   🚫 ห้ามรับเกินจำนวนที่สั่ง
+   ──────────────────────────────────────────────────────────────────
+   "จำนวนที่เข้า > จำนวนสั่ง" เกือบทุกครั้งคือข้อมูลผิด ไม่ใช่ของมาเกินจริง
+   (คีย์สลับช่อง · ตัดเข้าคลังซ้ำรอบ · ตัดผิด SKU ในชุดที่ SKU คล้ายกัน)
+   ปล่อยผ่านแล้วพังต่อเป็นทอด: ของค้างติดลบ · สถานะเด้งเป็น "เข้าคลังแล้ว" ทั้งที่ยังไม่ครบ
+   · ยอดที่ส่งไปวางแผนจ่ายเงินเพี้ยนตาม  ⇒ บล็อกทุกทางที่ตัวเลขเข้าได้
+   ⚠️ qty ต้อง > 0 ก่อน จึงจะตัดสิน — PO ที่ยังไม่รู้จำนวนสั่ง (0/ว่าง) ห้ามไปบล็อกเขา
+   ถ้าของมาเกินจริง → ไปแก้ "จำนวน" ใน PO ให้ตรงของจริงก่อน แล้วค่อยรับเข้า
+   ══════════════════════════════════════════════════════════════════ */
+const overRecv = (qty,recv) => (+qty>0) && ((+recv||0) > (+qty));
+const overTxt  = (sku,qty,recv) => (sku?(sku+' — '):'')
+  + 'รับ ' + (+recv||0).toLocaleString() + ' > สั่ง ' + (+qty||0).toLocaleString()
+  + '  (เกิน ' + ((+recv||0)-(+qty||0)).toLocaleString() + ')';
+const overAlert = (lines, how) => alert('รับเกินจำนวนที่สั่ง — บันทึกไม่ได้\n\n'
+  + lines.map(x=>'· '+x).join('\n')
+  + '\n\n' + (how||'แก้ "จำนวน" ให้ตรงกับที่สั่งจริง หรือแก้ "จำนวนที่เข้า" ให้ไม่เกิน'));
+
 function computeStatusMerged(erp, ordered, received, existingStatus){
   if(received != null && ordered > 0 && received >= ordered) return 'เข้าคลังแล้ว';
   if(existingStatus != null) return existingStatus;                 // คงสถานะเดิม
@@ -2750,6 +2800,20 @@ async function confirmImportInner(){
       updated_at: now
     };
   });
+  /* 🚫 ทางที่ 3+4 — นำเข้า Excel / อัพเดท PO
+     ต้องเช็คกับค่า "หลังรวมกับของเดิม" (payload) ไม่ใช่ค่าในไฟล์ล้วน ๆ
+     เพราะไฟล์อาจมีแต่ช่องจำนวนที่เข้า แล้วจำนวนสั่งคงค่าเดิมไว้ */
+  {
+    const bad = payload.filter(r => overRecv(r.quantity, r.received_qty));
+    if(bad.length){
+      $('importConfirm').disabled = false; $('importConfirm').textContent = 'ยืนยันนำเข้า';
+      return overAlert(bad.slice(0,15).map(r=>'PO '+(r.po_number||'-')+' · '
+          +overTxt(r.sku, r.quantity, r.received_qty))
+        .concat(bad.length>15?['… และอีก '+(bad.length-15)+' รายการ']:[]),
+        'แก้ในไฟล์ให้ "จำนวนที่เข้า" ไม่เกิน "จำนวน" แล้วนำเข้าอีกครั้ง\n'
+        +'ถ้าของมาเกินจริง ให้แก้ช่องจำนวนสั่งในไฟล์ให้ตรงของจริงด้วย');
+    }
+  }
   // upsert: PO+SKU ซ้ำ → อัพเดท (เฉพาะช่องที่มีค่าในไฟล์) / ใหม่ → เพิ่ม
   const { error } = await sb.from('purchase_orders')
     .upsert(payload, { onConflict: 'po_number,sku' });
@@ -5092,6 +5156,27 @@ function arrFindPO(it, poHint){
   return (open.length?open:c).slice()
     .sort((a,b)=>String(a.eta||'9999-12-31').localeCompare(String(b.eta||'9999-12-31')))[0] || null;
 }
+/* ตรวจล่วงหน้าว่าชุดนี้จะทำให้ PO ไหนรับเกินไหม — คืนข้อความที่จะเอาไปเตือน
+   ⚠️ ต้องรวมยอดที่จะบวกของ "PO แถวเดียวกัน" ก่อนเทียบ
+      ใบแจ้งใบเดียวมีหลายบรรทัดชี้ PO แถวเดียวกันได้ (แบ่งล็อต) ถ้าเทียบทีละบรรทัดจะหลุด */
+function arrOverCheck(list){
+  const by = {};
+  (list||[]).forEach(function(x){
+    const o = arrFindPO(x.it, x.poHint); if(!o) return;
+    const k = String(o.id);
+    const p = by[k] || (by[k] = {o:o, add:0});
+    p.add += x.addPcs;
+  });
+  const out = [];
+  Object.keys(by).forEach(function(k){
+    const o = by[k].o, qty = +o.quantity||0;
+    const newR = Math.round((+o.received_qty||0) + by[k].add);
+    if(overRecv(qty, newR))
+      out.push('PO ' + (o.po_number||'-') + ' · ' + overTxt(o.sku, qty, newR)
+               + '  [เดิมเข้าแล้ว ' + (+o.received_qty||0).toLocaleString() + ']');
+  });
+  return out;
+}
 async function arrPushPO(list){
   if(!list.length) return {ok:0, miss:[], date:''};
   if(!allOrders.length) return {ok:0, miss:['ยังไม่ได้โหลด Purchase Board'], date:''};
@@ -5103,6 +5188,9 @@ async function arrPushPO(list){
       if(!o){ miss.push(x.it.sku||'-'); continue; }
       const qty = +o.quantity||0, oldR = +o.received_qty||0;
       const newR = Math.round(oldR + x.addPcs);
+      /* ชั้นกันสุดท้าย — ปกติ saveArrIn ตรวจให้แล้ว แต่ถ้ามีคนเรียกฟังก์ชันนี้จากที่อื่น
+         ห้ามให้เขียนค่าที่เกินลงฐานข้อมูลเด็ดขาด */
+      if(overRecv(qty, newR)){ miss.push((o.sku||'-')+' (รับเกินจำนวนสั่ง)'); continue; }
       const st = (qty>0 && newR>=qty) ? 'เข้าคลังแล้ว'
         : (newR>0 && (!o.status || o.status==='อยู่ระหว่างสั่งซื้อ' || o.status==='อยู่ระหว่างผลิต'
                       || o.status==='อยู่ระหว่างขนส่ง') ? 'รอนำส่งเข้าคลัง' : o.status);
@@ -5147,6 +5235,27 @@ async function saveArrIn(){
   });
   if(bad) return toast(bad);
   if(!ups.length) return toast('ยังไม่ได้ใส่จำนวนที่เข้าคลัง');
+  /* 🚫 ทางที่ 2 — 🚚 ตัดเข้าคลัง · ต้องตรวจ "ก่อน" เขียนอะไรทั้งสิ้น
+     ถ้าเขียน arrival_items ไปแล้วค่อยไปติดตอนอัปเดต Purchase Board
+     ใบแจ้งจะกลายเป็น "รับแล้ว" ทั้งที่บอร์ดไม่ขยับ = ข้อมูลสองฝั่งไม่ตรงกัน แก้ตามยาก
+     วิธี: จำลองผลลัพธ์จาก ups ก่อน แล้วคิดยอดที่จะบวกเข้า PO เหมือนตอนบันทึกจริงเป๊ะ ๆ */
+  {
+    const sim = snap.map(function(x){
+      const u = ups.find(y=>String(y.id)===String(x.id));
+      return u ? Object.assign({}, x, {boxes_in:u.boxes_in}) : x;
+    });
+    const Ms = arrCalc(sim);
+    const chk = []; let pPo = '';
+    arrOrder(sim).forEach(function(x){
+      if(!x.is_extra) pPo = String(x.po_number||'') || pPo;
+      const add = Math.round(((Ms[x.id]||{}).inPcs||0) - ((M0[x.id]||{}).inPcs||0));
+      if(add>0) chk.push({it:x, addPcs:add, poHint:pPo});
+    });
+    const over = arrOverCheck(chk);
+    if(over.length) return overAlert(over,
+      'ถ้าของมาเกินจริง ให้ไปแก้ "จำนวน" ของ PO นั้นใน Purchase Board ให้ตรงของจริงก่อน\n'
+      +'แล้วกลับมาตัดเข้าคลังอีกครั้ง (ยอดในใบแจ้งยังไม่ถูกบันทึก ไม่ต้องกรอกใหม่ทั้งใบ)');
+  }
   const btn=$('arrInSaveBtn'); btn.disabled=true; btn.textContent='กำลังบันทึก...';
   for(const u of ups){
     const r = await sb.from('arrival_items').update({boxes_in:u.boxes_in, in_date:u.in_date}).eq('id',u.id).select().single();
