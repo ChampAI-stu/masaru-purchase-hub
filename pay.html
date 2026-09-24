@@ -360,7 +360,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-09</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-11</span>
   </span>
   <!-- ⚠️ ป้าย "🧪 โหมดทดสอบ" ถอดออกตามที่สั่ง (v09-96)
        พฤติกรรมยังคงเดิม — APPROVAL_MODE=false อยู่ (ดูตัวแปรในสคริปต์)
@@ -564,6 +564,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
 
   <!-- ============ TAB 4: สรุปเดือน ============ -->
   <div id="tab-month" style="display:none">
+    <div id="moLate"></div>
     <div class="kpis" id="moKpi"></div>
     <div class="card">
       <h2 id="moHead">📊 สรุปค่าใช้จ่าย</h2>
@@ -1322,7 +1323,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v10-09';
+const PAY_VERSION='v10-11';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -3274,6 +3275,60 @@ const moHit=(p,P)=>{const d=String((p&&p.pay_date)||''); if(!d)return false;
   return P.from?(d>=P.from&&d<=P.to):true;};
 const moRows=P=>PAYS.filter(p=>moHit(p,P));
 
+/* ===== งวดเลยกำหนดจ่าย (ใช้ร่วมกันทั้งแถบเตือนและหน้าต่างรายการ) =====
+   นิยาม: ถึงกำหนดจ่ายมาแล้วเกิน N วัน แต่สถานะยังไม่ใช่ "จ่ายแล้ว"
+   ★ ไล่ดูทุกงวดย้อนหลังทั้งหมด ไม่ผูกกับเดือน/ช่วงที่กำลังเปิดดู
+     (ถ้าผูก เปิดดูเดือนนี้แล้วงวดค้างของเดือนก่อนจะหายไปเลย ซึ่งเป็นตัวที่อันตรายที่สุด)
+   ★ นับทั้ง planned (ยังไม่ส่งยอด) และ submitted (ส่งยอดแล้วรออนุมัติ)
+     — เงินยังไม่ออกเหมือนกัน · rejected / closed ถือว่าจบเรื่องแล้ว ไม่นับ */
+const LATE_DAYS=3;
+const lateOf=p=>{const d=String((p&&p.pay_date)||''); if(!d)return -1;
+  return Math.round((new Date(todayStr())-new Date(d))/86400000);};
+const isLatePay=p=>(p.status==='planned'||p.status==='submitted')&&lateOf(p)>=LATE_DAYS;
+function latePays(){
+  return PAYS.filter(isLatePay)
+    .sort((a,b)=>String(a.pay_date||'').localeCompare(String(b.pay_date||'')));
+}
+
+/* แถบเตือนบนสุดหน้าสรุปเดือน */
+function renderLateAlert(){
+  const box=$('moLate'); if(!box)return;
+  const rows=latePays();
+  if(!rows.length){
+    box.innerHTML='<div style="background:#EAF6EC;border:1px solid #BEE0C4;border-radius:9px;'
+      +'padding:7px 12px;margin-bottom:10px;font-size:12px;color:#1E6B34">'
+      +'\u2705 ไม่มีงวดที่เลยกำหนดจ่ายเกิน '+LATE_DAYS+' วัน</div>';
+    return;
+  }
+  const sum=rows.reduce((s,p)=>s+thbOf(p)+(+p.fee||0),0);
+  const worst=rows[0], wd=lateOf(worst), wb=billOf(worst.bill_id);
+  const nPlan=rows.filter(p=>p.status==='planned').length;
+  const nSub =rows.filter(p=>p.status==='submitted').length;
+  const by={}; rows.forEach(p=>{const k=p.responsible||'(ไม่ระบุ)';by[k]=(by[k]||0)+1;});
+  const who=Object.keys(by).sort((a,b)=>by[b]-by[a])
+    .map(k=>esc(k)+' <b>'+by[k]+'</b>').join(' \u00b7 ');
+  box.innerHTML=`<div style="background:#FDECEC;border:1px solid #F0B6B6;border-left:6px solid #B01722;
+      border-radius:10px;padding:12px 15px;margin-bottom:12px;font-size:12.5px;line-height:1.8">
+    <div style="font-size:14.5px;font-weight:800;color:#B01722">
+      🚨 มีงวดเลยกำหนดจ่ายเกิน ${LATE_DAYS} วัน แต่ยังไม่ได้กดจ่าย —
+      ${rows.length} งวด \u00b7 รวม ${money(sum)} ฿</div>
+    <div style="margin-top:3px">
+      ช้าสุด <b style="color:#B01722">${wd} วัน</b> —
+      PO <b>${esc(wb.po_number||'-')}</b> กำหนด <b>${esc(worst.pay_date||'-')}</b>
+      <span class="muted">\u00b7 ยังไม่ส่งยอด <b>${nPlan}</b> \u00b7 ส่งยอดแล้วรออนุมัติ <b>${nSub}</b></span></div>
+    ${who?('<div class="muted" style="font-size:12px">ผู้รับผิดชอบ: '+who+'</div>'):''}
+    <div class="row" style="margin-top:8px;align-items:center;gap:9px">
+      <button class="btn mini" style="background:#B01722;border-color:#B01722"
+              onclick="showLate()">🔎 ดูรายการทั้งหมด</button>
+      <span class="muted" style="font-size:11.5px">นับย้อนหลังทุกงวด ไม่ขึ้นกับเดือนที่เลือกดูด้านล่าง</span>
+    </div></div>`;
+}
+function showLate(){
+  const rows=latePays();
+  if(!rows.length)return toast('ไม่มีงวดที่เลยกำหนดเกิน '+LATE_DAYS+' วัน');
+  pendDraw(rows,'🚨 งวดเลยกำหนดจ่ายเกิน '+LATE_DAYS+' วัน — ทุกช่วงเวลา');
+}
+
 /* ===== TAB 4: สรุปเดือน ===== */
 /* รายการงวดที่ยังค้างตามแผนของเดือนนั้น (หรือเจาะวันเดียว) */
 function showPending(day){
@@ -3281,13 +3336,18 @@ function showPending(day){
   let rows=moRows(P).filter(p=>(p.status==='planned'||p.status==='submitted'));
   if(day)rows=rows.filter(p=>p.pay_date===day);
   if(!rows.length)return toast('ไม่มีงวดค้างแผน');
-  rows.sort((a,b)=>String(a.pay_date||'').localeCompare(String(b.pay_date||'')));
+  pendDraw(rows,'🗓️ งวดค้างตามแผน'+(day?(' — วันที่ '+esc(day)):(' — '+esc(P.head))));
+}
+/* ตัววาดหน้าต่างรายการงวดค้าง — ใช้ร่วมกับแถบเตือน "เลยกำหนด" */
+function pendDraw(rows,title){
+  rows=rows.slice().sort((a,b)=>String(a.pay_date||'').localeCompare(String(b.pay_date||'')));
   const today=todayStr();
   const sum=rows.reduce((s,p)=>s+thbOf(p)+(+p.fee||0),0);
   const late=rows.filter(p=>String(p.pay_date||'')<=today);
+  const over=rows.filter(isLatePay);
   const wait=rows.filter(p=>p.status==='submitted');
 
-  $('pdTitle').innerHTML='🗓️ งวดค้างตามแผน'+(day?(' — วันที่ '+esc(day)):(' — '+esc(P.head)));
+  $('pdTitle').innerHTML=title;
   let h=`<div style="display:flex;gap:20px;flex-wrap:wrap;background:#F7F9FC;border-radius:10px;
       padding:11px 14px;margin-bottom:12px;font-size:12.5px">
     <div><div class="muted" style="font-size:11px">จำนวนงวด</div><b style="font-size:16px">${rows.length}</b></div>
@@ -3296,6 +3356,8 @@ function showPending(day){
       <b style="font-size:16px;color:#B45309">${wait.length}</b></div>
     <div><div class="muted" style="font-size:11px">⛔ ถึง/เลยกำหนด</div>
       <b style="font-size:16px;color:${late.length?'#B01722':'#94A3B8'}">${late.length}</b></div>
+    <div><div class="muted" style="font-size:11px">🚨 เลยเกิน ${LATE_DAYS} วัน</div>
+      <b style="font-size:16px;color:${over.length?'#B01722':'#94A3B8'}">${over.length}</b></div>
     ${(()=>{const by={};rows.forEach(p=>{const k=p.responsible||'(ไม่ระบุ)';by[k]=(by[k]||0)+1;});
       const ks=Object.keys(by).sort((a,b)=>by[b]-by[a]);
       return ks.length?`<div><div class="muted" style="font-size:11px">ผู้รับผิดชอบ</div>
@@ -3307,7 +3369,7 @@ function showPending(day){
   rows.forEach(p=>{
     const b=billOf(p.bill_id);
     const lt=Math.round((new Date(today)-new Date(p.pay_date))/86400000);
-    h+=`<tr>
+    h+=`<tr${isLatePay(p)?' style="background:#FDECEC"':''}>
       <td><b>${esc(p.pay_date||'-')}</b></td>
       <td class="right">${lt>0?`<b style="color:#B01722">+${lt}</b>`:(lt===0?'<b style="color:#B45309">วันนี้</b>':'<span class="muted">-</span>')}</td>
       <td><b>${esc(b.po_number||'-')}</b></td>
@@ -3343,6 +3405,7 @@ function renderMonth(){
   if(!$('moMonth').value)$('moMonth').value=monthStr();
   const P=moPeriod();
   if($('moHead'))$('moHead').textContent='📊 สรุปค่าใช้จ่าย — '+P.head;
+  renderLateAlert();      /* แถบเตือนบนสุด — ไม่ผูกกับช่วงที่เลือก วาดใหม่ทุกครั้ง */
   const rows=moRows(P);
   const paid=rows.filter(p=>p.status==='paid'), planned=rows.filter(p=>p.status==='planned'||p.status==='submitted');
   const sumThb=a=>a.reduce((s,p)=>s+thbOf(p),0);
@@ -4199,8 +4262,14 @@ function histBlock(rows){
   return h+'</div>';
 }
 /* ===== ใบปะหน้า "ภายในประเทศ" (เงินบาท) =====
-   คอลัมน์: รายการ · รหัสใบจัดซื้อ · รายการ · จำนวนที่สั่ง · จำนวนสินค้าเข้า
+   คอลัมน์: รายการ · รหัสใบจัดซื้อ · รายการ · จำนวนที่สั่ง
             · ราคาต่อหน่วย · ค่าขนส่ง · จำนวนเงินบาท · หมายเหตุ            */
+/* 🚫 ตัดคอลัมน์ "จำนวนสินค้าเข้า" ออกจากใบนี้แล้ว (v10-11)
+      เหตุผล: ใบภายในประเทศส่วนใหญ่เป็นค่าบริการ/ค่าซ่อม/ค่าแม่พิมพ์ ไม่มีของเข้าคลังให้นับ
+      ช่องเลยว่างทุกใบ กินที่เปล่า ๆ และทำให้คนเซ็นสงสัยว่าลืมกรอกหรือเปล่า
+      ★ ใบต่างประเทศไม่เคยมีคอลัมน์นี้ ไม่ต้องไปแก้
+      ★ docLook() ยังคืนค่า received ไว้ (และ lines ยังมี got) เผื่อขอกลับมาใหม่
+        — ตอนนี้ไม่มีที่ไหนเอาไปแสดง ถ้าจะเอากลับ ใส่ th + td คืน 1 ช่อง แล้วปรับ colspan 8→9 */
 /* หมายเหตุอิสระที่พิมพ์ลงบนใบปะหน้า — ขึ้นเฉพาะเมื่อกรอก */
 function docNoteBlock(){
   const t=($('dcNote')&&$('dcNote').value.trim())||'';
@@ -4298,7 +4367,6 @@ function buildDocDomestic(rows,coName,thDate){
       ${first?`<td rowspan="${l.span}" style="text-align:center">${esc(l.po)}</td>`:''}
       <td>${esc(l.name)}</td>
       <td class="num">${l.ordered!==''?money(l.ordered):''}</td>
-      <td class="num">${l.got!==''?money(l.got):''}</td>
       <td class="num">${l.unit!==''?money2(l.unit):''}</td>
       ${first?`<td rowspan="${l.span}" class="num">${l.ship!==''&&l.ship?money2(l.ship):''}</td>`:''}
       ${first?`<td rowspan="${l.span}" class="num">${l.amt!==''?money2(l.amt):''}</td>`:''}
@@ -4307,7 +4375,7 @@ function buildDocDomestic(rows,coName,thDate){
   });
 
   $('dcSheet').innerHTML=`<div class="doc-sheet">
-    <table><tr><td colspan="9" style="text-align:center;line-height:1.75;padding:9px">
+    <table><tr><td colspan="8" style="text-align:center;line-height:1.75;padding:9px">
       <div style="font-weight:800;font-size:15px">${esc(coName)}</div>
       <div style="font-weight:700">รายงานสรุปค่าใช้จ่ายจัดซื้อภายในประเทศประจำวัน</div>
       <div style="font-weight:700">วันที่ ${esc(thDate)}</div>
@@ -4316,7 +4384,6 @@ function buildDocDomestic(rows,coName,thDate){
       <thead><tr>
         <th style="width:56px">รายการ</th><th style="width:130px">รหัสใบจัดซื้อ</th><th>รายการ</th>
         <th class="num" style="width:78px">จำนวน<br>ที่สั่ง</th>
-        <th class="num" style="width:82px">จำนวน<br>สินค้าเข้า</th>
         <th class="num" style="width:88px">ราคาต่อ<br>หน่วย</th>
         <th class="num" style="width:80px">ค่าขนส่ง</th>
         <th class="num" style="width:100px">จำนวนเงิน<br>บาท</th>
@@ -4324,7 +4391,7 @@ function buildDocDomestic(rows,coName,thDate){
       <tbody>${body}
         <tr style="background:#EFEFEF;font-weight:800">
           <td style="text-align:center">รวม</td><td></td><td></td>
-          <td class="num"></td><td class="num"></td><td class="num"></td>
+          <td class="num"></td><td class="num"></td>
           <td class="num">${T('ship')?money2(T('ship')):''}</td>
           <td class="num">${money2(T('amt'))}</td><td></td></tr>
       </tbody></table>
