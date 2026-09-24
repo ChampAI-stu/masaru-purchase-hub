@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-16</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-17</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -1240,7 +1240,10 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <table class="kv"><tbody>
     <tr><td><b>งวดไหนเข้าใบปะหน้า</b></td>
       <td>เฉพาะงวดที่สถานะ <b>ส่งยอด</b> ของวันที่ที่เลือก · ติ๊กเพิ่มเพื่อรวมงวดที่จ่ายแล้วได้</td></tr>
-    <tr><td><b>🔍 ตรวจข้อมูล</b></td><td>เช็คก่อนสร้างว่ามีงวดที่ยังไม่ส่งยอด / ข้อมูลไม่ครบตกหล่นไหม — <b>กดก่อนทุกครั้ง</b></td></tr>
+    <tr><td><b>🔍 ตรวจข้อมูล</b></td><td>เช็คก่อนสร้างว่ามีงวดที่ยังไม่ส่งยอด / ข้อมูลไม่ครบตกหล่นไหม — <b>กดก่อนทุกครั้ง</b>
+        <div class="muted" style="font-size:11.5px">ยังไม่ติ๊กรายการไหน = ตรวจทุกงวดของวันนั้น · ปุ่มจะขึ้น <b>⏳ กำลังดึงข้อมูล...</b> สักครู่ก่อนแสดงผล
+          <br><span style="color:#B01722">ถ้าขึ้นว่า "ไม่พบ PO นี้ใน Purchase Board" ทุกบรรทัดพร้อมกัน</span> = โหลดตาราง PO ไม่สำเร็จ ไม่ใช่ข้อมูลผิด
+          — ตอนนี้ระบบแยกเคสนี้ออกมาบอกตรง ๆ แล้ว ให้กด F5 แล้วลองใหม่</div></td></tr>
     <tr><td><b>💸 ใส่ค่าธรรมเนียมทุกรายการ</b></td><td>ใส่ค่าธรรมเนียมทีเดียวทุกแถว ไม่ต้องพิมพ์ทีละบรรทัด</td></tr>
     <tr><td><b>📄 สร้างใบปะหน้า</b></td><td>ออกเอกสารพร้อมพิมพ์ + บันทึกใบนั้นไว้ในระบบ (ระบบขออนุมัติดึงไปใช้ต่อได้)</td></tr>
     <tr><td><b>บิลหยวนแต่โอนดอลลาร์</b></td><td>ใบปะหน้าเพิ่มคอลัมน์ <b>ดอลลาร์ (USD)</b> และ <b>เรทโอน ฿/USD</b> ให้เอง</td></tr>
