@@ -360,7 +360,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-08</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-09</span>
   </span>
   <!-- ⚠️ ป้าย "🧪 โหมดทดสอบ" ถอดออกตามที่สั่ง (v09-96)
        พฤติกรรมยังคงเดิม — APPROVAL_MODE=false อยู่ (ดูตัวแปรในสคริปต์)
@@ -802,25 +802,35 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
       <div class="fld"><label>บริษัท ★</label>
         <select id="f_co"><option>LIKESHOP</option><option>MASARU</option><option>DAIKI</option><option>นามบุคคล</option></select></div>
       <input type="hidden" id="f_vendor">   <!-- ไม่ให้กรอกแล้ว แต่เก็บค่าเดิมไว้ ไม่ให้ข้อมูลหาย -->
-      <div class="fld"><label>SKU / สินค้า</label><input id="f_sku"></div>
       <div class="fld"><label>สกุลเงิน</label>
-        <select id="f_cur"><option value="CNY">¥ CNY (หยวน)</option><option value="USD">$ USD (ดอลลาร์)</option><option value="THB">฿ THB (บาท)</option></select></div>
-      <div class="fld"><label>จำนวนชิ้น</label>
-        <input id="f_qty" type="number" step="1" oninput="calcBillTotal()" placeholder="เช่น 1000"></div>
-      <div class="fld"><label>ราคาต่อหน่วย</label>
-        <input id="f_unit" type="number" step="0.0001" oninput="calcBillTotal()" placeholder="เช่น 142.00">
-        <div class="muted" style="font-size:11.5px;margin-top:3px">
-          บิลที่<b>เพิ่มมือ</b> (ไม่มีใน Purchase Board) ต้องกรอก <b>จำนวนชิ้น + ราคาต่อหน่วย</b>
-          ช่องพวกนี้บน<b>ใบปะหน้าภายในประเทศ</b>จึงจะขึ้น · ค่าบริการก้อนเดียวใส่ 1 × ยอดเต็มได้</div></div>
+        <select id="f_cur" onchange="drawBillItems()"><option value="CNY">¥ CNY (หยวน)</option><option value="USD">$ USD (ดอลลาร์)</option><option value="THB">฿ THB (บาท)</option></select></div>
       <div class="fld"><label>ยอดเต็มของบิล ★</label>
-        <input id="f_total" type="number" step="0.01">
+        <input id="f_total" type="number" step="0.01" oninput="BILL_TOTAL_TOUCHED=true;calcBillTotal()">
         <div id="f_calcHint" class="muted" style="font-size:11.5px;margin-top:3px"></div></div>
       <div class="fld"><label>Reference PR No</label>
         <input id="f_pr" list="billPrList" placeholder="PR-2026-0831-004">
         <div class="muted" style="font-size:11.5px;margin-top:3px">ใส่เลข PO แล้วระบบจะหาเลข PR ให้เอง (แก้ทับได้) · ใบเสนอราคาจะดึงเลขนี้ไปใช้</div>
         <datalist id="billPrList"></datalist></div>
     </div>
-    <div class="fld"><label>หมายเหตุ</label><textarea id="f_note" rows="2"></textarea></div>
+
+    <!-- รายการในบิล — 1 บิลมีได้หลาย SKU -->
+    <div style="margin-top:12px">
+      <div class="row" style="align-items:center;margin-bottom:5px">
+        <label style="margin:0;font-weight:600">รายการในบิล</label>
+        <span class="muted" id="f_itCount" style="font-size:12px"></span>
+        <div style="flex:1"></div>
+        <button class="btn mini ghost" type="button" onclick="addBillItem()">➕ เพิ่มรายการ</button>
+      </div>
+      <div id="f_items"></div>
+      <div class="muted" style="font-size:11.5px;margin-top:5px">
+        กรอก <b>จำนวน + ราคาต่อหน่วย</b> ของแต่ละรายการ → <b>ยอดเต็มของบิล</b> รวมให้เอง (พิมพ์ทับได้ เช่น มีส่วนลด/ค่าส่ง)
+        <br>บิลที่<b>เพิ่มมือ</b> (ไม่มีใน Purchase Board) ต้องกรอกจำนวน+ราคา ช่องพวกนี้บน<b>ใบปะหน้า</b>จึงจะขึ้น
+        · ค่าบริการก้อนเดียวใส่ <b>1 × ยอดเต็ม</b> ได้เลย
+      </div>
+    </div>
+    <input type="hidden" id="f_sku"><input type="hidden" id="f_qty"><input type="hidden" id="f_unit">
+
+    <div class="fld" style="margin-top:12px"><label>หมายเหตุ</label><textarea id="f_note" rows="2"></textarea></div>
     <div class="row" style="margin-top:16px;justify-content:flex-end">
       <button class="btn ghost" onclick="$('billBg').style.display='none'">ยกเลิก</button>
       <button class="btn" onclick="saveBill()">💾 บันทึกบิล</button>
@@ -1312,7 +1322,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v10-08';
+const PAY_VERSION='v10-09';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -1906,11 +1916,82 @@ function renderBills(){
 /* ===== BILL CRUD ===== */
 let editBillId=null;
 /* จำนวน × ราคาต่อหน่วย → ยอดเต็ม (แก้ยอดเต็มทับเองได้) */
+/* ══════════════════════════════════════════════════════════════════
+   🧾 รายการในบิล — 1 บิลมีได้หลาย SKU
+   ──────────────────────────────────────────────────────────────────
+   เก็บลงคอลัมน์ pay_bills.items (jsonb) = [{sku,qty,price}]
+   ★ ยังเขียน sku / qty / unit_price ต่อไปด้วย เพราะของเดิมใช้อยู่หลายที่
+       (ค้นหา · ตัวกรอง · รายงาน · ใบเสนอราคา · ใบปะหน้า)
+       sku = ทุกตัวต่อกันด้วย ","  ·  qty/unit_price = ใส่เมื่อมีรายการเดียว
+   ★ บิลเก่า items = null → ถอดจาก sku/qty/unit_price ให้เอง ไม่ต้องย้ายข้อมูล
+   ══════════════════════════════════════════════════════════════════ */
+let BILL_ITEMS=[], BILL_TOTAL_TOUCHED=false;
+function billItemsFrom(b){
+  /* มี items แล้วใช้เลย · ไม่มีก็ถอดจากคอลัมน์เดิม
+     บิลเก่าหลาย SKU: แตกเป็นหลายบรรทัด แต่จำนวน/ราคาใส่ให้ไม่ได้ (ของเดิมเก็บรวมทั้งบิล) */
+  if(b&&Array.isArray(b.items)&&b.items.length)
+    return b.items.map(x=>({sku:String(x.sku||''),qty:(x.qty??''),price:(x.price??'')}));
+  const skus=String((b&&b.sku)||'').split(',').map(x=>x.trim()).filter(Boolean);
+  if(!skus.length)return [{sku:'',qty:'',price:''}];
+  if(skus.length===1)
+    return [{sku:skus[0], qty:(b&&b.qty!=null)?b.qty:'', price:(b&&b.unit_price!=null)?b.unit_price:''}];
+  return skus.map(sk=>({sku:sk,qty:'',price:''}));
+}
+function addBillItem(){
+  BILL_ITEMS.push({sku:'',qty:'',price:''}); drawBillItems();
+  setTimeout(()=>{const es=document.querySelectorAll('#f_items .bi-sku');
+    if(es.length)es[es.length-1].focus();},30);
+}
+function delBillItem(i){
+  BILL_ITEMS.splice(i,1);
+  if(!BILL_ITEMS.length)BILL_ITEMS.push({sku:'',qty:'',price:''});
+  drawBillItems();
+}
+function setBillItem(i,k,v){ if(BILL_ITEMS[i]){ BILL_ITEMS[i][k]=v; calcBillTotal(); billItemsTot(); } }
+function billItemsTot(){
+  const n=BILL_ITEMS.filter(x=>String(x.sku||'').trim()||num(x.qty)||num(x.price)).length;
+  const sum=BILL_ITEMS.reduce((a,x)=>a+((+x.qty||0)*(+x.price||0)),0);
+  const el=$('f_itCount');
+  if(el)el.textContent=n?('('+n+' รายการ'+(sum?(' · รวม '+money2(sum)+' '+curSym($('f_cur').value)):'')+')'):'';
+  return sum;
+}
+function drawBillItems(){
+  const box=$('f_items'); if(!box)return;
+  if(!BILL_ITEMS.length)BILL_ITEMS=[{sku:'',qty:'',price:''}];
+  const cs=curSym($('f_cur').value);
+  let h='<div style="display:grid;grid-template-columns:1fr 92px 108px 104px 30px;gap:7px;'
+    +'font-size:11.5px;color:var(--muted);margin-bottom:3px">'
+    +'<div>SKU / สินค้า</div><div style="text-align:right">จำนวน</div>'
+    +'<div style="text-align:right">ราคา/หน่วย</div><div style="text-align:right">รวม ('+esc(cs)+')</div><div></div></div>';
+  BILL_ITEMS.forEach(function(it,i){
+    const tot=(+it.qty||0)*(+it.price||0);
+    h+='<div style="display:grid;grid-template-columns:1fr 92px 108px 104px 30px;gap:7px;margin-bottom:6px">'
+      +'<input class="bi-sku" value="'+esc(it.sku||'')+'" placeholder="เช่น SADS-125 / ค่าแม่พิมพ์"'
+        +' oninput="setBillItem('+i+',\'sku\',this.value)">'
+      +'<input type="number" step="1" style="text-align:right" value="'+esc(String(it.qty??''))+'" placeholder="0"'
+        +' oninput="setBillItem('+i+',\'qty\',this.value)">'
+      +'<input type="number" step="0.0001" style="text-align:right" value="'+esc(String(it.price??''))+'" placeholder="0.00"'
+        +' oninput="setBillItem('+i+',\'price\',this.value)">'
+      +'<div style="text-align:right;padding:9px 2px;font-weight:600;font-size:13px">'+(tot?money2(tot):'—')+'</div>'
+      +'<button class="btn mini red" type="button" onclick="delBillItem('+i+')" title="ลบรายการนี้">✕</button>'
+      +'</div>';
+  });
+  box.innerHTML=h;
+  billItemsTot(); calcBillTotal();
+}
 function calcBillTotal(){
-  const q=parseFloat($('f_qty').value)||0, u=parseFloat($('f_unit').value)||0;
-  if(q&&u)$('f_total').value=+(q*u).toFixed(2);
-  const hint=$('f_calcHint');
-  if(hint)hint.textContent=(q&&u)?(money(q)+' × '+money2(u)+' = '+money2(q*u)):'';
+  const sum=BILL_ITEMS.reduce((a,x)=>a+((+x.qty||0)*(+x.price||0)),0);
+  /* รวมให้อัตโนมัติ "จนกว่าจะพิมพ์ทับ" — บิลที่มีส่วนลด/ค่าส่งจะได้แก้เองได้ */
+  if(sum&&!BILL_TOTAL_TOUCHED)$('f_total').value=+sum.toFixed(2);
+  const hint=$('f_calcHint'); if(!hint)return;
+  const cur=parseFloat($('f_total').value)||0;
+  if(!sum){ hint.textContent=''; hint.style.color=''; return; }
+  const diff=+(cur-sum).toFixed(2);
+  if(Math.abs(diff)<0.005){ hint.style.color=''; hint.textContent='= ผลรวมรายการ '+money2(sum); }
+  else{ /* ต่างจากผลรวม = อาจตั้งใจ (ส่วนลด/ค่าส่ง) หรือพิมพ์ผิด — เตือนให้เห็น ไม่บล็อก */
+    hint.style.color='#B45309';
+    hint.textContent='⚠️ ผลรวมรายการ '+money2(sum)+' — ต่าง '+(diff>0?'+':'')+money2(diff);
+  }
 }
 function openBill(id){
   const found=id?BILLS.find(x=>String(x.id)===String(id)):null;
@@ -1926,7 +2007,9 @@ function openBill(id){
   $('f_vendor').value=b?.vendor||''; $('f_sku').value=b?.sku||'';
   $('f_cur').value=b?.currency||'CNY'; $('f_total').value=b?.total_amount||'';
   $('f_qty').value=(b&&b.qty!=null)?b.qty:''; $('f_unit').value=(b&&b.unit_price!=null)?b.unit_price:'';
-  calcBillTotal();
+  /* ยอดเต็มของบิลเก่าถือว่า "คนกรอกไว้แล้ว" — ห้ามให้ผลรวมรายการเขียนทับตอนเปิดดู */
+  BILL_ITEMS=billItemsFrom(b); BILL_TOTAL_TOUCHED=!!(b&&b.total_amount);
+  drawBillItems();
   $('f_pr').value=b?.ref_pr||'';
   $('f_note').value=b?.note||'';
   fillPrDatalist();
@@ -1953,9 +2036,21 @@ function fillPrDatalist(){
   dl.innerHTML=ns.map(n=>'<option>'+esc(n)+'</option>').join('');
 }
 async function saveBill(){
+  /* รายการที่ "มีเนื้อหา" เท่านั้น — แถวเปล่าที่กดเพิ่มไว้แล้วไม่ได้กรอก ไม่ต้องเก็บ */
+  const its=BILL_ITEMS
+    .map(x=>({sku:String(x.sku||'').trim(), qty:(num(x.qty)!=null?+x.qty:null), price:(num(x.price)!=null?+x.price:null)}))
+    .filter(x=>x.sku||x.qty!=null||x.price!=null);
+  const dupSku=(()=>{ const seen={},d=[];
+    its.forEach(x=>{const k=x.sku.toUpperCase(); if(!k)return; if(seen[k])d.push(x.sku); seen[k]=1;});
+    return [...new Set(d)]; })();
+  if(dupSku.length&&!confirm('มี SKU ซ้ำในบิลเดียวกัน: '+dupSku.join(', ')
+    +'\n\nถ้าเป็นของคนละล็อต/คนละราคา ก็ใส่ซ้ำได้\nยืนยันบันทึกไหม?'))return;
   const row={po_number:$('f_po').value.trim(),company:$('f_co').value,vendor:$('f_vendor').value.trim()||null,
-    sku:$('f_sku').value.trim()||null,currency:$('f_cur').value,total_amount:parseFloat($('f_total').value)||0,
-    qty:parseFloat($('f_qty').value)||null, unit_price:parseFloat($('f_unit').value)||null,
+    /* คอลัมน์เดิมยังเขียนต่อ — ค้นหา/ตัวกรอง/รายงาน ใช้อยู่ */
+    sku:its.map(x=>x.sku).filter(Boolean).join(',')||null,
+    currency:$('f_cur').value,total_amount:parseFloat($('f_total').value)||0,
+    qty:(its.length===1?its[0].qty:null), unit_price:(its.length===1?its[0].price:null),
+    items:its.length?its:null,
     ref_pr:$('f_pr').value.trim()||null,
     note:$('f_note').value.trim()||null,updated_at:new Date().toISOString()};
   if(!row.po_number)return toast('ใส่รหัส PO ก่อน');
@@ -1966,6 +2061,12 @@ async function saveBill(){
     const r=await sb.from('pay_bills').insert(row).select('id').single();
     error=r.error; newId=r.data&&r.data.id;}
   if(error){
+    /* แยกให้ชัดว่าขาดคอลัมน์ไหน จะได้บอกไฟล์ SQL ที่ต้องรันได้ถูกตัว */
+    if(/items/.test(error.message))
+      return alert('ยังไม่ได้เพิ่มคอลัมน์ items ในตาราง pay_bills\n\n'
+        +'กรุณารันไฟล์ pay_bills_items.sql บน Supabase ก่อน แล้วลองบันทึกอีกครั้ง\n'
+        +'(ไฟล์นี้แค่เพิ่มช่องเก็บรายการย่อย ข้อมูลเดิมไม่ถูกแก้)\n\n'
+        +'รายละเอียด: '+error.message);
     if(/ref_pr/.test(error.message)||/column.*does not exist/i.test(error.message))
       return alert('ยังไม่ได้เพิ่มคอลัมน์ ref_pr ในตาราง pay_bills\n\n'
         +'กรุณารันไฟล์ pay_bills_ref_pr.sql บน Supabase ก่อน แล้วลองบันทึกอีกครั้ง\n\n'
@@ -1975,6 +2076,11 @@ async function saveBill(){
   // บันทึกประวัติการแก้ไข
   {const before=BILLS.find(x=>String(x.id)===String(editBillId));
    if(editBillId&&before){
+     /* รายการย่อยเป็น array เทียบตรง ๆ ไม่ได้ — สรุปเป็นข้อความสั้นก่อน */
+     const itTxt=a=>(Array.isArray(a)?a:[]).map(x=>(x.sku||'-')+' '+(x.qty??'-')+'×'+(x.price??'-')).join(' · ');
+     {const A=itTxt(before.items||billItemsFrom(before).map(x=>({sku:x.sku,qty:x.qty===''?null:+x.qty,price:x.price===''?null:+x.price}))),
+        B=itTxt(row.items);
+      if(A!==B)ch.push('รายการในบิล: '+(A||'-')+' → '+(B||'-'));}
      const LB={po_number:'เลข PO',company:'บริษัท',vendor:'Vendor',sku:'SKU',
        total_amount:'ยอดเต็ม',qty:'จำนวนชิ้น',unit_price:'ราคาต่อหน่วย',currency:'สกุลเงิน',
        ref_pr:'Reference PR No',note:'หมายเหตุ'};
@@ -4119,8 +4225,10 @@ function printDcSheet(){
    ★ ข้อ ④ คือหัวใจของบิลที่ "เพิ่มมือ" (ค่าขนส่ง · ค่าแม่พิมพ์ · ค่าซ่อม · ค่าบริการ)
      พวกนี้ไม่มีใน Purchase Board เลย ①②③ จึงว่างทั้งหมด
      ที่เจอจริง: บิล "เทส / ค่าขนสินค้า" 2,500 บาท → ช่องจำนวน/ราคา ว่างทั้งแถว
-   ⚠️ ④ ใช้ได้เฉพาะบิล SKU เดียว — บิลหลาย SKU แยกจำนวน/ราคารายตัวไม่ได้
+   ④ อ่านจาก pay_bills.items ได้ราย SKU ตรง ๆ (หลายรายการในบิลเดียวก็ได้)
+   ⚠️ บิลเก่าที่ items ยังว่าง ④ ใช้ได้เฉพาะบิล SKU เดียว
       (b.qty / b.unit_price เป็นยอดของทั้งบิล ไม่ใช่ของ SKU ใด SKU หนึ่ง)
+      → เปิดบิลนั้นขึ้นมากรอกจำนวน/ราคาในตาราง "รายการในบิล" แล้วกดบันทึก ก็ครบ
    ══════════════════════════════════════════════════════════════════ */
 function docLook(b, sk, nSkus){
   const nz=x=>String(x||'').trim().toUpperCase().replace(/[\s_]+/g,'');
@@ -4140,7 +4248,14 @@ function docLook(b, sk, nSkus){
     const m=MASTER.find(x=>nz(x.sku)===k&&num(x.standard_price)>0);
     if(m)price=m.standard_price;
   }
-  if(nSkus===1&&b){                                            // ④
+  /* ④ ค่าที่กรอกในบิลเอง
+        ★ มีคอลัมน์ items แล้ว → หาได้ราย SKU ตรง ๆ ไม่ติดเงื่อนไข "บิล SKU เดียว" อีก */
+  if(b&&Array.isArray(b.items)&&b.items.length){
+    const hit=b.items.find(x=>nz(x.sku)===k);
+    if(hit){ if(qty===''&&num(hit.qty))qty=hit.qty;
+             if(price===''&&num(hit.price))price=hit.price; }
+  }
+  else if(nSkus===1&&b){                                       // บิลเก่า (items ว่าง) ได้เฉพาะ SKU เดียว
     if(qty===''  &&num(b.qty))       qty=b.qty;
     if(price===''&&num(b.unit_price))price=b.unit_price;
   }
