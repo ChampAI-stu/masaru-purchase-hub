@@ -360,7 +360,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-02</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-03</span>
   </span>
   <!-- ⚠️ ป้าย "🧪 โหมดทดสอบ" ถอดออกตามที่สั่ง (v09-96)
        พฤติกรรมยังคงเดิม — APPROVAL_MODE=false อยู่ (ดูตัวแปรในสคริปต์)
@@ -535,7 +535,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
         </label>
         <button class="btn" onclick="buildDoc(true)">📄 สร้างใบปะหน้า</button>
         <button class="btn mini ghost" onclick="applyFeeAll()" title="ใส่ค่าธรรมเนียมโอนเท่ากันให้ทุกรายการที่ติ๊กไว้">💸 ใส่ค่าธรรมเนียมทุกรายการ</button>
-        <button class="btn mini ghost" onclick="checkDocData()" title="ตรวจว่าดึงจำนวน/ราคาจาก Purchase Board ได้ครบไหม">🔍 ตรวจข้อมูล</button>
+        <button class="btn mini ghost" id="dcCheckBtn" onclick="checkDocData()" title="ตรวจว่าดึงจำนวน/ราคาจาก Purchase Board ได้ครบไหม">🔍 ตรวจข้อมูล</button>
       </div>
       <div id="dcKsher"></div>
       <div class="scroll"><div id="dcPick"></div></div>
@@ -1300,7 +1300,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v10-02';
+const PAY_VERSION='v10-03';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -4167,8 +4167,16 @@ function buildDocDomestic(rows,coName,thDate){
   </div>`;
 }
 
-/* ตรวจว่ารายการไหนดึงจำนวน/ราคาไม่ได้ และเพราะอะไร */
-function checkDocData(){   /* เรียกจาก buildDocInner ซึ่ง ensure ให้แล้ว */
+/* ตรวจว่ารายการไหนดึงจำนวน/ราคาไม่ได้ และเพราะอะไร
+   ══════════════════════════════════════════════════════════════════
+   ⚠️ เคยพังเงียบ ๆ: ปุ่ม 🔍 ตรวจข้อมูล กดได้โดยไม่ต้องสร้างใบปะหน้าก่อน
+      แต่ฟังก์ชันนี้เขียนไว้ตอนที่ถูกเรียกจาก buildDocInner อย่างเดียว
+      (ซึ่ง ensurePoFor / ensureMaster ให้แล้ว) → พอกดปุ่มตรง ๆ POROWS ยังว่าง
+      เลยรายงานว่า "ไม่พบ PO นี้ใน Purchase Board" ทุกบรรทัด ทั้งที่บอร์ดมีอยู่จริง
+   ✅ ตอนนี้ดึงข้อมูลเองให้ครบก่อนตรวจเสมอ — และดึงตาม "รายการที่จะตรวจจริง"
+      (ไม่ใช่เฉพาะที่ติ๊กไว้ เพราะถ้าไม่ติ๊กเลยจะตรวจทั้งวัน)
+   ══════════════════════════════════════════════════════════════════ */
+async function checkDocData(){
   let rows=docSelected();
   if(!rows.length)rows=docRows();          // ยังไม่ได้ติ๊ก → ตรวจทุกรายการของวันนั้น
   if(!rows.length){
@@ -4177,6 +4185,18 @@ function checkDocData(){   /* เรียกจาก buildDocInner ซึ่�
       +(pend?('มี '+pend+' งวดที่ยังไม่ได้ส่งยอด — ใบปะหน้าจะขึ้นเฉพาะงวดที่ส่งยอดแล้ว')
             :'ลองเปลี่ยนวันที่ หรือติ๊ก "รวมที่จ่ายแล้ว"'));
   }
+  const btn=$('dcCheckBtn'), btxt=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.textContent='⏳ กำลังดึงข้อมูล...'; }
+  try{
+    await ensurePoFor(rows.map(p=>billOf(p.bill_id).po_number));
+    await ensureMaster();
+  }catch(e){ /* ดึงไม่ได้ก็ให้ไปเจอข้อความด้านล่างแทนที่จะเงียบ */ }
+  finally{ if(btn){ btn.disabled=false; btn.textContent=btxt; } }
+  /* ยังว่างอยู่ = โหลดตารางไม่สำเร็จ ไม่ใช่ข้อมูลผิด — อย่าไปโทษทีละบรรทัด */
+  if(!POROWS.length)
+    return alert('ตรวจไม่ได้ — ยังโหลดข้อมูล Purchase Board ไม่สำเร็จ\n\n'
+      +'ลองกดรีเฟรชหน้า (F5) แล้วกดตรวจใหม่อีกครั้ง\n'
+      +'ถ้ายังไม่ได้ แปลว่าสิทธิ์เข้าถึงตาราง purchase_orders มีปัญหา');
   const nz=x=>String(x||'').trim().toUpperCase().replace(/[\s_]+/g,'');
   const miss=[], ok=[];
   rows.forEach(p=>{
