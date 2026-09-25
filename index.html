@@ -1513,9 +1513,9 @@ const APPS_FALLBACK = [
   { key:'costsku', icon:'💰', title:'ต้นทุนสินค้า',
     desc:'Landed cost รายตัว · ปันส่วนค่าขนส่ง · KPI Cost Saving',
     url:'costsku.html', roles:['purchase'] },
-  { key:'backup', icon:'💾', title:'สำรองข้อมูล',
-    desc:'ดึงข้อมูลทุกตารางเก็บไว้ในเครื่อง (JSON / Excel)',
-    url:'backup.html', roles:['purchase'] },
+  /* 🚫 เอาการ์ด 💾 สำรองข้อมูล ออกจากหน้ารวมแล้ว (ขอมา)
+        ไฟล์ backup.html ยังอยู่ เข้าตรง URL ได้ — แค่ไม่โชว์เป็นการ์ด
+        อยากเอากลับ: เอาคอมเมนต์นี้ออก + รัน portal_hide_backup.sql แบบ SHOW */
   /* คู่มือเปิดให้ 4 บทบาท ไม่รวมการตลาด — ต้องตรงกับ ALLOWED ในไฟล์ guide.html */
   { key:'guide', icon:'📖', title:'คู่มือระบบฝ่ายจัดซื้อ',
     desc:'คู่มือทุกระบบรวมที่เดียว — โฟลว์ ปุ่ม สิทธิ์ สูตรคำนวณ และกับดักที่พลาดบ่อย',
