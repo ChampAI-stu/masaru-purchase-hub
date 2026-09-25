@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-30</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-31</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -2021,6 +2021,10 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
   <h2>💾 สำรองข้อมูล <span class="fn">backup.html</span></h2>
   <div class="sub-note">ดึงข้อมูลทุกตารางออกมาเก็บไว้ในเครื่อง ใช้กู้คืนหรือย้ายไปฐานข้อมูลใหม่
     · เข้าได้เฉพาะบทบาท <b>จัดซื้อ</b></div>
+  <div class="hp-warn">⚠️ <b>เอาการ์ดออกจากหน้ารวมแล้ว</b> — ไม่มีการ์ด 💾 ให้กดในหน้ารวมอีก
+    <div class="muted" style="font-size:11.5px;margin-top:3px">ตัวระบบยังอยู่ ใช้ได้ปกติ — เข้าตรงที่
+      <code>backup.html</code> ต่อท้าย URL ของหน้ารวม · อยากเอาการ์ดกลับ บอกได้ (มีคำสั่งเปิดคืนไว้ในไฟล์
+      <code>portal_hide_backup.sql</code> แล้ว)</div></div>
   <div class="hp-step">
     <div class="bub">1</div>
     <div><h4>กดสำรอง</h4>
@@ -2274,7 +2278,7 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
       <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
     <tr><td>📐 ตรวจค่าขนส่ง ตปท.</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
       <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
-    <tr><td>💾 สำรองข้อมูล</td><td class="hp-chk">✔</td><td class="hp-x">✕</td><td class="hp-x">✕</td>
+    <tr><td>💾 สำรองข้อมูล <span class="muted" style="font-size:10.5px">(ไม่มีการ์ดในหน้ารวม)</span></td><td class="hp-chk">✔</td><td class="hp-x">✕</td><td class="hp-x">✕</td>
       <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
     <tr><td>📖 คู่มือ (หน้านี้)</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
       <td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
