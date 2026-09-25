@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-27</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-29</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -2290,6 +2290,37 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
   </tbody></table>
   <div class="hp-warn">⚠️ ถ้าคนในฝ่ายชิปปิ้งมีบทบาท <code>purchase</code> ติดมาด้วย จะได้สิทธิ์<b>แก้ไขเต็ม</b>ตามบทบาทจัดซื้อ
     — ต้องการให้ดูอย่างเดียวจริง ให้ตั้งบัญชีนั้นมีแค่ <code>shipping</code></div>
+
+  <h3 class="hh">📣 หัวหน้าทีมการตลาด <span class="muted" style="font-size:12px;font-weight:400">— บทบาทใหม่ (<code>marketing_lead</code>)</span></h3>
+  <p class="tx">เหมือน <b>ฝ่ายการตลาด</b> ทุกอย่าง <b>บวกแท็บ 📦 แจ้งสินค้าขาเข้า</b> แบบดูอย่างเดียว
+    — เอาไว้ให้หัวหน้าทีมรู้ว่าของจะเข้าคลังวันไหน โดยไม่ต้องเห็นต้นทุน</p>
+  <table class="kv"><tbody>
+    <tr><td><b>เห็นแท็บอะไร</b></td>
+      <td>📋 Purchase Board · <b>📦 แจ้งสินค้าขาเข้า</b> · 🚚 แผนรับสินค้า · 🔔 กระดิ่งของค้างเกินกำหนด
+        <div class="muted" style="font-size:11.5px">ไม่เห็น 📈 รายงาน On-Time · 📜 ประวัติการอัพโหลด · 🧾 ประวัติการแก้ไข (เหมือนการตลาด)</div></td></tr>
+    <tr><td><b>ในแท็บ 📦 ทำอะไรได้</b></td>
+      <td>🔒 <b>ดูอย่างเดียว</b> — ไม่มีปุ่มแจ้งใบใหม่ · ตัดเข้าคลัง · เพิ่มเที่ยวส่ง · แก้ · ลบ</td></tr>
+    <tr><td><b>ในแท็บ 📦 เห็นอะไรบ้าง</b></td>
+      <td><b>เห็น</b> ตารางใบแจ้ง — วันแจ้งเข้า · เลขที่รายการ · PO · SKU · ชิ้น/ลัง · ลัง · ชิ้น
+        · เข้าคลังแล้ว · ค้าง · หมายเหตุ · สถานะ · บริษัทขนส่ง · วันคาดเข้า
+        <div style="background:#FDECEC;border:1px solid #F0B6B6;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
+          🚫 <b>ปิดไว้ทั้งหมด</b> — แถบแจ้งเตือนของค้าง · การ์ดสรุป KPI 5 ใบ · แถบสรุปรายบริษัทขนส่ง
+          · คอลัมน์ <b>คิว</b> · คอลัมน์ <b>น้ำหนัก</b>
+          <br>รวมถึงปุ่ม <b>🖨️ รายงาน PDF</b> และ <b>📥 Export Excel</b> เพราะไฟล์ที่ออกมามีคิว/น้ำหนักอยู่ข้างใน</div>
+        <div class="muted" style="font-size:11.5px">ตัวเลขพวกนี้ใช้คิดค่าขนส่ง = ข้อมูลเชิงต้นทุน
+          · จัดซื้อ/ชิปปิ้งยังเห็นครบเหมือนเดิมทุกอย่าง</div></td></tr>
+    <tr><td><b>ไม่เห็นอะไร</b></td>
+      <td>ราคาสินค้า (¥) · 👤 ผู้รับผิดชอบ · บริษัทขนส่ง — <b>เหมือนการตลาดเป๊ะ</b>
+        <div class="muted" style="font-size:11.5px">และเข้าระบบอื่นไม่ได้ (PR · วางแผนจ่ายเงิน · Shipment · ต้นทุนสินค้า · คู่มือ)</div></td></tr>
+    <tr><td><b>ป้ายบทบาทมุมขวาบน</b></td><td><b>📣 หัวหน้าทีมการตลาด</b></td></tr>
+    <tr><td><b>ตั้งบทบาทยังไง</b></td>
+      <td>รันไฟล์ <code>portal_marketing_lead.sql</code> บน Supabase (มีทั้งเปิดการ์ดในหน้ารวม + ติดบทบาทให้บัญชี)
+        <div class="muted" style="font-size:11.5px">แก้อีเมลในไฟล์ให้เป็นคนจริงก่อนรัน · คนที่เพิ่งติดบทบาท
+          ต้อง <b>ออกจากระบบแล้วเข้าใหม่</b> สิทธิ์จึงมีผล</div></td></tr>
+  </tbody></table>
+  <div class="hp-warn">⚠️ <b>การตลาดธรรมดา (<code>marketing</code>) ไม่เปลี่ยนอะไรเลย</b> — ยังเห็นแค่ 2 แท็บเดิม
+    ไม่มีแท็บ 📦 และไม่มีกระดิ่ง · ถ้าบัญชีมีทั้ง <code>marketing</code> และ <code>marketing_lead</code> จะได้สิทธิ์<b>หัวหน้าทีม</b>
+    · ถ้าพ่วง <code>purchase</code> มาด้วยจะกลายเป็น<b>จัดซื้อเต็มสิทธิ์</b> (บทบาทสูงกว่าชนะ)</div>
 
   <h3 class="hh">ทำอะไรได้ในแต่ละระบบ</h3>
   <div class="hp-tw"><table class="hp-t"><thead><tr><th>การกระทำ</th>
