@@ -174,7 +174,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-61</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-62</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -268,9 +268,13 @@ tr:nth-child(even) td{background:#F8FAFD}
           <div style="display:flex;gap:6px">
             <input type="date" id="r_due" style="flex:1 1 auto;min-width:0"
                    onchange="calHint(curReq())">
-            <input type="time" id="r_dueT" step="900" style="flex:0 0 105px;width:105px"
-                   title="เวลาที่ต้องโอน — ใช้ตั้งเตือนบนปฏิทิน"
-                   onchange="calHint(curReq())" oninput="calHint(curReq())">
+            <!-- 🕐 เดิมเป็น <input type="time"> — ตัวควบคุมของเบราว์เซอร์แสดงตาม "ภาษาของเบราว์เซอร์"
+                 ไม่ใช่ภาษาของหน้าเว็บ เครื่องที่ตั้ง Chrome เป็นอังกฤษจึงขึ้น 02:30 PM ทำให้อ่านสับสน
+                 → เปลี่ยนเป็นดรอปดาวน์ที่เราคุมเอง แสดง 24 ชม. แบบไทยเสมอทุกเครื่อง
+                 ★ ค่าที่เก็บยังเป็น "HH:MM" เหมือนเดิมเป๊ะ — โค้ดส่วนอื่น ปฏิทิน และข้อมูลเก่าไม่กระทบ -->
+            <select id="r_dueT" style="flex:0 0 132px;width:132px"
+                   title="เวลาที่ต้องโอน — ใช้ตั้งเตือนบนปฏิทิน (เวลาไทย 24 ชม.)"
+                   onchange="calHint(curReq())"></select>
           </div>
           <div style="margin:8px 0 0">
             <label class="norem" id="r_noRemBox"
@@ -1534,7 +1538,7 @@ function reqTable(rows,opts){
       <td><b>${esc(r.req_no||'-')}</b>${r.urgency==='urgent'?' <span class="pill st-rejected">🔥 ด่วน</span>':''}</td>
       <td>${thShort(r.req_date)}</td>
       <td${late?' style="color:var(--red);font-weight:700"':''}>${thShort(r.due_date)}
-        ${r.due_time?`<div class="muted" style="font-size:10.5px;font-weight:400">${esc(r.due_time)} น.${
+        ${r.due_time?`<div class="muted" style="font-size:10.5px;font-weight:400">${esc(hhmm(r.due_time))} น.${
           r.cal_event_id?' 📅':''}${noRemOf(r)?' <span title="ใบนี้ติ๊กไว้ว่าไม่ต้องแจ้งเตือน">🔕</span>':''}</div>`
         :(noRemOf(r)?`<div class="muted" style="font-size:10.5px" title="ใบนี้ติ๊กไว้ว่าไม่ต้องแจ้งเตือน">🔕</div>`:'')}</td>
       <td>${esc(coShort(r.pay_type))}</td>
@@ -1707,7 +1711,7 @@ function openReq(id){
   $('r_date').value=(r&&r.req_date)||todayStr();
   $('r_due').value=(r&&r.due_date)||'';
   /* ใบเก่าไม่มีเวลา → ตั้ง 10:00 ให้ แก้ได้ · ใบใหม่ก็เริ่มที่ 10:00 เหมือนกัน */
-  $('r_dueT').value=(r&&r.due_time)||'10:00';
+  setDueTime((r&&r.due_time)||'10:00');
   remSet(r?r.cal_remind:null);
   calHint(r);
   $('r_urg').value=(r&&r.urgency)||'normal';
@@ -1743,6 +1747,61 @@ function openReq(id){
   growAcct();                      // ต้องเรียกหลังโมดัลโชว์ scrollHeight จึงจะถูก
 }
 /* คำใบ้ใต้ช่องกำหนดชำระ — บอกว่าจะขึ้นปฏิทินไหม และใบนี้ขึ้นไปแล้วหรือยัง */
+/* ══════════════════════════════════════════════════════════════════
+   🕐 ช่องเวลากำหนดชำระ — เวลาไทย 24 ชั่วโมงเสมอ
+   ──────────────────────────────────────────────────────────────────
+   ทุกๆ 15 นาที (ตรงกับ step=900 ของเดิม) แบ่งกลุ่มตามช่วงวันให้เลื่อนหาง่าย
+   ★ ค่าใน value = 'HH:MM' เท่าเดิม → saveReq / ปฏิทิน / Export ไม่ต้องแก้อะไร
+   ★ ใบเก่าที่เวลาไม่ลงร่อง 15 นาที (เช่น 09:05) หรือมาเป็น 'HH:MM:SS' จากฐานข้อมูล
+     จะถูกเติมเป็นตัวเลือกพิเศษให้ ไม่หาย ไม่ถูกปัดทิ้ง
+   ══════════════════════════════════════════════════════════════════ */
+const DUE_T_GROUPS=[
+  ['กลางคืน (00:00–05:45)',0,5],
+  ['เช้า (06:00–11:45)',6,11],
+  ['บ่าย (12:00–17:45)',12,17],
+  ['เย็น–ค่ำ (18:00–23:45)',18,23]
+];
+const hhmm=v=>String(v||'').trim().slice(0,5);        // ตัดวินาทีที่ฐานข้อมูลอาจส่งมา
+/* วัน+เวลา แบบไทยเสมอ — ไม่พึ่ง toLocaleString ที่เปลี่ยนรูปตามภาษาเบราว์เซอร์
+   (เครื่องที่ตั้งเป็นอังกฤษเคยได้ 9/25/2026, 2:30 PM ปนกับของเครื่องอื่น) */
+function fmtDT(v){
+  if(!v)return '-';
+  const d=new Date(v); if(isNaN(d))return String(v);
+  const p=n=>String(n).padStart(2,'0');
+  return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+String(d.getFullYear()+543).slice(2)
+       +' '+p(d.getHours())+':'+p(d.getMinutes())+' น.';
+}
+function fillDueTimes(){
+  const sel=$('r_dueT'); if(!sel||sel.dataset.filled)return;
+  let h='<option value="">— เลือกเวลา —</option>';
+  DUE_T_GROUPS.forEach(function(g){
+    h+='<optgroup label="'+g[0]+'">';
+    for(let hr=g[1];hr<=g[2];hr++){
+      for(let mi=0;mi<60;mi+=15){
+        const v=String(hr).padStart(2,'0')+':'+String(mi).padStart(2,'0');
+        h+='<option value="'+v+'">'+v+' น.</option>';
+      }
+    }
+    h+='</optgroup>';
+  });
+  sel.innerHTML=h;
+  sel.dataset.filled='1';
+}
+function setDueTime(v){
+  const sel=$('r_dueT'); if(!sel)return;
+  fillDueTimes();
+  const t=hhmm(v);
+  if(t && !Array.prototype.some.call(sel.options,o=>o.value===t)){
+    /* เวลาที่ไม่ลงร่อง 15 นาที — เก็บไว้ให้ ไม่ให้ค่าเดิมหาย */
+    const o=document.createElement('option');
+    o.value=t; o.textContent=t+' น. (ค่าเดิม)'; o.dataset.legacy='1';
+    /* ⚠️ ห้ามใช้ sel.options[1] เป็นหมุด — ตัวนั้นอยู่ใน <optgroup> ไม่ใช่ลูกตรงของ select
+          insertBefore จะโยน NotFoundError ทันที · ใช้ optgroup ก้อนแรกเป็นหมุดแทน */
+    sel.insertBefore(o, sel.querySelector('optgroup'));
+  }
+  sel.value=t;
+}
+
 function calHint(r){
   const el=$('r_calHint'); if(!el)return;
   if(!calOn()){
@@ -2191,7 +2250,7 @@ function viewReq(id){
     <div style="display:flex;gap:26px;flex-wrap:wrap;background:#F7F9FC;border-radius:10px;padding:12px 15px;margin-bottom:12px;font-size:12.5px;line-height:1.9">
       <div><div class="muted" style="font-size:11px">วันที่ยื่น</div><b>${thDate(r.req_date)}</b></div>
       <div><div class="muted" style="font-size:11px">กำหนดชำระ</div>
-        <b>${thDate(r.due_date)}${r.due_time?(' · '+esc(r.due_time)+' น.'):''}</b>
+        <b>${thDate(r.due_date)}${r.due_time?(' · '+esc(hhmm(r.due_time))+' น.'):''}</b>
         <div class="muted" style="font-size:11px;margin-top:1px">${remBadge(r)}
           ${canEditReq(r)?`<button class="nrbtn${noRemOf(r)?' on':''}" style="margin-left:5px"
             onclick="quickNoRem('${id}',${noRemOf(r)?'false':'true'})"
@@ -2267,7 +2326,7 @@ function viewReq(id){
     })()}
     ${proofList(r).length?`<div style="background:#E9F6EE;border-left:5px solid var(--green);border-radius:9px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.7">
       <b style="color:var(--green)">📎 เอกสารแนบ ${proofList(r).length} ไฟล์</b>
-      ${r.proof_by?`<span class="muted"> · แนบโดย ${esc(r.proof_by)}${r.proof_at?(' · '+new Date(r.proof_at).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'})):''}</span>`:''}
+      ${r.proof_by?`<span class="muted"> · แนบโดย ${esc(r.proof_by)}${r.proof_at?(' · '+fmtDT(r.proof_at)):''}</span>`:''}
       <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:8px">
         ${proofList(r).map((it,i)=>`<button class="btn mini ghost" onclick="viewProof('${r.id}',${i})">${isPdf(it)?'📄':'🖼️'} ${esc((it.name||('ไฟล์ '+(i+1))).slice(0,26))}</button>`).join('')}
       </div>
@@ -2281,7 +2340,7 @@ function viewReq(id){
     <div style="margin-top:14px">
       <b style="font-size:13px">🕘 ประวัติการดำเนินการ</b>
       ${lg.length?`<table style="margin-top:6px"><thead><tr><th style="width:150px">เวลา</th><th style="width:150px">การกระทำ</th><th>ผู้ทำ</th><th>หมายเหตุ</th></tr></thead><tbody>
-        ${lg.map(l=>`<tr><td style="font-size:11.5px">${new Date(l.created_at).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'})}</td>
+        ${lg.map(l=>`<tr><td style="font-size:11.5px">${fmtDT(l.created_at)}</td>
           <td>${esc(LA[l.action]||l.action)}</td><td style="font-size:11.5px">${esc(l.actor||'-')}</td>
           <td style="font-size:11.5px">${esc(l.note||'-')}</td></tr>`).join('')}
       </tbody></table>`:'<div class="muted" style="font-size:12px;margin-top:4px">— ยังไม่มีประวัติ —</div>'}
@@ -2400,7 +2459,7 @@ function printReq(id){
       ${r.pay_method?`<div><b>ช่องทางการชำระเงิน:</b> ${esc(r.pay_method)}</div>`:''}
       ${r.pay_acct?`<div style="white-space:pre-wrap"><b>เลขบัญชีที่จ่าย:</b> ${esc(r.pay_acct)}</div>`:''}
       ${r.src_currency?`<div><b>แปลงสกุล:</b> ${money2(r.total_src)} ${esc(r.src_currency)} × ${esc(r.fx_rate)} = ${money2(r.total_amount)} ${esc(r.currency||'')}</div>`:''}
-      <div><b>กำหนดชำระ:</b> ${thDate(r.due_date)}${r.due_time?(' เวลา '+esc(r.due_time)+' น.'):''}</div>
+      <div><b>กำหนดชำระ:</b> ${thDate(r.due_date)}${r.due_time?(' เวลา '+esc(hhmm(r.due_time))+' น.'):''}</div>
       ${r.urgency==='urgent'?'<div><b style="color:#B01722">🔥 ด่วน</b></div>':''}
     </div>
     <table><thead><tr><th style="width:34px">ที่</th><th>PO</th><th>SKU</th><th>งวด</th>
@@ -2568,7 +2627,7 @@ function xferBlocks(r,f){
     const rn=[];
     if(f.sw_seq)rn.push('ชำระครั้งที่ '+f.sw_seq+' ยอด '+M(f.sw_amt)+' '+(f.sw_cur||''));
     if(f.sw_paydate)rn.push('ชำระ วันที่ '+dSlash(f.sw_paydate)
-      +(r.due_time?(' เวลา '+r.due_time+' น.'):''));
+      +(r.due_time?(' เวลา '+hhmm(r.due_time)+' น.'):''));
     if(rn.length){ B.push({k:'gap'}); B.push({k:'note',t:'*** Reminder Note ***\n'+rn.join('\n')}); }
     B.push({k:'gap'}); B.push({k:'p',t:'สามารถโอนได้เลยค่ะ '+(f.mention||'')});
   }
@@ -3561,10 +3620,10 @@ function ppDraw(){
     +'<tr><td class="k">จ่ายในนาม</td><td>'+esc(coFull(r.pay_type))+'</td>'
       +'<td class="k">ช่องทางการโอน</td><td>'+esc(r.channel||'-')+'</td></tr>'
     +'<tr><td class="k">กำหนดชำระ</td><td>'+esc(thDate(r.due_date))
-      +(r.due_time?(' เวลา '+esc(r.due_time)+' น.'):'')+'</td>'
+      +(r.due_time?(' เวลา '+esc(hhmm(r.due_time))+' น.'):'')+'</td>'
       +'<td class="k">ผู้ยื่น</td><td>'+esc(r.requester_name||r.requester||'-')+'</td></tr>'
     +'<tr><td class="k">จำนวนไฟล์</td><td>'+list.length+' ไฟล์</td>'
-      +'<td class="k">พิมพ์เมื่อ</td><td>'+esc(new Date().toLocaleString('th-TH'))+'</td></tr>'
+      +'<td class="k">พิมพ์เมื่อ</td><td>'+esc(fmtDT(new Date()))+'</td></tr>'
     +'</tbody></table></div>'
     +(r.proof_note?('<div class="pp-note"><b>หมายเหตุเอกสารแนบ:</b> '+esc(r.proof_note)+'</div>'):'');
 
@@ -3818,7 +3877,7 @@ function exportReport(){
   const out=[['เลขคำขอ','วันที่ยื่น','กำหนดชำระ','เวลา','จ่ายในนาม','ช่องทาง','ช่องทางการชำระเงิน','เลขบัญชีที่จ่าย','สกุลต้นทาง','ยอดต้นทาง','เรทแปลง','สกุล','ยอด','ค่าธรรมเนียม','รวมบาท',
               'ยอดเติม Ksher (ขอ)','ยอดเติม Ksher (จริง)','ยอดที่ต้องโอน (บาท)',
               'สถานะ','ด่วน','ผู้ยื่น','หัวหน้าอนุมัติ (ใบเก่า)','ผู้บริหารอนุมัติ','เหตุผล','หมายเหตุ','เหตุผลที่ตีกลับ']];
-  rows.forEach(r=>out.push([r.req_no||'',r.req_date||'',r.due_date||'',r.due_time||'',coFull(r.pay_type),r.channel||'',
+  rows.forEach(r=>out.push([r.req_no||'',r.req_date||'',r.due_date||'',hhmm(r.due_time),coFull(r.pay_type),r.channel||'',
     r.pay_method||'', r.pay_acct||'',
     r.src_currency||'', r.src_currency?(+r.total_src||0):'', r.src_currency?(+r.fx_rate||0):'',
     r.currency||'',+r.total_amount||0,+r.total_fee||0,+r.total_thb||0,
