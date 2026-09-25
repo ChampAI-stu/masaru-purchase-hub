@@ -686,7 +686,7 @@ function comboSet(id,val){
 }
 function comboVal(id){const inp=$(id);return inp?(inp.dataset.val||''):'';}
 
-const COST_VERSION='v01-01';
+const COST_VERSION='v01-02';
 try{ const _v=document.getElementById('cstVer'); if(_v)_v.textContent=COST_VERSION; }catch(e){}
 let db={master:[],hist:[],expMap:{},shipcosts:[],shipments:[],products:[],tracking:[],parties:[],budget:[],po:[],taxsum:[]};
 let currentRole='view', canEdit=false;
@@ -1352,15 +1352,52 @@ function drawFrRows(){
   $('fiRows').innerHTML=h+'</tbody></table>';
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   💰 คิด VAT / WHT ให้ตรงกับใบของบริษัทขนส่ง
+   ──────────────────────────────────────────────────────────────────
+   เคสจริง (GTL ใบขน DHSX000061991): ยอดต่างกันทีละสตางค์
+       ของขนส่ง   VAT 327.35 · WHT 140.29 · ต้องชำระ 24,074.84
+       ของเราเดิม VAT 327.36 · WHT 140.31 · ต้องชำระ 24,074.83
+   สาเหตุ: เดิมคิด 7% / 3% "ทีละบรรทัดแล้วปัดเศษ" แล้วจึงเอามาบวกกัน
+           → ปัดเศษ 7 ครั้ง เศษทบกันจนเกินจริง 1–2 สตางค์
+           ส่วนขนส่ง (และใบกำกับภาษีตามมาตรฐาน) คิดจาก "ยอดฐานรวม" ปัดครั้งเดียว
+   ──────────────────────────────────────────────────────────────────
+   วิธีใหม่ 2 ขั้น:
+     ① ยอดรวม = ปัดครั้งเดียวจากฐานรวม → ตรงกับใบขนส่งเป๊ะ
+     ② เลขรายบรรทัด = ปัดปกติ แล้ว "กระจายเศษ" ที่เหลือลงบรรทัดที่ยอดใหญ่สุด
+        → คอลัมน์บวกจากบนลงมาได้เท่ายอดรวมพอดี บัญชีทานได้
+   ★ เศษที่กระจายมีแค่ 1–2 สตางค์ และลงบรรทัดยอดใหญ่สุดเสมอ (ผลกระทบน้อยสุด)
+   ══════════════════════════════════════════════════════════════════ */
+const r2=n=>Math.round((+n||0)*100)/100;
+/* ปัดรายบรรทัดก่อน แล้วโยนเศษที่ต่างจากยอดรวมจริงไปที่บรรทัดยอดใหญ่สุด */
+function spreadRound(vals, target){
+  const out=vals.map(r2);
+  const diff=r2(target - out.reduce((a,b)=>a+b,0));
+  if(Math.abs(diff)>=0.005){
+    let k=-1, big=-1;
+    vals.forEach(function(v,i){ if(v>big){ big=v; k=i; } });   // บรรทัดฐานใหญ่สุด
+    if(k>=0) out[k]=r2(out[k]+diff);
+  }
+  return out;
+}
 function calcFrInv(){
   const vp=(parseFloat($('fi_vat').value)||0)/100, wp=(parseFloat($('fi_wht').value)||0)/100;
-  let sa=0,sv=0,sw=0,st=0;
+  /* ── ① ฐานรวมของแต่ละภาษี → ยอดรวมปัดครั้งเดียว (แบบเดียวกับใบขนส่ง) ── */
+  let baseV=0, baseW=0, sa=0;
+  FR_ROWS.forEach(function(r){ const a=+r.amt||0; sa+=a;
+    if(r.v)baseV+=a; if(r.w)baseW+=a; });
+  const sv=r2(baseV*vp), sw=r2(baseW*wp);
+  /* ── ② เลขรายบรรทัด กระจายเศษให้บวกได้เท่ายอดรวม ── */
+  const rawV=FR_ROWS.map(r=>r.v?((+r.amt||0)*vp):0);
+  const rawW=FR_ROWS.map(r=>r.w?((+r.amt||0)*wp):0);
+  const lineV=spreadRound(rawV, sv), lineW=spreadRound(rawW, sw);
+  let st=0;
   FR_ROWS.forEach(function(r,i){
-    const a=+r.amt||0, v=r.v?+(a*vp).toFixed(2):0, w=r.w?+(a*wp).toFixed(2):0, t=+(a+v-w).toFixed(2);
-    r._v=v; r._w=w; r._t=t; sa+=a; sv+=v; sw+=w; st+=t;
+    const a=+r.amt||0, v=lineV[i], w=lineW[i], t=r2(a+v-w);
+    r._v=v; r._w=w; r._t=t; st+=t;
     if($('frv'+i)){ $('frv'+i).textContent=money(v); $('frw'+i).textContent=money(w); $('frt'+i).textContent=money(t); }
   });
-  FR_SUM={a:sa,v:sv,w:sw,t:st};
+  FR_SUM={a:r2(sa), v:sv, w:sw, t:r2(st)};
   drawFrInv();
 }
 
