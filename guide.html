@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-31</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-32</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -473,8 +473,6 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
     <a class="mapc" href="#s6" onclick="return goSec('s6')" style="border-left-color:#D0212B"><div class="n">💰 ต้นทุนสินค้า</div>
       <div class="f">costsku.html</div><div class="d">คิดต้นทุนรวมต่อหน่วย (Landed cost) · ปันส่วนค่าขนส่ง · KPI Cost Saving</div></a>
     <a class="mapc" href="#sfreight" onclick="return goSec('sfreight')" style="border-left-color:#0EA5E9"><div class="n">📐 ตรวจค่าขนส่ง ตปท.</div><div class="f">freight.html</div><div class="d">เทียบขนาดกล่องคลังวัด vs ขนส่งคิด · ตรวจใบวางบิลทีละรอบ 6 ข้อ (ยอด/ซ้ำ/เอกสาร/เรท/ค่าแฝง/กล่อง) · ออกใบทักขนส่ง</div></a>
-    <a class="mapc" href="#s7" onclick="return goSec('s7')" style="border-left-color:#166534"><div class="n">💾 สำรองข้อมูล</div>
-      <div class="f">backup.html</div><div class="d">ดึงทุกตารางเก็บเป็น JSON / Excel ไว้ในเครื่อง</div></a>
     <a class="mapc" href="#s8" onclick="return goSec('s8')" onclick="return goSec('s8')" style="border-left-color:#C41F29"><div class="n">⚠️ กับดักที่ต้องรู้</div>
       <div class="f">รวมทุกระบบ</div><div class="d">เรื่องที่พลาดบ่อยที่สุดของทั้งกลุ่มระบบ + วิธีเลี่ยง — อ่านก่อนลงมือจริง</div></a>
     <a class="mapc" href="#s9" onclick="return goSec('s9')" onclick="return goSec('s9')" style="border-left-color:#B8912F"><div class="n">🔑 สิทธิ์การใช้งาน</div>
@@ -2016,40 +2014,6 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
     ถ้าสองที่ไม่ตรงกัน ต้นทุนกับใบขนสินค้าจะขัดกัน — กรอกให้ตรงกันทั้งสองที่</div>
 </div>
 
-<!-- ══════════════════════ 7. backup.html ══════════════════════ -->
-<div class="card sec" id="s7">
-  <h2>💾 สำรองข้อมูล <span class="fn">backup.html</span></h2>
-  <div class="sub-note">ดึงข้อมูลทุกตารางออกมาเก็บไว้ในเครื่อง ใช้กู้คืนหรือย้ายไปฐานข้อมูลใหม่
-    · เข้าได้เฉพาะบทบาท <b>จัดซื้อ</b></div>
-  <div class="hp-warn">⚠️ <b>เอาการ์ดออกจากหน้ารวมแล้ว</b> — ไม่มีการ์ด 💾 ให้กดในหน้ารวมอีก
-    <div class="muted" style="font-size:11.5px;margin-top:3px">ตัวระบบยังอยู่ ใช้ได้ปกติ — เข้าตรงที่
-      <code>backup.html</code> ต่อท้าย URL ของหน้ารวม · อยากเอาการ์ดกลับ บอกได้ (มีคำสั่งเปิดคืนไว้ในไฟล์
-      <code>portal_hide_backup.sql</code> แล้ว)</div></div>
-  <div class="hp-step">
-    <div class="bub">1</div>
-    <div><h4>กดสำรอง</h4>
-      <div class="hp-ui"><div class="cap">ปุ่มบนการ์ด</div>
-        <div class="hp-bar"><span class="hp-btn g">▶ เริ่มสำรองข้อมูล</span>
-          <span class="hp-btn o">⬇ ดาวน์โหลด JSON</span><span class="hp-btn o">⬇ ดาวน์โหลด Excel</span></div></div>
-      <p>ระบบไล่ดึงทีละตาราง (~31 ตาราง) แสดงผลรายตารางว่าสำเร็จหรือไม่ พร้อมจำนวนแถวและขนาด</p></div>
-  </div>
-  <div class="hp-step">
-    <div class="bub">2</div>
-    <div><h4>เลือกไฟล์ให้ถูกงาน</h4>
-      <table class="kv"><thead><tr><th>ไฟล์</th><th>ใช้ทำอะไร</th></tr></thead><tbody>
-        <tr><td><b>JSON</b></td><td><b>ไฟล์หลัก เก็บไว้ให้ดี</b> — ข้อมูลครบทุกคอลัมน์ ใช้กู้คืน / ย้ายฐานข้อมูล</td></tr>
-        <tr><td><b>Excel</b></td><td>อ่านและทำงานต่อด้วยมือ — <b>ตัดคอลัมน์รูปออก</b> เพื่อให้ไฟล์เปิดไหว</td></tr>
-      </tbody></table></div>
-  </div>
-  <div class="hp-info">ℹ️ <b>ไม่ต้องกลัวเปลืองค่าโหลดข้อมูล</b> — ประมาณ 1 MB ต่อครั้ง = 0.02% ของโควตาเดือน
-    · สัปดาห์ละครั้ง = 0.09%/เดือน · ตัวเลขจริงแสดงให้เห็นหลังกดเสร็จ
-    · บางตารางขึ้น ✕ ได้เป็นเรื่องปกติ ถ้าตารางนั้นยังไม่มีในฐานข้อมูล</div>
-  <div class="hp-tip">💡 <b>ถ้าต้องย้ายไปฐานข้อมูลใหม่</b> — สร้าง Supabase project ใหม่ใน <b>องค์กรใหม่</b>
-    (โควตานับต่อองค์กร สร้างในองค์กรเดิมไม่ช่วย) → รันไฟล์ <code>.sql</code> ให้ครบ →
-    import JSON กลับเข้าไป → แก้ URL และ Key ในทุกไฟล์ <code>.html</code></div>
-</div>
-
-<!-- ══════════════════════ ตรวจค่าขนส่งระหว่างประเทศ ══════════════════════ -->
 <div class="card sec" id="sfreight">
   <h2>📐 ตรวจสอบค่าขนส่งระหว่างประเทศ <span class="fn">freight.html</span></h2>
   <div class="sub-note">แทนไฟล์ Excel <b>“รายการรับสินค้า”</b> ที่แยกบล็อกตามบริษัทขนส่งบนชีตเดียว
@@ -2278,8 +2242,6 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
       <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
     <tr><td>📐 ตรวจค่าขนส่ง ตปท.</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
       <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
-    <tr><td>💾 สำรองข้อมูล <span class="muted" style="font-size:10.5px">(ไม่มีการ์ดในหน้ารวม)</span></td><td class="hp-chk">✔</td><td class="hp-x">✕</td><td class="hp-x">✕</td>
-      <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
     <tr><td>📖 คู่มือ (หน้านี้)</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
       <td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
   </tbody></table></div>
@@ -2445,8 +2407,7 @@ const GROUPS=[
     {id:'sfreight', ic:'📐', nm:'ตรวจค่าขนส่ง ตปท.', fl:'freight.html · ขนาดกล่อง · ตรวจใบวางบิล'}]},
   {t:'🛠️ อ้างอิง & ดูแลระบบ', items:[
     {id:'s8', ic:'⚠️', nm:'กับดักที่ต้องรู้', fl:'รวมทุกระบบ — อ่านก่อนลงมือจริง'},
-    {id:'s9', ic:'🔑', nm:'สิทธิ์การใช้งาน', fl:'ใครเข้าอะไรได้ · แก้ไขอะไรได้'},
-    {id:'s7', ic:'💾', nm:'สำรองข้อมูล', fl:'backup.html · ดึงทุกตารางเก็บไว้'}]},
+    {id:'s9', ic:'🔑', nm:'สิทธิ์การใช้งาน', fl:'ใครเข้าอะไรได้ · แก้ไขอะไรได้'}]},
 ];
 /* ลำดับบทแบบเรียงเส้น — ใช้ทำปุ่ม "บทก่อนหน้า / บทถัดไป" */
 const ORDER=GROUPS.reduce((a,g)=>a.concat(g.items),[]);
