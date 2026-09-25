@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-32</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-33</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -1767,6 +1767,19 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
     <tr><td><b>📋 ตาราง Shipment</b></td><td>ติดตามทุกชิปเมนต์ — ยื่นสมอ., CLS/ETD/ETA, B/L, ตู้, เลขใบขน, ภาษี, DEM, ค่าขนส่ง</td></tr>
     <tr><td><b>🏢 ผู้ขาย/ผู้ซื้อ</b></td><td>ทะเบียน Vender / Consignee ไว้เลือกตอนออกบิล (กรอกครั้งเดียวใช้ตลอด)</td></tr>
     <tr><td><b>📄 ออก INV + PL</b></td><td>ออก Invoice + Packing List พร้อมตัวอย่างสด → PDF / Excel</td></tr>
+    <tr><td><b>💰 VAT / หัก ณ ที่จ่าย — คิดแบบเดียวกับใบของขนส่ง</b>
+        <div class="muted" style="font-size:11px">แก้แล้ว</div></td>
+      <td>ยอดรวมคิดจาก <b>ฐานรวม แล้วปัดเศษครั้งเดียว</b> — ตรงกับใบของบริษัทขนส่งและใบกำกับภาษีตามมาตรฐาน
+        <div style="background:#FDECEC;border:1px solid #F0B6B6;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
+          🐞 <b>ของเดิมคิด 7% / 3% ทีละบรรทัดแล้วปัดเศษ</b> แล้วจึงเอามาบวกกัน
+          → ปัดเศษหลายครั้ง เศษทบกันจนเกินจริง <b>1–2 สตางค์</b>
+          <br>เคสจริง GTL ใบขน DHSX000061991 —
+          ใบขนส่ง <b>VAT 327.35 · WHT 140.29 · ต้องชำระ 24,074.84</b>
+          แต่ระบบเราได้ <b>327.36 / 140.31 / 24,074.83</b> ทานกับใบไม่ลง
+        </div>
+        <div class="muted" style="font-size:11.5px">เลขรายบรรทัดยังโชว์ครบเหมือนเดิม และระบบ<b>กระจายเศษ</b>ที่เหลือ
+          (1–2 สตางค์) ลง<b>บรรทัดที่ยอดใหญ่สุด</b> → บวกคอลัมน์จากบนลงมาได้เท่ายอดรวมพอดี บัญชีทานได้
+          · ถ้าเห็นบรรทัดใหญ่สุดต่างจาก 7% ตรง ๆ อยู่ 1 สตางค์ <b>ไม่ใช่ความผิดพลาด</b> — เป็นเศษที่ถูกดึงมาลงตรงนั้น</div></td></tr>
     <tr><td><b>🚛 ใบวางบิลขนส่ง</b></td><td>ใบวางบิลค่าขนส่ง 22 รายการมาตรฐาน คิด VAT / หัก ณ ที่จ่าย รายแถว
       <div class="muted" style="font-size:11.5px">• <b>ย้อนดูใบเก่าได้แล้ว</b> — เปิดแท็บก็เห็นรายการที่บันทึกไว้ทันที (เดิมต้องกดบันทึกใหม่ถึงจะโชว์)
         · กรองตาม<b>เดือนกำหนดชำระ / บริษัทขนส่ง</b> · ค้นด้วยเลขใบขน-เลขอ้างอิง-<b>เลขอินวอยซ์ใน ตาราง Shipment</b>
