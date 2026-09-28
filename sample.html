@@ -88,6 +88,12 @@ tbody tr:hover{background:#F8FAFC}
   width:21px;height:21px;cursor:pointer;font-size:12px;line-height:1}
 .thumb .nm{font-size:9.5px;color:var(--muted);text-align:center;margin-top:2px;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
+.sw-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin:4px 0 14px}
+.sw{height:42px;border-radius:10px;border:2px solid transparent;cursor:pointer;position:relative;
+  box-shadow:0 1px 3px #0002}
+.sw:hover{transform:translateY(-2px);border-color:#1A2942}
+.sw.on::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-weight:800;font-size:18px;text-shadow:0 1px 3px #0008}
 .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#1A2942;color:#fff;
   padding:11px 20px;border-radius:11px;font-size:13px;z-index:200;display:none;box-shadow:0 10px 30px #0004}
 #lightBg{position:fixed;inset:0;background:#000000e0;display:none;align-items:center;justify-content:center;z-index:120;padding:20px}
@@ -190,8 +196,9 @@ tbody tr:hover{background:#F8FAFC}
           <option value="">➕ เป็นหมวดหลัก</option>
         </select>
         <input id="cNew" placeholder="ชื่อหมวดใหม่ เช่น ตัวอย่างแบตเตอรี่" style="flex:2 1 220px">
-        <input type="color" id="cColor" value="#1A2942" style="width:64px;padding:3px">
+        <input type="color" id="cColor" value="#1A2942" style="width:64px;padding:3px" title="สีของหมวด">
         <button class="btn mini gold" onclick="addCat()">➕ เพิ่ม</button>
+        <span class="muted" style="font-size:11.5px">สีเปลี่ยนทีหลังได้ — กด 🎨 ที่แถวของหมวดนั้น</span>
       </div>
       <div id="catBody"></div>
     </div>
@@ -283,6 +290,23 @@ tbody tr:hover{background:#F8FAFC}
   </div>
 </div>
 
+<!-- ============ MODAL: เลือกสีหมวด (กดเลือก ไม่ต้องพิมพ์โค้ดสี) ============ -->
+<div class="modal-bg" id="colBg">
+  <div class="modal" style="max-width:460px">
+    <h3 id="colTitle">🎨 เลือกสีหมวด</h3>
+    <div class="muted" style="font-size:12px;margin-bottom:8px">กดสีที่ต้องการได้เลย — บันทึกทันที</div>
+    <div class="sw-grid" id="colSw"></div>
+    <div class="row" style="align-items:center;gap:10px">
+      <label style="font-size:12.5px;font-weight:700;color:#334155;flex:0 0 auto">สีอื่น:</label>
+      <input type="color" id="colCustom" style="width:70px;padding:3px" onchange="colApply(this.value)">
+      <button class="btn mini ghost" id="colInherit" onclick="colApply('')">ใช้สีของหมวดหลัก</button>
+    </div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end">
+      <button class="btn ghost" onclick="document.getElementById('colBg').style.display='none'">ปิด</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="lightBg" onclick="this.style.display='none'"><img id="lightImg" alt=""></div>
 <div class="toast" id="toast"></div>
 
@@ -299,7 +323,7 @@ tbody tr:hover{background:#F8FAFC}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-03';
+const SM_VERSION='v01-04';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -770,15 +794,34 @@ async function renCat(id){
   }
   await loadCats(); renderCats(); toast('เปลี่ยนชื่อเป็น "'+nn+'" แล้ว ✅');
 }
-async function colCat(id){
+/* ══════════════ จานสีหมวด ══════════════
+   เดิมใช้ prompt ให้พิมพ์ #RRGGBB — ใช้งานจริงแล้วทรมาน ไม่มีใครจำโค้ดสีได้
+   ตอนนี้กดเลือกจากจานสีได้เลย (มีช่อง "สีอื่น" ของเบราว์เซอร์เผื่ออยากได้เฉดเอง) */
+const SW=['#1A2942','#2563EB','#0E7C86','#1E7145','#65A30D','#C9A84C',
+          '#B4690E','#C4372E','#B01722','#BE185D','#7954B8','#475569'];
+let COL_ID=null;
+function colCat(id){
   const c=CATS.find(x=>String(x.id)===String(id)); if(!c)return;
-  const v=prompt('ใส่รหัสสี (เช่น #0E7C86)'+(c.parent?'\n\nเว้นว่าง = ใช้สีของหมวดหลัก':''),
-                 c.color||'#1A2942');
-  if(v===null)return; const col=v.trim();
-  if(col&&!/^#[0-9a-fA-F]{6}$/.test(col))return alert('รูปแบบสีไม่ถูก — ต้องเป็น #RRGGBB เช่น #0E7C86');
+  COL_ID=c.id;
+  $('colTitle').textContent='🎨 สีของ '+(c.parent?('หมวดย่อย "'+c.name+'"'):('หมวดหลัก "'+c.name+'"'));
+  const cur=String(c.color||'').toLowerCase();
+  $('colSw').innerHTML=SW.map(function(x){
+    return '<div class="sw'+(x.toLowerCase()===cur?' on':'')+'" style="background:'+x+'"'
+      +' title="'+x+'" onclick="colApply(\''+x+'\')"></div>';
+  }).join('');
+  $('colCustom').value=c.color||'#1A2942';
+  /* "ใช้สีของหมวดหลัก" มีความหมายกับหมวดย่อยเท่านั้น */
+  $('colInherit').style.display=c.parent?'':'none';
+  $('colBg').style.display='flex';
+}
+async function colApply(col){
+  const c=CATS.find(x=>String(x.id)===String(COL_ID)); if(!c)return;
+  if(col&&!/^#[0-9a-fA-F]{6}$/.test(col))return toast('สีไม่ถูกรูปแบบ');
   const {error}=await sb.from('sample_cats').update({color:col||null}).eq('id',c.id).select();
   if(error)return toast('แก้ไม่สำเร็จ: '+error.message);
+  $('colBg').style.display='none';
   await loadCats(); renderCats(); render();
+  toast(col?('เปลี่ยนสี "'+c.name+'" แล้ว ✅'):('"'+c.name+'" ใช้สีของหมวดหลักแล้ว ✅'));
 }
 async function tglCat(id){
   const c=CATS.find(x=>String(x.id)===String(id)); if(!c)return;
