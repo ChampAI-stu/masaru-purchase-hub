@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-38</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-39</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -2231,6 +2231,23 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
         <div class="muted" style="font-size:11.5px">ไฟล์อัปตอน<b>กดบันทึก</b>เท่านั้น — ปิดฟอร์มทิ้งจะไม่มีไฟล์ค้างใน Drive
           · ถ้าอัปไฟล์ไม่ผ่าน <b>ระบบไม่บันทึกแถวนั้นเลย</b> กันไม่ให้มีรายการที่รูปหาย
           <br>กดรูปในตารางเพื่อดูภาพใหญ่ · PDF ขึ้นเป็นปุ่ม 📄 กดเปิดแท็บใหม่</div></td></tr>
+    <tr><td><b>จำนวน · ราคาต่อชิ้น · 🎁 ได้ฟรี</b>
+        <div class="muted" style="font-size:11px">ของใหม่</div></td>
+      <td>กรอก <b>จำนวน</b> กับ <b>ราคาต่อชิ้น</b> แล้วระบบ<b>คิดยอดชำระให้เอง</b> (จำนวน × ราคาต่อชิ้น)
+        <div class="muted" style="font-size:11.5px">มี<b>ส่วนลด/ค่าส่ง</b>? พิมพ์ทับช่องยอดชำระได้เลย
+          ระบบหยุดคิดให้และขึ้นบรรทัดเตือนว่าต่างจากผลคูณเท่าไหร่ (ไม่บล็อกการบันทึก)</div>
+        <div style="background:#EAF6EC;border:1px solid #BEE0C4;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
+          🎁 <b>ของที่โรงงานแถมมาฟรี</b> — ติ๊ก <b>ได้ฟรีจากโรงงาน</b>
+          → ยอดชำระเป็น <b>0</b> และล็อกช่องไว้ <b>ไม่ต้องกรอกยอด</b>
+          <br>แต่ยัง<b>กรอกราคาต่อชิ้นไว้ได้</b> — เก็บเป็น <b>"มูลค่าอ้างอิง"</b> ว่าได้ของมามูลค่าเท่าไหร่
+        </div>
+        <div class="muted" style="font-size:11.5px">ในตารางขึ้นป้าย <b>🎁 ฟรี</b> พร้อมมูลค่าตัวเล็กใต้ป้าย
+          · มีตัวกรอง <b>💰 เฉพาะที่จ่ายเงิน / 🎁 เฉพาะที่ได้ฟรี</b></div></td></tr>
+    <tr><td><b>ของฟรีเข้าหน้าสรุปยังไง</b></td>
+      <td><b>นับจำนวนแยก ไม่ปนยอดเงิน</b> — ทุกตารางสรุปมีคอลัมน์ <b>🎁 ฟรี</b> (จำนวนรายการ)
+        และ <b>มูลค่าฟรี</b> แยกจากคอลัมน์เงินที่จ่ายจริง
+        <div class="muted" style="font-size:11.5px">การ์ดหัวหน้าเพิ่ม <b>🎁 ได้ฟรี n รายการ</b> + มูลค่าอ้างอิงรวม
+          · ยอดที่จ่ายจริงไม่มีของฟรีปนแน่นอน</div></td></tr>
     <tr><td><b>📥 Export Excel</b></td>
       <td>ได้ <b>2 ชีต</b> — <b>สินค้าตัวอย่าง</b> (ทุกช่อง + ลิงก์รูป/หลักฐาน) และ <b>สรุปตามหมวด</b>
         <div class="muted" style="font-size:11.5px">ออกตาม<b>ตัวกรองที่เลือกอยู่</b> · ท้ายชีตแรกมีแถวรวมแยกสกุลเงิน</div></td></tr>
@@ -2240,8 +2257,8 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
   <div class="hp-tip">💡 <b>แก้ชื่อหมวดแล้วรายการเก่าไม่เปลี่ยนตาม</b> — ตั้งใจให้เป็นแบบนี้
     เพราะระบบเก็บ<b>ชื่อหมวด</b>ไว้ที่ตัวรายการ ประวัติย้อนหลังจึงนิ่ง ไม่ถูกเขียนทับเวลาใครไปแก้ชื่อหมวด
     · ถ้าต้องการให้รายการเก่าเปลี่ยนด้วย ให้เปิดรายการนั้นแล้วเลือกหมวดใหม่</div>
-  <div class="hp-info">ℹ️ <b>ติดตั้ง:</b> รัน <code>sample_orders.sql</code> → รัน <code>portal_add_sample.sql</code>
-    → อัปโหลด <code>sample.html</code> + <code>index.html</code></div>
+  <div class="hp-info">ℹ️ <b>ติดตั้ง:</b> รัน <code>sample_orders.sql</code> → รัน <code>sample_orders_qty.sql</code>
+    → รัน <code>portal_add_sample.sql</code> → อัปโหลด <code>sample.html</code> + <code>index.html</code></div>
 </div>
 
 <div class="card sec" id="s8">
