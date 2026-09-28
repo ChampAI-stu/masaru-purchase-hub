@@ -1510,7 +1510,8 @@ const APPS_FALLBACK = [
     url:'payapprove.html', roles:['purchase','pr_manager','pr_exec','executive'] },
   { key:'freight', icon:'📐', title:'ตรวจสอบค่าขนส่งระหว่างประเทศ',
     desc:'เทียบขนาดกล่องที่คลังวัด กับขนาดที่ขนส่งเอาไปคิดเงิน — จับรายการที่คิดเกิน',
-    url:'freight.html', roles:['purchase'] },
+    /* ⚠️ ต้องตรงกับ portal_card_roles.sql */
+    url:'freight.html', roles:['purchase','pr_manager','pr_exec','executive'] },
   { key:'cost', icon:'🚢', title:'Shipment นำเข้า',
     desc:'ออก INV + Packing List · ใบวางบิลขนส่ง · สรุปภาษีนำเข้า',
     url:'cost.html', roles:['purchase','shipping'] },
