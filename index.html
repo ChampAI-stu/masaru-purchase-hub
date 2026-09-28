@@ -1524,7 +1524,8 @@ const APPS_FALLBACK = [
   { key:'pdf', icon:'📕', title:'ระบบจัดการเอกสาร PDF',
     desc:'รวม · แยก · บีบอัด · แปลงไฟล์ · ใส่ลายน้ำ — ทำในเบราว์เซอร์ ไฟล์ไม่ออกจากเครื่อง',
     url:'https://champai-stu.github.io/masaru-pdf/',
-    roles:['purchase','marketing','marketing_lead','shipping'] },
+    /* ⚠️ ไม่เปิดให้การตลาด/หัวหน้าทีมการตลาด — ต้องตรงกับ portal_add_pdf.sql */
+    roles:['purchase','pr_manager','pr_exec','executive','shipping'] },
   /* คู่มือเปิดให้ 4 บทบาท ไม่รวมการตลาด — ต้องตรงกับ ALLOWED ในไฟล์ guide.html */
   { key:'guide', icon:'📖', title:'คู่มือระบบฝ่ายจัดซื้อ',
     desc:'คู่มือทุกระบบรวมที่เดียว — โฟลว์ ปุ่ม สิทธิ์ สูตรคำนวณ และกับดักที่พลาดบ่อย',
