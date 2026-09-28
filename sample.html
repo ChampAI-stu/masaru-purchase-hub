@@ -142,6 +142,24 @@ tbody tr:hover{background:#F8FAFC}
 .li-head{font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:4px}
 .li-row{margin-bottom:6px}
 .li-row .sum{text-align:right;font-weight:700;font-size:13px;padding:8px 2px}
+/* รูปของสินค้าแต่ละตัว — อยู่ใต้บรรทัดนั้น กินความกว้างเต็มแถว */
+.li-pics{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+  margin:2px 0 2px;padding:5px 7px;border:1px dashed var(--line);border-radius:9px;background:#FAFCFF}
+.li-pics.drag{border-color:var(--teal,#0E7C86);background:#EAF6F7}
+.li-pics .lab{font-size:11px;color:var(--muted);font-weight:600}
+.li-pics .add{font-size:11.5px;padding:3px 9px}
+.li-th{position:relative;width:46px;height:46px;flex:0 0 auto}
+.li-th img{width:46px;height:46px;object-fit:cover;border-radius:7px;border:1px solid var(--line);background:#F1F5F9}
+.li-th .pdf{width:46px;height:46px;border:1px solid var(--line);border-radius:7px;
+  display:flex;align-items:center;justify-content:center;background:#F1F5F9;font-size:15px}
+.li-th .x{position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;border:0;border-radius:50%;
+  width:19px;height:19px;cursor:pointer;font-size:11px;line-height:1;padding:0}
+.li-th.wait:after{content:'รออัป';position:absolute;bottom:0;left:0;right:0;font-size:8.5px;text-align:center;
+  background:#0009;color:#fff;border-radius:0 0 7px 7px}
+/* รูปเล็กต่อรายการ ในตารางหน้ารายการ */
+.lot-th{display:flex;gap:4px;flex-wrap:wrap;margin:3px 0 1px}
+.lot-th img{width:34px;height:34px;object-fit:cover;border-radius:6px;border:1px solid var(--line);
+  background:#F1F5F9;cursor:zoom-in}
 @media(max-width:720px){
   .li-head{display:none}
   .li-row{grid-template-columns:1fr 1fr;gap:6px;padding:9px;border:1px solid var(--line);
@@ -380,7 +398,8 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
         <div style="flex:1"></div>
         <button type="button" class="btn mini ghost" onclick="addLine()">➕ เพิ่มสินค้า</button>
       </div>
-      <div class="li-head"><div>ชื่อสินค้า</div><div style="text-align:right">จำนวน</div>
+      <div class="li-head"><div>ชื่อสินค้า <span style="font-weight:400">(ใส่รูปแยกได้ทีละตัว)</span></div>
+        <div style="text-align:right">จำนวน</div>
         <div style="text-align:right">ราคา/ชิ้น</div><div style="text-align:right">รวม</div><div></div></div>
       <div id="f_lines"></div>
       <!-- ช่องเดิม: ซ่อนไว้ แต่ยังเขียนค่าลงฐานข้อมูลเหมือนเดิม โค้ดส่วนอื่นจึงไม่ต้องแก้ -->
@@ -414,9 +433,10 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
     <div class="fld"><label>หมายเหตุ</label><input id="f_note" placeholder="เว้นว่างได้"></div>
 
     <div class="g2">
-      <div class="fld"><label>📷 รูปสินค้า</label>
+      <div class="fld"><label>📷 รูปรวมของล็อต <span class="muted" style="font-weight:400">— ไม่ผูกกับสินค้าตัวไหน</span></label>
         <div class="drop" id="dropPic" onclick="document.getElementById('filePic').click()">
           ลากรูปมาวาง · กดเพื่อเลือกไฟล์ · หรือ Ctrl+V วางรูป
+          <div class="muted" style="font-size:11px;margin-top:3px">รูปแยกรายสินค้า → ใส่ที่ปุ่ม 📷 ในตารางรายการสินค้าด้านบน</div>
         </div>
         <input type="file" id="filePic" accept="image/*" multiple style="display:none" onchange="pickFiles('pics',this.files)">
         <div class="row" style="margin-top:6px">
@@ -494,7 +514,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-08-gallery';
+const SM_VERSION='v01-09-gallery';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -730,6 +750,13 @@ function thumbUrl(p,w){
   return p.url||'';
 }
 const arr=v=>Array.isArray(v)?v:[];
+/* รูปทั้งหมดของล็อตนี้ = รูปรวม + รูปของสินค้าทุกตัว
+   → ตาราง · แกลเลอรี · Excel ใช้ตัวนี้ จะได้ไม่ตกรูปที่ผูกไว้กับรายการ */
+function allPics(r){
+  const out=arr(r&&r.pics).slice();
+  arr(r&&r.lines).forEach(l=>arr(l&&l.pics).forEach(p=>out.push(p)));
+  return out;
+}
 function picCell(list){
   const a=arr(list);
   if(!a.length)return '<span class="muted">—</span>';
@@ -796,7 +823,7 @@ function render(){
           +esc(subColor(r.cat,r.subcat))+'">▸ '+esc(r.subcat)+'</span></div>'):'')+'</td>'
       +'<td><div class="itemtxt">'+itemsHtml(r)+'</div>'
         +(r.note?'<div class="muted" style="font-size:11px;margin-top:3px">📝 '+esc(r.note)+'</div>':'')+'</td>'
-      +'<td>'+picCell(r.pics)+'</td>'
+      +'<td>'+picCell(allPics(r))+'</td>'
       +'<td>'+esc(r.factory||'—')+'</td>'
       +'<td class="num">'+(r.qty!=null?('<b>'+money(r.qty)+'</b> <span class="muted" style="font-size:10.5px">ชิ้น</span>'
             +(arr(r.lines).length>1?('<div class="muted" style="font-size:10.5px">'
@@ -1177,8 +1204,16 @@ function itemsHtml(r){
     const q=num(l.qty), p=num(l.price);
     const qs=(q||p)?('<span class="q">'+(q?('<b>'+money(q)+'</b> ชิ้น'):'—')
         +(p?(' × '+sym+' '+money2(p)):'')+'</span>'):'<span class="q">—</span>';
+    const ps=arr(l.pics).filter(x=>x&&(x.id||x.url));
+    const th=ps.length?('<div class="lot-th">'+ps.slice(0,4).map(x=>{
+        const t=thumbUrl(x,400);
+        return '<img src="'+esc(t)+'" alt="" loading="lazy" title="'+esc(x.name||'กดเพื่อดูใหญ่')
+          +'" onclick="light(\''+esc(String(t).replace(/'/g,'%27')).replace(/sz=w400/,'sz=w1600')+'\')"'
+          +' onerror="this.style.opacity=.3">';
+      }).join('')+(ps.length>4?('<span class="muted" style="font-size:10.5px;align-self:center">+'+(ps.length-4)+'</span>'):'')
+      +'</div>'):'';
     return '<div class="lot-l"><div class="i">'+((L.length>1&&!selfNum)?(i+1)+'.':'')+'</div>'
-      +'<div>'+esc(String(l.name||''))+'</div>'+qs+'</div>';
+      +'<div>'+esc(String(l.name||''))+th+'</div>'+qs+'</div>';
   }).join('');
   return head+body;
 }
@@ -1196,7 +1231,8 @@ let EDIT_ID=null, PICS=[], PROOFS=[], SM_TOUCHED=false;
 let SM_LINES=[];
 const smLine=o=>({name:String((o&&o.name)||''),
                   qty:(o&&o.qty!=null&&o.qty!=='')?num(o.qty):'',
-                  price:(o&&o.price!=null&&o.price!=='')?num(o.price):''});
+                  price:(o&&o.price!=null&&o.price!=='')?num(o.price):'',
+                  pics:arr(o&&o.pics).slice()});
 function linesFrom(r){
   const L=arr(r&&r.lines);
   if(L.length)return L.map(smLine);
@@ -1226,12 +1262,60 @@ function drawLines(){
       +'<div class="sum">'+(sum?money2(sum):'—')+'</div>'
       +'<button type="button" class="btn mini ghost" title="ลบสินค้าตัวนี้" '
         +'onclick="delLine('+i+')"'+(SM_LINES.length<2?' disabled':'')+'>✕</button>'
+      +'<div class="li-pics" ondragover="lineDrag(event,'+i+',1)" '
+        +'ondragleave="lineDrag(event,'+i+',0)" ondrop="lineDrag(event,'+i+',0)">'
+        +linePicsHtml(i)+'</div>'
       +'</div>';
   }).join('');
   const n=linesNames().length, t=linesTotal();
   $('f_liCount').textContent=n>1?('— '+n+' รายการ · รวม '+money2(t)+' '+curSym($('f_cur').value))
                                 :'— ใส่ได้มากกว่า 1 รายการ';
 }
+/* ── รูปของสินค้าแต่ละตัว ───────────────────────────────────────────
+   เก็บใน lines[i].pics — ไฟล์ขึ้น Google Drive ตอนกด 💾 บันทึก เหมือนรูปรวม
+   ★ ไม่ต้องแก้ฐานข้อมูล: lines เป็น jsonb อยู่แล้ว เพิ่มคีย์ pics เข้าไปได้เลย */
+function linePicsHtml(i){
+  const l=SM_LINES[i]; if(!l)return '';
+  if(!Array.isArray(l.pics))l.pics=arr(l.pics).slice();
+  return '<div class="lab">📷 รูปสินค้าตัวนี้</div>'
+    +l.pics.map((p,j)=>{
+      const src=p._file?(/^image\//.test(p.mime||'')?URL.createObjectURL(p._file):'')
+                       :thumbUrl(p,200);
+      return '<div class="li-th'+(p._file?' wait':'')+'">'
+        +(src?'<img src="'+esc(src)+'" alt="" title="'+esc(p.name||'')+'" onerror="this.style.opacity=.3">'
+             :'<div class="pdf" title="'+esc(p.name||'')+'">📄</div>')
+        +'<button type="button" class="x" title="เอารูปนี้ออก" onclick="delLinePic('+i+','+j+')">✕</button>'
+        +'</div>';
+    }).join('')
+    +'<label class="btn mini ghost add" title="เพิ่มรูปของสินค้าตัวนี้">📷 เพิ่มรูป'
+    +'<input type="file" accept="image/*" multiple style="display:none" '
+    +'onchange="pickLinePics('+i+',this.files);this.value=\'\'"></label>'
+    +(l.pics.length?'':'<span class="muted" style="font-size:11px">ลากรูปมาวางที่แถวนี้ก็ได้</span>');
+}
+function drawLinePics(i){
+  const row=$('f_lines').children[i]; if(!row)return;
+  const box=row.querySelector('.li-pics'); if(!box)return;
+  box.innerHTML=linePicsHtml(i);
+}
+function pickLinePics(i,files){
+  const l=SM_LINES[i]; if(!l)return;
+  [...(files||[])].forEach(f=>l.pics.push({_file:f,name:f.name,mime:f.type||'',url:'',id:''}));
+  drawLinePics(i);
+  $('upStat').textContent='เลือกรูปไว้แล้ว — ไฟล์จะขึ้น Google Drive ตอนกด 💾 บันทึก';
+}
+function delLinePic(i,j){
+  const l=SM_LINES[i]; if(!l)return;
+  l.pics.splice(j,1); drawLinePics(i);
+}
+/* ลากรูปมาวางที่แถวสินค้าได้เลย */
+function lineDrag(e,i,on){
+  e.preventDefault(); e.stopPropagation();
+  const box=e.currentTarget; box.classList.toggle('drag',!!on);
+  if(on)return;
+  const fs=[...((e.dataTransfer&&e.dataTransfer.files)||[])].filter(f=>/^image\//.test(f.type||''));
+  if(fs.length)pickLinePics(i,fs);
+}
+
 function setLine(i,k,v){ if(!SM_LINES[i])return;
   SM_LINES[i][k]= k==='name'?v : (v===''?'':num(v));
   if(k!=='name'){ const el=$('f_lines').children[i]; if(el){const c=el.querySelector('.sum');
@@ -1360,11 +1444,13 @@ async function uploadPending(catName){
   const sub=($('f_sub').value||'').trim();
   const clean2=x=>String(x||'').replace(/[\\/:*?"<>|]/g,'-');
   const folder='สินค้าตัวอย่าง/'+clean2(catName||'ไม่ระบุหมวด')+(sub?('/'+clean2(sub)):'');
+  /* คิวอัป = รูปของสินค้าแต่ละตัว + รูปรวมล็อต + หลักฐานการชำระ */
+  const queues=SM_LINES.map(l=>l.pics).concat([PICS,PROOFS]);
   let n=0, done=0;
-  [PICS,PROOFS].forEach(a=>a.forEach(p=>{ if(p._file)n++; }));
+  queues.forEach(a=>arr(a).forEach(p=>{ if(p._file)n++; }));
   if(!n)return true;
   if(!GAS_URL){ alert('อัปโหลดไฟล์ไม่ได้ — ยังไม่ได้ตั้ง GAS_URL\n\nเอาไฟล์ออกก่อน หรือใส่เป็นลิงก์แทน'); return false; }
-  for(const a of [PICS,PROOFS]){
+  for(const a of queues){
     for(const p of a){
       if(!p._file)continue;
       done++; $('upStat').textContent='⏳ อัปขึ้น Google Drive '+done+'/'+n+' — '+p.name;
@@ -1385,6 +1471,7 @@ async function uploadPending(catName){
     }
   }
   $('upStat').textContent='✅ อัปไฟล์ครบ '+n+' ไฟล์';
+  SM_LINES.forEach((l,i)=>drawLinePics(i));
   return true;
 }
 const clean=a=>arr(a).filter(p=>p.url).map(p=>({url:p.url,id:p.id||'',name:p.name||'',mime:p.mime||''}));
@@ -1393,7 +1480,9 @@ async function save(){
   if(!canEdit)return;
   const d=$('f_date').value, cat=$('f_cat').value;
   /* ตัดบรรทัดที่ไม่ได้ใส่ชื่อทิ้ง — แถวว่างที่กดเพิ่มไว้แล้วไม่ได้กรอกจะไม่ถูกบันทึก */
-  const LN=SM_LINES.filter(l=>l.name.trim()).map(l=>({name:l.name.trim(),
+  /* เก็บ "ตัวจริง" ไว้ก่อน — ลิงก์รูปเพิ่งได้หลังอัป Drive จึงต้องอ่านค่าตอนท้ายอีกรอบ */
+  const KEEP=SM_LINES.filter(l=>l.name.trim());
+  const LN=KEEP.map(l=>({name:l.name.trim(),
               qty:(l.qty===''?null:num(l.qty)), price:(l.price===''?null:num(l.price))}));
   const items=LN.map(l=>l.name).join('\n');
   /* หมวดย่อยไม่บังคับ — บางรายการไม่มีหมวดย่อยจริง ๆ */
@@ -1410,7 +1499,10 @@ async function save(){
     /* อัปไฟล์ให้ครบก่อน — ถ้าอัปไม่ผ่าน จะไม่เขียนฐานข้อมูลเลย ไม่ให้มีแถวที่รูปหาย */
     if(!await uploadPending(cat))return;
     const rec={req_date:d, cat, subcat:($('f_sub').value||'')||null,
-      items, lines:LN, factory:($('f_fac').value||'').trim()||null,
+      items,
+      /* อ่าน pics หลังอัปเสร็จ — ตอนนี้แต่ละรูปมีลิงก์ Drive แล้ว */
+      lines:LN.map((l,i)=>Object.assign({},l,{pics:clean(KEEP[i]&&KEEP[i].pics)})),
+      factory:($('f_fac').value||'').trim()||null,
       /* คอลัมน์เดิม: จำนวน = รวมทุกบรรทัด · ราคาต่อชิ้น = ใส่เมื่อมีสินค้าตัวเดียว */
       qty:(LN.some(l=>l.qty!=null)?LN.reduce((a,l)=>a+num(l.qty),0):null),
       unit_price:(LN.length===1?LN[0].price:null),
@@ -1460,14 +1552,15 @@ function exportXls(){
   rows.forEach(r=>aoa.push([String(r.req_date||'').slice(0,10), r.cat||'', r.subcat||'',
     r.items||'',
     arr(r.lines).map(l=>String(l.name||'')+' × '+(l.qty==null?'?':num(l.qty))
-      +' × '+(l.price==null?'?':num(l.price))).join(' | '),
+      +' × '+(l.price==null?'?':num(l.price))
+      +(arr(l.pics).length?(' [รูป '+arr(l.pics).length+']'):'')).join(' | '),
     r.factory||'',
     (r.qty==null?'':num(r.qty)), (r.unit_price==null?'':num(r.unit_price)),
     r.is_free?'ฟรี':'',
     num(r.amount), r.is_free?(refVal(r)||''):'',
     r.currency||'', r.responsible||'', r.note||'',
-    arr(r.pics).length, arr(r.proofs).length,
-    arr(r.pics).map(p=>p.url).filter(Boolean).join(' , '),
+    allPics(r).length, arr(r.proofs).length,
+    allPics(r).map(p=>p.url).filter(Boolean).join(' , '),
     arr(r.proofs).map(p=>p.url).filter(Boolean).join(' , '), r.created_by||'']));
   const byCur={}; rows.filter(r=>!r.is_free).forEach(r=>{const c=String(r.currency||'CNY').toUpperCase();
     byCur[c]=(byCur[c]||0)+num(r.amount);});
@@ -1503,7 +1596,7 @@ if(window.ResizeObserver)new ResizeObserver(pgHeaderSize).observe(document.query
 window.addEventListener('resize',pgHeaderSize);pgHeaderSize();
 let PG_CATEGORY='', PG_LIMIT=40, PG_ROWS=[], PG_VIEW=[], PG_ITEM=0, PG_PIC=0;
 let PG_STATUS='loading', PG_ERROR='', PG_SCROLL='', PG_OPENER=null;
-function pgPics(r){return arr(r.pics).filter(p=>p&&typeof p==='object'&&!/pdf/i.test(p.mime||'')&&!/\.pdf($|\?)/i.test(p.name||p.url||'')&&(p.id||p.url));}
+function pgPics(r){return allPics(r).filter(p=>p&&typeof p==='object'&&!/pdf/i.test(p.mime||'')&&!/\.pdf($|\?)/i.test(p.name||p.url||'')&&(p.id||p.url));}
 function pgURL(p,w){
   const raw=thumbUrl(p,w);
   try{const u=new URL(raw,location.href);return /^https?:$/.test(u.protocol)||/^data:image\/(png|jpeg|gif|webp|avif);base64,/i.test(raw)?u.href:'';}catch(e){return '';}
@@ -1543,7 +1636,8 @@ function pgOpen(index){
 function pgDetail(){
   const r=PG_VIEW[PG_ITEM];if(!r)return;
   $('pgPosition').textContent='สินค้า '+(PG_ITEM+1)+' / '+PG_VIEW.length;
-  $('pgInfo').innerHTML='<div class="pg-category">'+esc([r.cat||'ไม่ระบุหมวด',r.subcat].filter(Boolean).join(' / '))+'</div><h3 id="pgDetailTitle">'+esc(r.items||'สินค้าตัวอย่าง')+'</h3><div class="pg-price"><small>'+(r.is_free?'ไม่มีค่าใช้จ่าย':'ยอดชำระรวม')+'</small><strong>'+(r.is_free?'🎁 ได้ฟรี':esc(curSym(r.currency))+' '+money2(r.amount))+'</strong></div><dl class="pg-facts">'+[['โรงงาน',r.factory||'—'],['ผู้รับผิดชอบ',r.responsible||'—'],['วันที่',thDate(r.req_date)],['จำนวน',r.qty!=null?money(r.qty)+' ชิ้น':'—'],['ราคาต่อชิ้น',arr(r.lines).length>1?(arr(r.lines).length+' รายการ (ดูด้านล่าง)'):(r.unit_price!=null?curSym(r.currency)+' '+money2(r.unit_price):'—')],['สกุลเงิน',r.currency||'CNY']].map(([k,v])=>'<div><dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd></div>').join('')+'</dl>'+(arr(r.lines).length>1?'<div class="pg-note"><b>รายการสินค้า</b><br>'+itemsHtml(r)+'</div>':'')
+  $('pgInfo').innerHTML='<div class="pg-category">'+esc([r.cat||'ไม่ระบุหมวด',r.subcat].filter(Boolean).join(' / '))+'</div><h3 id="pgDetailTitle">'+esc(r.items||'สินค้าตัวอย่าง')+'</h3><div class="pg-price"><small>'+(r.is_free?'ไม่มีค่าใช้จ่าย':'ยอดชำระรวม')+'</small><strong>'+(r.is_free?'🎁 ได้ฟรี':esc(curSym(r.currency))+' '+money2(r.amount))+'</strong></div><dl class="pg-facts">'+[['โรงงาน',r.factory||'—'],['ผู้รับผิดชอบ',r.responsible||'—'],['วันที่',thDate(r.req_date)],['จำนวน',r.qty!=null?money(r.qty)+' ชิ้น':'—'],['ราคาต่อชิ้น',arr(r.lines).length>1?(arr(r.lines).length+' รายการ (ดูด้านล่าง)'):(r.unit_price!=null?curSym(r.currency)+' '+money2(r.unit_price):'—')],['สกุลเงิน',r.currency||'CNY']].map(([k,v])=>'<div><dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd></div>').join('')+'</dl>'+(arr(r.lines).length>1||arr(r.lines).some(l=>arr(l&&l.pics).length)
+     ?'<div class="pg-note"><b>รายการสินค้า</b><br>'+itemsHtml(r)+'</div>':'')
    +(r.note?'<div class="pg-note"><b>หมายเหตุ</b><br>'+esc(r.note)+'</div>':'');
   $('pgPrevItem').disabled=$('pgNextItem').disabled=PG_VIEW.length<2;
   $('pgEdit').hidden=!canEdit;pgPhoto();
