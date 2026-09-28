@@ -729,6 +729,10 @@
   .app-tile[data-key="freight"],.app-tile[data-key="cost"]{--tile-accent:#14806a}
   .app-tile[data-key="backup"]{--tile-accent:#7954b8}
   .app-tile[data-key="guide"]{--tile-accent:#3b6fb4}
+  .app-tile[data-key="pdf"]{--tile-accent:#C4372E}
+  /* ป้ายบอกว่าเป็นเว็บนอก เปิดแท็บใหม่เสมอ */
+  .app-ext{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;vertical-align:middle;
+    color:var(--tile-accent,#3b6fb4);border:1px solid currentColor;border-radius:6px;padding:1px 6px;opacity:.85}
   .app-icon{
     width:62px;
     height:62px;
@@ -1516,6 +1520,11 @@ const APPS_FALLBACK = [
   /* 🚫 เอาการ์ด 💾 สำรองข้อมูล ออกจากหน้ารวมแล้ว (ขอมา)
         ไฟล์ backup.html ยังอยู่ เข้าตรง URL ได้ — แค่ไม่โชว์เป็นการ์ด
         อยากเอากลับ: เอาคอมเมนต์นี้ออก + รัน portal_hide_backup.sql แบบ SHOW */
+  /* 📕 เครื่องมือ PDF — เว็บนอก (คนละ repo) จึงใส่ URL เต็มและเปิดแท็บใหม่เสมอ */
+  { key:'pdf', icon:'📕', title:'ระบบจัดการเอกสาร PDF',
+    desc:'รวม · แยก · บีบอัด · แปลงไฟล์ · ใส่ลายน้ำ — ทำในเบราว์เซอร์ ไฟล์ไม่ออกจากเครื่อง',
+    url:'https://champai-stu.github.io/masaru-pdf/',
+    roles:['purchase','marketing','marketing_lead','shipping'] },
   /* คู่มือเปิดให้ 4 บทบาท ไม่รวมการตลาด — ต้องตรงกับ ALLOWED ในไฟล์ guide.html */
   { key:'guide', icon:'📖', title:'คู่มือระบบฝ่ายจัดซื้อ',
     desc:'คู่มือทุกระบบรวมที่เดียว — โฟลว์ ปุ่ม สิทธิ์ สูตรคำนวณ และกับดักที่พลาดบ่อย',
@@ -1539,6 +1548,9 @@ const ROLE_LABEL = { purchase:'จัดซื้อ', marketing:'การต�
 /* marketing_lead = หัวหน้าทีมการตลาด — เห็นการ์ดเท่าการตลาด (Purchase Board)
    ต่างกันที่ในตัว board.html เปิดแท็บ 📦 แจ้งสินค้าขาเข้า ให้ดูอย่างเดียว */
 const ALLOWED = ['purchase','marketing','marketing_lead','pr_manager','pr_exec','executive','shipping'];   // บทบาทที่เข้าหน้ารวมได้
+/* เว็บนอก (URL เต็ม http/https) — เปิดแท็บใหม่เสมอ ไม่พาออกจากหน้ารวม
+   เช่น ระบบจัดการเอกสาร PDF ที่อยู่คนละ repo */
+const isExtUrl = u => /^https?:\/\//i.test(String(u||''));
 const isExecRole = r => r==='pr_exec' || r==='executive';   // ผู้บริหาร
 // 🔑 หัวหน้าจัดซื้อ + ผู้บริหาร = เห็นทุกระบบ ไม่ต้องไล่ใส่ทีละระบบใน portal_apps
 const seeAllRole = r => isExecRole(r) || r==='pr_manager';
@@ -1612,7 +1624,8 @@ async function showHub(session){
 
   // มีเว็บเดียว → พาเข้าเว็บนั้นเลย ไม่ต้องเห็นหน้าเลือก
   // (ยกเว้นเพิ่งกดออกจากระบบมา — กันวนกลับเข้าเว็บเดิมจนไม่เห็นหน้า login)
-  if(apps.length === 1 && !JUST_LOGGED_OUT){
+  /* ★ เว็บนอกไม่เข้าเงื่อนไขนี้ — ไม่งั้นคนที่เห็นการ์ดเดียวจะถูกพาออกจากระบบเราไปเลย */
+  if(apps.length === 1 && !JUST_LOGGED_OUT && !isExtUrl(apps[0].url)){
     window.location.replace(apps[0].url);
     return;
   }
@@ -1623,10 +1636,11 @@ async function showHub(session){
 
   $('appGrid').innerHTML = apps.length
     ? apps.map((a,i) => `
-      <div class="app-tile" data-url="${a.url}" data-key="${a.key}" role="button" tabindex="0" aria-label="เปิดระบบ ${a.title}">
+      <div class="app-tile" data-url="${a.url}" data-key="${a.key}"${isExtUrl(a.url)?' data-ext="1"':''}
+           role="button" tabindex="0" aria-label="เปิดระบบ ${a.title}${isExtUrl(a.url)?' (เปิดแท็บใหม่)':''}">
         <div class="app-index">${String(i+1).padStart(2,'0')}</div>
         <div class="app-icon"><span class="app-emoji">${a.icon}</span></div>
-        <div class="app-name">${a.title}</div>
+        <div class="app-name">${a.title}${isExtUrl(a.url)?'<span class="app-ext" title="เว็บแยก — เปิดในแท็บใหม่เสมอ">↗ แท็บใหม่</span>':''}</div>
         <div class="app-desc">${a.desc}</div>
         <div class="app-go"><span class="app-go-label">เข้าใช้งาน</span>
           <span class="app-newtab" data-url="${a.url}" title="เปิดในแท็บใหม่" role="button" tabindex="0">↗ แท็บใหม่</span>
@@ -1636,20 +1650,22 @@ async function showHub(session){
 
   $('systemCount').textContent = String(apps.length).padStart(2,'0');
 
-  // กดการ์ด = เข้าเว็บในแท็บเดิม
+  // กดการ์ด = เข้าเว็บในแท็บเดิม · ยกเว้นเว็บนอก → เปิดแท็บใหม่ ไม่ทิ้งหน้ารวม
   document.querySelectorAll('.app-tile').forEach(t =>
     {
-      t.addEventListener('click', () => { window.location.href = t.dataset.url; });
+      const go = () => { if(t.dataset.ext) window.open(t.dataset.url,'_blank','noopener');
+                         else window.location.href = t.dataset.url; };
+      t.addEventListener('click', go);
       t.addEventListener('keydown', e => {
-        if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); window.location.href = t.dataset.url; }
+        if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(); }
       });
     });
   // กดปุ่ม "แท็บใหม่" = เปิดแท็บใหม่ (ไม่ให้ทะลุไปโดนการ์ด)
   document.querySelectorAll('.app-newtab').forEach(b =>
     {
-      b.addEventListener('click', e => { e.stopPropagation(); window.open(b.dataset.url, '_blank'); });
+      b.addEventListener('click', e => { e.stopPropagation(); window.open(b.dataset.url, '_blank', 'noopener'); });
       b.addEventListener('keydown', e => {
-        if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.stopPropagation(); window.open(b.dataset.url, '_blank'); }
+        if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.stopPropagation(); window.open(b.dataset.url, '_blank', 'noopener'); }
       });
     });
 }
