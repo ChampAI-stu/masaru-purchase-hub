@@ -70,6 +70,13 @@ tbody tr:hover{background:#F8FAFC}
 .pics{display:flex;gap:4px;flex-wrap:wrap}
 .pics img{width:46px;height:46px;object-fit:cover;border-radius:7px;border:1px solid var(--line);cursor:pointer;background:#F1F5F9}
 .itemtxt{white-space:pre-wrap;line-height:1.55;font-size:12.5px;max-width:330px}
+/* ล็อต = 1 รายการที่สั่ง มีสินค้าหลายตัวข้างใน */
+.lot-h{display:inline-flex;align-items:center;gap:6px;background:#EAF6EC;border:1px solid #BEE0C4;
+  border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;color:#1E5B33;margin-bottom:4px}
+.lot-l{display:grid;grid-template-columns:18px 1fr auto;gap:2px 7px;align-items:baseline;margin-top:2px}
+.lot-l .i{color:var(--muted);font-size:11px;text-align:right}
+.lot-l .q{white-space:nowrap;font-size:11.5px;color:var(--muted)}
+.lot-l .q b{color:var(--ink);font-size:12.5px}
 .modal-bg{position:fixed;inset:0;background:#0d1626cc;display:none;align-items:flex-start;justify-content:center;
   z-index:80;padding:24px 12px;overflow:auto}
 .modal{background:#fff;border-radius:16px;padding:20px;max-width:820px;width:100%;box-shadow:0 20px 60px #0006}
@@ -487,7 +494,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-07-gallery';
+const SM_VERSION='v01-08-gallery';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -756,8 +763,13 @@ function render(){
     .map(c=>curSym(c)+' '+money2(freeVal[c])).join(' · ');
   const P=period();
   $('kpi').innerHTML=
-     '<div class="kpi"><div class="lbl">📋 จำนวนรายการ</div><div class="val">'+money(rows.length)+'</div>'
-       +'<div class="sub2">'+esc(P.head)+'</div></div>'
+     '<div class="kpi"><div class="lbl">📦 ล็อตที่สั่ง</div><div class="val">'+money(rows.length)+'</div>'
+       +'<div class="sub2">'
+         +(function(){ /* 1 ล็อต = 1 ครั้งที่สั่ง · ข้างในมีสินค้าได้หลายรายการ */
+            const it=rows.reduce((a,r)=>a+Math.max(1,arr(r.lines).length),0);
+            const pcs=rows.reduce((a,r)=>a+num(r.qty),0);
+            return esc(P.head)+' · '+money(it)+' รายการ'+(pcs?(' · '+money(pcs)+' ชิ้น'):''); })()
+       +'</div></div>'
     +'<div class="kpi gold"><div class="lbl">💰 ยอดชำระรวม</div><div class="val" style="font-size:19px">'+esc(curTxt)+'</div>'
        +'<div class="sub2">แยกตามสกุลเงิน ไม่แปลงค่า</div></div>'
     +'<div class="kpi green"><div class="lbl">🎁 ได้ฟรี (ไม่มีค่าใช้จ่าย)</div>'
@@ -786,14 +798,19 @@ function render(){
         +(r.note?'<div class="muted" style="font-size:11px;margin-top:3px">📝 '+esc(r.note)+'</div>':'')+'</td>'
       +'<td>'+picCell(r.pics)+'</td>'
       +'<td>'+esc(r.factory||'—')+'</td>'
-      +'<td class="num">'+(r.qty!=null?money(r.qty):'<span class="muted">—</span>')+'</td>'
-      +'<td class="num">'+(r.unit_price!=null?money2(r.unit_price)+' '+esc(curSym(r.currency))
-                                             :'<span class="muted">—</span>')+'</td>'
+      +'<td class="num">'+(r.qty!=null?('<b>'+money(r.qty)+'</b> <span class="muted" style="font-size:10.5px">ชิ้น</span>'
+            +(arr(r.lines).length>1?('<div class="muted" style="font-size:10.5px">'
+              +arr(r.lines).length+' รายการ</div>'):''))
+          :'<span class="muted">—</span>')+'</td>'
+      +'<td class="num">'+(arr(r.lines).length>1
+          ? '<span class="muted" style="font-size:11px">หลายราคา<br>ดูในช่องรายการ</span>'
+          : (r.unit_price!=null?money2(r.unit_price)+' '+esc(curSym(r.currency))
+                               :'<span class="muted">—</span>'))+'</td>'
       +'<td class="num">'+(r.is_free
           ? '<span class="cat-chip" style="background:#0E7C86" title="ได้ฟรีจากโรงงาน — ไม่นับเป็นค่าใช้จ่าย">🎁 ฟรี</span>'
-            +(num(r.qty)*num(r.unit_price)
+            +(refVal(r)
                ? '<div class="muted" style="font-size:10.5px;margin-top:2px">มูลค่า '
-                 +money2(num(r.qty)*num(r.unit_price))+'</div>' : '')
+                 +money2(refVal(r))+'</div>' : '')
           : '<b>'+money2(r.amount)+'</b> '+esc(curSym(r.currency)))+'</td>'
       +'<td>'+esc(r.responsible||'—')+'</td>'
       +'<td>'+picCell(r.proofs)+'</td>'
@@ -1146,16 +1163,24 @@ function shrink(file,max){
 }
 
 /* ชื่อสินค้าในตาราง — มี จำนวน × ราคา ต่อบรรทัด ก็โชว์ให้ด้วย */
+/* ดูเป็น "ล็อต" — หัวบอกว่าล็อตนี้มีกี่รายการ กี่ชิ้น แล้วไล่ทีละรายการว่าตัวละกี่ชิ้น */
 function itemsHtml(r){
   const L=arr(r&&r.lines);
   if(!L.length)return esc(r&&r.items||'—');
-  const sym=curSym(r.currency);
-  return L.map(l=>{
+  const sym=curSym(r.currency), pcs=L.reduce((a,l)=>a+num(l.qty),0);
+  const head=L.length>1
+    ? '<div class="lot-h">📦 ล็อตนี้ '+L.length+' รายการ'+(pcs?(' · '+money(pcs)+' ชิ้น'):'')+'</div>'
+    : '';
+  /* ถ้าคนพิมพ์เลขข้อมาเองแล้ว (1. 2.) ไม่ต้องใส่เลขซ้ำให้ */
+  const selfNum=L.some(l=>/^\s*\d+\s*[.)]/.test(String(l.name||'')));
+  const body=L.map((l,i)=>{
     const q=num(l.qty), p=num(l.price);
-    const tail=(q||p)?(' <span class="muted" style="font-size:11.5px">— '
-      +(q?money(q):'?')+' × '+(p?(sym+' '+money2(p)):'?')+'</span>'):'';
-    return esc(String(l.name||'')) + tail;
-  }).join('<br>');
+    const qs=(q||p)?('<span class="q">'+(q?('<b>'+money(q)+'</b> ชิ้น'):'—')
+        +(p?(' × '+sym+' '+money2(p)):'')+'</span>'):'<span class="q">—</span>';
+    return '<div class="lot-l"><div class="i">'+((L.length>1&&!selfNum)?(i+1)+'.':'')+'</div>'
+      +'<div>'+esc(String(l.name||''))+'</div>'+qs+'</div>';
+  }).join('');
+  return head+body;
 }
 
 /* ═════════════════ ฟอร์มรายการ ═════════════════ */
