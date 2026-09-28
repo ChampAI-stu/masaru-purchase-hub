@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-44</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-46</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -474,6 +474,8 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
       <div class="f">costsku.html</div><div class="d">คิดต้นทุนรวมต่อหน่วย (Landed cost) · ปันส่วนค่าขนส่ง · KPI Cost Saving</div></a>
     <a class="mapc" href="#ssample" onclick="return goSec('ssample')" style="border-left-color:#0E7C86"><div class="n">🧪 ทะเบียนสินค้าตัวอย่าง</div>
       <div class="f">sample.html</div><div class="d">ขอ/สั่งซื้อสินค้าตัวอย่าง · รูป + หลักฐานชำระเก็บใน Drive · สรุปค่าใช้จ่ายแยกหมวด</div></a>
+    <a class="mapc" href="#sdaily" onclick="return goSec('sdaily')" style="border-left-color:#B4690E"><div class="n">📝 บันทึกงานรายวัน</div>
+      <div class="f">daily.html</div><div class="d">ทีมพิมพ์งานที่ทำแต่ละวัน · แก้ได้แค่ของตัวเอง · เตือนหลัง 17:00 · Export Excel/PDF</div></a>
     <a class="mapc" href="#sfreight" onclick="return goSec('sfreight')" style="border-left-color:#0EA5E9"><div class="n">📐 ตรวจค่าขนส่ง ตปท.</div><div class="f">freight.html</div><div class="d">เทียบขนาดกล่องคลังวัด vs ขนส่งคิด · ตรวจใบวางบิลทีละรอบ 6 ข้อ (ยอด/ซ้ำ/เอกสาร/เรท/ค่าแฝง/กล่อง) · ออกใบทักขนส่ง</div></a>
     <a class="mapc" href="#s8" onclick="return goSec('s8')" onclick="return goSec('s8')" style="border-left-color:#C41F29"><div class="n">⚠️ กับดักที่ต้องรู้</div>
       <div class="f">รวมทุกระบบ</div><div class="d">เรื่องที่พลาดบ่อยที่สุดของทั้งกลุ่มระบบ + วิธีเลี่ยง — อ่านก่อนลงมือจริง</div></a>
@@ -2257,7 +2259,7 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
       <td><b>วันที่ · หมวดหลัก · ชื่อสินค้าอย่างน้อย 1 รายการ · ยอดชำระ</b> — ไม่ครบระบบเตือนและไม่บันทึก
         <div class="muted" style="font-size:11.5px">โรงงาน · ผู้รับผิดชอบ · หมายเหตุ เว้นได้
           · ช่องโรงงาน/ผู้รับผิดชอบ<b>มีรายการช่วยเลือก</b>จากที่เคยพิมพ์ไว้ ไม่ต้องจำสะกด</div></td></tr>
-    <tr><td><b>📷 รูปสินค้า · 🧾 หลักฐานการชำระ</b></td>
+    <tr><td><b>📷 รูปรวมของล็อต · 🧾 หลักฐานการชำระ</b></td>
       <td>ใส่ได้หลายไฟล์ — <b>ลากมาวาง · กดเลือกไฟล์ · Ctrl+V วางรูป</b> หรือ<b>วางลิงก์ Drive</b>
         <div style="background:#EAF6EC;border:1px solid #BEE0C4;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
           ☁️ ไฟล์ขึ้น <b>Google Drive</b> (ตัวเดียวกับสลิปในระบบจ่ายเงิน) โฟลเดอร์
@@ -2284,6 +2286,16 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
           <div class="muted" style="margin-top:4px">ช่อง <b>จำนวน</b> = ชิ้นรวมของล็อต + บอกว่ามีกี่รายการ
             · ช่อง <b>ราคา/ชิ้น</b> ขึ้นว่า <b>หลายราคา</b> (ดูรายตัวในช่องรายการ)
             · ถ้าพิมพ์เลขข้อมาเองแล้ว ระบบไม่ใส่เลขซ้ำให้</div>
+        </div>
+        <div style="background:#EEF3FF;border:1px solid #C9D8F5;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
+          📷 <b>รูปแยกได้ทีละสินค้า</b> — แต่ละบรรทัดมีปุ่ม <b>📷 เพิ่มรูป</b> ของตัวเอง
+          (ลากรูปมาวางที่แถวนั้นก็ได้) ใส่ได้หลายใบต่อสินค้า 1 ตัว
+          <div class="muted" style="margin-top:4px">
+            · รูปที่ยังไม่อัปติดป้าย <b>รออัป</b> — ขึ้น Google Drive ตอนกด 💾 บันทึก เหมือนเดิม
+            <br>· ช่อง <b>📷 รูปรวมของล็อต</b> ด้านล่างยังอยู่ ใช้กับรูปที่ไม่ผูกสินค้าตัวไหน (เช่นรูปกล่องรวม)
+            <br>· <b>ในตาราง</b> รูปย่อขึ้นใต้ชื่อสินค้าตัวนั้น · ช่อง <b>รูปสินค้า</b> รวมรูปทุกใบของล็อต
+            <br>· <b>แกลเลอรี</b> และ <b>Excel</b> นับรูปทุกใบ · Excel บอกจำนวนรูปต่อสินค้าเป็น <code>[รูป 2]</code>
+          </div>
         </div>
         <div class="muted" style="font-size:11.5px">การ์ดหัวใบแรกเป็น <b>📦 ล็อตที่สั่ง</b>
           บอก <b>กี่ล็อต · กี่รายการ · กี่ชิ้น</b> ในช่วงที่ดูอยู่
@@ -2315,9 +2327,80 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
   <div class="hp-tip">💡 <b>แก้ชื่อหมวดแล้วรายการเก่าไม่เปลี่ยนตาม</b> — ตั้งใจให้เป็นแบบนี้
     เพราะระบบเก็บ<b>ชื่อหมวด</b>ไว้ที่ตัวรายการ ประวัติย้อนหลังจึงนิ่ง ไม่ถูกเขียนทับเวลาใครไปแก้ชื่อหมวด
     · ถ้าต้องการให้รายการเก่าเปลี่ยนด้วย ให้เปิดรายการนั้นแล้วเลือกหมวดใหม่</div>
+  <div class="hp-tip">💡 <b>รูปแยกรายสินค้าไม่ต้องรัน SQL เพิ่ม</b> —
+    เก็บอยู่ในคอลัมน์ <code>lines</code> ที่เป็น jsonb อยู่แล้ว · รายการเก่าที่มีแต่รูปรวมยังแสดงปกติ</div>
   <div class="hp-info">ℹ️ <b>ติดตั้ง:</b> รัน <code>sample_orders.sql</code> → รัน <code>sample_orders_qty.sql</code>
     → รัน <code>sample_cats_tree.sql</code> → รัน <code>sample_orders_lines.sql</code>
     → รัน <code>portal_add_sample.sql</code> → อัปโหลด <code>sample.html</code> + <code>index.html</code></div>
+</div>
+
+<!-- ══════════════════════ บันทึกงานรายวัน ══════════════════════ -->
+<div class="card sec" id="sdaily">
+  <h2>📝 บันทึกงานรายวัน <span class="fn">daily.html</span></h2>
+  <div class="sub-note">ทีมพิมพ์ว่า<b>วันนี้ทำอะไรไปบ้าง</b> — เห็นกันทั้งทีม เรียกดูย้อนหลัง และ Export ได้
+    · เข้าได้ <b>จัดซื้อ · หัวหน้าจัดซื้อ · ผู้บริหาร · shipping</b></div>
+  <div class="hp-info">ℹ️ ใช้ <b>บัญชีล็อกอินเดิมของ Hub</b> — ไม่มีการเลือกชื่อจากดรอปดาวน์อีกแล้ว
+    ระบบรู้เองว่าใครเข้ามา และ<b>ให้แก้ได้แค่ของตัวเอง</b></div>
+
+  <h3 class="hh">เข้าครั้งแรก — ตั้งชื่อของตัวเอง</h3>
+  <table class="kv"><tbody>
+    <tr><td><b>ใครเพิ่มชื่อ</b></td>
+      <td><b>เจ้าของบัญชีเพิ่มเอง</b> — ไม่ต้องรอหัวหน้ามาเพิ่มให้
+        <div class="muted" style="font-size:11.5px">เข้าครั้งแรกระบบพาไปแท็บ <b>👥 สมาชิก</b> ให้เอง
+          → กรอก <b>ชื่อ-นามสกุล · ชื่อเล่น · ตำแหน่ง</b> → กด <b>➕ ตั้งชื่อของฉัน</b> → ขึ้นบอร์ดทันที
+          <br>แก้ชื่อภายหลังได้ที่เดิม (ปุ่ม <b>✏️ แก้ชื่อ</b> บนแถบด้านบนก็พามาที่นี่)</div></td></tr>
+    <tr><td><b>1 บัญชี = 1 ชื่อ</b></td>
+      <td>ชื่อผูกกับอีเมลที่ล็อกอิน คนอื่นแก้ชื่อคุณไม่ได้ และคุณแก้ชื่อคนอื่นไม่ได้
+        <div class="muted" style="font-size:11.5px">ไม่อยากให้ชื่อขึ้นบอร์ดแล้ว → <b>🙈 เอาชื่อฉันออกจากบอร์ด</b>
+          (ประวัติงานเดิมยังอยู่ครบ กดกลับเข้ามาได้ทุกเมื่อ)</div></td></tr>
+  </tbody></table>
+
+  <h3 class="hh">4 แท็บ</h3>
+  <table class="kv"><tbody>
+    <tr><td><b>📝 บันทึกงาน</b></td>
+      <td>การ์ดของทุกคนในวันที่เลือก — <b>การ์ดของคุณอยู่บนสุด</b> ติดป้าย <b>ฉัน</b>
+        <div style="background:#EAF6EC;border:1px solid #BEE0C4;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
+          ✍️ พิมพ์ในช่องล่างการ์ดแล้วกด <b>Enter</b> = 1 งาน
+          · <b>วางหลายบรรทัดทีเดียว = หลายงาน</b> (ตัด <code>-</code> <code>1.</code> หน้าบรรทัดให้เอง)
+          <br>กดที่ป้ายสถานะเพื่อวน <b>เสร็จแล้ว → กำลังทำ → รอ/ติดปัญหา</b>
+          · <b>💬</b> ใส่หมายเหตุ · <b>✕</b> ลบงาน · <b>↺ ดึงงานวันก่อน</b> เอางานเดิมมาใช้ซ้ำ
+        </div>
+        <div class="muted" style="font-size:11.5px">การ์ดของคนอื่นติดป้าย <b>👁 ดูอย่างเดียว</b> —
+          อ่านได้ แต่ไม่มีช่องพิมพ์ ไม่มีปุ่มลบ
+          <br>แถบสรุปบนหัวบอกว่าวันนี้ <b>ส่งแล้วกี่คน</b> และ<b>ใครยังไม่ส่ง</b></div></td></tr>
+    <tr><td><b>🕘 ประวัติ</b></td>
+      <td>ย้อนดูตามช่วงวันที่ · กรองรายคน · ค้นหาข้อความในงาน (เช่นเลข PO ชื่อ supplier)
+        <div class="muted" style="font-size:11.5px">กดวันที่เพื่อกระโดดกลับไปดูวันนั้น
+          · ปุ่มดึงงานเดิมมาใช้ซ้ำ ใช้ได้เฉพาะงานของตัวเอง</div></td></tr>
+    <tr><td><b>📤 Export</b></td>
+      <td><b>Excel (.xlsx)</b> และ <b>พิมพ์ / บันทึก PDF</b> ตามช่วงวันที่และคนที่เลือก</td></tr>
+    <tr><td><b>👥 สมาชิก</b></td>
+      <td>บน = <b>ชื่อของฉัน</b> (แก้ได้) · ล่าง = <b>คนในบอร์ดทั้งหมด</b> พร้อมอีเมล (อ่านอย่างเดียว)
+        <div class="muted" style="font-size:11.5px">รายชื่อขึ้นเองเมื่อแต่ละคนล็อกอินแล้วตั้งชื่อ — ไม่มีใครต้องมาเพิ่มให้</div></td></tr>
+  </tbody></table>
+
+  <h3 class="hh">⏰ เตือนตอน 17:00</h3>
+  <table class="kv"><tbody>
+    <tr><td><b>เตือนที่ไหน</b></td>
+      <td><b>หน้ารวมจัดซื้อ</b> — หลัง 17:00 ขึ้น<b>แถบแดง</b>เหนือการ์ด
+        <i>“อย่าลืมทำรายงานการทำงานประจำวันนะ”</i> พร้อมปุ่มกดเข้าไปบันทึกได้เลย
+        และการ์ด 📝 ติดป้าย <b>⏰ ถึงเวลาทำรายงาน</b>
+        <div class="muted" style="font-size:11.5px">เปิดหน้ารวมค้างไว้ข้ามเวลา 17:00 แถบขึ้นเอง ไม่ต้องรีเฟรช
+          · เตือน<b>ทุกคนที่เห็นการ์ดนี้</b> ไม่เช็กว่าบันทึกไปหรือยัง (ตามที่ตกลง)</div></td></tr>
+    <tr><td><b>อยากเปลี่ยนเวลา/วัน</b></td>
+      <td>แก้ 2 บรรทัดบนสุดของส่วนเตือนใน <code>index.html</code>
+        <div class="muted" style="font-size:11.5px"><code>REMIND_HOUR = 17</code> → เปลี่ยนเวลา
+          · <code>REMIND_DAYS</code> → ใส่ <code>[1,2,3,4,5,6]</code> = จ–ส · <code>[1,2,3,4,5]</code> = จ–ศ</div></td></tr>
+  </tbody></table>
+
+  <div class="hp-warn">⚠️ <b>แก้ได้แค่ของตัวเอง — บังคับที่ฐานข้อมูลด้วย</b>
+    ไม่ใช่แค่ซ่อนปุ่มในหน้าเว็บ ต่อให้เรียกคำสั่งตรง ๆ ก็แก้งานคนอื่นไม่ได้
+    · หัวหน้าและผู้บริหารก็เหมือนกัน — <b>เห็นทั้งบอร์ด แต่แก้ของคนอื่นไม่ได้</b>
+    <br>ลูกน้องพิมพ์ผิด ต้องให้เจ้าตัวแก้เอง</div>
+  <div class="hp-tip">💡 <b>งานเก่าจากรุ่นก่อน (ที่ยังไม่มีเจ้าของ)</b> — อ่านได้ปกติ แต่ไม่มีใครแก้ได้
+    ถ้าต้องแก้จริง ๆ ให้พิมพ์ใหม่ทับในวันนั้น</div>
+  <div class="hp-info">ℹ️ <b>ติดตั้ง:</b> รัน <code>daily_setup.sql</code> → รัน <code>portal_add_daily.sql</code>
+    → อัปโหลด <code>daily.html</code> + <code>index.html</code></div>
 </div>
 
 <div class="card sec" id="s8">
@@ -2366,6 +2449,7 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
   </tbody></table>
 </div>
 
+
 <!-- ══════════════════════ 9. สิทธิ์ ══════════════════════ -->
 <div class="card sec" id="s9">
   <h2>🔑 สิทธิ์การใช้งาน</h2>
@@ -2395,6 +2479,10 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
       <td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
     <tr><td>🧪 ทะเบียนสินค้าตัวอย่าง</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
       <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
+    <tr><td>📝 บันทึกงานรายวัน
+        <div class="muted" style="font-size:10.5px">ทุกบทบาทแก้ได้แค่ของตัวเอง</div></td>
+      <td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
+      <td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
     <tr><td>📕 ระบบจัดการเอกสาร PDF
         <div class="muted" style="font-size:10.5px">เว็บแยก · เปิดแท็บใหม่</div></td>
       <td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
@@ -2571,6 +2659,8 @@ const GROUPS=[
     {id:'s6', ic:'💰', nm:'ต้นทุนสินค้า', fl:'costsku.html · Landed cost · KPI'},
     {id:'sfreight', ic:'📐', nm:'ตรวจค่าขนส่ง ตปท.', fl:'freight.html · ขนาดกล่อง · ตรวจใบวางบิล'},
     {id:'ssample', ic:'🧪', nm:'ทะเบียนสินค้าตัวอย่าง', fl:'sample.html · รูป + หลักฐาน · สรุปแยกหมวด'}]},
+  {t:'🗒️ งานประจำวัน', items:[
+    {id:'sdaily', ic:'📝', nm:'บันทึกงานรายวัน', fl:'daily.html · แก้ได้แค่ของตัวเอง · เตือน 17:00'}]},
   {t:'🛠️ อ้างอิง & ดูแลระบบ', items:[
     {id:'s8', ic:'⚠️', nm:'กับดักที่ต้องรู้', fl:'รวมทุกระบบ — อ่านก่อนลงมือจริง'},
     {id:'s9', ic:'🔑', nm:'สิทธิ์การใช้งาน', fl:'ใครเข้าอะไรได้ · แก้ไขอะไรได้'}]},
