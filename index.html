@@ -730,6 +730,7 @@
   .app-tile[data-key="backup"]{--tile-accent:#7954b8}
   .app-tile[data-key="guide"]{--tile-accent:#3b6fb4}
   .app-tile[data-key="pdf"]{--tile-accent:#C4372E}
+  .app-tile[data-key="sample"]{--tile-accent:#0E7C86}
   /* ป้ายบอกว่าเป็นเว็บนอก เปิดแท็บใหม่เสมอ */
   .app-ext{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;vertical-align:middle;
     color:var(--tile-accent,#3b6fb4);border:1px solid currentColor;border-radius:6px;padding:1px 6px;opacity:.85}
@@ -1521,6 +1522,9 @@ const APPS_FALLBACK = [
   /* 🚫 เอาการ์ด 💾 สำรองข้อมูล ออกจากหน้ารวมแล้ว (ขอมา)
         ไฟล์ backup.html ยังอยู่ เข้าตรง URL ได้ — แค่ไม่โชว์เป็นการ์ด
         อยากเอากลับ: เอาคอมเมนต์นี้ออก + รัน portal_hide_backup.sql แบบ SHOW */
+  { key:'sample', icon:'🧪', title:'ทะเบียนสินค้าตัวอย่าง',
+    desc:'ขอ/สั่งซื้อสินค้าตัวอย่าง — เก็บรูป · หลักฐานการชำระ · สรุปค่าใช้จ่ายแยกหมวด',
+    url:'sample.html', roles:['purchase','pr_manager','pr_exec','executive'] },
   /* 📕 เครื่องมือ PDF — เว็บนอก (คนละ repo) จึงใส่ URL เต็มและเปิดแท็บใหม่เสมอ */
   { key:'pdf', icon:'📕', title:'ระบบจัดการเอกสาร PDF',
     desc:'รวม · แยก · บีบอัด · แปลงไฟล์ · ใส่ลายน้ำ — ทำในเบราว์เซอร์ ไฟล์ไม่ออกจากเครื่อง',
