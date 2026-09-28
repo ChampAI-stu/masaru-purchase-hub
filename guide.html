@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-35</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-37</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -2264,6 +2264,10 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
       <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
     <tr><td>📖 คู่มือ (หน้านี้)</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
       <td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
+    <tr><td>📕 ระบบจัดการเอกสาร PDF
+        <div class="muted" style="font-size:10.5px">เว็บแยก · เปิดแท็บใหม่</div></td>
+      <td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
+      <td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
   </tbody></table></div>
   <div class="hp-info">ℹ️ การ์ดในหน้ารวมขึ้นตามตาราง <code>portal_apps</code> — ถ้าควรเห็นแต่ไม่เห็น
     ให้ผู้ดูแลตรวจว่าแถวของระบบนั้นใส่บทบาทครบไหม (ไม่ใช่ปัญหาของตัวระบบ)</div>
@@ -2271,8 +2275,8 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
     <tr><td><b>📕 ระบบจัดการเอกสาร PDF</b>
         <div class="muted" style="font-size:11px">การ์ดใหม่</div></td>
       <td>รวม · แยก · บีบอัด · แปลงไฟล์ · ใส่ลายน้ำ — ทำในเบราว์เซอร์ <b>ไฟล์ไม่ออกจากเครื่อง</b>
-        <div class="muted" style="font-size:11.5px">เปิดให้ <b>จัดซื้อ · การตลาด · หัวหน้าทีมการตลาด · ขนส่ง</b>
-          (หัวหน้าจัดซื้อ/ผู้บริหารเห็นทุกระบบอยู่แล้ว)
+        <div class="muted" style="font-size:11.5px">เปิดให้ <b>จัดซื้อ · หัวหน้าจัดซื้อ · ผู้บริหาร · ขนส่ง</b>
+          — <b>การตลาด และหัวหน้าทีมการตลาด ไม่เห็นการ์ดนี้</b>
           <br>★ เป็น<b>เว็บแยก</b> คนละที่กับระบบอื่น → การ์ดติดป้าย <b>↗ แท็บใหม่</b>
           และ<b>กดแล้วเปิดแท็บใหม่เสมอ</b> หน้ารวมไม่หาย ไม่ต้องล็อกอินซ้ำ
           <br>ติดตั้ง: รัน <code>portal_add_pdf.sql</code> + อัปโหลด <code>index.html</code></div></td></tr>
