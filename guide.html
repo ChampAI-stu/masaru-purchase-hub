@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-33</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-34</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -1312,8 +1312,15 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
           <br>ใช้กับบิลที่รวมหลายอย่างไว้ใบเดียว เช่น ค่าแม่พิมพ์ 2 ตัว + ค่าขนส่ง อยู่ในบิลเดียวกัน</div>
         <div style="background:#EAF6EC;border:1px solid #BEE0C4;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
           💰 <b>ยอดเต็มบิล คิดรวมให้เอง</b> = Σ (จำนวน × ราคาต่อหน่วย) ของทุกบรรทัด
+          <br><b>เปิดบิลเก่ามาแก้ราคา/จำนวน ยอดเต็มก็ขยับตามทันที</b>
+          (เช่น แก้ราคาในหน้า Purchase Board แล้วมาแก้ตามในบิล — ไม่ต้องคิดเลขเอง)
           <br>มี<b>ส่วนลด/ปรับยอด</b>? พิมพ์ทับช่องยอดเต็มได้เลย — ระบบจะ<b>หยุดคิดให้</b>และเคารพเลขที่พิมพ์
-          แต่ขึ้นบรรทัดเตือน <b>⚠️ ผลรวมรายการ … — ต่าง …</b> ไว้ให้เห็นว่าไม่เท่ากัน (ไม่บล็อกการบันทึก)</div>
+          แต่ขึ้นบรรทัดเตือน <b>⚠️ ผลรวมรายการ … — ต่าง …</b> ไว้ให้เห็นว่าไม่เท่ากัน (ไม่บล็อกการบันทึก)
+          <br>อยากให้กลับมาเท่าผลรวม กดปุ่ม <b>= ใช้ผลรวมรายการ</b> ที่โผล่ใต้ช่องยอดเต็ม</div>
+        <div class="muted" style="font-size:11.5px">กติกาตอนเปิดบิล: ยอดเต็มที่<b>ตรงกับผลรวมอยู่แล้ว</b> = ปล่อยให้ตามผลรวมต่อ
+          · ยอดเต็มที่<b>ไม่ตรง</b> (มีส่วนลด/ค่าส่ง) = ถือว่าตั้งใจตั้งไว้ ระบบไม่แตะ
+          <br>ปุ่ม <b>🔄</b> ท้ายแถวบิล (ดึงจาก Purchase Board) ตอนนี้เขียน<b>รายการย่อยใหม่ให้ด้วย</b>
+          — ทั้งยอดเต็ม จำนวน และราคาต่อหน่วยตรงกับบอร์ดพร้อมกัน ไม่เหลือเลขเก่าค้าง</div>
         <div class="muted" style="font-size:11.5px">บิลเก่าที่ SKU เขียนติดกันด้วย <code>,</code> (เช่น <code>SCS-415,PTB0-2040</code>)
           เปิดขึ้นมาจะ<b>แตกเป็นบรรทัดให้เอง</b> เหลือแค่เติมจำนวน/ราคา — ยอดเต็มเดิมไม่ถูกเขียนทับ
           <br><b>⚠️ ต้องรัน <code>pay_bills_items.sql</code> บน Supabase ก่อนใช้งาน</b>
