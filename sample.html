@@ -130,6 +130,20 @@ tbody tr:hover{background:#F8FAFC}
   .hero .b.main{background:#fff !important;color:#1A2942 !important;border:2px solid #0E7C86 !important}
   .rp-bar{print-color-adjust:exact;-webkit-print-color-adjust:exact}
 }
+/* ตารางสินค้าในฟอร์ม — 1 รายการใส่สินค้าได้หลายตัว */
+.li-head,.li-row{display:grid;grid-template-columns:1fr 84px 104px 96px 32px;gap:7px;align-items:center}
+.li-head{font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:4px}
+.li-row{margin-bottom:6px}
+.li-row .sum{text-align:right;font-weight:700;font-size:13px;padding:8px 2px}
+@media(max-width:720px){
+  .li-head{display:none}
+  .li-row{grid-template-columns:1fr 1fr;gap:6px;padding:9px;border:1px solid var(--line);
+    border-radius:10px;background:#FAFCFF}
+  .li-row .nm{grid-column:1/-1}
+  .li-row .sum{text-align:left;padding:0}
+  .li-row .sum:before{content:'รวม ';color:var(--muted);font-weight:500;font-size:11.5px}
+  .li-row>button{justify-self:end}
+}
 .sw-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin:4px 0 14px}
 .sw{height:42px;border-radius:10px;border:2px solid transparent;cursor:pointer;position:relative;
   box-shadow:0 1px 3px #0002}
@@ -353,22 +367,31 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
         <input id="f_fac" list="facList" placeholder="เช่น GREENER / JUZOR"><datalist id="facList"></datalist></div>
       <div class="fld"></div>
     </div>
-    <div class="fld"><label>รายการ ★ <span class="muted" style="font-weight:400">— ใส่หลายบรรทัดได้</span></label>
-      <textarea id="f_items" placeholder="1.ชุดคีมแหวนล็อก 7 นิ้ว (กล่องพลาสติก) ชุด 4 ชิ้น&#10;2.ชุดประแจหกเหลี่ยมบอลยาว 9 ชิ้น บรรจุกล่อง"></textarea></div>
+    <div class="fld">
+      <div class="row" style="margin-bottom:5px">
+        <label style="margin:0">รายการสินค้า ★ <span class="muted" style="font-weight:400" id="f_liCount"></span></label>
+        <div style="flex:1"></div>
+        <button type="button" class="btn mini ghost" onclick="addLine()">➕ เพิ่มสินค้า</button>
+      </div>
+      <div class="li-head"><div>ชื่อสินค้า</div><div style="text-align:right">จำนวน</div>
+        <div style="text-align:right">ราคา/ชิ้น</div><div style="text-align:right">รวม</div><div></div></div>
+      <div id="f_lines"></div>
+      <!-- ช่องเดิม: ซ่อนไว้ แต่ยังเขียนค่าลงฐานข้อมูลเหมือนเดิม โค้ดส่วนอื่นจึงไม่ต้องแก้ -->
+      <textarea id="f_items" style="display:none"></textarea>
+      <input type="number" id="f_qty" style="display:none">
+      <input type="number" id="f_unit" style="display:none">
+    </div>
     <div class="g3">
-      <div class="fld"><label>จำนวน (ชิ้น)</label>
-        <input type="number" step="1" id="f_qty" placeholder="เช่น 2" oninput="calcAmt()"></div>
-      <div class="fld"><label>ราคาต่อชิ้น</label>
-        <input type="number" step="0.0001" id="f_unit" placeholder="0.00" oninput="calcAmt()"></div>
       <div class="fld"><label>สกุลเงิน</label>
         <select id="f_cur" onchange="calcAmt()">
           <option value="CNY">¥ CNY (หยวน)</option>
           <option value="THB">฿ THB (บาท)</option>
           <option value="USD">$ USD (ดอลลาร์)</option>
         </select></div>
+      <div class="fld"></div><div class="fld"></div>
     </div>
     <div class="g3">
-      <div class="fld"><label>ยอดชำระ ★ <span class="muted" style="font-weight:400">— คิดจาก จำนวน × ราคาต่อชิ้น ให้เอง</span></label>
+      <div class="fld"><label>ยอดชำระ ★ <span class="muted" style="font-weight:400">— รวมจากรายการสินค้าให้เอง</span></label>
         <input type="number" step="0.01" id="f_amt" placeholder="0.00"
                oninput="SM_TOUCHED=true;calcAmt()">
         <div class="muted" id="f_amtHint" style="font-size:11.5px;margin-top:3px"></div></div>
@@ -464,7 +487,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-06-gallery';
+const SM_VERSION='v01-07-gallery';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -566,7 +589,7 @@ function period(){
 }
 
 /* ═════════════════ โหลดข้อมูล ═════════════════ */
-const COLS='id,req_date,cat,subcat,items,factory,qty,unit_price,is_free,amount,currency,responsible,note,pics,proofs,created_by,created_at';
+const COLS='id,req_date,cat,subcat,items,lines,factory,qty,unit_price,is_free,amount,currency,responsible,note,pics,proofs,created_by,created_at';
 async function load(){
   pgState('loading');
   const P=period();
@@ -759,7 +782,7 @@ function render(){
                     :'<span class="muted">—</span>')
         +(r.subcat?('<div style="margin-top:3px"><span class="cat-chip" style="font-size:10.5px;opacity:.9;background:'
           +esc(subColor(r.cat,r.subcat))+'">▸ '+esc(r.subcat)+'</span></div>'):'')+'</td>'
-      +'<td><div class="itemtxt">'+esc(r.items||'—')+'</div>'
+      +'<td><div class="itemtxt">'+itemsHtml(r)+'</div>'
         +(r.note?'<div class="muted" style="font-size:11px;margin-top:3px">📝 '+esc(r.note)+'</div>':'')+'</td>'
       +'<td>'+picCell(r.pics)+'</td>'
       +'<td>'+esc(r.factory||'—')+'</td>'
@@ -1122,8 +1145,82 @@ function shrink(file,max){
   });
 }
 
+/* ชื่อสินค้าในตาราง — มี จำนวน × ราคา ต่อบรรทัด ก็โชว์ให้ด้วย */
+function itemsHtml(r){
+  const L=arr(r&&r.lines);
+  if(!L.length)return esc(r&&r.items||'—');
+  const sym=curSym(r.currency);
+  return L.map(l=>{
+    const q=num(l.qty), p=num(l.price);
+    const tail=(q||p)?(' <span class="muted" style="font-size:11.5px">— '
+      +(q?money(q):'?')+' × '+(p?(sym+' '+money2(p)):'?')+'</span>'):'';
+    return esc(String(l.name||'')) + tail;
+  }).join('<br>');
+}
+
 /* ═════════════════ ฟอร์มรายการ ═════════════════ */
 let EDIT_ID=null, PICS=[], PROOFS=[], SM_TOUCHED=false;
+
+/* ── สินค้าหลายตัวใน 1 รายการ ──────────────────────────────
+   เก็บลงคอลัมน์ lines (jsonb) = [{name,qty,price}]
+   ★ คอลัมน์เดิมยังเขียนต่อ ระบบส่วนอื่นจึงไม่ต้องแก้
+       items      = ชื่อสินค้าทุกตัว บรรทัดละตัว
+       qty        = จำนวนรวมทุกบรรทัด
+       unit_price = ราคาต่อชิ้น เมื่อมีสินค้าตัวเดียว · หลายตัว = ว่าง
+   ★ รายการเก่าที่ lines ว่าง → ถอดเป็น 1 บรรทัดจากของเดิมให้เอง       */
+let SM_LINES=[];
+const smLine=o=>({name:String((o&&o.name)||''),
+                  qty:(o&&o.qty!=null&&o.qty!=='')?num(o.qty):'',
+                  price:(o&&o.price!=null&&o.price!=='')?num(o.price):''});
+function linesFrom(r){
+  const L=arr(r&&r.lines);
+  if(L.length)return L.map(smLine);
+  const nm=String((r&&r.items)||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  if(!r)return [smLine({})];
+  if(nm.length<=1)
+    return [smLine({name:nm[0]||String(r.items||''),qty:r.qty,price:r.unit_price})];
+  /* ของเก่าที่พิมพ์หลายบรรทัดไว้ในช่องเดียว → แตกเป็นหลายแถว
+     จำนวน/ราคา ใส่ไว้แถวแรกแถวเดียว ยอดรวมจึงยังเท่าเดิม */
+  return nm.map((n,i)=>smLine(i?{name:n}:{name:n,qty:r.qty,price:r.unit_price}));
+}
+const lineSum=l=>num(l.qty)*num(l.price);
+const linesTotal=()=>SM_LINES.reduce((a,l)=>a+lineSum(l),0);
+const linesQty  =()=>SM_LINES.reduce((a,l)=>a+num(l.qty),0);
+const linesNames=()=>SM_LINES.map(l=>l.name.trim()).filter(Boolean);
+function drawLines(){
+  if(!SM_LINES.length)SM_LINES=[smLine({})];
+  $('f_lines').innerHTML=SM_LINES.map((l,i)=>{
+    const sum=lineSum(l);
+    return '<div class="li-row">'
+      +'<input class="nm" value="'+esc(l.name)+'" placeholder="ชื่อสินค้า เช่น ชุดคีมแหวนล็อก 7 นิ้ว" '
+        +'oninput="setLine('+i+',\'name\',this.value)">'
+      +'<input type="number" step="1" style="text-align:right" value="'+esc(l.qty)+'" placeholder="จำนวน" '
+        +'oninput="setLine('+i+',\'qty\',this.value)">'
+      +'<input type="number" step="0.0001" style="text-align:right" value="'+esc(l.price)+'" placeholder="ราคา/ชิ้น" '
+        +'oninput="setLine('+i+',\'price\',this.value)">'
+      +'<div class="sum">'+(sum?money2(sum):'—')+'</div>'
+      +'<button type="button" class="btn mini ghost" title="ลบสินค้าตัวนี้" '
+        +'onclick="delLine('+i+')"'+(SM_LINES.length<2?' disabled':'')+'>✕</button>'
+      +'</div>';
+  }).join('');
+  const n=linesNames().length, t=linesTotal();
+  $('f_liCount').textContent=n>1?('— '+n+' รายการ · รวม '+money2(t)+' '+curSym($('f_cur').value))
+                                :'— ใส่ได้มากกว่า 1 รายการ';
+}
+function setLine(i,k,v){ if(!SM_LINES[i])return;
+  SM_LINES[i][k]= k==='name'?v : (v===''?'':num(v));
+  if(k!=='name'){ const el=$('f_lines').children[i]; if(el){const c=el.querySelector('.sum');
+    if(c)c.textContent=lineSum(SM_LINES[i])?money2(lineSum(SM_LINES[i])):'—';} 
+    const n=linesNames().length;
+    $('f_liCount').textContent=n>1?('— '+n+' รายการ · รวม '+money2(linesTotal())+' '+curSym($('f_cur').value))
+                                  :'— ใส่ได้มากกว่า 1 รายการ';
+  }
+  calcAmt();
+}
+function addLine(){ SM_LINES.push(smLine({})); drawLines();
+  const rows=$('f_lines').children; const last=rows[rows.length-1];
+  if(last)last.querySelector('.nm').focus(); }
+function delLine(i){ if(SM_LINES.length<2)return; SM_LINES.splice(i,1); drawLines(); calcAmt(); }
 
 /* ยอดชำระ = จำนวน × ราคาต่อชิ้น — คิดให้จนกว่าจะพิมพ์ทับ
    (กติกาเดียวกับ "ยอดเต็มบิล" ในระบบวางแผนจ่ายเงิน คนใช้คุ้นอยู่แล้ว)
@@ -1131,7 +1228,7 @@ let EDIT_ID=null, PICS=[], PROOFS=[], SM_TOUCHED=false;
      เพราะเป็น "มูลค่าอ้างอิง" ของของที่ได้มาฟรี ไม่ใช่เงินที่จ่ายจริง */
 function calcAmt(){
   const free=$('f_free').checked;
-  const q=num($('f_qty').value), u=num($('f_unit').value), sum=q*u;
+  const sum=linesTotal();
   const hint=$('f_amtHint');
   if(free){
     $('f_amt').value='0';
@@ -1145,9 +1242,9 @@ function calcAmt(){
   if(!sum){ hint.textContent=''; hint.style.color=''; return; }
   const diff=+((num($('f_amt').value))-sum).toFixed(2);
   if(Math.abs(diff)<0.005){ hint.style.color='';
-    hint.textContent='= จำนวน × ราคาต่อชิ้น = '+money2(sum)+' '+curSym($('f_cur').value); }
+    hint.textContent='= รวมจากรายการสินค้า = '+money2(sum)+' '+curSym($('f_cur').value); }
   else{ hint.style.color='#B45309';
-    hint.textContent='⚠️ จำนวน × ราคาต่อชิ้น = '+money2(sum)+' — ต่าง '+(diff>0?'+':'')+money2(diff)
+    hint.textContent='⚠️ รวมจากรายการสินค้า = '+money2(sum)+' — ต่าง '+(diff>0?'+':'')+money2(diff)
                      +' (มีส่วนลด/ค่าส่ง? ไม่บล็อก)'; }
 }
 function freeToggle(){
@@ -1163,16 +1260,14 @@ function openForm(id){
   EDIT_ID=r?r.id:null;
   $('formTitle').textContent=r?('✏️ แก้ไขรายการ — '+thDate(r.req_date)):'➕ เพิ่มรายการสินค้าตัวอย่าง';
   $('f_date').value=(r&&String(r.req_date||'').slice(0,10))||todayStr();
-  $('f_items').value=(r&&r.items)||'';
   $('f_fac').value=(r&&r.factory)||'';
-  $('f_qty').value=(r&&r.qty!=null)?r.qty:'';
-  $('f_unit').value=(r&&r.unit_price!=null)?r.unit_price:'';
+  SM_LINES=linesFrom(r);
   $('f_free').checked=!!(r&&r.is_free);
   $('f_amt').value=(r&&r.amount!=null)?r.amount:'';
   $('f_cur').value=(r&&r.currency)||'CNY';
   /* ยอดถือว่า "คนตั้งเอง" เฉพาะตอนไม่ตรงกับ จำนวน × ราคาต่อชิ้น (เช่น มีส่วนลด) */
   {
-    const sum0=num(r&&r.qty)*num(r&&r.unit_price), tot0=num(r&&r.amount);
+    const sum0=SM_LINES.reduce((a,l)=>a+lineSum(l),0), tot0=num(r&&r.amount);
     SM_TOUCHED = !!(tot0 && sum0 && Math.abs(tot0-sum0)>=0.005);
   }
   $('f_resp').value=(r&&r.responsible)||'';
@@ -1181,6 +1276,7 @@ function openForm(id){
   fillCatSelects(); $('f_cat').value=(r&&r.cat)||'';
   $('f_sub').value=(r&&r.subcat)||''; fillSubForm(); $('f_sub').value=(r&&r.subcat)||'';
   $('upStat').textContent=''; $('lnkPic').value=''; $('lnkPrf').value='';
+  drawLines();
   freeToggle();
   drawThumbs();
   $('formBg').style.display='flex';
@@ -1270,11 +1366,15 @@ const clean=a=>arr(a).filter(p=>p.url).map(p=>({url:p.url,id:p.id||'',name:p.nam
 
 async function save(){
   if(!canEdit)return;
-  const d=$('f_date').value, cat=$('f_cat').value, items=($('f_items').value||'').trim();
+  const d=$('f_date').value, cat=$('f_cat').value;
+  /* ตัดบรรทัดที่ไม่ได้ใส่ชื่อทิ้ง — แถวว่างที่กดเพิ่มไว้แล้วไม่ได้กรอกจะไม่ถูกบันทึก */
+  const LN=SM_LINES.filter(l=>l.name.trim()).map(l=>({name:l.name.trim(),
+              qty:(l.qty===''?null:num(l.qty)), price:(l.price===''?null:num(l.price))}));
+  const items=LN.map(l=>l.name).join('\n');
   /* หมวดย่อยไม่บังคับ — บางรายการไม่มีหมวดย่อยจริง ๆ */
   if(!d)return alert('ใส่วันที่ก่อน');
   if(!cat)return alert('เลือกหมวดหลักก่อน');
-  if(!items)return alert('ใส่รายการก่อน');
+  if(!LN.length)return alert('ใส่ชื่อสินค้าอย่างน้อย 1 รายการก่อน');
   const free=$('f_free').checked;
   /* ได้ฟรี = ไม่ต้องกรอกยอด (ระบบใส่ 0 ให้) · ไม่ได้ฟรีต้องกรอก */
   if(!free&&($('f_amt').value===''||isNaN(parseFloat($('f_amt').value))))
@@ -1285,9 +1385,10 @@ async function save(){
     /* อัปไฟล์ให้ครบก่อน — ถ้าอัปไม่ผ่าน จะไม่เขียนฐานข้อมูลเลย ไม่ให้มีแถวที่รูปหาย */
     if(!await uploadPending(cat))return;
     const rec={req_date:d, cat, subcat:($('f_sub').value||'')||null,
-      items, factory:($('f_fac').value||'').trim()||null,
-      qty:($('f_qty').value===''?null:num($('f_qty').value)),
-      unit_price:($('f_unit').value===''?null:num($('f_unit').value)),
+      items, lines:LN, factory:($('f_fac').value||'').trim()||null,
+      /* คอลัมน์เดิม: จำนวน = รวมทุกบรรทัด · ราคาต่อชิ้น = ใส่เมื่อมีสินค้าตัวเดียว */
+      qty:(LN.some(l=>l.qty!=null)?LN.reduce((a,l)=>a+num(l.qty),0):null),
+      unit_price:(LN.length===1?LN[0].price:null),
       is_free:free,
       amount:free?0:num($('f_amt').value), currency:$('f_cur').value||'CNY',
       responsible:($('f_resp').value||'').trim()||null,
@@ -1316,18 +1417,29 @@ async function del(id){
   await load(); toast('ลบแล้ว');
 }
 
+/* มูลค่าอ้างอิง (ของที่ได้ฟรี) — มีหลายบรรทัดก็รวมให้ครบทุกบรรทัด */
+function refVal(r){
+  const L=arr(r&&r.lines);
+  if(L.length)return L.reduce((a,l)=>a+num(l.qty)*num(l.price),0);
+  return num(r&&r.qty)*num(r&&r.unit_price);
+}
+
 /* ═════════════════ Export Excel ═════════════════ */
 function exportXls(){
   const rows=filtered(); if(!rows.length)return toast('ไม่มีรายการให้ export');
   const P=period();
-  const aoa=[['วัน/เดือน/ปี','หมวดหลัก','หมวดย่อย','รายการ','โรงงาน','จำนวน','ราคาต่อชิ้น','ได้ฟรี',
+  const aoa=[['วัน/เดือน/ปี','หมวดหลัก','หมวดย่อย','รายการ','รายละเอียดสินค้า (ชื่อ × จำนวน × ราคา)',
+              'โรงงาน','จำนวน','ราคาต่อชิ้น','ได้ฟรี',
               'ยอดชำระ','มูลค่าอ้างอิง (ของฟรี)','สกุลเงิน','ผู้รับผิดชอบ',
               'หมายเหตุ','จำนวนรูปสินค้า','จำนวนหลักฐาน','ลิงก์รูปสินค้า','ลิงก์หลักฐาน','บันทึกโดย']];
   rows.forEach(r=>aoa.push([String(r.req_date||'').slice(0,10), r.cat||'', r.subcat||'',
-    r.items||'', r.factory||'',
+    r.items||'',
+    arr(r.lines).map(l=>String(l.name||'')+' × '+(l.qty==null?'?':num(l.qty))
+      +' × '+(l.price==null?'?':num(l.price))).join(' | '),
+    r.factory||'',
     (r.qty==null?'':num(r.qty)), (r.unit_price==null?'':num(r.unit_price)),
     r.is_free?'ฟรี':'',
-    num(r.amount), r.is_free?(num(r.qty)*num(r.unit_price)||''):'',
+    num(r.amount), r.is_free?(refVal(r)||''):'',
     r.currency||'', r.responsible||'', r.note||'',
     arr(r.pics).length, arr(r.proofs).length,
     arr(r.pics).map(p=>p.url).filter(Boolean).join(' , '),
@@ -1335,18 +1447,18 @@ function exportXls(){
   const byCur={}; rows.filter(r=>!r.is_free).forEach(r=>{const c=String(r.currency||'CNY').toUpperCase();
     byCur[c]=(byCur[c]||0)+num(r.amount);});
   aoa.push([]);
-  Object.keys(byCur).sort().forEach(c=>aoa.push(['รวมที่จ่ายจริง '+c,'','','','','','','',byCur[c],'',c]));
+  Object.keys(byCur).sort().forEach(c=>aoa.push(['รวมที่จ่ายจริง '+c,'','','','','','','','',byCur[c],'',c]));
   /* ของที่ได้ฟรีสรุปแยกบรรทัด ไม่ให้คนอ่านเข้าใจผิดว่าเป็นเงินที่จ่าย */
   const fv={}; let nf=0;
   rows.filter(r=>r.is_free).forEach(r=>{nf++;const c=String(r.currency||'CNY').toUpperCase();
-    fv[c]=(fv[c]||0)+num(r.qty)*num(r.unit_price);});
+    fv[c]=(fv[c]||0)+refVal(r);});
   if(nf){
-    aoa.push(['🎁 ได้ฟรี (ไม่มีค่าใช้จ่าย)','','','','','','',nf]);
+    aoa.push(['🎁 ได้ฟรี (ไม่มีค่าใช้จ่าย)','','','','','','','',nf]);
     Object.keys(fv).filter(c=>fv[c]).sort().forEach(c=>
-      aoa.push(['มูลค่าอ้างอิงของฟรี '+c,'','','','','','','','',fv[c],c]));
+      aoa.push(['มูลค่าอ้างอิงของฟรี '+c,'','','','','','','','','',fv[c],c]));
   }
   const ws=XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols']=[{wch:12},{wch:22},{wch:18},{wch:52},{wch:14},{wch:9},{wch:12},{wch:8},
+  ws['!cols']=[{wch:12},{wch:22},{wch:18},{wch:52},{wch:46},{wch:14},{wch:9},{wch:12},{wch:8},
                {wch:13},{wch:19},{wch:9},{wch:14},{wch:24},
                {wch:12},{wch:12},{wch:40},{wch:40},{wch:22}];
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'สินค้าตัวอย่าง');
@@ -1406,7 +1518,8 @@ function pgOpen(index){
 function pgDetail(){
   const r=PG_VIEW[PG_ITEM];if(!r)return;
   $('pgPosition').textContent='สินค้า '+(PG_ITEM+1)+' / '+PG_VIEW.length;
-  $('pgInfo').innerHTML='<div class="pg-category">'+esc([r.cat||'ไม่ระบุหมวด',r.subcat].filter(Boolean).join(' / '))+'</div><h3 id="pgDetailTitle">'+esc(r.items||'สินค้าตัวอย่าง')+'</h3><div class="pg-price"><small>'+(r.is_free?'ไม่มีค่าใช้จ่าย':'ยอดชำระรวม')+'</small><strong>'+(r.is_free?'🎁 ได้ฟรี':esc(curSym(r.currency))+' '+money2(r.amount))+'</strong></div><dl class="pg-facts">'+[['โรงงาน',r.factory||'—'],['ผู้รับผิดชอบ',r.responsible||'—'],['วันที่',thDate(r.req_date)],['จำนวน',r.qty!=null?money(r.qty)+' ชิ้น':'—'],['ราคาต่อชิ้น',r.unit_price!=null?curSym(r.currency)+' '+money2(r.unit_price):'—'],['สกุลเงิน',r.currency||'CNY']].map(([k,v])=>'<div><dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd></div>').join('')+'</dl>'+(r.note?'<div class="pg-note"><b>หมายเหตุ</b><br>'+esc(r.note)+'</div>':'');
+  $('pgInfo').innerHTML='<div class="pg-category">'+esc([r.cat||'ไม่ระบุหมวด',r.subcat].filter(Boolean).join(' / '))+'</div><h3 id="pgDetailTitle">'+esc(r.items||'สินค้าตัวอย่าง')+'</h3><div class="pg-price"><small>'+(r.is_free?'ไม่มีค่าใช้จ่าย':'ยอดชำระรวม')+'</small><strong>'+(r.is_free?'🎁 ได้ฟรี':esc(curSym(r.currency))+' '+money2(r.amount))+'</strong></div><dl class="pg-facts">'+[['โรงงาน',r.factory||'—'],['ผู้รับผิดชอบ',r.responsible||'—'],['วันที่',thDate(r.req_date)],['จำนวน',r.qty!=null?money(r.qty)+' ชิ้น':'—'],['ราคาต่อชิ้น',arr(r.lines).length>1?(arr(r.lines).length+' รายการ (ดูด้านล่าง)'):(r.unit_price!=null?curSym(r.currency)+' '+money2(r.unit_price):'—')],['สกุลเงิน',r.currency||'CNY']].map(([k,v])=>'<div><dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd></div>').join('')+'</dl>'+(arr(r.lines).length>1?'<div class="pg-note"><b>รายการสินค้า</b><br>'+itemsHtml(r)+'</div>':'')
+   +(r.note?'<div class="pg-note"><b>หมายเหตุ</b><br>'+esc(r.note)+'</div>':'');
   $('pgPrevItem').disabled=$('pgNextItem').disabled=PG_VIEW.length<2;
   $('pgEdit').hidden=!canEdit;pgPhoto();
 }
