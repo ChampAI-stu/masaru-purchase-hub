@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>บันทึกงานรายวัน · จัดซื้อ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --navy:#1F3864; --blue:#2E75B6; --gold:#C9A84C;
+  --bg:#f3f5f9; --card:#fff; --line:#e3e7ef; --text:#1d2433; --muted:#6b7488;
+  --done:#1e8e3e; --done-bg:#e6f4ea; --doing:#2E75B6; --doing-bg:#e8f0fb; --pend:#b06000; --pend-bg:#fef3e0;
+  --red:#c62828;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);font-size:15px}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
+
+/* header */
+.top{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.top .brand{font-weight:700;letter-spacing:.5px;color:var(--gold);font-size:13px}
+.top h1{margin:0;font-size:20px;font-weight:700}
+.top .sp{flex:1}
+.top a{color:#fff;text-decoration:none;opacity:.85;font-size:14px}
+.top a:hover{opacity:1}
+.conn{font-size:13px;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.12)}
+.conn i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#4caf50;margin-right:6px}
+.conn.demo i{background:var(--gold)}
+.banner{background:#fff8e6;border-bottom:1px solid #f0dfb0;color:#7a5a00;padding:8px 20px;font-size:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.banner button{border:1px solid #d9c07a;background:#fff;border-radius:6px;padding:2px 10px;font-size:13px}
+
+/* tabs */
+.tabs{display:flex;gap:4px;padding:0 20px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{border:0;background:none;padding:12px 16px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
+.tabs button.on{color:var(--navy);border-bottom-color:var(--gold)}
+main{padding:18px 20px 60px;max-width:1400px;margin:0 auto}
+
+/* toolbar */
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.datenav{display:flex;align-items:center;gap:4px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:4px}
+.datenav button{border:0;background:none;padding:6px 10px;border-radius:6px;font-weight:600}
+.datenav button:hover{background:var(--bg)}
+.datenav input{border:0;padding:6px;background:none}
+.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 14px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--blue)}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.pri:hover{background:#255f95}
+.btn.navy{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn.sm{padding:4px 10px;font-size:13px}
+.btn.danger{color:var(--red)}
+.btn:disabled{opacity:.5;cursor:default}
+.mebox{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:4px 4px 4px 12px;font-weight:600}
+.mebox select{border:0;background:var(--bg);border-radius:6px;padding:6px 8px;font-weight:600;min-width:160px}
+.mebox.need{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,.25)}
+.mebox b{color:var(--navy)}
+.mem tr.me{background:#f4f8ff}
+.mebox .btn{padding:4px 10px;font-size:13px}
+/* หน้าจอตรวจสิทธิ์ก่อนเข้า */
+#gate{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;color:var(--muted);font-size:15px;text-align:center;padding:24px}
+#gate .lg{font-weight:700;color:var(--navy);font-size:18px}
+.pill-top{background:#ffffff14;border:1px solid #ffffff2b;border-radius:20px;padding:3px 11px;font-size:12.5px}
+.spacer{flex:1}
+.daytitle{font-size:22px;font-weight:700;color:var(--navy);margin:4px 0 8px}
+.daytitle small{font-size:14px;color:var(--muted);font-weight:500;margin-left:8px}
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.chip{background:#fff;border:1px solid var(--line);border-radius:20px;padding:4px 12px;font-size:14px}
+.chip b{color:var(--navy)}
+.chip.miss{border-color:#f3c9c9;background:#fff5f5;color:#8a2a2a}
+
+/* cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.card.me{border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,168,76,.35)}
+.ch{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.av{width:38px;height:38px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
+.card.me .av{background:var(--gold);color:var(--navy)}
+.who{flex:1;min-width:0;line-height:1.3}
+.who b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who small{color:var(--muted);font-size:13px}
+.tag{font-size:12px;padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap}
+.tag.ok{background:var(--done-bg);color:var(--done)}
+.tag.no{background:#f5f5f5;color:var(--muted)}
+.tag.metag{background:var(--gold);color:var(--navy)}
+.tools{display:flex;gap:6px;padding:8px 14px 0;flex-wrap:wrap}
+.tasks{list-style:none;margin:0;padding:6px 8px}
+.task{display:flex;gap:8px;align-items:flex-start;padding:6px;border-radius:8px}
+.task:hover{background:#f8f9fc}
+.task .num{color:var(--muted);font-size:13px;width:18px;text-align:right;padding-top:5px;flex:none}
+.st{border:0;border-radius:6px;padding:3px 8px;font-size:12px;font-weight:700;white-space:nowrap;flex:none;margin-top:2px}
+.st.done{background:var(--done-bg);color:var(--done)}
+.st.doing{background:var(--doing-bg);color:var(--doing)}
+.st.pending{background:var(--pend-bg);color:var(--pend)}
+.st:disabled{cursor:default}
+.tx{flex:1;min-width:0}
+.ttext{width:100%;min-height:30px;border:1px solid transparent;border-radius:6px;padding:3px 6px;resize:none;background:transparent;line-height:1.45;overflow:hidden;display:block}
+textarea.ttext:hover{border-color:var(--line)}
+textarea.ttext:focus{border-color:var(--blue);background:#fff;outline:none}
+.ttext.ro{white-space:pre-wrap;word-break:break-word}
+.tnote{width:100%;border:1px dashed var(--line);border-radius:6px;padding:2px 6px;font-size:13px;color:var(--muted);margin-top:3px;background:transparent}
+.tnote:focus{outline:none;border-color:var(--blue);border-style:solid;color:var(--text)}
+.tnote.ro{border:0;padding:0 6px;white-space:pre-wrap}
+.tact{display:flex;gap:2px;opacity:.35;flex:none}
+.task:hover .tact,.task:focus-within .tact{opacity:1}
+.tact button{border:0;background:none;padding:3px 6px;border-radius:5px;font-size:13px}
+.tact button:hover{background:var(--line)}
+.add{display:flex;gap:6px;padding:4px 14px 14px}
+.add textarea{flex:1;min-height:36px;border:1px solid var(--line);border-radius:8px;padding:7px 10px;resize:none;overflow:hidden;line-height:1.4}
+.add textarea:focus{outline:none;border-color:var(--blue)}
+.emptytxt{padding:10px 16px 16px;color:var(--muted);font-size:14px}
+
+/* panels */
+.panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+.panel h3{margin:0 0 12px;color:var(--navy);font-size:17px}
+.frow{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.fld{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);font-weight:600}
+.fld input,.fld select{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:15px;color:var(--text);font-weight:400;background:#fff}
+.presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.hday{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+.hday-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:#f7f9fd;border-bottom:1px solid var(--line)}
+.hday-h b{color:var(--navy);font-size:16px}
+.hday-h span{color:var(--muted);font-size:13px}
+.hmem{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;gap:12px}
+.hmem:last-child{border-bottom:0}
+.hmem .hn{width:170px;flex:none;font-weight:600;line-height:1.3}
+.hmem .hn small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+.hmem ol{margin:0;padding-left:20px;flex:1}
+.hmem li{margin:2px 0}
+.hmem li .note{color:var(--muted);font-size:13px}
+.hmem .ha{flex:none}
+.hmiss{padding:8px 14px;font-size:13px;color:#8a2a2a;background:#fffafa}
+mark{background:#fff0b3;padding:0 2px;border-radius:3px}
+.muted{color:var(--muted)}
+table.mem{width:100%;border-collapse:collapse}
+table.mem th,table.mem td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+table.mem th{font-size:13px;color:var(--muted)}
+table.mem td input{border:1px solid var(--line);border-radius:6px;padding:5px 8px;width:100%}
+table.mem .act{white-space:nowrap;text-align:right}
+.inactive td{color:var(--muted)}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(20,30,50,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.mbox{background:#fff;border-radius:14px;width:560px;max-width:100%;max-height:90vh;display:flex;flex-direction:column}
+.mh{padding:14px 18px;border-bottom:1px solid var(--line);font-weight:700;color:var(--navy);font-size:17px;display:flex;align-items:center}
+.mh .x{margin-left:auto;border:0;background:none;font-size:20px}
+.mb{padding:14px 18px;overflow:auto}
+.mf{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.cpitem{display:flex;gap:10px;align-items:flex-start;padding:7px 8px;border-radius:8px}
+.cpitem:hover{background:#f7f9fd}
+.cpitem input{margin-top:5px}
+.cpitem .dup{font-size:12px;color:var(--pend)}
+
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+#toast.show{opacity:1}
+#toast.err{background:var(--red)}
+
+#printArea{display:none}
+
+@media (max-width:640px){
+  .top{padding:10px 16px}
+  main{padding:14px 16px 60px}
+  .tabs{padding:0 8px}
+  .grid{grid-template-columns:1fr}
+  .hmem{flex-direction:column;gap:4px}
+  .hmem .hn{width:auto}
+  .mebox select{min-width:0}
+}
+
+/* print */
+@page{size:A4;margin:12mm}
+@media print{
+  .app,.modal,#toast{display:none!important}
+  body{background:#fff;font-size:12px}
+  #printArea{display:block}
+  .pr-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1F3864;padding-bottom:6px;margin-bottom:10px}
+  .pr-head h1{margin:0;font-size:18px;color:#1F3864}
+  .pr-meta{text-align:right;font-size:11px;color:#555}
+  .pr-day{page-break-inside:avoid;margin-bottom:12px}
+  .pr-day h2{font-size:14px;margin:8px 0 4px;color:#1F3864}
+  .pr-day h2 span{font-weight:400;color:#666;font-size:11px}
+  .pr-day table{width:100%;border-collapse:collapse}
+  .pr-day th,.pr-day td{border:1px solid #bbb;padding:3px 6px;vertical-align:top;text-align:left}
+  .pr-day th{background:#eef2f8}
+  .pr-miss{font-size:11px;color:#8a2a2a;margin-top:3px}
+  .pr-sign{display:flex;justify-content:flex-end;margin-top:30px;page-break-inside:avoid}
+  .pr-sign div{text-align:center;line-height:2}
+}
+</style>
+</head>
+<body>
+<div id="gate">
+  <div class="lg">📝 บันทึกงานรายวัน</div>
+  <div id="gateMsg">กำลังตรวจสอบสิทธิ์…</div>
+</div>
+<div class="app hidden" id="app">
+  <header class="top">
+    <div>
+      <div class="brand">MASARU · PURCHASE HUB</div>
+      <h1>📝 บันทึกงานรายวัน</h1>
+    </div>
+    <div class="sp"></div>
+    <span class="pill-top" id="rolePill">—</span>
+    <span class="pill-top" id="dlVer" title="เวอร์ชันไฟล์">—</span>
+    <span class="conn" id="conn"><i></i>ออนไลน์</span>
+    <a href="index.html">← หน้ารวมจัดซื้อ</a>
+    <a href="#" id="logoutBtn">ออกจากระบบ</a>
+  </header>
+  <div class="banner hidden" id="demoBanner">
+    ⚠️ <b>โหมดทดลอง</b> — ยังไม่ได้ใส่ Supabase key ข้อมูลเก็บในเบราว์เซอร์นี้เท่านั้น
+    <button id="resetDemo">ล้างข้อมูลทดลอง</button>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button data-tab="log" class="on">📝 บันทึกงาน</button>
+    <button data-tab="history">🕘 ประวัติ</button>
+    <button data-tab="export">📤 Export</button>
+    <button data-tab="members">👥 สมาชิก</button>
+  </nav>
+
+  <main>
+    <!-- ============ บันทึกงาน ============ -->
+    <section id="tab-log">
+      <div class="toolbar">
+        <div class="datenav">
+          <button id="prevDay" title="วันก่อนหน้า">◀</button>
+          <input type="date" id="curDate">
+          <button id="nextDay" title="วันถัดไป">▶</button>
+          <button id="todayBtn">วันนี้</button>
+        </div>
+        <div class="mebox" id="meBox">ฉันคือ <b id="meName">—</b>
+          <button class="btn" id="meEdit">✏️ แก้ชื่อ</button></div>
+        <div class="spacer"></div>
+        <button class="btn" id="refreshBtn" title="โหลดใหม่">⟳</button>
+        <button class="btn" id="quickXlsx">📊 Excel วันนี้</button>
+        <button class="btn" id="quickPrint">🖨️ พิมพ์วันนี้</button>
+      </div>
+      <div class="daytitle" id="dayTitle"></div>
+      <div class="stats" id="dayStats"></div>
+      <div class="grid" id="cards"></div>
+    </section>
+
+    <!-- ============ ประวัติ ============ -->
+    <section id="tab-history" class="hidden">
+      <div class="panel">
+        <div class="frow">
+          <label class="fld">ตั้งแต่<input type="date" id="hFrom"></label>
+          <label class="fld">ถึง<input type="date" id="hTo"></label>
+          <label class="fld">สมาชิก<select id="hMem"></select></label>
+          <label class="fld" style="flex:1;min-width:180px">ค้นหางาน<input type="search" id="hSearch" placeholder="เช่น PO, supplier, ชื่อสินค้า"></label>
+          <button class="btn pri" id="hGo">ค้นหา</button>
+        </div>
+        <div class="presets" data-for="h">
+          <button class="btn sm" data-preset="7">7 วันล่าสุด</button>
+          <button class="btn sm" data-preset="30">30 วันล่าสุด</button>
+          <button class="btn sm" data-preset="month">เดือนนี้</button>
+          <button class="btn sm" data-preset="lastmonth">เดือนที่แล้ว</button>
+        </div>
+      </div>
+      <div id="histList"></div>
+    </section>
+
+    <!-- ============ Export ============ -->
+    <section id="tab-export" class="hidden">
+      <div class="panel">
+        <h3>📤 Export รายงาน</h3>
+        <div class="frow">
+          <label class="fld">ตั้งแต่<input type="date" id="eFrom"></label>
+          <label class="fld">ถึง<input type="date" id="eTo"></label>
+          <label class="fld">สมาชิก<select id="eMem"></select></label>
+        </div>
+        <div class="presets" data-for="e">
+          <button class="btn sm" data-preset="today">วันนี้</button>
+          <button class="btn sm" data-preset="yesterday">เมื่อวาน</button>
+          <button class="btn sm" data-preset="7">7 วันล่าสุด</button>
+          <button class="btn sm" data-preset="month">เดือนนี้</button>
+          <button class="btn sm" data-preset="lastmonth">เดือนที่แล้ว</button>
+        </div>
+        <div class="frow" style="margin-top:16px">
+          <button class="btn pri" id="eXlsx">📊 ดาวน์โหลด Excel</button>
+          <button class="btn navy" id="ePrint">🖨️ พิมพ์ / บันทึก PDF</button>
+          <span class="muted" id="eInfo" style="font-size:14px"></span>
+        </div>
+        <p class="muted" style="font-size:13px;margin:14px 0 0">
+          Excel มี 3 ชีต: <b>รายงานรายวัน</b> (ทุกงาน) · <b>สรุปรายคน</b> · <b>การส่งรายงาน</b> (ตารางวัน × คน)<br>
+          PDF: กด “พิมพ์” แล้วเลือกเครื่องพิมพ์เป็น <b>Save as PDF</b>
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ สมาชิก ============ -->
+    <section id="tab-members" class="hidden">
+      <div class="panel">
+        <h3>🙋 ชื่อของฉัน</h3>
+        <div class="muted" style="font-size:13.5px;margin-bottom:8px">
+          ชื่อนี้คือชื่อที่ขึ้นบนบอร์ด — <b>แก้ได้เฉพาะเจ้าของบัญชี</b>
+          (ล็อกอินด้วย <span id="myEmail">—</span>)
+        </div>
+        <div class="frow">
+          <label class="fld" style="flex:2;min-width:180px">ชื่อ-นามสกุล *<input id="mName" placeholder="ชื่อ นามสกุล"></label>
+          <label class="fld" style="flex:1;min-width:110px">ชื่อเล่น<input id="mNick"></label>
+          <label class="fld" style="flex:2;min-width:160px">ตำแหน่ง<input id="mPos" placeholder="เช่น เจ้าหน้าที่จัดซื้อ"></label>
+          <button class="btn pri" id="mSave">💾 บันทึกชื่อ</button>
+        </div>
+        <div style="margin-top:10px" id="mSelfAct"></div>
+      </div>
+      <div class="panel">
+        <h3>👥 คนในบอร์ด <span class="muted" id="mCount" style="font-size:14px;font-weight:500"></span></h3>
+        <div class="muted" style="font-size:13.5px;margin-bottom:8px">
+          รายชื่อนี้ขึ้นเองเมื่อแต่ละคนล็อกอินแล้วตั้งชื่อของตัวเอง — ไม่ต้องมีใครมาเพิ่มให้
+        </div>
+        <div style="overflow-x:auto"><table class="mem" id="mTable"></table></div>
+        <label class="muted" style="display:inline-flex;gap:6px;align-items:center;margin-top:8px;font-size:14px">
+          <input type="checkbox" id="mShowOff"> แสดงคนที่เอาชื่อออกจากบอร์ดแล้ว
+        </label>
+        <div id="mOff"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- modal -->
+<div class="modal hidden" id="modal">
+  <div class="mbox">
+    <div class="mh"><span id="mdTitle"></span><button class="x" id="mdClose">×</button></div>
+    <div class="mb" id="mdBody"></div>
+    <div class="mf" id="mdFoot"></div>
+  </div>
+</div>
+<div id="toast"></div>
+<div id="printArea"></div>
+
+<script>
+/* ===================== CONFIG ===================== */
+const DAILY_VERSION = 'v01-00';
+try { const _v=document.getElementById('dlVer'); if(_v)_v.textContent=DAILY_VERSION; } catch(e){}
+
+const SUPABASE_URL = 'https://unlvcdgqqljuoyvionqx.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_y0hCFXvGeZ1jK0Zz1-9tyQ_EnPHNk87';
+const DEPT_NAME = 'แผนกจัดซื้อ';
+
+/* บทบาทที่เข้าระบบนี้ได้ — ต้องตรงกับ daily_can_use() ใน daily_setup.sql */
+const ALLOWED_ROLES = ['purchase','pr_manager','pr_exec','executive','shipping'];
+const ROLE_LABEL = { purchase:'📦 จัดซื้อ', pr_manager:'🧑‍💼 หัวหน้าจัดซื้อ',
+  pr_exec:'👑 ผู้บริหาร', executive:'👑 ผู้บริหาร', shipping:'🚚 ขนส่ง/คลัง' };
+
+/* ===================== HELPERS ===================== */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+function lsSet(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+function lsDel(k){ try { localStorage.removeItem(k); } catch(e){} }
+function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function parseYmd(s){ const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
+function addDays(s, n){ const d = parseYmd(s); d.setDate(d.getDate()+n); return ymd(d); }
+const today = () => ymd(new Date());
+function thDate(s){ return parseYmd(s).toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }
+function thShort(s){ return parseYmd(s).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}); }
+function thWeekday(s){ return parseYmd(s).toLocaleDateString('th-TH',{weekday:'long'}); }
+function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : 'id-'+Date.now()+'-'+Math.random().toString(16).slice(2)); }
+function nowIso(){ return new Date().toISOString(); }
+let toastT;
+function toast(msg, err=false){ const t=$('#toast'); t.textContent=msg; t.className='show'+(err?' err':''); clearTimeout(toastT); toastT=setTimeout(()=>t.className='', err?4000:1800); }
+function fail(e){ console.error(e); toast('เกิดข้อผิดพลาด: '+(e && e.message ? e.message : e), true); }
+function autosize(el){ if (!el.offsetParent) return; el.style.height='auto'; el.style.height=(el.scrollHeight+2)+'px'; }
+
+const STATUS = { done:'เสร็จแล้ว', doing:'กำลังทำ', pending:'รอ/ติดปัญหา' };
+const NEXT_ST = { done:'doing', doing:'pending', pending:'done' };
+
+/* ===================== DATA LAYER ===================== */
+const DEMO = !SUPABASE_ANON_KEY || !window.supabase;
+const sb = DEMO ? null : window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const DEMO_KEY = 'daily_demo_v1';
+
+const Local = {
+  db: null,
+  load(){
+    if (this.db) return;
+    try { const raw = lsGet(DEMO_KEY); this.db = raw ? JSON.parse(raw) : null; } catch(e){ this.db = null; }
+    if (!this.db) this.db = demoSeed();
+  },
+  save(){ lsSet(DEMO_KEY, JSON.stringify(this.db)); }
+};
+function demoSeed(){
+  const mk = (name,nickname,position,sort) => ({ id:uid(), name, nickname, position, sort, active:true, created_at:nowIso() });
+  const m = [ mk('สมหญิง ใจดี','หญิง','หัวหน้าแผนกจัดซื้อ',10), mk('ปิยะพงษ์ ศรีสุข','ปิง','เจ้าหน้าที่จัดซื้อต่างประเทศ',20),
+              mk('นภัสสร แก้วมณี','นภ','เจ้าหน้าที่จัดซื้อในประเทศ',30), mk('ธนากร วงศ์ใหญ่','ต้น','ธุรการจัดซื้อ',40) ];
+  m[0].user_id = 'demo-uid'; m[0].email = 'demo@masaru';   /* โหมดทดลอง = เป็นคนแรก */
+  const t = [];
+  const add = (d, mi, task, status='done', note='') => t.push({ id:uid(), work_date:d, member_id:m[mi].id, member_name:m[mi].name, user_id:m[mi].user_id||null, task, status, note, sort:t.length, created_at:nowIso(), updated_at:nowIso() });
+  const d1 = addDays(today(),-1), d2 = addDays(today(),-2);
+  add(d2,0,'ประชุมทีมวางแผนสั่งซื้อเดือนหน้า'); add(d2,0,'อนุมัติ PR ประจำวัน');
+  add(d2,1,'ติดตาม PO สินค้าจากจีน ล็อต 09/2026','doing'); add(d2,1,'เปรียบเทียบราคา supplier แบตเตอรี่ 3 เจ้า');
+  add(d2,2,'ออก PR สั่งกล่องบรรจุภัณฑ์'); add(d2,3,'สแกนเอกสาร PO เข้า Drive');
+  add(d1,0,'อนุมัติ PR ประจำวัน'); add(d1,0,'ตรวจสอบรายงานค่าใช้จ่ายสินค้าตัวอย่าง','doing');
+  add(d1,1,'ติดตาม PO สินค้าจากจีน ล็อต 09/2026','doing','รอ supplier ส่ง packing list');
+  add(d1,1,'ตรวจค่าขนส่ง freight ตู้ที่เข้าคลัง'); add(d1,1,'ขอใบเสนอราคาแท่นชาร์จรุ่นใหม่','pending','supplier ยังไม่ตอบ');
+  add(d1,2,'อัปเดตราคาทุนใน sku_master'); add(d1,2,'ประสานคลังเรื่องรับสินค้าเข้า');
+  return { members:m, tasks:t };
+}
+const bySort = (a,b) => (a.sort-b.sort) || String(a.created_at).localeCompare(String(b.created_at));
+
+async function pageAll(build){
+  let out = [], from = 0; const size = 1000;
+  for(;;){
+    const { data, error } = await build().range(from, from+size-1);
+    if (error) throw error;
+    out = out.concat(data || []);
+    if (!data || data.length < size) break;
+    from += size;
+  }
+  return out;
+}
+
+const API = {
+  async listMembers(){
+    if (DEMO){ Local.load(); return Local.db.members.slice().sort(bySort).map(x=>({...x})); }
+    const { data, error } = await sb.from('daily_members').select('*').order('sort').order('created_at');
+    if (error) throw error; return data;
+  },
+  async addMember(m){
+    if (DEMO){ const r = { id:uid(), created_at:nowIso(), active:true, ...m }; Local.db.members.push(r); Local.save(); return {...r}; }
+    const { data, error } = await sb.from('daily_members').insert(m).select().single();
+    if (error) throw error; return data;
+  },
+  async updateMember(id, patch){
+    if (DEMO){ const r = Local.db.members.find(x=>x.id===id); Object.assign(r, patch); Local.save(); return; }
+    const { error } = await sb.from('daily_members').update(patch).eq('id', id);
+    if (error) throw error;
+  },
+  async listTasks(from, to, memberId){
+    if (DEMO){
+      Local.load();
+      return Local.db.tasks.filter(t => t.work_date>=from && t.work_date<=to && (!memberId || t.member_id===memberId))
+        .sort((a,b)=> a.work_date.localeCompare(b.work_date) || bySort(a,b)).map(x=>({...x}));
+    }
+    return pageAll(() => {
+      let q = sb.from('daily_tasks').select('*').gte('work_date', from).lte('work_date', to);
+      if (memberId) q = q.eq('member_id', memberId);
+      return q.order('work_date').order('sort').order('created_at');
+    });
+  },
+  async addTasks(arr){
+    if (DEMO){ const rows = arr.map(t => ({ id:uid(), created_at:nowIso(), updated_at:nowIso(), note:'', ...t })); Local.db.tasks.push(...rows); Local.save(); return rows.map(x=>({...x})); }
+    const { data, error } = await sb.from('daily_tasks').insert(arr).select();
+    if (error) throw error; return data;
+  },
+  async updateTask(id, patch){
+    if (DEMO){ const r = Local.db.tasks.find(x=>x.id===id); if (r) Object.assign(r, patch, {updated_at:nowIso()}); Local.save(); return; }
+    const { error } = await sb.from('daily_tasks').update(patch).eq('id', id);
+    if (error) throw error;
+  },
+  async deleteTask(id){
+    if (DEMO){ Local.db.tasks = Local.db.tasks.filter(x=>x.id!==id); Local.save(); return; }
+    const { error } = await sb.from('daily_tasks').delete().eq('id', id);
+    if (error) throw error;
+  },
+  async lastDate(memberId, before){
+    if (DEMO){
+      const ds = Local.db.tasks.filter(t=>t.member_id===memberId && t.work_date<before).map(t=>t.work_date).sort();
+      return ds.length ? ds[ds.length-1] : null;
+    }
+    const { data, error } = await sb.from('daily_tasks').select('work_date').eq('member_id', memberId)
+      .lt('work_date', before).order('work_date', { ascending:false }).limit(1);
+    if (error) throw error; return data && data[0] ? data[0].work_date : null;
+  }
+};
+
+/* ===================== STATE ===================== */
+let members = [];          // ทุกคน (รวมที่ลบแล้ว)
+let dayTasks = [];         // งานของวันที่เลือก
+let curDate = today();
+/* ── ตัวตนมาจากระบบล็อกอินเดิมของ Hub ──────────────────────────────
+   MY_UID    = บัญชีที่ล็อกอินอยู่ (auth.users.id)
+   me        = id แถวสมาชิกของตัวเอง ('' = ยังไม่ได้ตั้งชื่อ)
+   ★ ทุกคนเท่ากัน — แก้ได้เฉพาะการ์ดของตัวเอง หัวหน้า/ผู้บริหารก็เห็นแต่แก้ของคนอื่นไม่ได้
+     (ฐานข้อมูลบังคับอีกชั้นด้วย RLS ไม่ใช่แค่ซ่อนปุ่ม)                */
+let MY_UID = '', MY_EMAIL = '', MY_ROLES = [];
+let me = '';
+
+const activeMembers = () => members.filter(m => m.active);
+const memberById = id => members.find(m => m.id === id);
+const memberOrder = id => { const i = members.findIndex(m=>m.id===id); return i<0 ? 9999 : i; };
+function mName(m){ return m ? m.name + (m.nickname ? ` (${m.nickname})` : '') : ''; }
+function taskMemberName(t){ const m = memberById(t.member_id); return m ? m.name : (t.member_name || '-'); }
+function canEdit(mid){ return !!mid && !!me && mid === me; }
+const myMember = () => members.find(m => m.user_id && m.user_id === MY_UID);
+
+async function loadMembers(){
+  members = await API.listMembers();
+  const mine = myMember();
+  me = mine ? mine.id : '';
+  const nm = $('#meName');
+  if (nm) nm.textContent = mine ? mName(mine) : 'ยังไม่ได้ตั้งชื่อ';
+  const em = $('#myEmail'); if (em) em.textContent = MY_EMAIL || '—';
+  renderMemberSelects();
+}
+
+/* ===================== LOG TAB ===================== */
+function dayMembers(){
+  const ids = new Set(dayTasks.map(t=>t.member_id));
+  const list = members.filter(m => m.active || ids.has(m.id));
+  return list.sort((a,b)=> (a.id===me ? -1 : b.id===me ? 1 : 0) || memberOrder(a.id)-memberOrder(b.id));
+}
+const memberDayTasks = mid => dayTasks.filter(t=>t.member_id===mid).sort(bySort);
+
+async function loadDay(){
+  $('#curDate').value = curDate;
+  const t = curDate===today() ? 'วันนี้' : curDate===addDays(today(),-1) ? 'เมื่อวาน' : '';
+  $('#dayTitle').innerHTML = esc(thDate(curDate)) + (t ? `<small>${t}</small>` : '');
+  $('#cards').innerHTML = '<div class="muted">กำลังโหลด…</div>';
+  try { dayTasks = await API.listTasks(curDate, curDate); renderCards(); } catch(e){ fail(e); $('#cards').innerHTML=''; }
+}
+
+function taskRow(t, i, ed){
+  const note = t.note || '';
+  return `<li class="task" data-id="${t.id}">
+    <span class="num">${i+1}.</span>
+    <button class="st ${t.status}" data-act="status" ${ed?'title="กดเพื่อเปลี่ยนสถานะ"':'disabled'}>${STATUS[t.status]||t.status}</button>
+    <div class="tx">
+      ${ed ? `<textarea class="ttext" rows="1">${esc(t.task)}</textarea>` : `<div class="ttext ro">${esc(t.task)}</div>`}
+      ${ed ? `<input class="tnote${note?'':' hidden'}" value="${esc(note)}" placeholder="หมายเหตุ">` : (note ? `<div class="tnote ro">💬 ${esc(note)}</div>` : '')}
+    </div>
+    ${ed ? `<div class="tact"><button data-act="note" title="หมายเหตุ">💬</button><button data-act="del" title="ลบงานนี้">✕</button></div>` : ''}
+  </li>`;
+}
+
+function cardHtml(m){
+  const list = memberDayTasks(m.id), ed = canEdit(m.id), isMe = m.id===me;
+  const initial = (m.nickname || m.name || '?').trim().charAt(0);
+  let tools = '';
+  if (ed) tools += `<button class="btn sm" data-act="copy">↺ ดึงงานวันก่อน</button>`;
+  return `<div class="card${isMe?' me':''}" data-mid="${m.id}">
+    <div class="ch">
+      <div class="av">${esc(initial)}</div>
+      <div class="who"><b>${esc(mName(m))}</b><small>${esc(m.position||'')}${m.active?'':' · (ลบออกแล้ว)'}</small></div>
+      ${isMe ? '<span class="tag metag">ฉัน</span>' : '<span class="tag" title="ดูได้ แต่แก้ของคนอื่นไม่ได้">👁 ดูอย่างเดียว</span>'}
+      <span class="tag ${list.length?'ok':'no'}">${list.length ? list.length+' งาน' : 'ยังไม่ส่ง'}</span>
+    </div>
+    ${tools ? `<div class="tools">${tools}</div>` : ''}
+    ${list.length ? `<ol class="tasks">${list.map((t,i)=>taskRow(t,i,ed)).join('')}</ol>` : (ed ? '' : '<div class="emptytxt">ยังไม่มีบันทึก</div>')}
+    ${ed ? `<div class="add"><textarea rows="1" class="addbox" placeholder="+ พิมพ์งานที่ทำ แล้วกด Enter (วางหลายบรรทัด = หลายงาน)"></textarea><button class="btn pri sm" data-act="add">เพิ่ม</button></div>` : ''}
+  </div>`;
+}
+
+function renderCards(){
+  const list = dayMembers();
+  $('#cards').innerHTML = list.length ? list.map(cardHtml).join('')
+    : '<div class="panel">ยังไม่มีใครในบอร์ด — ไปที่แท็บ <b>👥 สมาชิก</b> แล้วกด <b>💾 บันทึกชื่อ</b> เพื่อตั้งชื่อของคุณ</div>';
+  $$('#cards textarea').forEach(autosize);
+  renderStats();
+}
+function renderCard(mid){
+  const old = $(`.card[data-mid="${mid}"]`), m = memberById(mid);
+  if (!old || !m) return renderCards();
+  const tmp = document.createElement('div'); tmp.innerHTML = cardHtml(m);
+  const el = tmp.firstElementChild; old.replaceWith(el);
+  $$('textarea', el).forEach(autosize);
+  renderStats();
+  return el;
+}
+function renderStats(){
+  const act = activeMembers();
+  const sent = act.filter(m => dayTasks.some(t=>t.member_id===m.id));
+  const miss = act.filter(m => !sent.includes(m));
+  const c = s => dayTasks.filter(t=>t.status===s).length;
+  $('#dayStats').innerHTML = `
+    <span class="chip">ส่งแล้ว <b>${sent.length}/${act.length}</b> คน</span>
+    <span class="chip">งานทั้งหมด <b>${dayTasks.length}</b></span>
+    <span class="chip">✅ เสร็จ <b>${c('done')}</b></span>
+    <span class="chip">🔵 กำลังทำ <b>${c('doing')}</b></span>
+    <span class="chip">🟠 รอ/ติดปัญหา <b>${c('pending')}</b></span>
+    ${miss.length ? `<span class="chip miss">ยังไม่ส่ง: ${miss.map(m=>esc(m.nickname||m.name)).join(', ')}</span>` : ''}`;
+  $('#meBox').classList.toggle('need', !me);
+  $('#meEdit').textContent = me ? '✏️ แก้ชื่อ' : '➕ ตั้งชื่อของฉัน';
+}
+
+function cleanLine(s){ return s.replace(/^\s*(?:[-•*·▪︎►]|\d+[.)])\s*/, '').trim(); }
+
+async function addFromBox(card){
+  const mid = card.dataset.mid, box = $('.addbox', card);
+  const lines = box.value.split(/\r?\n/).map(cleanLine).filter(Boolean);
+  if (!lines.length) return;
+  const m = memberById(mid);
+  let base = Math.max(0, ...memberDayTasks(mid).map(t=>t.sort)) + 1;
+  const rows = lines.map((task,i) => ({ work_date:curDate, member_id:mid, member_name:m.name,
+    user_id:MY_UID || null, task, status:'done', note:'', sort:base+i }));
+  box.disabled = true;
+  try {
+    const ins = await API.addTasks(rows);
+    dayTasks.push(...ins);
+    const el = renderCard(mid);
+    const nb = el && $('.addbox', el); if (nb) nb.focus();
+    toast(lines.length>1 ? `เพิ่ม ${lines.length} งานแล้ว` : 'บันทึกแล้ว');
+  } catch(e){ fail(e); box.disabled = false; }
+}
+
+function bindCards(){
+  const wrap = $('#cards');
+  wrap.addEventListener('click', async e => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const card = b.closest('.card'), mid = card.dataset.mid, li = b.closest('.task');
+    const t = li ? dayTasks.find(x=>x.id===li.dataset.id) : null;
+    const act = b.dataset.act;
+    try {
+      if (act==='add') addFromBox(card);
+      else if (act==='status' && t){
+        const ns = NEXT_ST[t.status] || 'done';
+        await API.updateTask(t.id, { status:ns }); t.status = ns;
+        b.className = 'st '+ns; b.textContent = STATUS[ns]; renderStats();
+      }
+      else if (act==='note'){ const n = $('.tnote', li); n.classList.remove('hidden'); n.focus(); }
+      else if (act==='del' && t){
+        if (!confirm('ลบงานนี้?\n\n'+t.task)) return;
+        await API.deleteTask(t.id); dayTasks = dayTasks.filter(x=>x.id!==t.id); renderCard(mid); toast('ลบแล้ว');
+      }
+      else if (act==='copy') openCopy(mid, null, curDate);
+    } catch(err){ fail(err); }
+  });
+  wrap.addEventListener('input', e => { if (e.target.tagName==='TEXTAREA') autosize(e.target); });
+  wrap.addEventListener('keydown', e => {
+    if (e.target.classList.contains('addbox') && e.key==='Enter' && !e.shiftKey && !e.isComposing){
+      e.preventDefault(); addFromBox(e.target.closest('.card'));
+    }
+    if (e.target.classList.contains('tnote') && e.key==='Enter'){ e.preventDefault(); e.target.blur(); }
+  });
+  wrap.addEventListener('paste', e => {
+    // วางหลายบรรทัดในช่องเพิ่มงาน → ให้เห็นก่อนแล้วกด Enter
+    if (e.target.classList.contains('addbox')) setTimeout(()=>autosize(e.target), 0);
+  });
+  wrap.addEventListener('focusout', async e => {
+    const el = e.target, li = el.closest && el.closest('.task'); if (!li) return;
+    const t = dayTasks.find(x=>x.id===li.dataset.id); if (!t) return;
+    try {
+      if (el.classList.contains('ttext') && el.tagName==='TEXTAREA'){
+        const v = el.value.trim();
+        if (v === t.task) return;
+        if (!v){
+          if (confirm('ข้อความว่าง — ลบงานนี้?')){ await API.deleteTask(t.id); dayTasks = dayTasks.filter(x=>x.id!==t.id); renderCard(t.member_id); toast('ลบแล้ว'); }
+          else { el.value = t.task; autosize(el); }
+          return;
+        }
+        await API.updateTask(t.id, { task:v }); t.task = v; toast('บันทึกแล้ว');
+      }
+      if (el.classList.contains('tnote')){
+        const v = el.value.trim();
+        if (!v) el.classList.add('hidden');
+        if (v === (t.note||'')) return;
+        await API.updateTask(t.id, { note:v }); t.note = v; toast('บันทึกหมายเหตุแล้ว');
+      }
+    } catch(err){ fail(err); }
+  });
+}
+
+/* ===================== COPY / RE-USE ===================== */
+let cp = null;
+async function openCopy(mid, srcDate, tgtDate){
+  const m = memberById(mid); if (!m) return;
+  try { if (!srcDate) srcDate = await API.lastDate(mid, tgtDate); } catch(e){ return fail(e); }
+  cp = { mid, src:srcDate, tgt:tgtDate, items:[], existing:[] };
+  $('#mdTitle').textContent = '↺ ดึงงานเดิมมาใช้ซ้ำ — ' + (m.nickname || m.name);
+  $('#mdBody').innerHTML = `
+    <div class="frow" style="margin-bottom:10px">
+      <label class="fld">ดึงจากวันที่<input type="date" id="cpSrc" value="${srcDate||''}"></label>
+      <div style="padding-bottom:8px">→ ใส่ในวันที่ <b>${esc(thDate(tgtDate))}</b></div>
+    </div>
+    <div class="frow" style="margin-bottom:8px;gap:6px">
+      <button class="btn sm" data-cp="all">เลือกทั้งหมด</button>
+      <button class="btn sm" data-cp="undone">เฉพาะที่ยังไม่เสร็จ</button>
+      <button class="btn sm" data-cp="none">ไม่เลือก</button>
+      <label class="fld" style="margin-left:auto;flex-direction:row;align-items:center;gap:6px">สถานะใหม่
+        <select id="cpSt"><option value="">คงเดิม</option><option value="doing">กำลังทำ</option><option value="done">เสร็จแล้ว</option><option value="pending">รอ/ติดปัญหา</option></select>
+      </label>
+    </div>
+    <div id="cpList"></div>`;
+  $('#mdFoot').innerHTML = `<button class="btn" id="cpCancel">ยกเลิก</button><button class="btn pri" id="cpOk">ใส่งานที่เลือก</button>`;
+  $('#modal').classList.remove('hidden');
+  $('#cpSrc').onchange = e => { cp.src = e.target.value || null; loadCopyList(); };
+  $('#cpCancel').onclick = closeModal;
+  $('#cpOk').onclick = doCopy;
+  $$('[data-cp]').forEach(b => b.onclick = () => {
+    $$('#cpList input[type=checkbox]').forEach((c,i) => {
+      c.checked = b.dataset.cp==='all' ? true : b.dataset.cp==='none' ? false : cp.items[i].status!=='done';
+    });
+    updCpCount();
+  });
+  loadCopyList();
+}
+async function loadCopyList(){
+  const box = $('#cpList');
+  if (!cp.src){ box.innerHTML = '<div class="muted">ยังไม่มีงานก่อนหน้านี้ — เลือกวันที่ที่ต้องการดึงได้ด้านบน</div>'; cp.items=[]; return updCpCount(); }
+  if (cp.src === cp.tgt){ box.innerHTML = '<div class="muted">เลือกวันอื่นที่ไม่ใช่วันเดียวกัน</div>'; cp.items=[]; return updCpCount(); }
+  box.innerHTML = '<div class="muted">กำลังโหลด…</div>';
+  try {
+    cp.items = (await API.listTasks(cp.src, cp.src, cp.mid)).sort(bySort);
+    cp.existing = cp.tgt===curDate ? memberDayTasks(cp.mid) : await API.listTasks(cp.tgt, cp.tgt, cp.mid);
+    const have = new Set(cp.existing.map(t=>t.task.trim()));
+    box.innerHTML = cp.items.length ? `<div class="muted" style="font-size:13px;margin-bottom:4px">${esc(thDate(cp.src))} · ${cp.items.length} งาน</div>` +
+      cp.items.map((t,i) => {
+        const dup = have.has(t.task.trim());
+        return `<label class="cpitem"><input type="checkbox" ${dup?'':'checked'}>
+          <span class="st ${t.status}">${STATUS[t.status]}</span>
+          <span style="flex:1">${esc(t.task)}${t.note?`<br><small class="muted">💬 ${esc(t.note)}</small>`:''}${dup?' <span class="dup">(มีในวันนี้แล้ว)</span>':''}</span></label>`;
+      }).join('')
+      : '<div class="muted">วันที่เลือกไม่มีงานของคนนี้</div>';
+    $$('#cpList input').forEach(c => c.onchange = updCpCount);
+  } catch(e){ fail(e); box.innerHTML=''; }
+  updCpCount();
+}
+function updCpCount(){
+  const n = $$('#cpList input[type=checkbox]').filter(c=>c.checked).length;
+  const ok = $('#cpOk'); if (ok){ ok.textContent = `ใส่งานที่เลือก (${n})`; ok.disabled = !n; }
+}
+async function doCopy(){
+  const checks = $$('#cpList input[type=checkbox]');
+  const pick = cp.items.filter((t,i)=>checks[i] && checks[i].checked);
+  if (!pick.length) return;
+  const st = $('#cpSt').value, m = memberById(cp.mid);
+  const base = Math.max(0, ...cp.existing.map(t=>t.sort)) + 1;
+  const rows = pick.map((t,i) => ({ work_date:cp.tgt, member_id:cp.mid, member_name:m.name,
+    user_id:MY_UID || null, task:t.task, note:t.note||'', status: st || t.status, sort: base+i }));
+  $('#cpOk').disabled = true;
+  try {
+    const ins = await API.addTasks(rows);
+    const tgt = cp.tgt, mid = cp.mid;
+    closeModal();
+    if (tgt === curDate && !$('#tab-log').classList.contains('hidden')){ dayTasks.push(...ins); renderCard(mid); }
+    else { curDate = tgt; showTab('log'); await loadDay(); }
+    toast(`ใส่ ${ins.length} งานแล้ว`);
+  } catch(e){ fail(e); $('#cpOk').disabled = false; }
+}
+function closeModal(){ $('#modal').classList.add('hidden'); cp = null; }
+
+/* ===================== HISTORY ===================== */
+function groupByMember(list){
+  const g = new Map();
+  list.slice().sort(bySort).forEach(t => { const k = t.member_id || ('x:'+t.member_name); if (!g.has(k)) g.set(k, []); g.get(k).push(t); });
+  return [...g.entries()].map(([k, items]) => ({ mid: items[0].member_id, m: memberById(items[0].member_id), name: taskMemberName(items[0]), items }))
+    .sort((a,b)=> memberOrder(a.mid)-memberOrder(b.mid) || a.name.localeCompare(b.name,'th'));
+}
+function hl(text, q){
+  const s = esc(text); if (!q) return s;
+  const qq = esc(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return s.replace(new RegExp(qq,'gi'), x => `<mark>${x}</mark>`);
+}
+async function runHistory(){
+  const from = $('#hFrom').value, to = $('#hTo').value, mid = $('#hMem').value, q = $('#hSearch').value.trim();
+  if (!from || !to || from > to) return toast('เลือกช่วงวันที่ให้ถูกต้อง', true);
+  const box = $('#histList'); box.innerHTML = '<div class="muted">กำลังโหลด…</div>';
+  try {
+    let rows = await API.listTasks(from, to, mid || null);
+    if (q){ const ql = q.toLowerCase(); rows = rows.filter(t => (t.task+' '+(t.note||'')+' '+taskMemberName(t)).toLowerCase().includes(ql)); }
+    const dates = [...new Set(rows.map(t=>t.work_date))].sort().reverse();
+    if (!dates.length){ box.innerHTML = '<div class="panel muted">ไม่พบข้อมูลในช่วงนี้</div>'; return; }
+    const tdy = today();
+    box.innerHTML = `<div class="muted" style="margin-bottom:8px;font-size:14px">พบ ${rows.length} งาน ใน ${dates.length} วัน</div>` + dates.map(d => {
+      const dr = rows.filter(t=>t.work_date===d), groups = groupByMember(dr);
+      const miss = (!mid && !q) ? activeMembers().filter(m => !groups.some(g=>g.mid===m.id)) : [];
+      return `<div class="hday">
+        <div class="hday-h"><b>${esc(thDate(d))}</b><span>${groups.length} คน · ${dr.length} งาน</span><span class="spacer"></span>
+          <button class="btn sm" data-open="${d}">เปิดวันนั้น</button></div>
+        ${groups.map(g => `<div class="hmem">
+          <div class="hn">${esc(g.m ? (g.m.nickname || g.m.name) : g.name)}<small>${esc(g.m ? g.m.position||'' : '')}</small></div>
+          <ol>${g.items.map(t => `<li><span class="st ${t.status}" style="font-size:11px">${STATUS[t.status]}</span> ${hl(t.task,q)}${t.note?` <span class="note">💬 ${hl(t.note,q)}</span>`:''}</li>`).join('')}</ol>
+          ${g.mid && g.m && g.m.active && d !== tdy ? `<div class="ha"><button class="btn sm" data-reuse="${g.mid}" data-d="${d}">↺ ใช้ซ้ำวันนี้</button></div>` : ''}
+        </div>`).join('')}
+        ${miss.length ? `<div class="hmiss">ยังไม่ส่ง: ${miss.map(m=>esc(m.nickname||m.name)).join(', ')}</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch(e){ fail(e); box.innerHTML=''; }
+}
+function bindHistory(){
+  $('#hGo').onclick = runHistory;
+  $('#hSearch').addEventListener('keydown', e => { if (e.key==='Enter') runHistory(); });
+  $('#histList').addEventListener('click', e => {
+    const o = e.target.closest('[data-open]');
+    if (o){ curDate = o.dataset.open; showTab('log'); loadDay(); return; }
+    const r = e.target.closest('[data-reuse]');
+    if (r){
+      const mid = r.dataset.reuse;
+      if (!canEdit(mid)) return toast('ดึงงานเดิมได้เฉพาะของตัวเอง', true);
+      openCopy(mid, r.dataset.d, today());
+    }
+  });
+}
+
+/* ===================== EXPORT ===================== */
+function applyPreset(p, fromEl, toEl){
+  const t = today(), d = new Date();
+  let f = t, to = t;
+  if (p==='yesterday'){ f = to = addDays(t,-1); }
+  else if (p==='7'){ f = addDays(t,-6); }
+  else if (p==='30'){ f = addDays(t,-29); }
+  else if (p==='month'){ f = ymd(new Date(d.getFullYear(), d.getMonth(), 1)); }
+  else if (p==='lastmonth'){ f = ymd(new Date(d.getFullYear(), d.getMonth()-1, 1)); to = ymd(new Date(d.getFullYear(), d.getMonth(), 0)); }
+  fromEl.value = f; toEl.value = to;
+}
+function rangeLabel(from, to){ return from===to ? thDate(from) : `${thShort(from)} – ${thShort(to)}`; }
+
+async function fetchRange(from, to, mid){
+  if (!from || !to || from > to){ toast('เลือกช่วงวันที่ให้ถูกต้อง', true); return null; }
+  try { return await API.listTasks(from, to, mid || null); } catch(e){ fail(e); return null; }
+}
+function sortRows(rows){
+  return rows.slice().sort((a,b)=> a.work_date.localeCompare(b.work_date) || memberOrder(a.member_id)-memberOrder(b.member_id) || bySort(a,b));
+}
+
+function exportXlsx(rows, from, to, mid){
+  if (typeof XLSX === 'undefined') return toast('โหลดไลบรารี Excel ไม่สำเร็จ (ตรวจอินเทอร์เน็ต)', true);
+  if (!rows.length) return toast('ไม่มีข้อมูลในช่วงนี้', true);
+  rows = sortRows(rows);
+  const wb = XLSX.utils.book_new();
+
+  // ชีต 1: รายละเอียด
+  const a1 = [[`รายงานการทำงานประจำวัน — ${DEPT_NAME}`], [`ช่วงวันที่: ${rangeLabel(from,to)}`], [],
+    ['วันที่','วัน','ชื่อ-นามสกุล','ชื่อเล่น','ตำแหน่ง','ลำดับ','งานที่ทำ','สถานะ','หมายเหตุ']];
+  let key = '', n = 0;
+  rows.forEach(t => {
+    const k = t.work_date+'|'+t.member_id; n = (k===key) ? n+1 : 1; key = k;
+    const m = memberById(t.member_id);
+    a1.push([t.work_date, thWeekday(t.work_date), taskMemberName(t), m ? m.nickname||'' : '', m ? m.position||'' : '', n, t.task, STATUS[t.status]||t.status, t.note||'']);
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet(a1);
+  ws1['!cols'] = [{wch:12},{wch:10},{wch:24},{wch:10},{wch:24},{wch:6},{wch:60},{wch:13},{wch:32}];
+  ws1['!merges'] = [{s:{r:0,c:0},e:{r:0,c:8}},{s:{r:1,c:0},e:{r:1,c:8}}];
+  ws1['!autofilter'] = { ref: `A4:I${a1.length}` };
+  XLSX.utils.book_append_sheet(wb, ws1, 'รายงานรายวัน');
+
+  // ชีต 2: สรุปรายคน
+  const dates = [...new Set(rows.map(t=>t.work_date))].sort();
+  const groups = groupByMember(rows);
+  const a2 = [['ชื่อ-นามสกุล','ชื่อเล่น','ตำแหน่ง','จำนวนวันที่ส่ง','งานทั้งหมด','เสร็จแล้ว','กำลังทำ','รอ/ติดปัญหา']];
+  groups.forEach(g => {
+    const c = s => g.items.filter(t=>t.status===s).length;
+    a2.push([g.name, g.m ? g.m.nickname||'' : '', g.m ? g.m.position||'' : '', new Set(g.items.map(t=>t.work_date)).size, g.items.length, c('done'), c('doing'), c('pending')]);
+  });
+  const c = s => rows.filter(t=>t.status===s).length;
+  a2.push(['รวม','','','', rows.length, c('done'), c('doing'), c('pending')]);
+  const ws2 = XLSX.utils.aoa_to_sheet(a2);
+  ws2['!cols'] = [{wch:24},{wch:10},{wch:24},{wch:14},{wch:11},{wch:10},{wch:10},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'สรุปรายคน');
+
+  // ชีต 3: การส่งรายงาน (วัน × คน)
+  const cols = mid ? groups : (() => {
+    const ids = new Set(groups.map(g=>g.mid));
+    const extra = activeMembers().filter(m=>!ids.has(m.id)).map(m=>({ mid:m.id, m, name:m.name, items:[] }));
+    return groups.concat(extra).sort((a,b)=> memberOrder(a.mid)-memberOrder(b.mid));
+  })();
+  const a3 = [['วันที่','วัน', ...cols.map(g => g.m ? (g.m.nickname||g.m.name) : g.name), 'ส่งแล้ว']];
+  dates.forEach(d => {
+    const cnt = cols.map(g => rows.filter(t=>t.work_date===d && t.member_id===g.mid).length);
+    a3.push([d, thWeekday(d), ...cnt.map(x=>x||'-'), `${cnt.filter(x=>x).length}/${cols.length}`]);
+  });
+  const ws3 = XLSX.utils.aoa_to_sheet(a3);
+  ws3['!cols'] = [{wch:12},{wch:10}, ...cols.map(()=>({wch:10})), {wch:9}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'การส่งรายงาน');
+
+  const fname = from===to ? `Purchase_Daily_${from}.xlsx` : `Purchase_Daily_${from}_to_${to}.xlsx`;
+  XLSX.writeFile(wb, fname);
+  toast('ดาวน์โหลด Excel แล้ว');
+}
+
+function printReport(rows, from, to, mid){
+  if (!rows.length) return toast('ไม่มีข้อมูลในช่วงนี้', true);
+  rows = sortRows(rows);
+  const dates = [...new Set(rows.map(t=>t.work_date))].sort();
+  const now = new Date().toLocaleString('th-TH', { dateStyle:'medium', timeStyle:'short' });
+  let h = `<div class="pr-head"><div><h1>รายงานการทำงานประจำวัน</h1><div>${esc(DEPT_NAME)} · MASARU Group</div></div>
+    <div class="pr-meta">ช่วงวันที่: ${esc(rangeLabel(from,to))}<br>พิมพ์เมื่อ: ${esc(now)}</div></div>`;
+  dates.forEach(d => {
+    const dr = rows.filter(t=>t.work_date===d), groups = groupByMember(dr);
+    const miss = mid ? [] : activeMembers().filter(m => !groups.some(g=>g.mid===m.id));
+    h += `<div class="pr-day"><h2>${esc(thDate(d))} <span>· ${groups.length} คน · ${dr.length} งาน</span></h2>
+      <table><thead><tr><th style="width:17%">ชื่อ</th><th style="width:4%">#</th><th>งานที่ทำ</th><th style="width:11%">สถานะ</th><th style="width:22%">หมายเหตุ</th></tr></thead><tbody>`;
+    groups.forEach(g => g.items.forEach((t,i) => {
+      h += `<tr>${i===0 ? `<td rowspan="${g.items.length}"><b>${esc(g.m ? (g.m.nickname||g.m.name) : g.name)}</b>${g.m && g.m.position ? `<br><small>${esc(g.m.position)}</small>` : ''}</td>` : ''}
+        <td>${i+1}</td><td>${esc(t.task)}</td><td>${STATUS[t.status]||''}</td><td>${esc(t.note||'')}</td></tr>`;
+    }));
+    h += `</tbody></table>${miss.length ? `<div class="pr-miss">ยังไม่ส่งรายงาน: ${miss.map(m=>esc(m.nickname||m.name)).join(', ')}</div>` : ''}</div>`;
+  });
+  h += `<div class="pr-sign"><div>ลงชื่อ ....................................................<br>(....................................................)<br>หัวหน้า${esc(DEPT_NAME)}<br>วันที่ ........ / ........ / ........</div></div>`;
+  $('#printArea').innerHTML = h;
+  setTimeout(() => window.print(), 50);
+}
+
+function bindExport(){
+  $$('.presets').forEach(p => p.addEventListener('click', e => {
+    const b = e.target.closest('[data-preset]'); if (!b) return;
+    if (p.dataset.for==='h'){ applyPreset(b.dataset.preset, $('#hFrom'), $('#hTo')); runHistory(); }
+    else { applyPreset(b.dataset.preset, $('#eFrom'), $('#eTo')); updExportInfo(); }
+  }));
+  ['#eFrom','#eTo','#eMem'].forEach(s => $(s).addEventListener('change', updExportInfo));
+  $('#eXlsx').onclick = async () => { const f=$('#eFrom').value, t=$('#eTo').value, m=$('#eMem').value; const r = await fetchRange(f,t,m); if (r) exportXlsx(r,f,t,m); };
+  $('#ePrint').onclick = async () => { const f=$('#eFrom').value, t=$('#eTo').value, m=$('#eMem').value; const r = await fetchRange(f,t,m); if (r) printReport(r,f,t,m); };
+  $('#quickXlsx').onclick = () => exportXlsx(dayTasks.slice(), curDate, curDate, '');
+  $('#quickPrint').onclick = () => printReport(dayTasks.slice(), curDate, curDate, '');
+}
+let infoT;
+function updExportInfo(){
+  clearTimeout(infoT);
+  infoT = setTimeout(async () => {
+    const f=$('#eFrom').value, t=$('#eTo').value, m=$('#eMem').value;
+    if (!f || !t || f>t){ $('#eInfo').textContent=''; return; }
+    try { const r = await API.listTasks(f,t,m||null); $('#eInfo').textContent = `${rangeLabel(f,t)} · ${r.length} งาน · ${new Set(r.map(x=>x.work_date)).size} วัน`; }
+    catch(e){ $('#eInfo').textContent=''; }
+  }, 250);
+}
+
+/* ===================== MEMBERS ===================== */
+function renderMemberSelects(){
+  const opts = '<option value="">ทุกคน</option>' + members.map(m => `<option value="${m.id}">${esc(mName(m))}${m.active?'':' (เอาออกแล้ว)'}</option>`).join('');
+  ['#hMem','#eMem'].forEach(s => { const v = $(s).value; $(s).innerHTML = opts; $(s).value = members.some(m=>m.id===v) ? v : ''; });
+}
+
+/* เติมช่อง "ชื่อของฉัน" จากแถวของตัวเอง (ยังไม่มี = ว่างไว้ให้ตั้งใหม่) */
+function fillSelfForm(){
+  const m = myMember();
+  $('#mName').value = m ? (m.name||'') : '';
+  $('#mNick').value = m ? (m.nickname||'') : '';
+  $('#mPos').value  = m ? (m.position||'') : '';
+  $('#mSave').textContent = m ? '💾 บันทึกชื่อ' : '➕ ตั้งชื่อของฉัน';
+  $('#mSelfAct').innerHTML = !m ? ''
+    : (m.active
+        ? `<button class="btn sm danger" id="mOffSelf">🙈 เอาชื่อฉันออกจากบอร์ด</button>
+           <span class="muted" style="font-size:13px;margin-left:8px">ประวัติงานเดิมยังอยู่ครบ · กลับมาได้ทุกเมื่อ</span>`
+        : `<button class="btn sm pri" id="mOnSelf">↩ เอาชื่อฉันกลับเข้าบอร์ด</button>
+           <span class="muted" style="font-size:13px;margin-left:8px">ตอนนี้ชื่อคุณไม่ขึ้นบนบอร์ด</span>`);
+  const b1 = $('#mOffSelf'), b2 = $('#mOnSelf');
+  if (b1) b1.onclick = () => setSelfActive(false);
+  if (b2) b2.onclick = () => setSelfActive(true);
+}
+
+async function setSelfActive(on){
+  const m = myMember(); if (!m) return;
+  if (!on && !confirm('เอาชื่อคุณออกจากบอร์ด?\n\nประวัติงานเดิมยังอยู่ครบ และกดกลับเข้ามาได้ทุกเมื่อ')) return;
+  try { await API.updateMember(m.id, { active:on }); await afterMemberChange();
+        toast(on ? 'กลับเข้าบอร์ดแล้ว' : 'เอาชื่อออกจากบอร์ดแล้ว'); }
+  catch(e){ fail(e); }
+}
+
+async function saveSelf(){
+  const name = $('#mName').value.trim();
+  if (!name) { $('#mName').focus(); return toast('กรอกชื่อก่อน', true); }
+  const patch = { name, nickname:$('#mNick').value.trim(), position:$('#mPos').value.trim() };
+  const m = myMember();
+  try {
+    if (m) await API.updateMember(m.id, patch);
+    else {
+      const sort = Math.max(0, ...members.map(x=>x.sort||0)) + 10;
+      await API.addMember({ ...patch, sort, active:true, user_id:MY_UID, email:MY_EMAIL });
+    }
+    await afterMemberChange();
+    toast(m ? 'บันทึกชื่อแล้ว' : 'ตั้งชื่อเรียบร้อย — เริ่มบันทึกงานได้เลย');
+  } catch(e){ fail(e); }
+}
+
+function renderMembers(){
+  const act = activeMembers();
+  $('#mCount').textContent = `(${act.length} คน)`;
+  fillSelfForm();
+  $('#mTable').innerHTML = `<thead><tr><th style="width:40px">#</th><th>ชื่อ-นามสกุล</th><th>ชื่อเล่น</th><th>ตำแหน่ง</th><th>อีเมล</th></tr></thead><tbody>` +
+    (act.length ? act.map((m,i) => `<tr data-mid="${m.id}"${m.id===me?' class="me"':''}>
+        <td>${i+1}</td>
+        <td><b>${esc(m.name)}</b>${m.id===me?' <span class="tag metag">ฉัน</span>':''}</td>
+        <td>${esc(m.nickname||'')}</td><td>${esc(m.position||'')}</td>
+        <td class="muted" style="font-size:13px">${esc(m.email||'')}</td></tr>`).join('')
+      : '<tr><td colspan="5" class="muted">ยังไม่มีใครตั้งชื่อ</td></tr>') + '</tbody>';
+  const off = members.filter(m=>!m.active);
+  $('#mOff').innerHTML = $('#mShowOff').checked ? (off.length ? `<table class="mem" style="margin-top:8px"><tbody>${off.map(m => `<tr class="inactive">
+      <td>${esc(m.name)}</td><td>${esc(m.nickname||'')}</td><td>${esc(m.position||'')}</td>
+      <td class="muted" style="font-size:13px">${esc(m.email||'')}</td></tr>`).join('')}</tbody></table>`
+    : '<div class="muted" style="font-size:14px;margin-top:6px">ไม่มี</div>') : '';
+}
+
+async function afterMemberChange(){
+  await loadMembers(); renderMembers();
+  renderCards();
+}
+
+function bindMembers(){
+  $('#mSave').onclick = saveSelf;
+  ['#mName','#mNick','#mPos'].forEach(sel => $(sel).addEventListener('keydown', e => { if (e.key==='Enter') saveSelf(); }));
+  $('#mShowOff').onchange = renderMembers;
+  $('#meEdit').onclick = () => { showTab('members'); $('#mName').focus(); };
+}
+
+/* ===================== TABS / BOOT ===================== */
+function showTab(name){
+  $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab===name));
+  ['log','history','export','members'].forEach(t => $('#tab-'+t).classList.toggle('hidden', t!==name));
+  lsSet('daily_tab', name);
+  if (name==='log') $$('#cards textarea').forEach(autosize);
+  if (name==='members') renderMembers();
+  if (name==='export') updExportInfo();
+  if (name==='history' && !$('#histList').innerHTML) runHistory();
+}
+
+let rtT;
+function subscribe(){
+  sb.channel('daily-log')
+    .on('postgres_changes', { event:'*', schema:'public', table:'daily_tasks' }, () => {
+      clearTimeout(rtT);
+      rtT = setTimeout(async () => {
+        try {
+          dayTasks = await API.listTasks(curDate, curDate);
+          const cards = $$('#cards .card');
+          if (!cards.length) return renderCards();
+          cards.forEach(c => { if (!c.contains(document.activeElement)) renderCard(c.dataset.mid); });
+          renderStats();
+        } catch(e){ console.warn(e); }
+      }, 600);
+    })
+    .on('postgres_changes', { event:'*', schema:'public', table:'daily_members' }, async () => {
+      try { await loadMembers(); if (!$('#tab-members').classList.contains('hidden')) renderMembers(); if (!$('#cards').contains(document.activeElement)) renderCards(); } catch(e){ console.warn(e); }
+    })
+    .subscribe();
+}
+
+/* ตรวจสิทธิ์จากระบบล็อกอินเดิมของ Hub — ไม่ผ่าน = ดีดกลับหน้ารวม */
+async function authGate(){
+  if (DEMO){ MY_UID='demo-uid'; MY_EMAIL='demo@masaru'; MY_ROLES=['purchase']; return true; }
+  const { data:{ session } } = await sb.auth.getSession();
+  if (!session){ location.replace('index.html'); return false; }
+  const md = session.user.app_metadata || {};
+  MY_ROLES = Array.isArray(md.user_roles) ? md.user_roles : (md.user_role ? [md.user_role] : []);
+  if (!MY_ROLES.some(r => ALLOWED_ROLES.includes(r))){
+    $('#gateMsg').textContent = 'บัญชีนี้ยังไม่มีสิทธิ์เข้าระบบบันทึกงานรายวัน — กำลังกลับหน้ารวม…';
+    setTimeout(()=>location.replace('index.html'), 1500);
+    return false;
+  }
+  MY_UID = session.user.id;
+  MY_EMAIL = session.user.email || '';
+  const shown = MY_ROLES.filter(r => ROLE_LABEL[r]).map(r => ROLE_LABEL[r]);
+  $('#rolePill').textContent = [...new Set(shown)].join(' · ') || 'ผู้ใช้';
+  sb.auth.onAuthStateChange((e,ss) => { if (e==='SIGNED_OUT' && !ss) location.replace('index.html?logout=1'); });
+  return true;
+}
+
+async function init(){
+  if (!await authGate()) return;
+  $('#gate').classList.add('hidden');
+  $('#app').classList.remove('hidden');
+  $('#logoutBtn').onclick = async e => {
+    e.preventDefault();
+    try { await sb.auth.signOut(); } catch(err){}
+    location.replace('index.html?logout=1');
+  };
+  if (DEMO){ $('#demoBanner').classList.remove('hidden'); const c=$('#conn'); c.classList.add('demo'); c.innerHTML='<i></i>โหมดทดลอง'; }
+  $('#resetDemo').onclick = () => { if (confirm('ล้างข้อมูลทดลองทั้งหมด แล้วเริ่มใหม่?')){ lsDel(DEMO_KEY); Local.db=null; location.reload(); } };
+  $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) showTab(b.dataset.tab); });
+  $('#prevDay').onclick = () => { curDate = addDays(curDate,-1); loadDay(); };
+  $('#nextDay').onclick = () => { curDate = addDays(curDate, 1); loadDay(); };
+  $('#todayBtn').onclick = () => { curDate = today(); loadDay(); };
+  $('#curDate').onchange = e => { if (e.target.value){ curDate = e.target.value; loadDay(); } };
+  $('#refreshBtn').onclick = async () => { try { await loadMembers(); await loadDay(); toast('โหลดใหม่แล้ว'); } catch(e){ fail(e); } };
+  $('#mdClose').onclick = closeModal;
+  $('#modal').addEventListener('click', e => { if (e.target.id==='modal') closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key==='Escape' && !$('#modal').classList.contains('hidden')) closeModal(); });
+
+  bindCards(); bindHistory(); bindExport(); bindMembers();
+  applyPreset('7', $('#hFrom'), $('#hTo'));
+  applyPreset('today', $('#eFrom'), $('#eTo'));
+
+  try {
+    await loadMembers();
+    await loadDay();
+    if (!DEMO) subscribe();
+  } catch(e){ fail(e); }
+  const tab = lsGet('daily_tab');
+  if (tab && tab !== 'log' && $('#tab-'+tab)) showTab(tab);
+  /* เข้าครั้งแรก ยังไม่มีชื่อ → พาไปตั้งชื่อก่อน จะบันทึกงานได้ */
+  if (!me){
+    showTab('members');
+    toast('ตั้งชื่อของคุณก่อนนะ แล้วจะเริ่มบันทึกงานได้เลย');
+    setTimeout(()=>{ const el=$('#mName'); if (el) el.focus(); }, 300);
+  }
+}
+init();
+</script>
+</body>
+</html>
