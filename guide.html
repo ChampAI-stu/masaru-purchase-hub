@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-34</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-35</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -2267,6 +2267,16 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
   </tbody></table></div>
   <div class="hp-info">ℹ️ การ์ดในหน้ารวมขึ้นตามตาราง <code>portal_apps</code> — ถ้าควรเห็นแต่ไม่เห็น
     ให้ผู้ดูแลตรวจว่าแถวของระบบนั้นใส่บทบาทครบไหม (ไม่ใช่ปัญหาของตัวระบบ)</div>
+  <table class="kv"><tbody>
+    <tr><td><b>📕 ระบบจัดการเอกสาร PDF</b>
+        <div class="muted" style="font-size:11px">การ์ดใหม่</div></td>
+      <td>รวม · แยก · บีบอัด · แปลงไฟล์ · ใส่ลายน้ำ — ทำในเบราว์เซอร์ <b>ไฟล์ไม่ออกจากเครื่อง</b>
+        <div class="muted" style="font-size:11.5px">เปิดให้ <b>จัดซื้อ · การตลาด · หัวหน้าทีมการตลาด · ขนส่ง</b>
+          (หัวหน้าจัดซื้อ/ผู้บริหารเห็นทุกระบบอยู่แล้ว)
+          <br>★ เป็น<b>เว็บแยก</b> คนละที่กับระบบอื่น → การ์ดติดป้าย <b>↗ แท็บใหม่</b>
+          และ<b>กดแล้วเปิดแท็บใหม่เสมอ</b> หน้ารวมไม่หาย ไม่ต้องล็อกอินซ้ำ
+          <br>ติดตั้ง: รัน <code>portal_add_pdf.sql</code> + อัปโหลด <code>index.html</code></div></td></tr>
+  </tbody></table>
   <table class="kv"><thead><tr><th>🚚 ฝ่ายชิปปิ้ง</th><th>ทำอะไรได้ / ไม่ได้</th></tr></thead><tbody>
     <tr><td><b>📋 Purchase Board</b></td>
       <td>เห็น<b>ครบทั้ง 5 แท็บ</b> (Purchase Board · 📦 แจ้งสินค้าขาเข้า · 🚚 แผนรับสินค้า · 📈 On-Time · 📜 ประวัติอัพโหลด)
