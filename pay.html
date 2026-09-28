@@ -360,7 +360,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-11</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-12</span>
   </span>
   <!-- ⚠️ ป้าย "🧪 โหมดทดสอบ" ถอดออกตามที่สั่ง (v09-96)
        พฤติกรรมยังคงเดิม — APPROVAL_MODE=false อยู่ (ดูตัวแปรในสคริปต์)
@@ -807,7 +807,9 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
         <select id="f_cur" onchange="drawBillItems()"><option value="CNY">¥ CNY (หยวน)</option><option value="USD">$ USD (ดอลลาร์)</option><option value="THB">฿ THB (บาท)</option></select></div>
       <div class="fld"><label>ยอดเต็มของบิล ★</label>
         <input id="f_total" type="number" step="0.01" oninput="BILL_TOTAL_TOUCHED=true;calcBillTotal()">
-        <div id="f_calcHint" class="muted" style="font-size:11.5px;margin-top:3px"></div></div>
+        <div id="f_calcHint" class="muted" style="font-size:11.5px;margin-top:3px"></div>
+        <button type="button" class="btn mini" id="f_useSum" style="display:none;margin-top:5px"
+          onclick="useItemsSum()" title="เขียนยอดเต็มให้เท่าผลรวมของรายการด้านบน">= ใช้ผลรวมรายการ</button></div>
       <div class="fld"><label>Reference PR No</label>
         <input id="f_pr" list="billPrList" placeholder="PR-2026-0831-004">
         <div class="muted" style="font-size:11.5px;margin-top:3px">ใส่เลข PO แล้วระบบจะหาเลข PR ให้เอง (แก้ทับได้) · ใบเสนอราคาจะดึงเลขนี้ไปใช้</div>
@@ -1323,7 +1325,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v10-11';
+const PAY_VERSION='v10-12';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -1980,18 +1982,35 @@ function drawBillItems(){
   box.innerHTML=h;
   billItemsTot(); calcBillTotal();
 }
+/* เขียนยอดเต็ม = ผลรวมรายการ (ปุ่ม "= ใช้ผลรวมรายการ") */
+function useItemsSum(){
+  const sum=BILL_ITEMS.reduce((a,x)=>a+((+x.qty||0)*(+x.price||0)),0);
+  if(!sum)return toast('ยังไม่มีจำนวน/ราคาในรายการ');
+  $('f_total').value=+sum.toFixed(2);
+  BILL_TOTAL_TOUCHED=false;      // กลับมาให้ตามผลรวมอัตโนมัติอีกครั้ง
+  calcBillTotal();
+}
 function calcBillTotal(){
   const sum=BILL_ITEMS.reduce((a,x)=>a+((+x.qty||0)*(+x.price||0)),0);
-  /* รวมให้อัตโนมัติ "จนกว่าจะพิมพ์ทับ" — บิลที่มีส่วนลด/ค่าส่งจะได้แก้เองได้ */
+  /* ⭐ v10-12 — ยอดเต็ม "ตามผลรวมให้เอง" กว้างกว่าเดิม
+     เดิม: บิลที่บันทึกไว้แล้วถือว่า "คนกรอกเอง" ทั้งหมด → แก้ราคาต่อหน่วยแล้วยอดเต็มไม่ขยับ
+           (เคสจริง: แก้ราคาในหน้า Purchase Board แล้วมาแก้ตามในฟอร์ม ยอดเต็มยังเป็นเลขเก่า)
+     ใหม่: ตอนเปิดบิล ถ้ายอดเต็มเดิม "ตรงกับผลรวมรายการอยู่แล้ว" = ยังไม่มีใครตั้งค่าพิเศษ
+           → แก้จำนวน/ราคาเมื่อไหร่ ยอดเต็มขยับตามทันที
+           ถ้าไม่ตรง (มีส่วนลด/ค่าส่ง) = ตั้งใจตั้งไว้ → ไม่แตะ แค่เตือน + มีปุ่มให้กดใช้ผลรวม */
   if(sum&&!BILL_TOTAL_TOUCHED)$('f_total').value=+sum.toFixed(2);
-  const hint=$('f_calcHint'); if(!hint)return;
+  const hint=$('f_calcHint'), btn=$('f_useSum'); if(!hint)return;
   const cur=parseFloat($('f_total').value)||0;
-  if(!sum){ hint.textContent=''; hint.style.color=''; return; }
+  if(!sum){ hint.textContent=''; hint.style.color=''; if(btn)btn.style.display='none'; return; }
   const diff=+(cur-sum).toFixed(2);
-  if(Math.abs(diff)<0.005){ hint.style.color=''; hint.textContent='= ผลรวมรายการ '+money2(sum); }
+  if(Math.abs(diff)<0.005){
+    hint.style.color=''; hint.textContent='= ผลรวมรายการ '+money2(sum);
+    if(btn)btn.style.display='none';
+  }
   else{ /* ต่างจากผลรวม = อาจตั้งใจ (ส่วนลด/ค่าส่ง) หรือพิมพ์ผิด — เตือนให้เห็น ไม่บล็อก */
     hint.style.color='#B45309';
     hint.textContent='⚠️ ผลรวมรายการ '+money2(sum)+' — ต่าง '+(diff>0?'+':'')+money2(diff);
+    if(btn)btn.style.display='';
   }
 }
 function openBill(id){
@@ -2008,8 +2027,14 @@ function openBill(id){
   $('f_vendor').value=b?.vendor||''; $('f_sku').value=b?.sku||'';
   $('f_cur').value=b?.currency||'CNY'; $('f_total').value=b?.total_amount||'';
   $('f_qty').value=(b&&b.qty!=null)?b.qty:''; $('f_unit').value=(b&&b.unit_price!=null)?b.unit_price:'';
-  /* ยอดเต็มของบิลเก่าถือว่า "คนกรอกไว้แล้ว" — ห้ามให้ผลรวมรายการเขียนทับตอนเปิดดู */
-  BILL_ITEMS=billItemsFrom(b); BILL_TOTAL_TOUCHED=!!(b&&b.total_amount);
+  /* ยอดเต็มถือว่า "คนตั้งเองไว้" ก็ต่อเมื่อมันไม่ตรงกับผลรวมรายการ (เช่น มีส่วนลด/ค่าส่ง)
+     ถ้าตรงกันอยู่แล้ว = ปล่อยให้ตามผลรวมต่อไป แก้ราคา/จำนวนแล้วยอดเต็มขยับตามทันที */
+  BILL_ITEMS=billItemsFrom(b);
+  {
+    const sum0=BILL_ITEMS.reduce((a,x)=>a+((+x.qty||0)*(+x.price||0)),0);
+    const tot0=+(b&&b.total_amount)||0;
+    BILL_TOTAL_TOUCHED = !!(tot0 && sum0 && Math.abs(tot0-sum0)>=0.005);
+  }
   drawBillItems();
   $('f_pr').value=b?.ref_pr||'';
   $('f_note').value=b?.note||'';
@@ -2133,6 +2158,23 @@ async function refreshBill(id){
   const up={sku:sku||b.sku, total_amount:total||b.total_amount};
   if(qty)up.qty=qty;
   if(qty&&total)up.unit_price=+(total/qty).toFixed(4);
+  /* ⭐ เขียนรายการย่อยใหม่ด้วย — ไม่งั้นเปิดฟอร์มมาจะเห็นราคาต่อหน่วยเป็นเลขเก่า
+        ทั้งที่ยอดเต็มอัปเดตไปแล้ว (คนละเลขกัน อ่านแล้วงง)
+        รวมแถวของ SKU เดียวกันก่อน แล้วถัวราคาต่อหน่วยตามจำนวน */
+  {
+    const by={};
+    rows.forEach(function(r){
+      const k=String(r.sku||'').trim(); if(!k)return;
+      const q=+r.quantity||0, pr=+r.price||0;
+      if(!by[k])by[k]={sku:k,qty:0,amt:0};
+      by[k].qty+=q; by[k].amt+=q*pr;
+    });
+    const its=Object.keys(by).map(function(k){
+      const x=by[k];
+      return {sku:x.sku, qty:x.qty||'', price:x.qty?+(x.amt/x.qty).toFixed(4):''};
+    });
+    if(its.length)up.items=its;
+  }
   const {error}=await sb.from('pay_bills').update(up).eq('id',b.id);
   if(error)return toast('อัปเดตไม่สำเร็จ: '+error.message);
   await addLog(b,'updated','ดึงจาก Purchase Board — '+chg.join(' · ').replace(/\n\s*/g,' '));
