@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-37</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-38</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -472,6 +472,8 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
       <div class="f">cost.html</div><div class="d">ข้อมูลใบขนสินค้า · ออก Invoice + Packing List · ติดตามเรือ · สรุปภาษี · ใบวางบิลขนส่ง</div></a>
     <a class="mapc" href="#s6" onclick="return goSec('s6')" style="border-left-color:#D0212B"><div class="n">💰 ต้นทุนสินค้า</div>
       <div class="f">costsku.html</div><div class="d">คิดต้นทุนรวมต่อหน่วย (Landed cost) · ปันส่วนค่าขนส่ง · KPI Cost Saving</div></a>
+    <a class="mapc" href="#ssample" onclick="return goSec('ssample')" style="border-left-color:#0E7C86"><div class="n">🧪 ทะเบียนสินค้าตัวอย่าง</div>
+      <div class="f">sample.html</div><div class="d">ขอ/สั่งซื้อสินค้าตัวอย่าง · รูป + หลักฐานชำระเก็บใน Drive · สรุปค่าใช้จ่ายแยกหมวด</div></a>
     <a class="mapc" href="#sfreight" onclick="return goSec('sfreight')" style="border-left-color:#0EA5E9"><div class="n">📐 ตรวจค่าขนส่ง ตปท.</div><div class="f">freight.html</div><div class="d">เทียบขนาดกล่องคลังวัด vs ขนส่งคิด · ตรวจใบวางบิลทีละรอบ 6 ข้อ (ยอด/ซ้ำ/เอกสาร/เรท/ค่าแฝง/กล่อง) · ออกใบทักขนส่ง</div></a>
     <a class="mapc" href="#s8" onclick="return goSec('s8')" onclick="return goSec('s8')" style="border-left-color:#C41F29"><div class="n">⚠️ กับดักที่ต้องรู้</div>
       <div class="f">รวมทุกระบบ</div><div class="d">เรื่องที่พลาดบ่อยที่สุดของทั้งกลุ่มระบบ + วิธีเลี่ยง — อ่านก่อนลงมือจริง</div></a>
@@ -2191,6 +2193,57 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
 </div>
 
 <!-- ══════════════════════ 8. กับดักรวม ══════════════════════ -->
+<div class="card sec" id="ssample">
+  <h2>🧪 ทะเบียนสินค้าตัวอย่าง <span class="fn">sample.html</span></h2>
+  <div class="sub-note">เก็บรายการ <b>ขอ/สั่งซื้อสินค้าตัวอย่าง</b> จากโรงงาน — รูปสินค้า · หลักฐานการชำระ
+    · สรุปค่าใช้จ่ายแยกหมวด · เข้าได้เฉพาะ <b>จัดซื้อ · หัวหน้าจัดซื้อ · ผู้บริหาร</b></div>
+  <div class="hp-info">ℹ️ ระบบนี้<b>แทนชีต Google Sheet เดิม</b> (วัน/ประเภท/รายการ/รูป/โรงงาน/ยอด/สกุลเงิน/ผู้รับผิดชอบ/หลักฐาน)
+    — ช่องเหมือนเดิมทุกช่อง แต่ค้นหา กรอง และสรุปยอดได้เอง ไม่ต้องทำ Pivot มือ</div>
+
+  <h3 class="hh">3 แท็บ</h3>
+  <table class="kv"><tbody>
+    <tr><td><b>📋 รายการสินค้าตัวอย่าง</b></td>
+      <td>ตารางรายการ + การ์ดสรุปหัวหน้า (จำนวนรายการ · ยอดรวมแยกสกุลเงิน · โรงงาน · หมวดที่ใช้)
+        <div class="muted" style="font-size:11.5px">ค้นหาด้วย รายการ/โรงงาน/ผู้รับผิดชอบ/หมายเหตุ
+          · กรองตาม <b>หมวด · โรงงาน · ผู้รับผิดชอบ</b> · เลือกดูราย<b>เดือน</b> หรือ<b>ช่วงวันที่</b> (90 วัน · ปีนี้ · ทั้งหมด)</div></td></tr>
+    <tr><td><b>📊 สรุปค่าใช้จ่าย</b></td>
+      <td>สรุป 4 มุมในหน้าเดียว — <b>ตามหมวดหมู่ · ตามโรงงาน · ตามผู้รับผิดชอบ · ตามเดือน</b>
+        <div class="muted" style="font-size:11.5px">ทุกตารางแยก<b>คอลัมน์ตามสกุลเงิน</b> (¥ / ฿ / $)
+          <b>ไม่แปลงค่าเงินให้</b> — เพราะเรทแต่ละรอบไม่เท่ากัน ถ้าแปลงเองจะได้เลขที่ทานกับบัญชีไม่ได้</div></td></tr>
+    <tr><td><b>🏷️ หมวดหมู่</b></td>
+      <td>เพิ่ม/แก้ชื่อ/เปลี่ยนสี/ปิดการใช้งาน ได้เองในหน้าเว็บ · ตารางบอกว่าหมวดไหนมีกี่รายการในช่วงที่ดูอยู่
+        <div class="muted" style="font-size:11.5px">ตั้งต้นให้ 4 หมวดตามชีตเดิม
+          · <b>ปิดหมวด</b> = ไม่ให้เลือกในฟอร์มรายการใหม่ แต่รายการเก่ายังอยู่ครบและกรองหาได้</div></td></tr>
+  </tbody></table>
+
+  <h3 class="hh">กรอกรายการ</h3>
+  <table class="kv"><tbody>
+    <tr><td><b>ช่องที่ต้องกรอก ★</b></td>
+      <td><b>วันที่ · ประเภท · รายการ · ยอดชำระ</b> — ไม่ครบระบบเตือนและไม่บันทึก
+        <div class="muted" style="font-size:11.5px">โรงงาน · ผู้รับผิดชอบ · หมายเหตุ เว้นได้
+          · ช่องโรงงาน/ผู้รับผิดชอบ<b>มีรายการช่วยเลือก</b>จากที่เคยพิมพ์ไว้ ไม่ต้องจำสะกด</div></td></tr>
+    <tr><td><b>📷 รูปสินค้า · 🧾 หลักฐานการชำระ</b></td>
+      <td>ใส่ได้หลายไฟล์ — <b>ลากมาวาง · กดเลือกไฟล์ · Ctrl+V วางรูป</b> หรือ<b>วางลิงก์ Drive</b>
+        <div style="background:#EAF6EC;border:1px solid #BEE0C4;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
+          ☁️ ไฟล์ขึ้น <b>Google Drive</b> (ตัวเดียวกับสลิปในระบบจ่ายเงิน) โฟลเดอร์
+          <code>สินค้าตัวอย่าง/&lt;ชื่อหมวด&gt;</code> — ในฐานข้อมูลเก็บแค่ลิงก์
+          จึง<b>ไม่กินโควตา Supabase</b> · รูปย่อให้อัตโนมัติก่อนอัป (กว้างไม่เกิน 1600px)</div>
+        <div class="muted" style="font-size:11.5px">ไฟล์อัปตอน<b>กดบันทึก</b>เท่านั้น — ปิดฟอร์มทิ้งจะไม่มีไฟล์ค้างใน Drive
+          · ถ้าอัปไฟล์ไม่ผ่าน <b>ระบบไม่บันทึกแถวนั้นเลย</b> กันไม่ให้มีรายการที่รูปหาย
+          <br>กดรูปในตารางเพื่อดูภาพใหญ่ · PDF ขึ้นเป็นปุ่ม 📄 กดเปิดแท็บใหม่</div></td></tr>
+    <tr><td><b>📥 Export Excel</b></td>
+      <td>ได้ <b>2 ชีต</b> — <b>สินค้าตัวอย่าง</b> (ทุกช่อง + ลิงก์รูป/หลักฐาน) และ <b>สรุปตามหมวด</b>
+        <div class="muted" style="font-size:11.5px">ออกตาม<b>ตัวกรองที่เลือกอยู่</b> · ท้ายชีตแรกมีแถวรวมแยกสกุลเงิน</div></td></tr>
+  </tbody></table>
+  <div class="hp-warn">⚠️ <b>ลบรายการแล้วกู้คืนไม่ได้</b> และ<b>ไฟล์ใน Google Drive ไม่ถูกลบตามไปด้วย</b>
+    — ถ้าลบผิด ไฟล์ยังอยู่ใน Drive โฟลเดอร์ของหมวดนั้น หยิบลิงก์กลับมาใส่ใหม่ได้</div>
+  <div class="hp-tip">💡 <b>แก้ชื่อหมวดแล้วรายการเก่าไม่เปลี่ยนตาม</b> — ตั้งใจให้เป็นแบบนี้
+    เพราะระบบเก็บ<b>ชื่อหมวด</b>ไว้ที่ตัวรายการ ประวัติย้อนหลังจึงนิ่ง ไม่ถูกเขียนทับเวลาใครไปแก้ชื่อหมวด
+    · ถ้าต้องการให้รายการเก่าเปลี่ยนด้วย ให้เปิดรายการนั้นแล้วเลือกหมวดใหม่</div>
+  <div class="hp-info">ℹ️ <b>ติดตั้ง:</b> รัน <code>sample_orders.sql</code> → รัน <code>portal_add_sample.sql</code>
+    → อัปโหลด <code>sample.html</code> + <code>index.html</code></div>
+</div>
+
 <div class="card sec" id="s8">
   <h2>⚠️ กับดักที่ต้องรู้ — รวมทุกระบบ</h2>
   <div class="sub-note">เรียงตามความเสียหายจริงที่เกิดขึ้นได้ — ข้อ 1–3 คือเรื่องที่ทำให้<b>ตัวเลขผิด</b>
@@ -2264,6 +2317,8 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
       <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
     <tr><td>📖 คู่มือ (หน้านี้)</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
       <td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
+    <tr><td>🧪 ทะเบียนสินค้าตัวอย่าง</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
     <tr><td>📕 ระบบจัดการเอกสาร PDF
         <div class="muted" style="font-size:10.5px">เว็บแยก · เปิดแท็บใหม่</div></td>
       <td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
@@ -2438,7 +2493,8 @@ const GROUPS=[
   {t:'🚢 นำเข้า & ต้นทุน', items:[
     {id:'s5', ic:'🚢', nm:'Shipment นำเข้า', fl:'cost.html · INV/PL · ภาษี · ใบวางบิลขนส่ง'},
     {id:'s6', ic:'💰', nm:'ต้นทุนสินค้า', fl:'costsku.html · Landed cost · KPI'},
-    {id:'sfreight', ic:'📐', nm:'ตรวจค่าขนส่ง ตปท.', fl:'freight.html · ขนาดกล่อง · ตรวจใบวางบิล'}]},
+    {id:'sfreight', ic:'📐', nm:'ตรวจค่าขนส่ง ตปท.', fl:'freight.html · ขนาดกล่อง · ตรวจใบวางบิล'},
+    {id:'ssample', ic:'🧪', nm:'ทะเบียนสินค้าตัวอย่าง', fl:'sample.html · รูป + หลักฐาน · สรุปแยกหมวด'}]},
   {t:'🛠️ อ้างอิง & ดูแลระบบ', items:[
     {id:'s8', ic:'⚠️', nm:'กับดักที่ต้องรู้', fl:'รวมทุกระบบ — อ่านก่อนลงมือจริง'},
     {id:'s9', ic:'🔑', nm:'สิทธิ์การใช้งาน', fl:'ใครเข้าอะไรได้ · แก้ไขอะไรได้'}]},
