@@ -731,6 +731,22 @@
   .app-tile[data-key="guide"]{--tile-accent:#3b6fb4}
   .app-tile[data-key="pdf"]{--tile-accent:#C4372E}
   .app-tile[data-key="sample"]{--tile-accent:#0E7C86}
+  .app-tile[data-key="daily"]{--tile-accent:#B4690E}
+  /* ⏰ เตือนทำรายงานประจำวัน — ขึ้นหลัง 17:00 */
+  .app-remind{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;vertical-align:middle;
+    color:#fff;background:#C62828;border-radius:6px;padding:1px 7px;
+    animation:remindPulse 1.8s ease-in-out infinite}
+  @keyframes remindPulse{0%,100%{opacity:1}50%{opacity:.62}}
+  .app-tile.remind{box-shadow:0 0 0 2px #C6282855, 0 14px 34px rgba(198,40,40,.16)}
+  #remindBar{display:none;gap:10px;align-items:center;flex-wrap:wrap;
+    background:#FDECEC;border:1px solid #F3B6B6;color:#8E1D1D;
+    border-radius:14px;padding:12px 16px;margin:0 0 18px;font-size:.95rem;font-weight:600;line-height:1.5}
+  #remindBar.on{display:flex}
+  #remindBar .go{background:#C62828;color:#fff;border:0;border-radius:9px;
+    padding:7px 14px;font-weight:700;cursor:pointer;font-family:inherit;font-size:.9rem}
+  #remindBar .go:hover{background:#a81f1f}
+  #remindBar .sm{font-weight:500;opacity:.85;font-size:.85rem}
+  @media(max-width:560px){ #remindBar{font-size:.86rem;padding:10px 12px} }
   /* ป้ายบอกว่าเป็นเว็บนอก เปิดแท็บใหม่เสมอ */
   .app-ext{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;vertical-align:middle;
     color:var(--tile-accent,#3b6fb4);border:1px solid currentColor;border-radius:6px;padding:1px 6px;opacity:.85}
@@ -1480,6 +1496,11 @@
       </div>
       <div class="section-hint">เลือกการ์ดเพื่อเริ่มทำงาน</div>
     </div>
+    <div id="remindBar" role="status">
+      <span>⏰ เลย 17:00 แล้ว — <b>อย่าลืมทำรายงานการทำงานประจำวันนะ</b></span>
+      <span class="sm">บันทึกงานที่ทำวันนี้ก่อนกลับบ้าน</span>
+      <button class="go" id="remindGo" type="button">📝 ไปบันทึกงานวันนี้</button>
+    </div>
     <div class="app-grid" id="appGrid"></div>
   </main>
 </div>
@@ -1522,6 +1543,10 @@ const APPS_FALLBACK = [
   /* 🚫 เอาการ์ด 💾 สำรองข้อมูล ออกจากหน้ารวมแล้ว (ขอมา)
         ไฟล์ backup.html ยังอยู่ เข้าตรง URL ได้ — แค่ไม่โชว์เป็นการ์ด
         อยากเอากลับ: เอาคอมเมนต์นี้ออก + รัน portal_hide_backup.sql แบบ SHOW */
+  /* 📝 บันทึกงานรายวัน — ต้องตรงกับ ALLOWED_ROLES ใน daily.html และ daily_can_use() ใน daily_setup.sql */
+  { key:'daily', icon:'📝', title:'บันทึกงานรายวัน',
+    desc:'ทีมพิมพ์งานที่ทำในแต่ละวัน — ดูย้อนหลัง · ดึงงานวันก่อนมาใช้ซ้ำ · Export Excel/PDF',
+    url:'daily.html', roles:['purchase','pr_manager','pr_exec','executive','shipping'] },
   { key:'sample', icon:'🧪', title:'ทะเบียนสินค้าตัวอย่าง',
     desc:'ขอ/สั่งซื้อสินค้าตัวอย่าง — เก็บรูป · หลักฐานการชำระ · สรุปค่าใช้จ่ายแยกหมวด',
     url:'sample.html', roles:['purchase','pr_manager','pr_exec','executive'] },
@@ -1557,6 +1582,45 @@ const ALLOWED = ['purchase','marketing','marketing_lead','pr_manager','pr_exec',
 /* เว็บนอก (URL เต็ม http/https) — เปิดแท็บใหม่เสมอ ไม่พาออกจากหน้ารวม
    เช่น ระบบจัดการเอกสาร PDF ที่อยู่คนละ repo */
 const isExtUrl = u => /^https?:\/\//i.test(String(u||''));
+
+/* ⏰ เตือนทำรายงานประจำวัน
+   กติกา: หลัง 17:00 จนถึงเที่ยงคืน เตือนทุกคนที่เห็นการ์ดนี้ (ไม่เช็กว่าบันทึกหรือยัง)
+   ★ อยากเลื่อนเวลา → แก้ REMIND_HOUR
+   ★ อยากไม่เตือนวันหยุด → เปลี่ยน REMIND_DAYS เป็น [1,2,3,4,5,6] (จ–ส) หรือ [1,2,3,4,5] (จ–ศ) */
+const REMIND_HOUR = 17;
+const REMIND_DAYS = [0,1,2,3,4,5,6];          // 0 = อาทิตย์
+const DAILY_KEY   = 'daily';
+function remindNow(){
+  const d = new Date();
+  return REMIND_DAYS.includes(d.getDay()) && d.getHours() >= REMIND_HOUR;
+}
+let REMIND_URL = '', remindTimer = null;
+function paintRemind(){
+  const on = !!REMIND_URL && remindNow();
+  const bar = $('remindBar'); if(bar) bar.classList.toggle('on', on);
+  const tile = document.querySelector('.app-tile[data-key="'+DAILY_KEY+'"]');
+  if(tile){
+    tile.classList.toggle('remind', on);
+    const nm = tile.querySelector('.app-name');
+    const old = nm && nm.querySelector('.app-remind');
+    if(on && nm && !old){
+      const b = document.createElement('span');
+      b.className = 'app-remind'; b.title = 'เลย 17:00 แล้ว — ยังไม่ได้ทำรายงานวันนี้ใช่ไหม';
+      b.textContent = '⏰ ถึงเวลาทำรายงาน';
+      nm.appendChild(b);
+    } else if(!on && old) old.remove();
+  }
+}
+function startRemind(apps){
+  const card = (apps||[]).find(a => a.key === DAILY_KEY);
+  REMIND_URL = card ? card.url : '';
+  const go = $('remindGo');
+  if(go) go.onclick = () => { if(REMIND_URL) window.location.href = REMIND_URL; };
+  paintRemind();
+  /* เปิดหน้ารวมค้างไว้ข้ามเวลา 17:00 → แถบขึ้นเองโดยไม่ต้องรีเฟรช */
+  clearInterval(remindTimer);
+  remindTimer = setInterval(paintRemind, 60000);
+}
 const isExecRole = r => r==='pr_exec' || r==='executive';   // ผู้บริหาร
 // 🔑 หัวหน้าจัดซื้อ + ผู้บริหาร = เห็นทุกระบบ ไม่ต้องไล่ใส่ทีละระบบใน portal_apps
 const seeAllRole = r => isExecRole(r) || r==='pr_manager';
@@ -1655,6 +1719,7 @@ async function showHub(session){
     : `<div class="empty-apps">ยังไม่มีระบบที่บทบาทนี้เข้าใช้งานได้<br>ติดต่อแอดมินเพื่อขอสิทธิ์เพิ่ม</div>`;
 
   $('systemCount').textContent = String(apps.length).padStart(2,'0');
+  startRemind(apps);
 
   // กดการ์ด = เข้าเว็บในแท็บเดิม · ยกเว้นเว็บนอก → เปิดแท็บใหม่ ไม่ทิ้งหน้ารวม
   document.querySelectorAll('.app-tile').forEach(t =>
