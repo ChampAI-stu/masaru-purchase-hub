@@ -138,6 +138,7 @@ tbody tr:hover{background:#F8FAFC}
         <select id="fCat" style="flex:0 1 190px" onchange="render()"><option value="">— ทุกหมวด —</option></select>
         <select id="fFac" style="flex:0 1 160px" onchange="render()"><option value="">— ทุกโรงงาน —</option></select>
         <select id="fResp" style="flex:0 1 160px" onchange="render()"><option value="">— ทุกผู้รับผิดชอบ —</option></select>
+        <select id="fFree" style="flex:0 1 165px" onchange="render()"><option value="">— ฟรี/จ่ายเงิน ทั้งหมด —</option><option value="paid">💰 เฉพาะที่จ่ายเงิน</option><option value="free">🎁 เฉพาะที่ได้ฟรี</option></select>
       </div>
       <div class="row" style="margin-bottom:12px">
         <button class="btn mini ghost" id="segM" onclick="setMode('month')">📅 รายเดือน</button>
@@ -209,15 +210,30 @@ tbody tr:hover{background:#F8FAFC}
     <div class="fld"><label>รายการ ★ <span class="muted" style="font-weight:400">— ใส่หลายบรรทัดได้</span></label>
       <textarea id="f_items" placeholder="1.ชุดคีมแหวนล็อก 7 นิ้ว (กล่องพลาสติก) ชุด 4 ชิ้น&#10;2.ชุดประแจหกเหลี่ยมบอลยาว 9 ชิ้น บรรจุกล่อง"></textarea></div>
     <div class="g3">
-      <div class="fld"><label>ยอดชำระ ★</label><input type="number" step="0.01" id="f_amt" placeholder="0.00"></div>
+      <div class="fld"><label>จำนวน (ชิ้น)</label>
+        <input type="number" step="1" id="f_qty" placeholder="เช่น 2" oninput="calcAmt()"></div>
+      <div class="fld"><label>ราคาต่อชิ้น</label>
+        <input type="number" step="0.0001" id="f_unit" placeholder="0.00" oninput="calcAmt()"></div>
       <div class="fld"><label>สกุลเงิน</label>
-        <select id="f_cur">
+        <select id="f_cur" onchange="calcAmt()">
           <option value="CNY">¥ CNY (หยวน)</option>
           <option value="THB">฿ THB (บาท)</option>
           <option value="USD">$ USD (ดอลลาร์)</option>
         </select></div>
+    </div>
+    <div class="g3">
+      <div class="fld"><label>ยอดชำระ ★ <span class="muted" style="font-weight:400">— คิดจาก จำนวน × ราคาต่อชิ้น ให้เอง</span></label>
+        <input type="number" step="0.01" id="f_amt" placeholder="0.00"
+               oninput="SM_TOUCHED=true;calcAmt()">
+        <div class="muted" id="f_amtHint" style="font-size:11.5px;margin-top:3px"></div></div>
       <div class="fld"><label>ผู้รับผิดชอบ</label>
         <input id="f_resp" list="respList" placeholder="เช่น มิ้น / ตอง"><datalist id="respList"></datalist></div>
+      <div class="fld"><label>ไม่มีค่าใช้จ่าย</label>
+        <label style="display:flex;align-items:center;gap:7px;border:1px solid #CBD5E1;border-radius:9px;
+                      padding:8px 10px;cursor:pointer;background:#FFFCF4;font-size:13px;font-weight:600">
+          <input type="checkbox" id="f_free" onchange="freeToggle()" style="width:auto;margin:0">
+          <span>🎁 ได้ฟรีจากโรงงาน</span></label>
+        <div class="muted" style="font-size:11.5px;margin-top:3px">ติ๊กแล้วยอดชำระ = 0 · ราคาต่อชิ้นยังกรอกไว้อ้างอิงได้</div></div>
     </div>
     <div class="fld"><label>หมายเหตุ</label><input id="f_note" placeholder="เว้นว่างได้"></div>
 
@@ -272,7 +288,7 @@ tbody tr:hover{background:#F8FAFC}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-01';
+const SM_VERSION='v01-02';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -371,7 +387,7 @@ function period(){
 }
 
 /* ═════════════════ โหลดข้อมูล ═════════════════ */
-const COLS='id,req_date,cat,items,factory,amount,currency,responsible,note,pics,proofs,created_by,created_at';
+const COLS='id,req_date,cat,items,factory,qty,unit_price,is_free,amount,currency,responsible,note,pics,proofs,created_by,created_at';
 async function load(){
   const P=period();
   $('tb').innerHTML='<tbody><tr><td class="empty">กำลังโหลด…</td></tr></tbody>';
@@ -428,11 +444,13 @@ function fillFilters(){
 /* ═════════════════ ตาราง ═════════════════ */
 function filtered(){
   const q=($('q').value||'').toLowerCase().trim();
-  const c=$('fCat').value, f=$('fFac').value, rp=$('fResp').value;
+  const c=$('fCat').value, f=$('fFac').value, rp=$('fResp').value, fr=$('fFree').value;
   return ROWS.filter(r=>{
     if(c&&(r.cat||'')!==c)return false;
     if(f&&(r.factory||'')!==f)return false;
     if(rp&&(r.responsible||'')!==rp)return false;
+    if(fr==='free'&&!r.is_free)return false;
+    if(fr==='paid'&&r.is_free)return false;
     if(!q)return true;
     return ((r.items||'')+' '+(r.factory||'')+' '+(r.responsible||'')+' '+(r.note||'')+' '+(r.cat||''))
       .toLowerCase().includes(q);
@@ -465,18 +483,28 @@ function render(){
   const rows=filtered();
   /* ── KPI ── */
   const byCur={};
-  rows.forEach(r=>{const c=String(r.currency||'CNY').toUpperCase();byCur[c]=(byCur[c]||0)+num(r.amount);});
+  rows.filter(r=>!r.is_free).forEach(r=>{const c=String(r.currency||'CNY').toUpperCase();
+    byCur[c]=(byCur[c]||0)+num(r.amount);});
   const curTxt=Object.keys(byCur).sort().map(c=>curSym(c)+' '+money2(byCur[c])).join(' · ')||'—';
   const nFac=new Set(rows.map(r=>r.factory).filter(Boolean)).size;
   const nCat=new Set(rows.map(r=>r.cat).filter(Boolean)).size;
+  const free=rows.filter(r=>r.is_free);
+  /* มูลค่าของที่ได้ฟรี — แยกสกุลเงิน ไม่เอาไปรวมกับยอดที่จ่ายจริง */
+  const freeVal={};
+  free.forEach(r=>{const c=String(r.currency||'CNY').toUpperCase();
+    freeVal[c]=(freeVal[c]||0)+num(r.qty)*num(r.unit_price);});
+  const freeTxt=Object.keys(freeVal).filter(c=>freeVal[c]).sort()
+    .map(c=>curSym(c)+' '+money2(freeVal[c])).join(' · ');
   const P=period();
   $('kpi').innerHTML=
      '<div class="kpi"><div class="lbl">📋 จำนวนรายการ</div><div class="val">'+money(rows.length)+'</div>'
        +'<div class="sub2">'+esc(P.head)+'</div></div>'
     +'<div class="kpi gold"><div class="lbl">💰 ยอดชำระรวม</div><div class="val" style="font-size:19px">'+esc(curTxt)+'</div>'
        +'<div class="sub2">แยกตามสกุลเงิน ไม่แปลงค่า</div></div>'
-    +'<div class="kpi green"><div class="lbl">🏭 โรงงานที่สั่ง</div><div class="val">'+nFac+'</div></div>'
-    +'<div class="kpi red"><div class="lbl">🏷️ หมวดที่ใช้</div><div class="val">'+nCat+'</div></div>';
+    +'<div class="kpi green"><div class="lbl">🎁 ได้ฟรี (ไม่มีค่าใช้จ่าย)</div>'
+       +'<div class="val">'+free.length+' <span style="font-size:13px;font-weight:600">รายการ</span></div>'
+       +'<div class="sub2">'+(freeTxt?('มูลค่าอ้างอิง '+esc(freeTxt)):'—')+'</div></div>'
+    +'<div class="kpi red"><div class="lbl">🏭 โรงงาน / 🏷️ หมวด</div><div class="val">'+nFac+' / '+nCat+'</div></div>';
 
   if(!rows.length){
     $('tb').innerHTML='<tbody><tr><td class="empty">ยังไม่มีรายการในช่วงนี้'
@@ -485,6 +513,7 @@ function render(){
   }
   let h='<thead><tr><th style="width:92px">วัน/เดือน/ปี</th><th style="width:150px">ประเภท</th>'
     +'<th>รายการ</th><th style="width:118px">รูปสินค้า</th><th style="width:110px">โรงงาน</th>'
+    +'<th class="num" style="width:62px">จำนวน</th><th class="num" style="width:96px">ราคา/ชิ้น</th>'
     +'<th class="num" style="width:120px">ยอดชำระ</th><th style="width:110px">ผู้รับผิดชอบ</th>'
     +'<th style="width:118px">หลักฐานชำระ</th>'+(canEdit?'<th style="width:90px"></th>':'')+'</tr></thead><tbody>';
   rows.forEach(r=>{
@@ -496,7 +525,15 @@ function render(){
         +(r.note?'<div class="muted" style="font-size:11px;margin-top:3px">📝 '+esc(r.note)+'</div>':'')+'</td>'
       +'<td>'+picCell(r.pics)+'</td>'
       +'<td>'+esc(r.factory||'—')+'</td>'
-      +'<td class="num"><b>'+money2(r.amount)+'</b> '+esc(curSym(r.currency))+'</td>'
+      +'<td class="num">'+(r.qty!=null?money(r.qty):'<span class="muted">—</span>')+'</td>'
+      +'<td class="num">'+(r.unit_price!=null?money2(r.unit_price)+' '+esc(curSym(r.currency))
+                                             :'<span class="muted">—</span>')+'</td>'
+      +'<td class="num">'+(r.is_free
+          ? '<span class="cat-chip" style="background:#0E7C86" title="ได้ฟรีจากโรงงาน — ไม่นับเป็นค่าใช้จ่าย">🎁 ฟรี</span>'
+            +(num(r.qty)*num(r.unit_price)
+               ? '<div class="muted" style="font-size:10.5px;margin-top:2px">มูลค่า '
+                 +money2(num(r.qty)*num(r.unit_price))+'</div>' : '')
+          : '<b>'+money2(r.amount)+'</b> '+esc(curSym(r.currency)))+'</td>'
       +'<td>'+esc(r.responsible||'—')+'</td>'
       +'<td>'+picCell(r.proofs)+'</td>'
       +(canEdit?'<td style="white-space:nowrap">'
@@ -505,7 +542,9 @@ function render(){
       +'</tr>';
   });
   /* แถวรวมท้ายตาราง — แยกสกุลเงิน */
-  h+='<tr style="background:#FFF7DF;font-weight:800"><td colspan="5">รวม '+rows.length+' รายการ</td>'
+  const nFree=rows.filter(r=>r.is_free).length;
+  h+='<tr style="background:#FFF7DF;font-weight:800"><td colspan="7">รวม '+rows.length+' รายการ'
+    +(nFree?(' <span class="cat-chip" style="background:#0E7C86">🎁 ได้ฟรี '+nFree+'</span>'):'')+'</td>'
     +'<td class="num" colspan="'+(canEdit?4:3)+'">'+esc(curTxt)+'</td></tr>';
   $('tb').innerHTML=h+'</tbody>';
 }
@@ -516,8 +555,12 @@ function sumBy(rows,key){
   rows.forEach(r=>{
     const k=(key==='month')?String(r.req_date||'').slice(0,7):((r[key]||'(ไม่ระบุ)'));
     const c=String(r.currency||'CNY').toUpperCase();
-    if(!g[k])g[k]={n:0,cur:{}};
-    g[k].n++; g[k].cur[c]=(g[k].cur[c]||0)+num(r.amount);
+    if(!g[k])g[k]={n:0,cur:{},free:0,fval:{}};
+    g[k].n++;
+    /* ★ ของที่ได้ฟรีนับจำนวนแยก ไม่เอายอดไปปนกับเงินที่จ่ายจริง
+          แต่เก็บ "มูลค่าอ้างอิง" (จำนวน × ราคาต่อชิ้น) ไว้ให้เห็นว่าได้ของมามูลค่าเท่าไหร่ */
+    if(r.is_free){ g[k].free++; g[k].fval[c]=(g[k].fval[c]||0)+num(r.qty)*num(r.unit_price); }
+    else g[k].cur[c]=(g[k].cur[c]||0)+num(r.amount);
   });
   return g;
 }
@@ -527,21 +570,33 @@ function sumTable(title,g,sortKey){
   keys.sort(sortKey==='key'?((a,b)=>a.localeCompare(b))
     :((a,b)=>{const s=o=>Object.values(o.cur).reduce((x,y)=>x+y,0);return s(g[b])-s(g[a]);}));
   const curs=[...new Set(keys.flatMap(k=>Object.keys(g[k].cur)))].sort();
+  const anyFree=keys.some(k=>g[k].free>0);
+  const fcurs=[...new Set(keys.flatMap(k=>Object.keys(g[k].fval).filter(c=>g[k].fval[c])))].sort();
   let h='<h3>'+title+'</h3><div class="scroll" style="max-height:none"><table><thead><tr><th>'+title.replace(/^[^ ]+ /,'')
     +'</th><th class="num" style="width:90px">รายการ</th>'
     +curs.map(c=>'<th class="num" style="width:150px">'+esc(curSym(c))+' '+esc(c)+'</th>').join('')
+    +(anyFree?('<th class="num" style="width:82px" title="จำนวนรายการที่ได้ฟรี ไม่มีค่าใช้จ่าย">🎁 ฟรี</th>'
+      +fcurs.map(c=>'<th class="num" style="width:140px" title="มูลค่าอ้างอิงของที่ได้ฟรี — ไม่ใช่เงินที่จ่าย">มูลค่าฟรี '+esc(curSym(c))+'</th>').join('')):'')
     +'</tr></thead><tbody>';
-  const tot={n:0,cur:{}};
+  const tot={n:0,cur:{},free:0,fval:{}};
   keys.forEach(k=>{
-    tot.n+=g[k].n;
+    tot.n+=g[k].n; tot.free+=g[k].free;
     h+='<tr><td>'+(title.includes('หมวด')&&k!=='(ไม่ระบุ)'
         ?'<span class="cat-chip" style="background:'+esc(catColor(k))+'">'+esc(k)+'</span>'
         :'<b>'+esc(k)+'</b>')+'</td><td class="num">'+g[k].n+'</td>'
       +curs.map(c=>{const v=g[k].cur[c]||0;tot.cur[c]=(tot.cur[c]||0)+v;
-        return '<td class="num">'+(v?money2(v):'<span class="muted">—</span>')+'</td>';}).join('')+'</tr>';
+        return '<td class="num">'+(v?money2(v):'<span class="muted">—</span>')+'</td>';}).join('')
+      +(anyFree?(('<td class="num">'+(g[k].free?('<b style="color:#0E7C86">'+g[k].free+'</b>')
+                                              :'<span class="muted">—</span>')+'</td>')
+        +fcurs.map(c=>{const v=g[k].fval[c]||0;tot.fval[c]=(tot.fval[c]||0)+v;
+          return '<td class="num" style="color:#0E7C86">'+(v?money2(v):'<span class="muted">—</span>')+'</td>';}).join('')):'')
+      +'</tr>';
   });
   h+='<tr style="background:#FFF7DF;font-weight:800"><td>รวมทั้งหมด</td><td class="num">'+tot.n+'</td>'
-    +curs.map(c=>'<td class="num">'+money2(tot.cur[c]||0)+'</td>').join('')+'</tr>';
+    +curs.map(c=>'<td class="num">'+money2(tot.cur[c]||0)+'</td>').join('')
+    +(anyFree?(('<td class="num">'+tot.free+'</td>')
+      +fcurs.map(c=>'<td class="num">'+money2(tot.fval[c]||0)+'</td>').join('')):'')
+    +'</tr>';
   return h+'</tbody></table></div>';
 }
 function renderSum(){
@@ -653,7 +708,39 @@ function shrink(file,max){
 }
 
 /* ═════════════════ ฟอร์มรายการ ═════════════════ */
-let EDIT_ID=null, PICS=[], PROOFS=[];
+let EDIT_ID=null, PICS=[], PROOFS=[], SM_TOUCHED=false;
+
+/* ยอดชำระ = จำนวน × ราคาต่อชิ้น — คิดให้จนกว่าจะพิมพ์ทับ
+   (กติกาเดียวกับ "ยอดเต็มบิล" ในระบบวางแผนจ่ายเงิน คนใช้คุ้นอยู่แล้ว)
+   ★ ติ๊ก 🎁 ได้ฟรี → ยอดเป็น 0 และล็อกช่องไว้ แต่ราคาต่อชิ้นยังกรอกได้
+     เพราะเป็น "มูลค่าอ้างอิง" ของของที่ได้มาฟรี ไม่ใช่เงินที่จ่ายจริง */
+function calcAmt(){
+  const free=$('f_free').checked;
+  const q=num($('f_qty').value), u=num($('f_unit').value), sum=q*u;
+  const hint=$('f_amtHint');
+  if(free){
+    $('f_amt').value='0';
+    hint.style.color='#0E7C86';
+    hint.textContent=sum?('🎁 ได้ฟรี — มูลค่าอ้างอิง '+money2(sum)+' '+curSym($('f_cur').value)
+                          +' (ไม่นับเป็นค่าใช้จ่าย)')
+                       :'🎁 ได้ฟรี — ยอดชำระ 0';
+    return;
+  }
+  if(sum&&!SM_TOUCHED)$('f_amt').value=+sum.toFixed(2);
+  if(!sum){ hint.textContent=''; hint.style.color=''; return; }
+  const diff=+((num($('f_amt').value))-sum).toFixed(2);
+  if(Math.abs(diff)<0.005){ hint.style.color='';
+    hint.textContent='= จำนวน × ราคาต่อชิ้น = '+money2(sum)+' '+curSym($('f_cur').value); }
+  else{ hint.style.color='#B45309';
+    hint.textContent='⚠️ จำนวน × ราคาต่อชิ้น = '+money2(sum)+' — ต่าง '+(diff>0?'+':'')+money2(diff)
+                     +' (มีส่วนลด/ค่าส่ง? ไม่บล็อก)'; }
+}
+function freeToggle(){
+  const free=$('f_free').checked;
+  $('f_amt').disabled=free;
+  if(free)SM_TOUCHED=false;
+  calcAmt();
+}
 function openForm(id){
   if(!canEdit)return;
   const r=id?ROWS.find(x=>String(x.id)===String(id)):null;
@@ -663,13 +750,22 @@ function openForm(id){
   $('f_date').value=(r&&String(r.req_date||'').slice(0,10))||todayStr();
   $('f_items').value=(r&&r.items)||'';
   $('f_fac').value=(r&&r.factory)||'';
+  $('f_qty').value=(r&&r.qty!=null)?r.qty:'';
+  $('f_unit').value=(r&&r.unit_price!=null)?r.unit_price:'';
+  $('f_free').checked=!!(r&&r.is_free);
   $('f_amt').value=(r&&r.amount!=null)?r.amount:'';
   $('f_cur').value=(r&&r.currency)||'CNY';
+  /* ยอดถือว่า "คนตั้งเอง" เฉพาะตอนไม่ตรงกับ จำนวน × ราคาต่อชิ้น (เช่น มีส่วนลด) */
+  {
+    const sum0=num(r&&r.qty)*num(r&&r.unit_price), tot0=num(r&&r.amount);
+    SM_TOUCHED = !!(tot0 && sum0 && Math.abs(tot0-sum0)>=0.005);
+  }
   $('f_resp').value=(r&&r.responsible)||'';
   $('f_note').value=(r&&r.note)||'';
   PICS=arr(r&&r.pics).slice(); PROOFS=arr(r&&r.proofs).slice();
   fillCatSelects(); $('f_cat').value=(r&&r.cat)||'';
   $('upStat').textContent=''; $('lnkPic').value=''; $('lnkPrf').value='';
+  freeToggle();
   drawThumbs();
   $('formBg').style.display='flex';
 }
@@ -760,14 +856,20 @@ async function save(){
   if(!d)return alert('ใส่วันที่ก่อน');
   if(!cat)return alert('เลือกประเภทก่อน');
   if(!items)return alert('ใส่รายการก่อน');
-  if($('f_amt').value===''||isNaN(parseFloat($('f_amt').value)))return alert('ใส่ยอดชำระก่อน');
+  const free=$('f_free').checked;
+  /* ได้ฟรี = ไม่ต้องกรอกยอด (ระบบใส่ 0 ให้) · ไม่ได้ฟรีต้องกรอก */
+  if(!free&&($('f_amt').value===''||isNaN(parseFloat($('f_amt').value))))
+    return alert('ใส่ยอดชำระก่อน\n\nถ้าของชิ้นนี้ได้ฟรี ไม่มีค่าใช้จ่าย — ติ๊ก 🎁 ได้ฟรีจากโรงงาน');
 
   const btn=$('saveBtn'); btn.disabled=true; const bt=btn.textContent; btn.textContent='กำลังบันทึก…';
   try{
     /* อัปไฟล์ให้ครบก่อน — ถ้าอัปไม่ผ่าน จะไม่เขียนฐานข้อมูลเลย ไม่ให้มีแถวที่รูปหาย */
     if(!await uploadPending(cat))return;
     const rec={req_date:d, cat, items, factory:($('f_fac').value||'').trim()||null,
-      amount:num($('f_amt').value), currency:$('f_cur').value||'CNY',
+      qty:($('f_qty').value===''?null:num($('f_qty').value)),
+      unit_price:($('f_unit').value===''?null:num($('f_unit').value)),
+      is_free:free,
+      amount:free?0:num($('f_amt').value), currency:$('f_cur').value||'CNY',
       responsible:($('f_resp').value||'').trim()||null,
       note:($('f_note').value||'').trim()||null,
       pics:clean(PICS), proofs:clean(PROOFS)};
@@ -798,26 +900,41 @@ async function del(id){
 function exportXls(){
   const rows=filtered(); if(!rows.length)return toast('ไม่มีรายการให้ export');
   const P=period();
-  const aoa=[['วัน/เดือน/ปี','ประเภท','รายการ','โรงงาน','ยอดชำระ','สกุลเงิน','ผู้รับผิดชอบ',
+  const aoa=[['วัน/เดือน/ปี','ประเภท','รายการ','โรงงาน','จำนวน','ราคาต่อชิ้น','ได้ฟรี',
+              'ยอดชำระ','มูลค่าอ้างอิง (ของฟรี)','สกุลเงิน','ผู้รับผิดชอบ',
               'หมายเหตุ','จำนวนรูปสินค้า','จำนวนหลักฐาน','ลิงก์รูปสินค้า','ลิงก์หลักฐาน','บันทึกโดย']];
   rows.forEach(r=>aoa.push([String(r.req_date||'').slice(0,10), r.cat||'', r.items||'', r.factory||'',
-    num(r.amount), r.currency||'', r.responsible||'', r.note||'',
+    (r.qty==null?'':num(r.qty)), (r.unit_price==null?'':num(r.unit_price)),
+    r.is_free?'ฟรี':'',
+    num(r.amount), r.is_free?(num(r.qty)*num(r.unit_price)||''):'',
+    r.currency||'', r.responsible||'', r.note||'',
     arr(r.pics).length, arr(r.proofs).length,
     arr(r.pics).map(p=>p.url).filter(Boolean).join(' , '),
     arr(r.proofs).map(p=>p.url).filter(Boolean).join(' , '), r.created_by||'']));
-  const byCur={}; rows.forEach(r=>{const c=String(r.currency||'CNY').toUpperCase();
+  const byCur={}; rows.filter(r=>!r.is_free).forEach(r=>{const c=String(r.currency||'CNY').toUpperCase();
     byCur[c]=(byCur[c]||0)+num(r.amount);});
   aoa.push([]);
-  Object.keys(byCur).sort().forEach(c=>aoa.push(['รวม '+c,'','','',byCur[c],c]));
+  Object.keys(byCur).sort().forEach(c=>aoa.push(['รวมที่จ่ายจริง '+c,'','','','','','',byCur[c],'',c]));
+  /* ของที่ได้ฟรีสรุปแยกบรรทัด ไม่ให้คนอ่านเข้าใจผิดว่าเป็นเงินที่จ่าย */
+  const fv={}; let nf=0;
+  rows.filter(r=>r.is_free).forEach(r=>{nf++;const c=String(r.currency||'CNY').toUpperCase();
+    fv[c]=(fv[c]||0)+num(r.qty)*num(r.unit_price);});
+  if(nf){
+    aoa.push(['🎁 ได้ฟรี (ไม่มีค่าใช้จ่าย)','','','','','',nf]);
+    Object.keys(fv).filter(c=>fv[c]).sort().forEach(c=>
+      aoa.push(['มูลค่าอ้างอิงของฟรี '+c,'','','','','','','',fv[c],c]));
+  }
   const ws=XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols']=[{wch:12},{wch:22},{wch:52},{wch:14},{wch:13},{wch:9},{wch:14},{wch:24},
+  ws['!cols']=[{wch:12},{wch:22},{wch:52},{wch:14},{wch:9},{wch:12},{wch:8},
+               {wch:13},{wch:19},{wch:9},{wch:14},{wch:24},
                {wch:12},{wch:12},{wch:40},{wch:40},{wch:22}];
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'สินค้าตัวอย่าง');
   /* ชีตที่ 2 — สรุปตามหมวด ให้เอาไปแปะรายงานได้ตรง ๆ */
   const g=sumBy(rows,'cat'), curs=[...new Set(Object.keys(g).flatMap(k=>Object.keys(g[k].cur)))].sort();
-  const a2=[['หมวดหมู่','จำนวนรายการ'].concat(curs)];
-  Object.keys(g).forEach(k=>a2.push([k,g[k].n].concat(curs.map(c=>g[k].cur[c]||0))));
-  const ws2=XLSX.utils.aoa_to_sheet(a2); ws2['!cols']=[{wch:26},{wch:14}].concat(curs.map(()=>({wch:15})));
+  const a2=[['หมวดหมู่','จำนวนรายการ'].concat(curs).concat(['ได้ฟรี (รายการ)'])];
+  Object.keys(g).forEach(k=>a2.push([k,g[k].n].concat(curs.map(c=>g[k].cur[c]||0)).concat([g[k].free||0])));
+  const ws2=XLSX.utils.aoa_to_sheet(a2);
+  ws2['!cols']=[{wch:26},{wch:14}].concat(curs.map(()=>({wch:15}))).concat([{wch:15}]);
   XLSX.utils.book_append_sheet(wb,ws2,'สรุปตามหมวด');
   XLSX.writeFile(wb,'สินค้าตัวอย่าง_'+(P.from||'ทั้งหมด')+'.xlsx');
 }
