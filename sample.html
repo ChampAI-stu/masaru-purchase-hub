@@ -88,6 +88,48 @@ tbody tr:hover{background:#F8FAFC}
   width:21px;height:21px;cursor:pointer;font-size:12px;line-height:1}
 .thumb .nm{font-size:9.5px;color:var(--muted);text-align:center;margin-top:2px;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
+/* ══════════ รายงาน — แท่งแนวนอนอ่านง่าย ══════════
+   กติกาที่ยึด (จาก dataviz):
+   · งานของข้อมูลคือ "เทียบขนาด" → แท่ง เรียงมาก→น้อย
+   · หมวด/โรงงาน/คน ไม่มีลำดับตามธรรมชาติ → ใช้ "สีเดียวทุกแท่ง"
+     (ไล่สีเข้ม-อ่อนตามค่า = ซ้ำกับความยาวแท่ง และอ่านผิดง่าย)
+   · แท่งบางไม่เกิน 24px · ปลายแท่งมน 4px โคนแท่งตรง · เส้นกริดจาง
+   · ตัวหนังสือใช้สีหมึก ไม่ใช่สีแท่ง · มีปุ่มสลับดูเป็นตารางทุกบล็อก */
+.rp-sec{margin:0 0 26px}
+.rp-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 10px}
+.rp-h .t{font-size:14.5px;font-weight:800}
+.rp-h .s{font-size:11.5px;color:var(--muted)}
+.rp-rows{display:flex;flex-direction:column;gap:9px}
+.rp-row{display:grid;grid-template-columns:minmax(120px,26%) 1fr auto;gap:12px;align-items:center}
+.rp-lb{font-size:12.5px;font-weight:600;line-height:1.35;word-break:break-word}
+.rp-lb .sub{display:block;font-size:11px;color:var(--muted);font-weight:400}
+.rp-track{background:#EEF2F7;border-radius:5px;height:18px;position:relative;overflow:hidden}
+.rp-bar{height:18px;background:#0E7C86;border-radius:0 4px 4px 0;min-width:2px}
+.rp-val{font-size:12.5px;font-weight:700;white-space:nowrap;text-align:right;min-width:104px}
+.rp-val .pc{display:block;font-size:10.5px;color:var(--muted);font-weight:600}
+.rp-free{font-size:11px;color:#0E7C86;font-weight:700;white-space:nowrap}
+.rp-tot{display:flex;gap:18px;flex-wrap:wrap;background:#F7F9FC;border:1px solid var(--line);
+  border-radius:10px;padding:9px 13px;margin-top:10px;font-size:12.5px}
+.rp-tot b{font-size:14px}
+.rp-cur{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.rp-cur button{border:1px solid #CBD5E1;background:#fff;border-radius:20px;padding:5px 13px;
+  font-size:12.5px;font-weight:700;cursor:pointer;color:#475569}
+.rp-cur button.on{background:#0E7C86;border-color:#0E7C86;color:#fff}
+.hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px}
+.hero .b{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.hero .b.main{background:#0E7C86;border-color:#0E7C86;color:#fff}
+.hero .k{font-size:11.5px;font-weight:700;opacity:.75}
+.hero .v{font-size:27px;font-weight:800;line-height:1.1;margin-top:3px}
+.hero .b.main .v{font-size:30px}
+.hero .n{font-size:11.5px;margin-top:3px;opacity:.75}
+@media print{
+  .topbar,.tabs,#tab-list,#tab-cat,.rp-cur,.rp-tbtn,#rpPrint{display:none !important}
+  body{background:#fff}
+  .card{border:0;padding:0}
+  .rp-sec{break-inside:avoid;page-break-inside:avoid}
+  .hero .b.main{background:#fff !important;color:#1A2942 !important;border:2px solid #0E7C86 !important}
+  .rp-bar{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+}
 .sw-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin:4px 0 14px}
 .sw{height:42px;border-radius:10px;border:2px solid transparent;cursor:pointer;position:relative;
   box-shadow:0 1px 3px #0002}
@@ -129,7 +171,7 @@ tbody tr:hover{background:#F8FAFC}
 <div id="app" style="display:none">
 <div class="tabs">
   <div class="tab on" data-t="list" onclick="goTab('list')">📋 รายการสินค้าตัวอย่าง</div>
-  <div class="tab" data-t="sum" onclick="goTab('sum')">📊 สรุปค่าใช้จ่าย</div>
+  <div class="tab" data-t="sum" onclick="goTab('sum')">📊 รายงานค่าใช้จ่าย</div>
   <div class="tab" data-t="cat" onclick="goTab('cat')">🏷️ หมวดหมู่</div>
 </div>
 
@@ -175,9 +217,13 @@ tbody tr:hover{background:#F8FAFC}
   <!-- ============ TAB 2: สรุป ============ -->
   <div id="tab-sum" style="display:none">
     <div class="card">
-      <h2 id="sumHead">📊 สรุปค่าใช้จ่ายสินค้าตัวอย่าง</h2>
-      <div class="muted" style="font-size:12px;margin-bottom:12px">
-        ใช้ช่วงวันที่เดียวกับแท็บรายการ — เปลี่ยนช่วงได้ที่แท็บ 📋
+      <div class="row" style="margin-bottom:4px">
+        <h2 id="sumHead" style="margin:0;border:0;padding:0;flex:1 1 auto">📊 รายงานค่าใช้จ่ายสินค้าตัวอย่าง</h2>
+        <button class="btn mini ghost" id="rpPrint" onclick="window.print()"
+          title="พิมพ์เฉพาะรายงาน ไม่เอาเมนู/ตัวกรอง">🖨️ พิมพ์ / PDF</button>
+      </div>
+      <div class="muted" style="font-size:12px;margin:8px 0 14px">
+        ใช้ช่วงวันที่และตัวกรองเดียวกับแท็บ 📋 รายการ — เปลี่ยนช่วงได้ที่แท็บนั้น
       </div>
       <div id="sumBody"></div>
     </div>
@@ -323,7 +369,7 @@ tbody tr:hover{background:#F8FAFC}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-04';
+const SM_VERSION='v01-05';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -655,51 +701,152 @@ function sumBy(rows,key){
   });
   return g;
 }
-function sumTable(title,g,sortKey){
-  const keys=Object.keys(g);
-  if(!keys.length)return '';
-  keys.sort(sortKey==='key'?((a,b)=>a.localeCompare(b))
-    :((a,b)=>{const s=o=>Object.values(o.cur).reduce((x,y)=>x+y,0);return s(g[b])-s(g[a]);}));
+
+/* สกุลเงินที่รายงานกำลังโฟกัส — เทียบความยาวแท่งข้ามสกุลไม่ได้ ต้องเลือกทีละสกุล */
+let RP_CUR='';
+function rpCurList(rows){
+  const t={};
+  rows.forEach(r=>{const c=String(r.currency||'CNY').toUpperCase();
+    t[c]=(t[c]||0)+(r.is_free?0:num(r.amount));});
+  return Object.keys(t).sort((a,b)=>t[b]-t[a]);
+}
+function rpSetCur(c){ RP_CUR=c; renderSum(); }
+function rpToggle(id){
+  const el=$(id); if(!el)return;
+  const on=el.style.display==='none';
+  el.style.display=on?'':'none';
+  const b=$(id+'_b'); if(b)b.textContent=on?'📊 ดูเป็นแท่ง':'📋 ดูเป็นตาราง';
+  const c=$(id+'_c'); if(c)c.style.display=on?'none':'';
+}
+
+/* ── บล็อกรายงาน 1 มุม: แท่งแนวนอน + ตารางพับไว้ ──
+   คืนค่าเป็น HTML · sortKey='key' = เรียงตามชื่อ (ใช้กับ "ตามเดือน" ที่ต้องเรียงเวลา) */
+let RP_SEQ=0;
+function rpBlock(title,note,g,sortKey,cur){
+  const keys=Object.keys(g); if(!keys.length)return '';
+  const val=k=>(g[k].cur[cur]||0);
+  keys.sort(sortKey==='key'?((a,b)=>a.localeCompare(b)):((a,b)=>val(b)-val(a)||g[b].n-g[a].n));
+  const tot=keys.reduce((a,k)=>a+val(k),0);
+  const totN=keys.reduce((a,k)=>a+g[k].n,0);
+  const totF=keys.reduce((a,k)=>a+g[k].free,0);
+  const max=Math.max.apply(null,keys.map(val).concat([0]))||1;
+  const id='rp'+(++RP_SEQ);
+
+  /* เกิน 8 แถวเริ่มอ่านยาก → พับที่เหลือเป็น "อื่น ๆ" (ดูครบได้ในตาราง) */
+  let show=keys, folded=null;
+  if(keys.length>8&&sortKey!=='key'){
+    show=keys.slice(0,8);
+    const rest=keys.slice(8);
+    folded={n:rest.reduce((a,k)=>a+g[k].n,0), v:rest.reduce((a,k)=>a+val(k),0), c:rest.length};
+  }
+
+  let bars='<div class="rp-rows">';
+  show.forEach(function(k){
+    const v=val(k), pc=tot?Math.round(v/tot*100):0;
+    const nm=(k.indexOf(' › ')>0)
+      ? (esc(k.split(' › ')[1])+'<span class="sub">'+esc(k.split(' › ')[0])+'</span>')
+      : esc(k);
+    bars+='<div class="rp-row">'
+      +'<div class="rp-lb">'+nm+'<span class="sub">'+g[k].n+' รายการ'
+        +(g[k].free?(' · <span class="rp-free">🎁 ฟรี '+g[k].free+'</span>'):'')+'</span></div>'
+      +'<div class="rp-track"><div class="rp-bar" style="width:'+(v>0?Math.max(2,v/max*100):0)+'%"></div></div>'
+      +'<div class="rp-val">'+(v?money2(v):'<span class="muted">—</span>')
+        +'<span class="pc">'+(v?(pc+'%'):'ไม่มีค่าใช้จ่าย')+'</span></div>'
+      +'</div>';
+  });
+  if(folded)bars+='<div class="rp-row"><div class="rp-lb muted">อื่น ๆ อีก '+folded.c+' รายชื่อ'
+    +'<span class="sub">'+folded.n+' รายการ</span></div>'
+    +'<div class="rp-track"><div class="rp-bar" style="background:#94A3B8;width:'
+      +(folded.v>0?Math.max(2,folded.v/max*100):0)+'%"></div></div>'
+    +'<div class="rp-val">'+(folded.v?money2(folded.v):'—')
+    +'<span class="pc">'+(tot?Math.round(folded.v/tot*100):0)+'%</span></div></div>';
+  bars+='</div>';
+
+  /* ตารางตัวเลขครบทุกสกุล — เปิดดูได้ ไม่ได้ตัดข้อมูลทิ้ง */
   const curs=[...new Set(keys.flatMap(k=>Object.keys(g[k].cur)))].sort();
-  const anyFree=keys.some(k=>g[k].free>0);
   const fcurs=[...new Set(keys.flatMap(k=>Object.keys(g[k].fval).filter(c=>g[k].fval[c])))].sort();
-  let h='<h3>'+title+'</h3><div class="scroll" style="max-height:none"><table><thead><tr><th>'+title.replace(/^[^ ]+ /,'')
-    +'</th><th class="num" style="width:90px">รายการ</th>'
-    +curs.map(c=>'<th class="num" style="width:150px">'+esc(curSym(c))+' '+esc(c)+'</th>').join('')
-    +(anyFree?('<th class="num" style="width:82px" title="จำนวนรายการที่ได้ฟรี ไม่มีค่าใช้จ่าย">🎁 ฟรี</th>'
-      +fcurs.map(c=>'<th class="num" style="width:140px" title="มูลค่าอ้างอิงของที่ได้ฟรี — ไม่ใช่เงินที่จ่าย">มูลค่าฟรี '+esc(curSym(c))+'</th>').join('')):'')
+  let tb='<table><thead><tr><th>รายชื่อ</th><th class="num" style="width:86px">รายการ</th>'
+    +curs.map(c=>'<th class="num" style="width:140px">'+esc(curSym(c))+' '+esc(c)+'</th>').join('')
+    +(totF?('<th class="num" style="width:78px">🎁 ฟรี</th>'
+      +fcurs.map(c=>'<th class="num" style="width:130px">มูลค่าฟรี '+esc(curSym(c))+'</th>').join('')):'')
     +'</tr></thead><tbody>';
-  const tot={n:0,cur:{},free:0,fval:{}};
-  keys.forEach(k=>{
-    tot.n+=g[k].n; tot.free+=g[k].free;
-    h+='<tr><td>'+(title.includes('หมวด')&&k!=='(ไม่ระบุ)'
-        ?'<span class="cat-chip" style="background:'+esc(catColor(k))+'">'+esc(k)+'</span>'
-        :'<b>'+esc(k)+'</b>')+'</td><td class="num">'+g[k].n+'</td>'
-      +curs.map(c=>{const v=g[k].cur[c]||0;tot.cur[c]=(tot.cur[c]||0)+v;
+  const tt={cur:{},fval:{}};
+  keys.forEach(function(k){
+    tb+='<tr><td>'+esc(k)+'</td><td class="num">'+g[k].n+'</td>'
+      +curs.map(c=>{const v=g[k].cur[c]||0;tt.cur[c]=(tt.cur[c]||0)+v;
         return '<td class="num">'+(v?money2(v):'<span class="muted">—</span>')+'</td>';}).join('')
-      +(anyFree?(('<td class="num">'+(g[k].free?('<b style="color:#0E7C86">'+g[k].free+'</b>')
-                                              :'<span class="muted">—</span>')+'</td>')
-        +fcurs.map(c=>{const v=g[k].fval[c]||0;tot.fval[c]=(tot.fval[c]||0)+v;
-          return '<td class="num" style="color:#0E7C86">'+(v?money2(v):'<span class="muted">—</span>')+'</td>';}).join('')):'')
+      +(totF?(('<td class="num">'+(g[k].free||'<span class="muted">—</span>')+'</td>')
+        +fcurs.map(c=>{const v=g[k].fval[c]||0;tt.fval[c]=(tt.fval[c]||0)+v;
+          return '<td class="num">'+(v?money2(v):'<span class="muted">—</span>')+'</td>';}).join('')):'')
       +'</tr>';
   });
-  h+='<tr style="background:#FFF7DF;font-weight:800"><td>รวมทั้งหมด</td><td class="num">'+tot.n+'</td>'
-    +curs.map(c=>'<td class="num">'+money2(tot.cur[c]||0)+'</td>').join('')
-    +(anyFree?(('<td class="num">'+tot.free+'</td>')
-      +fcurs.map(c=>'<td class="num">'+money2(tot.fval[c]||0)+'</td>').join('')):'')
-    +'</tr>';
-  return h+'</tbody></table></div>';
+  tb+='<tr style="background:#FFF7DF;font-weight:800"><td>รวมทั้งหมด</td><td class="num">'+totN+'</td>'
+    +curs.map(c=>'<td class="num">'+money2(tt.cur[c]||0)+'</td>').join('')
+    +(totF?(('<td class="num">'+totF+'</td>')
+      +fcurs.map(c=>'<td class="num">'+money2(tt.fval[c]||0)+'</td>').join('')):'')
+    +'</tr></tbody></table>';
+
+  return '<div class="rp-sec">'
+    +'<div class="rp-h"><span class="t">'+title+'</span>'
+      +'<span class="s">'+esc(note||'')+' · เรียงจากมากไปน้อย</span>'
+      +'<div style="flex:1"></div>'
+      +'<button class="btn mini ghost rp-tbtn" id="'+id+'_b" onclick="rpToggle(\''+id+'\')">📋 ดูเป็นตาราง</button>'
+    +'</div>'
+    +'<div id="'+id+'_c">'+bars+'</div>'
+    +'<div id="'+id+'" style="display:none" class="scroll">'+tb+'</div>'
+    +'<div class="rp-tot"><div>รวม <b>'+money2(tot)+' '+esc(curSym(cur))+'</b></div>'
+      +'<div>'+totN+' รายการ</div>'
+      +(totF?('<div class="rp-free">🎁 ได้ฟรี '+totF+' รายการ</div>'):'')
+      +'<div class="muted">'+keys.length+' รายชื่อ</div></div>'
+    +'</div>';
 }
+
 function renderSum(){
   const rows=filtered(), P=period();
-  $('sumHead').textContent='📊 สรุปค่าใช้จ่ายสินค้าตัวอย่าง — '+P.head;
+  $('sumHead').textContent='📊 รายงานค่าใช้จ่ายสินค้าตัวอย่าง — '+P.head;
   if(!rows.length){ $('sumBody').innerHTML='<div class="empty">ยังไม่มีรายการในช่วงนี้</div>'; return; }
-  $('sumBody').innerHTML=
-     sumTable('🏷️ ตามหมวดหลัก',   sumBy(rows,'cat'))
-    +(rows.some(r=>r.subcat)?sumTable('🔖 ตามหมวดย่อย', sumBy(rows,'path'),'key'):'')
-    +sumTable('🏭 ตามโรงงาน',       sumBy(rows,'factory'))
-    +sumTable('👤 ตามผู้รับผิดชอบ', sumBy(rows,'responsible'))
-    +sumTable('📅 ตามเดือน',        sumBy(rows,'month'),'key');
+
+  const curs=rpCurList(rows);
+  if(!curs.includes(RP_CUR))RP_CUR=curs[0]||'CNY';
+  const cur=RP_CUR;
+  const paid=rows.filter(r=>!r.is_free&&String(r.currency||'CNY').toUpperCase()===cur);
+  const sum=paid.reduce((a,r)=>a+num(r.amount),0);
+  const free=rows.filter(r=>r.is_free);
+  const fv=free.filter(r=>String(r.currency||'CNY').toUpperCase()===cur)
+    .reduce((a,r)=>a+num(r.qty)*num(r.unit_price),0);
+  const avg=paid.length?sum/paid.length:0;
+  const topFac=Object.entries(sumBy(paid,'factory')).sort((a,b)=>(b[1].cur[cur]||0)-(a[1].cur[cur]||0))[0];
+
+  RP_SEQ=0;
+  let h='';
+  /* เลือกสกุลเงิน — ความยาวแท่งเทียบกันได้เฉพาะในสกุลเดียวกัน */
+  if(curs.length>1)
+    h+='<div class="rp-cur" style="margin-bottom:14px"><span class="muted" style="font-size:12px">ดูสกุลเงิน:</span>'
+      +curs.map(c=>'<button class="'+(c===cur?'on':'')+'" onclick="rpSetCur(\''+c+'\')">'
+        +esc(curSym(c))+' '+esc(c)+'</button>').join('')
+      +'<span class="muted" style="font-size:11.5px">— แท่งเทียบกันได้เฉพาะในสกุลเดียวกัน จึงดูทีละสกุล</span></div>';
+
+  /* หัวรายงาน — ตัวเลขที่ต้องรู้ก่อน ไม่ต้องอ่านกราฟ */
+  h+='<div class="hero">'
+    +'<div class="b main"><div class="k">ค่าใช้จ่ายรวม ('+esc(cur)+')</div>'
+      +'<div class="v">'+money2(sum)+'</div>'
+      +'<div class="n">'+paid.length+' รายการที่จ่ายเงิน</div></div>'
+    +'<div class="b"><div class="k">เฉลี่ยต่อรายการ</div><div class="v">'+money2(avg)+'</div>'
+      +'<div class="n">'+esc(curSym(cur))+' '+esc(cur)+'</div></div>'
+    +'<div class="b"><div class="k">🎁 ได้ฟรี</div><div class="v">'+free.length+'</div>'
+      +'<div class="n">'+(fv?('มูลค่าอ้างอิง '+money2(fv)+' '+esc(curSym(cur))):'ไม่มีค่าใช้จ่าย')+'</div></div>'
+    +'<div class="b"><div class="k">โรงงานที่ใช้จ่ายสูงสุด</div>'
+      +'<div class="v" style="font-size:19px">'+esc(topFac?topFac[0]:'—')+'</div>'
+      +'<div class="n">'+(topFac?(money2(topFac[1].cur[cur]||0)+' '+esc(curSym(cur))):'')+'</div></div>'
+    +'</div>';
+
+  h+=rpBlock('🏷️ ตามหมวดหลัก','หมวดใหญ่',sumBy(rows,'cat'),null,cur);
+  if(rows.some(r=>r.subcat))
+    h+=rpBlock('🔖 ตามหมวดย่อย','หมวดย่อยในแต่ละหมวดหลัก',sumBy(rows,'path'),null,cur);
+  h+=rpBlock('🏭 ตามโรงงาน','จ่ายให้โรงงานไหนมากสุด',sumBy(rows,'factory'),null,cur);
+  h+=rpBlock('👤 ตามผู้รับผิดชอบ','ใครเป็นคนดูแลรายการ',sumBy(rows,'responsible'),null,cur);
+  h+=rpBlock('📅 ตามเดือน','เรียงตามเวลา',sumBy(rows,'month'),'key',cur);
+  $('sumBody').innerHTML=h;
 }
 
 /* ═════════════════ หมวดหมู่ ═════════════════ */
