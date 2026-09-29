@@ -526,7 +526,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-13-gallery';
+const SM_VERSION='v01-14-gallery';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -566,12 +566,16 @@ let ME='', canEdit=false, ROWS=[], CATS=[], MODE='month';
   const roles=Array.isArray(md.user_roles)?md.user_roles:(md.user_role?[md.user_role]:[]);
   const isExec=roles.includes('pr_exec')||roles.includes('executive');
   const isMgr=roles.includes('pr_manager');
-  /* เข้าได้เฉพาะ จัดซื้อ · หัวหน้าจัดซื้อ · ผู้บริหาร (ตามที่ตกลง) */
-  if(!roles.includes('purchase')&&!isMgr&&!isExec){location.replace('index.html');return;}
-  canEdit=true;                     // ทั้ง 3 บทบาทแก้ไขได้
+  /* 🎨 หัวหน้าแบรนดิ้ง — เข้าดูทะเบียนสินค้าตัวอย่างได้ แต่ "ดูอย่างเดียว" */
+  const isBrand=roles.includes('brand_lead')&&!roles.includes('purchase')&&!isMgr&&!isExec;
+  /* เข้าได้: จัดซื้อ · หัวหน้าจัดซื้อ · ผู้บริหาร (แก้ไขได้) + หัวหน้าแบรนดิ้ง (ดูอย่างเดียว) */
+  if(!roles.includes('purchase')&&!isMgr&&!isExec&&!isBrand){location.replace('index.html');return;}
+  canEdit=!isBrand;
   ME=session.user.email||'';
-  $('rolePill').textContent = roles.includes('purchase') ? '📦 จัดซื้อ (แก้ไขได้)'
-                            : (isMgr ? '🧑‍💼 หัวหน้าจัดซื้อ (แก้ไขได้)' : '👑 ผู้บริหาร (แก้ไขได้)');
+  $('rolePill').textContent = isBrand ? '🎨 หัวหน้าแบรนดิ้ง (ดูอย่างเดียว)'
+                            : (roles.includes('purchase') ? '📦 จัดซื้อ (แก้ไขได้)'
+                            : (isMgr ? '🧑‍💼 หัวหน้าจัดซื้อ (แก้ไขได้)' : '👑 ผู้บริหาร (แก้ไขได้)'));
+  if(!canEdit)$('addBtn').style.display='none';     /* ดูอย่างเดียว → ไม่มีปุ่มเพิ่มรายการ */
   $('loginScreen').style.display='none';
   $('app').style.display='block';
   if(!GAS_URL)$('noGas').style.display='';
