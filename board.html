@@ -1402,7 +1402,7 @@ let currentRole = null; let ROLE_LABEL = '';
      แล้วใช้ธง MKT_LEAD เปิดเฉพาะแท็บ 📦 + กระดิ่งเพิ่มให้ทีหลัง
    ⚠️ อย่าเผลอไปแตะ canSeePrice / canSeeResp ให้ true — ตกลงกันว่าไม่ให้เห็นต้นทุน */
 let MKT_LEAD = false;
-const BOARD_VERSION='v05-15';
+const BOARD_VERSION='v05-16';
 try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
 console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
@@ -1801,7 +1801,10 @@ window.SELF_WRITING=false;              // ตั้งเป็น true ระ�
        ④ กำลังพิมพ์ / เปิดฟอร์มค้างอยู่ → รอให้เสร็จก่อน ไม่ให้ข้อมูลหายกลางมือ
    งานที่ตัวเองบันทึก ยังโหลดใหม่ให้ทันทีเหมือนเดิม (SELF_WRITING กันเตือนซ้ำ) */
 let NEWS_N=0, NEWS_TBL=new Set(), NEWS_T=null;
-const NEWS_WAIT=2500, NEWS_RETRY=4000;
+/* NEWS_WAIT = รอรวมเหตุการณ์ก่อน "โหลดทั้งตาราง" (ทางถอยที่แพง จึงรอนานหน่อย)
+   ★ ทางปกติคือปะแถวจากสัญญาณ realtime ซึ่งใช้เวลา 1.2 วิ และไม่มีค่าโหลดข้อมูล
+     ตัวเลขนี้จึงไม่ทำให้หน้าจอช้าลงในการใช้งานจริง */
+const NEWS_WAIT=6000, NEWS_RETRY=5000;
 /* กำลังทำงานค้างอยู่ไหม — ถ้าใช่ ยังไม่โหลดทับ */
 function newsBusy(){
   const a=document.activeElement;
@@ -1844,13 +1847,44 @@ function newsEl(){ return null; }
 
 function newsReload(){ loadOrders(); }
 function scheduleReloadOrders(){ newsPing('purchase_orders'); }
+
+/* ═════ ปะข้อมูลจากสัญญาณ realtime — ไม่ต้องดึงทั้งตาราง ═════════════════
+   สัญญาณ realtime แนบ "แถวที่เพิ่งเปลี่ยน" มาให้ในตัวอยู่แล้ว
+   → เอาแถวนั้นใส่ allOrders ตรง ๆ แล้ววาดใหม่ = ไม่มีการอ่านตารางเลย
+   ★ เดิม: นำเข้าไฟล์ 123 แถว → ดึง purchase_orders ทั้งตารางกลับมา (ทุกเบราว์เซอร์)
+     ใหม่: ใช้แถวที่มากับสัญญาณ → 0 ไบต์
+   ★ ข้อมูลมาไม่ครบเมื่อไหร่ ถอยไปโหลดทั้งตารางแบบเดิมอัตโนมัติ          */
+function rtApplyPO(p){
+  if(!Array.isArray(allOrders))return false;
+  const ev=String((p&&(p.eventType||p.type))||'').toUpperCase();
+  const nw=p&&p.new, od=p&&p.old;
+  const id=(nw&&nw.id!=null)?nw.id:((od&&od.id!=null)?od.id:null);
+  if(id==null)return false;
+  const i=allOrders.findIndex(x=>String(x.id)===String(id));
+  if(ev==='DELETE'){ if(i>=0)allOrders.splice(i,1); return true; }
+  if(!nw||nw.id==null||Object.keys(nw).length<3)return false;   /* ข้อมูลมาไม่ครบ */
+  if(i>=0)allOrders[i]=nw; else allOrders.unshift(nw);
+  return true;
+}
+let RT_T=null;
+function rtDrawPO(){
+  clearTimeout(RT_T);
+  RT_T=setTimeout(()=>{
+    if(document.hidden||newsBusy()){ RT_T=setTimeout(rtDrawPO,NEWS_RETRY); return; }
+    try{ fillRespLists(); render(); stampUpdate();
+         if(typeof toast==='function')toast('🔄 อัปเดตข้อมูลล่าสุดแล้ว'); }
+    catch(e){ console.warn('[rt] draw:',e.message); }
+  },1200);
+}
 function subscribeRealtime(){
   sb.channel('po-changes')
     .on('postgres_changes',{event:'*',schema:'public',table:'purchase_orders'},
       payload => {
+        if(window.SELF_WRITING)return;
         const changedId = payload.new?.id || payload.old?.id;
         if(changedId && payload.eventType !== 'DELETE') pendingFlash.add(changedId);
-        scheduleReloadOrders();
+        if(rtApplyPO(payload))rtDrawPO();     /* ปะได้ = ไม่เสียค่าโหลดเลย */
+        else scheduleReloadOrders();          /* ปะไม่ได้ = ถอยไปโหลดทั้งตาราง */
       })
     .subscribe();
   // ไม่โหลดเองตอนกลับมาดูแท็บ — แถบ "มีข้อมูลใหม่" ค้างอยู่ให้กดเองแล้ว
