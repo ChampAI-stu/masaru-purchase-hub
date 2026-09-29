@@ -143,6 +143,12 @@ tbody tr:hover{background:#F8FAFC}
 .li-row{margin-bottom:6px}
 .li-row .sum{text-align:right;font-weight:700;font-size:13px;padding:8px 2px}
 /* รูปของสินค้าแต่ละตัว — อยู่ใต้บรรทัดนั้น กินความกว้างเต็มแถว */
+/* โลเคชั่น + ผลการทดสอบ ของสินค้าแต่ละตัว */
+.li-extra{grid-column:1/-1;display:grid;grid-template-columns:1fr 1.4fr;gap:7px;margin:2px 0}
+.li-extra input{font-size:12.5px}
+@media(max-width:720px){.li-extra{grid-template-columns:1fr}}
+.lot-x{font-size:11px;color:var(--muted);margin:2px 0 1px;line-height:1.6}
+.lot-x b{color:var(--ink);font-weight:600}
 .li-pics{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;
   margin:2px 0 2px;padding:5px 7px;border:1px dashed var(--line);border-radius:9px;background:#FAFCFF}
 .li-pics.drag{border-color:var(--teal,#0E7C86);background:#EAF6F7}
@@ -380,6 +386,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
 </div>
 
 <!-- ============ MODAL: ฟอร์มรายการ ============ -->
+<datalist id="locList"></datalist>
 <div class="modal-bg" id="formBg">
   <div class="modal">
     <h3 id="formTitle">➕ เพิ่มรายการสินค้าตัวอย่าง</h3>
@@ -519,7 +526,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-11-gallery';
+const SM_VERSION='v01-13-gallery';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -589,7 +596,10 @@ $('logoutBtn').addEventListener('click',async()=>{
        ④ กำลังพิมพ์ / เปิดฟอร์มค้างอยู่ → รอให้เสร็จก่อน ของที่กรอกไม่หาย
    ★ ที่ตัวเองบันทึกไม่โหลดซ้ำ (โค้ดเรียก load() ให้อยู่แล้ว)                    */
 let NEWS_N=0, NEWS_TBL=new Set(), NEWS_T=null;
-const NEWS_WAIT=2500, NEWS_RETRY=4000;
+/* NEWS_WAIT = รอรวมเหตุการณ์ก่อน "โหลดทั้งตาราง" (ทางถอยที่แพง จึงรอนานหน่อย)
+   ★ ทางปกติคือปะแถวจากสัญญาณ realtime ซึ่งใช้เวลา 1.2 วิ และไม่มีค่าโหลดข้อมูล
+     ตัวเลขนี้จึงไม่ทำให้หน้าจอช้าลงในการใช้งานจริง */
+const NEWS_WAIT=6000, NEWS_RETRY=5000;
 /* ระหว่างที่ตัวเองกำลังเขียน — กันโหลดซ้ำจาก event ของตัวเอง */
 function selfWriting(ms){
   window.SELF_WRITING=true;
@@ -628,10 +638,48 @@ function flashLive(){
   d.style.background='#22C55E'; d.style.transform='scale(1.9)';
   setTimeout(()=>{ d.style.transform='scale(1)'; },450);
 }
+/* ═════ ปะข้อมูลจากสัญญาณ realtime — ไม่ต้องดึงตารางกลับมา ═════════════
+   สัญญาณ realtime แนบ "แถวที่เพิ่งเปลี่ยน" มาให้ในตัวอยู่แล้ว
+   → เอาแถวนั้นใส่หน่วยความจำตรง ๆ = ไม่มีการอ่านตารางเลย (ประหยัดค่าโหลดข้อมูล)
+   ★ รายการที่ "หลุดช่วงวันที่ที่ดูอยู่" จะถูกเอาออกจากจอให้ด้วย
+   ★ ข้อมูลมาไม่ครบเมื่อไหร่ ถอยไปโหลดใหม่แบบเดิมอัตโนมัติ              */
+function rtApplySample(p){
+  const P=period();
+  const ev=String((p&&(p.eventType||p.type))||'').toUpperCase();
+  const nw=p&&p.new, od=p&&p.old;
+  const id=(nw&&nw.id!=null)?nw.id:((od&&od.id!=null)?od.id:null);
+  if(id==null)return false;
+  const i=ROWS.findIndex(x=>String(x.id)===String(id));
+  if(ev==='DELETE'){ if(i>=0)ROWS.splice(i,1); return true; }
+  if(!nw||nw.id==null||Object.keys(nw).length<5)return false;      /* ข้อมูลมาไม่ครบ */
+  const d=String(nw.req_date||'').slice(0,10);
+  const inRange=(!P.from)||(d>=P.from&&d<=P.to);
+  if(!inRange){ if(i>=0)ROWS.splice(i,1); return true; }            /* ไม่อยู่ในช่วงที่ดู */
+  if(i>=0)ROWS[i]=nw; else ROWS.unshift(nw);
+  ROWS.sort((a,b)=>String(b.req_date||'').localeCompare(String(a.req_date||''))
+                 ||(+b.id||0)-(+a.id||0));
+  return true;
+}
+let RT_T=null;
+function rtDrawSample(){
+  clearTimeout(RT_T);
+  RT_T=setTimeout(()=>{
+    if(document.hidden||newsBusy()){ RT_T=setTimeout(rtDrawSample,NEWS_RETRY); return; }
+    try{
+      fillFilters(); render();
+      if($('tab-sum').style.display!=='none')renderSum();
+      flashLive(); toast('🔄 อัปเดตข้อมูลล่าสุดแล้ว');
+    }catch(e){ console.warn('[sample] draw:',e.message); }
+  },1200);
+}
 function subscribeRealtime(){
   try{
     sb.channel('sample-live')
-      .on('postgres_changes',{event:'*',schema:'public',table:'sample_orders'},()=>newsPing('sample_orders'))
+      .on('postgres_changes',{event:'*',schema:'public',table:'sample_orders'},p=>{
+        if(window.SELF_WRITING)return;
+        if(rtApplySample(p))rtDrawSample();   /* ปะได้ = ไม่เสียค่าโหลดเลย */
+        else newsPing('sample_orders');       /* ปะไม่ได้ = ถอยไปโหลดใหม่ */
+      })
       .on('postgres_changes',{event:'*',schema:'public',table:'sample_cats'},  ()=>newsPing('sample_cats'))
       .subscribe(st=>{
         const d=$('liveDot'); if(!d)return;
@@ -821,8 +869,9 @@ function filtered(){
     if(fr==='free'&&!r.is_free)return false;
     if(fr==='paid'&&r.is_free)return false;
     if(!q)return true;
+    const lx=arr(r.lines).map(l=>String((l&&l.loc)||'')+' '+String((l&&l.test)||'')).join(' ');
     return ((r.items||'')+' '+(r.factory||'')+' '+(r.responsible||'')+' '+(r.note||'')
-            +' '+(r.cat||'')+' '+(r.subcat||''))
+            +' '+(r.cat||'')+' '+(r.subcat||'')+' '+lx)
       .toLowerCase().includes(q);
   });
 }
@@ -956,6 +1005,54 @@ function sumBy(rows,key){
     else g[k].cur[c]=(g[k].cur[c]||0)+num(r.amount);
   });
   return g;
+}
+
+/* ── ชื่อเดือน/ปี แบบไทย (พ.ศ.) — ไม่พึ่ง toLocaleDateString ให้ทุกเครื่องเห็นเหมือนกัน ── */
+const TH_MON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const thMonLabel=k=>{const p=String(k||'').split('-');
+  return (p.length>1&&+p[1]>=1&&+p[1]<=12)?(TH_MON[+p[1]-1]+' '+(+p[0]+543)):String(k||'—');};
+const thYearLabel=k=>(/^\d{4}$/.test(String(k))?('พ.ศ. '+(+k+543)):String(k||'—'));
+
+/* ── ตารางสรุป "ทุกสกุลเงินในตารางเดียว" + แถวรวมทั้งหมด ──────────────
+   แท่งกราฟเทียบข้ามสกุลไม่ได้ จึงต้องดูทีละสกุล — แต่ "ตาราง" ไม่มีข้อจำกัดนั้น
+   จึงกางทุกสกุลไว้ในตารางเดียว ไม่ต้องกดสลับ และมีแถวรวมท้ายตารางให้เลย */
+function rpSumTable(title,note,g,label,fmt){
+  const keys=Object.keys(g).filter(k=>k&&k!=='(ไม่ระบุ)').sort();
+  if(!keys.length)return '';
+  const curs=[...new Set(keys.flatMap(k=>Object.keys(g[k].cur)))].sort();
+  const fcurs=[...new Set(keys.flatMap(k=>Object.keys(g[k].fval).filter(c=>g[k].fval[c])))].sort();
+  const totN=keys.reduce((a,k)=>a+g[k].n,0);
+  const totF=keys.reduce((a,k)=>a+g[k].free,0);
+  const tt={cur:{},fval:{}};
+  let tb='<table><thead><tr><th style="width:140px">'+esc(label)+'</th>'
+    +'<th class="num" style="width:82px">รายการ</th>'
+    +curs.map(c=>'<th class="num" style="width:140px">'+esc(curSym(c))+' '+esc(c)+'</th>').join('')
+    +(totF?('<th class="num" style="width:76px">🎁 ฟรี</th>'
+      +fcurs.map(c=>'<th class="num" style="width:135px">มูลค่าฟรี '+esc(curSym(c))+'</th>').join('')):'')
+    +'</tr></thead><tbody>';
+  keys.forEach(function(k){
+    tb+='<tr><td><b>'+esc(fmt?fmt(k):k)+'</b></td><td class="num">'+g[k].n+'</td>'
+      +curs.map(c=>{const v=g[k].cur[c]||0; tt.cur[c]=(tt.cur[c]||0)+v;
+        return '<td class="num">'+(v?money2(v):'<span class="muted">—</span>')+'</td>';}).join('')
+      +(totF?(('<td class="num">'+(g[k].free||'<span class="muted">—</span>')+'</td>')
+        +fcurs.map(c=>{const v=g[k].fval[c]||0; tt.fval[c]=(tt.fval[c]||0)+v;
+          return '<td class="num">'+(v?money2(v):'<span class="muted">—</span>')+'</td>';}).join('')):'')
+      +'</tr>';
+  });
+  tb+='<tr style="background:#FFF7DF;font-weight:800"><td>รวมทั้งหมด</td><td class="num">'+totN+'</td>'
+    +curs.map(c=>'<td class="num">'+money2(tt.cur[c]||0)+'</td>').join('')
+    +(totF?(('<td class="num">'+totF+'</td>')
+      +fcurs.map(c=>'<td class="num">'+money2(tt.fval[c]||0)+'</td>').join('')):'')
+    +'</tr></tbody></table>';
+  const line=curs.map(c=>curSym(c)+' '+money2(tt.cur[c]||0)).join(' · ')||'—';
+  return '<div class="rp-sec">'
+    +'<div class="rp-h"><span class="t">'+title+'</span><span class="s">'+esc(note||'')+'</span></div>'
+    +'<div class="scroll">'+tb+'</div>'
+    +'<div class="rp-tot"><div>รวมทุกสกุล <b>'+esc(line)+'</b></div>'
+      +'<div>'+totN+' รายการ</div>'
+      +(totF?('<div class="rp-free">🎁 ได้ฟรี '+totF+' รายการ</div>'):'')
+      +'<div class="muted">'+keys.length+' '+esc(label)+'</div></div>'
+    +'</div>';
 }
 
 /* สกุลเงินที่รายงานกำลังโฟกัส — เทียบความยาวแท่งข้ามสกุลไม่ได้ ต้องเลือกทีละสกุล */
@@ -1095,6 +1192,14 @@ function renderSum(){
       +'<div class="v" style="font-size:19px">'+esc(topFac?topFac[0]:'—')+'</div>'
       +'<div class="n">'+(topFac?(money2(topFac[1].cur[cur]||0)+' '+esc(curSym(cur))):'')+'</div></div>'
     +'</div>';
+
+  /* ★ ตารางสรุปทุกสกุลเงิน — วางไว้บนสุด เพราะเป็นตัวเลขที่ต้องเอาไปใช้ต่อบ่อยสุด */
+  h+=rpSumTable('📋 สรุปรายเดือน — ทุกสกุลเงิน',
+      'ยอดทุกสกุลอยู่ในตารางเดียว ไม่ต้องกดสลับ · แถวล่างสุดคือรวมทั้งหมด',
+      sumBy(rows,'month'),'เดือน',thMonLabel);
+  h+=rpSumTable('📆 สรุปรายปี — ทุกสกุลเงิน',
+      'รวมทั้งปี · ใช้เทียบปีต่อปี และเป็นยอดรวมของช่วงที่ดูอยู่',
+      sumBy(rows,'year'),'ปี',thYearLabel);
 
   h+=rpBlock('🏷️ ตามหมวดหลัก','หมวดใหญ่',sumBy(rows,'cat'),null,cur);
   if(rows.some(r=>r.subcat))
@@ -1305,8 +1410,12 @@ function itemsHtml(r){
           +' onerror="this.style.opacity=.3">';
       }).join('')+(ps.length>4?('<span class="muted" style="font-size:10.5px;align-self:center">+'+(ps.length-4)+'</span>'):'')
       +'</div>'):'';
+    const x=[];
+    if(String(l.loc||'').trim()) x.push('📍 <b>'+esc(String(l.loc).trim())+'</b>');
+    if(String(l.test||'').trim())x.push('🧪 '+esc(String(l.test).trim()));
+    const xh=x.length?('<div class="lot-x">'+x.join(' · ')+'</div>'):'';
     return '<div class="lot-l"><div class="i">'+((L.length>1&&!selfNum)?(i+1)+'.':'')+'</div>'
-      +'<div>'+esc(String(l.name||''))+th+'</div>'+qs+'</div>';
+      +'<div>'+esc(String(l.name||''))+th+xh+'</div>'+qs+'</div>';
   }).join('');
   return head+body;
 }
@@ -1325,6 +1434,7 @@ let SM_LINES=[];
 const smLine=o=>({name:String((o&&o.name)||''),
                   qty:(o&&o.qty!=null&&o.qty!=='')?num(o.qty):'',
                   price:(o&&o.price!=null&&o.price!=='')?num(o.price):'',
+                  loc:String((o&&o.loc)||''), test:String((o&&o.test)||''),
                   pics:arr(o&&o.pics).slice()});
 function linesFrom(r){
   const L=arr(r&&r.lines);
@@ -1341,7 +1451,17 @@ const lineSum=l=>num(l.qty)*num(l.price);
 const linesTotal=()=>SM_LINES.reduce((a,l)=>a+lineSum(l),0);
 const linesQty  =()=>SM_LINES.reduce((a,l)=>a+num(l.qty),0);
 const linesNames=()=>SM_LINES.map(l=>l.name.trim()).filter(Boolean);
+/* ช่วยเติมโลเคชั่นจากที่เคยพิมพ์ไว้ — ไม่ต้องตั้งระบบชั้นวางแยก */
+function fillLocList(){
+  const set=new Set();
+  ROWS.forEach(r=>arr(r.lines).forEach(l=>{ const v=String((l&&l.loc)||'').trim(); if(v)set.add(v); }));
+  SM_LINES.forEach(l=>{ const v=String((l&&l.loc)||'').trim(); if(v)set.add(v); });
+  const el=$('locList'); if(!el)return;
+  el.innerHTML=[...set].sort((a,b)=>a.localeCompare(b,'th'))
+    .map(v=>'<option value="'+esc(v)+'">').join('');
+}
 function drawLines(){
+  fillLocList();
   if(!SM_LINES.length)SM_LINES=[smLine({})];
   $('f_lines').innerHTML=SM_LINES.map((l,i)=>{
     const sum=lineSum(l);
@@ -1355,6 +1475,14 @@ function drawLines(){
       +'<div class="sum">'+(sum?money2(sum):'—')+'</div>'
       +'<button type="button" class="btn mini ghost" title="ลบสินค้าตัวนี้" '
         +'onclick="delLine('+i+')"'+(SM_LINES.length<2?' disabled':'')+'>✕</button>'
+      +'<div class="li-extra">'
+        +'<input list="locList" value="'+esc(l.loc||'')+'" '
+          +'placeholder="\ud83d\udccd โลเคชั่น เช่น ชั้น A-2 / ห้องตัวอย่าง" '
+          +'oninput="setLine('+i+',&quot;loc&quot;,this.value)">'
+        +'<input value="'+esc(l.test||'')+'" '
+          +'placeholder="\ud83e\uddea ผลการทดสอบ เช่น ใช้งานปกติ · แรงดันตก 5%" '
+          +'oninput="setLine('+i+',&quot;test&quot;,this.value)">'
+      +'</div>'
       +'<div class="li-pics" ondragover="lineDrag(event,'+i+',1)" '
         +'ondragleave="lineDrag(event,'+i+',0)" ondrop="lineDrag(event,'+i+',0)">'
         +linePicsHtml(i)+'</div>'
@@ -1409,9 +1537,10 @@ function lineDrag(e,i,on){
   if(fs.length)pickLinePics(i,fs);
 }
 
+const LINE_TEXT={name:1,loc:1,test:1};
 function setLine(i,k,v){ if(!SM_LINES[i])return;
-  SM_LINES[i][k]= k==='name'?v : (v===''?'':num(v));
-  if(k!=='name'){ const el=$('f_lines').children[i]; if(el){const c=el.querySelector('.sum');
+  SM_LINES[i][k]= LINE_TEXT[k]?v : (v===''?'':num(v));
+  if(!LINE_TEXT[k]){ const el=$('f_lines').children[i]; if(el){const c=el.querySelector('.sum');
     if(c)c.textContent=lineSum(SM_LINES[i])?money2(lineSum(SM_LINES[i])):'—';} 
     const n=linesNames().length;
     $('f_liCount').textContent=n>1?('— '+n+' รายการ · รวม '+money2(linesTotal())+' '+curSym($('f_cur').value))
@@ -1576,7 +1705,8 @@ async function save(){
   /* เก็บ "ตัวจริง" ไว้ก่อน — ลิงก์รูปเพิ่งได้หลังอัป Drive จึงต้องอ่านค่าตอนท้ายอีกรอบ */
   const KEEP=SM_LINES.filter(l=>l.name.trim());
   const LN=KEEP.map(l=>({name:l.name.trim(),
-              qty:(l.qty===''?null:num(l.qty)), price:(l.price===''?null:num(l.price))}));
+              qty:(l.qty===''?null:num(l.qty)), price:(l.price===''?null:num(l.price)),
+              loc:(String(l.loc||'').trim()||null), test:(String(l.test||'').trim()||null)}));
   const items=LN.map(l=>l.name).join('\n');
   /* หมวดย่อยไม่บังคับ — บางรายการไม่มีหมวดย่อยจริง ๆ */
   if(!d)return alert('ใส่วันที่ก่อน');
@@ -1640,6 +1770,7 @@ function exportXls(){
   const rows=filtered(); if(!rows.length)return toast('ไม่มีรายการให้ export');
   const P=period();
   const aoa=[['วัน/เดือน/ปี','หมวดหลัก','หมวดย่อย','รายการ','รายละเอียดสินค้า (ชื่อ × จำนวน × ราคา)',
+              '📍 โลเคชั่น','🧪 ผลการทดสอบ',
               'โรงงาน','จำนวน','ราคาต่อชิ้น','ได้ฟรี',
               'ยอดชำระ','มูลค่าอ้างอิง (ของฟรี)','สกุลเงิน','ผู้รับผิดชอบ',
               'หมายเหตุ','จำนวนรูปสินค้า','จำนวนหลักฐาน','ลิงก์รูปสินค้า','ลิงก์หลักฐาน','บันทึกโดย']];
@@ -1648,6 +1779,9 @@ function exportXls(){
     arr(r.lines).map(l=>String(l.name||'')+' × '+(l.qty==null?'?':num(l.qty))
       +' × '+(l.price==null?'?':num(l.price))
       +(arr(l.pics).length?(' [รูป '+arr(l.pics).length+']'):'')).join(' | '),
+    arr(r.lines).map(l=>String(l.loc||'').trim()).filter(Boolean).join(' | '),
+    arr(r.lines).map(l=>(String(l.name||'')+': '+String(l.test||'').trim()))
+      .filter(x=>!/: $/.test(x)).join(' | '),
     r.factory||'',
     (r.qty==null?'':num(r.qty)), (r.unit_price==null?'':num(r.unit_price)),
     r.is_free?'ฟรี':'',
@@ -1659,18 +1793,23 @@ function exportXls(){
   const byCur={}; rows.filter(r=>!r.is_free).forEach(r=>{const c=String(r.currency||'CNY').toUpperCase();
     byCur[c]=(byCur[c]||0)+num(r.amount);});
   aoa.push([]);
-  Object.keys(byCur).sort().forEach(c=>aoa.push(['รวมที่จ่ายจริง '+c,'','','','','','','','',byCur[c],'',c]));
+  /* หาเลขคอลัมน์จากหัวตารางเอง — เพิ่มคอลัมน์ใหม่วันหลังแถวสรุปจะไม่เลื่อนตาม */
+  const COL=n=>aoa[0].indexOf(n);
+  const sumRow=(label,pairs)=>{ const row=new Array(aoa[0].length).fill('');
+    row[0]=label; pairs.forEach(([n,v])=>{ const i=COL(n); if(i>=0)row[i]=v; }); aoa.push(row); };
+  Object.keys(byCur).sort().forEach(c=>
+    sumRow('รวมที่จ่ายจริง '+c,[['ยอดชำระ',byCur[c]],['สกุลเงิน',c]]));
   /* ของที่ได้ฟรีสรุปแยกบรรทัด ไม่ให้คนอ่านเข้าใจผิดว่าเป็นเงินที่จ่าย */
   const fv={}; let nf=0;
   rows.filter(r=>r.is_free).forEach(r=>{nf++;const c=String(r.currency||'CNY').toUpperCase();
     fv[c]=(fv[c]||0)+refVal(r);});
   if(nf){
-    aoa.push(['🎁 ได้ฟรี (ไม่มีค่าใช้จ่าย)','','','','','','','',nf]);
+    sumRow('🎁 ได้ฟรี (ไม่มีค่าใช้จ่าย)',[['ได้ฟรี',nf]]);
     Object.keys(fv).filter(c=>fv[c]).sort().forEach(c=>
-      aoa.push(['มูลค่าอ้างอิงของฟรี '+c,'','','','','','','','','',fv[c],c]));
+      sumRow('มูลค่าอ้างอิงของฟรี '+c,[['มูลค่าอ้างอิง (ของฟรี)',fv[c]],['สกุลเงิน',c]]));
   }
   const ws=XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols']=[{wch:12},{wch:22},{wch:18},{wch:52},{wch:46},{wch:14},{wch:9},{wch:12},{wch:8},
+  ws['!cols']=[{wch:12},{wch:22},{wch:18},{wch:52},{wch:46},{wch:22},{wch:40},{wch:14},{wch:9},{wch:12},{wch:8},
                {wch:13},{wch:19},{wch:9},{wch:14},{wch:24},
                {wch:12},{wch:12},{wch:40},{wch:40},{wch:22}];
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'สินค้าตัวอย่าง');
@@ -1700,11 +1839,12 @@ function pgUnits(r){
   const L=arr(r.lines).filter(l=>l&&String(l.name||'').trim());
   const lotPics=arr(r.pics).filter(pgOk);
   if(!L.length)                                     /* รายการเก่า ยังไม่มีรายการสินค้าแยก */
-    return [{lot:r,idx:-1,n:1,name:r.items||'สินค้าตัวอย่าง',
+    return [{lot:r,idx:-1,n:1,name:r.items||'สินค้าตัวอย่าง',loc:'',test:'',
              qty:r.qty,price:r.unit_price,pics:allPics(r).filter(pgOk),borrowed:false}];
   return L.map((l,i)=>{
     const own=arr(l.pics).filter(pgOk);
     return {lot:r,idx:i,n:L.length,name:l.name,qty:l.qty,price:l.price,
+            loc:String(l.loc||''), test:String(l.test||''),
             pics:own.length?own:lotPics.slice(), borrowed:!own.length&&lotPics.length>0};
   });
 }
@@ -1730,7 +1870,7 @@ function renderGallery(){
     if(PG_CATEGORY&&r.cat!==PG_CATEGORY)return false;
     /* ★ ค้นด้วยชื่อ "สินค้าตัวนี้" ไม่เอา r.items (ที่รวมชื่อทุกตัวในล็อต)
           ไม่งั้นค้นชื่อตัวหนึ่ง แล้วเพื่อนร่วมล็อตจะโผล่มาด้วยทั้งหมด */
-    if(query&&![u.name,r.cat,r.subcat,r.factory,r.responsible,r.note]
+    if(query&&![u.name,u.loc,u.test,r.cat,r.subcat,r.factory,r.responsible,r.note]
       .join(' ').toLocaleLowerCase('th').includes(query))return false;
     if(photo==='photos')return u.pics.length>0;
     if(photo==='none')  return u.pics.length===0;
@@ -1792,8 +1932,11 @@ function pgDetail(){
         ['วันที่',thDate(r.req_date)],
         ['จำนวน',num(u.qty)?money(u.qty)+' ชิ้น':'—'],
         ['ราคาต่อชิ้น',num(u.price)?sym+' '+money2(u.price):'—'],
-        ['สกุลเงิน',r.currency||'CNY']
+        ['สกุลเงิน',r.currency||'CNY'],
+        ['📍 โลเคชั่น',String(u.loc||'').trim()||'—']
       ].map(([k,v])=>'<div><dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd></div>').join('')+'</dl>'
+    +(String(u.test||'').trim()
+        ?'<div class="pg-note"><b>🧪 ผลการทดสอบ</b><br>'+esc(String(u.test).trim())+'</div>':'')
     +(u.borrowed?'<div class="pg-note">📷 <b>ยังไม่มีรูปของสินค้าตัวนี้</b> — กำลังแสดง'
         +'<b>รูปรวมของล็อต</b>แทน · กด ✏️ แก้ไขรายการ แล้วใส่รูปที่บรรทัดของสินค้าตัวนี้ได้เลย</div>':'')
     +(mates.length?'<div class="pg-note"><b>📦 สั่งมาในล็อตเดียวกัน</b><br>'
