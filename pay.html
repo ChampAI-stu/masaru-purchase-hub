@@ -360,7 +360,7 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
   <div class="sub">| วางแผนจ่ายเงิน &amp; เอกสารค่าใช้จ่าย</div>
   <div class="sp"></div>
   <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9FE1CB;margin-right:6px" title="อัปเดตอัตโนมัติเมื่อมีคนแก้ข้อมูล">
-    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-13</span>
+    <span id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block;transition:transform .35s"></span>realtime<span title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง" style="margin-left:8px;background:#ffffff1f;border:1px solid #ffffff33;border-radius:20px;padding:2px 9px;font-size:11px" id="verBadge">v10-14</span>
   </span>
   <!-- ⚠️ ป้าย "🧪 โหมดทดสอบ" ถอดออกตามที่สั่ง (v09-96)
        พฤติกรรมยังคงเดิม — APPROVAL_MODE=false อยู่ (ดูตัวแปรในสคริปต์)
@@ -1325,7 +1325,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v10-13';
+const PAY_VERSION='v10-14';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -1519,7 +1519,10 @@ async function boot(){
        ④ กำลังพิมพ์ / เปิดฟอร์มค้างอยู่ → รอให้เสร็จก่อน ไม่ให้ข้อมูลหายกลางมือ
    งานที่ตัวเองบันทึก ยังโหลดใหม่ให้ทันทีเหมือนเดิม (SELF_WRITING กันเตือนซ้ำ) */
 let NEWS_N=0, NEWS_TBL=new Set(), NEWS_T=null;
-const NEWS_WAIT=2500, NEWS_RETRY=4000;
+/* NEWS_WAIT = รอรวมเหตุการณ์ก่อน "โหลดทั้งตาราง" (ทางถอยที่แพง จึงรอนานหน่อย)
+   ★ ทางปกติคือปะแถวจากสัญญาณ realtime ซึ่งใช้เวลา 1.2 วิ และไม่มีค่าโหลดข้อมูล
+     ตัวเลขนี้จึงไม่ทำให้หน้าจอช้าลงในการใช้งานจริง */
+const NEWS_WAIT=6000, NEWS_RETRY=5000;
 /* กำลังทำงานค้างอยู่ไหม — ถ้าใช่ ยังไม่โหลดทับ */
 function newsBusy(){
   const a=document.activeElement;
@@ -1571,7 +1574,7 @@ async function reloadTables(names){
     pay_logs:    async()=>{ if(MEMO_BID)LOGS=await loadBillLogs(MEMO_BID); }
   };
   await Promise.all([...names].map(n=>job[n]?job[n]():null).filter(Boolean));
-  await loadWallet();
+  await loadWalletIfStale();
   newsClear();                 // โหลดล่าสุดแล้ว → เก็บแถบแจ้งเตือน
   redrawAll(); flashLive();
 }
@@ -1587,12 +1590,52 @@ function redrawAll(){
     if(MEMO_BID && $('memoBg').style.display==='flex') renderMemo();
   }catch(e){ console.warn('[rt] redraw:',e.message); }
 }
+/* ═════ ปะข้อมูลจากสัญญาณ realtime — ไม่ต้องดึงตารางกลับมา ═════════════
+   สัญญาณ realtime แนบ "แถวที่เพิ่งเปลี่ยน" มาให้ในตัวอยู่แล้ว (จ่ายค่าข้อความไปแล้ว)
+   → เอาแถวนั้นใส่หน่วยความจำตรง ๆ แล้ววาดใหม่ = ไม่มีการอ่านตารางเลย
+   ★ ตัวนี้ตัดค่าโหลดข้อมูลก้อนใหญ่ที่สุด
+     เดิม: คนอื่นแก้ 1 บิล → ดึง pay_bills ทั้งตารางกลับมา (หลาย MB)
+     ใหม่: ใช้แถวที่ส่งมากับสัญญาณ → 0 ไบต์
+   ★ ถ้าข้อมูลที่ส่งมาไม่ครบ (แถวใหญ่เกินโควตาข้อความ / ไม่มี id)
+     → ถอยไปโหลดทั้งตารางแบบเดิมอัตโนมัติ ข้อมูลจึงไม่มีทางเพี้ยน               */
+const RT_MAP={
+  pay_bills:   {get:()=>BILLS, set:v=>{BILLS=v;}},
+  pay_payments:{get:()=>PAYS,  set:v=>{PAYS=v;}},
+  pay_memos:   {get:()=>MEMOS, set:v=>{MEMOS=v;}}
+};
+function rtApply(tbl,p){
+  const m=RT_MAP[tbl]; if(!m)return false;
+  const a=m.get(); if(!Array.isArray(a))return false;
+  const ev=String((p&&(p.eventType||p.type))||'').toUpperCase();
+  const nw=p&&p.new, od=p&&p.old;
+  const id=(nw&&nw.id!=null)?nw.id:((od&&od.id!=null)?od.id:null);
+  if(id==null)return false;
+  const i=a.findIndex(x=>String(x.id)===String(id));
+  if(ev==='DELETE'){ if(i>=0)a.splice(i,1); return true; }
+  if(!nw||nw.id==null||Object.keys(nw).length<3)return false;   /* ข้อมูลมาไม่ครบ */
+  if(i>=0)a[i]=nw; else a.unshift(nw);
+  return true;
+}
+let RT_T=null;
+function rtDraw(){
+  clearTimeout(RT_T);
+  RT_T=setTimeout(()=>{
+    if(document.hidden||newsBusy()){ RT_T=setTimeout(rtDraw,NEWS_RETRY); return; }
+    try{ computeRisk(PRLIST||[]); }catch(e){}
+    try{ redrawAll(); flashLive(); toast('🔄 อัปเดตข้อมูลล่าสุดแล้ว'); }
+    catch(e){ console.warn('[rt] draw:',e.message); }
+  },1200);
+}
 function subscribeRealtime(){
-  const bump=(tbl)=>()=>newsPing(tbl);
+  const on=(tbl)=>(p)=>{
+    if(window.SELF_WRITING)return;
+    if(rtApply(tbl,p))rtDraw();     /* ปะได้ = ไม่เสียค่าโหลดเลย */
+    else newsPing(tbl);             /* ปะไม่ได้ = ถอยไปโหลดทั้งตาราง */
+  };
   sb.channel('pay-live')
-    .on('postgres_changes',{event:'*',schema:'public',table:'pay_bills'},bump('pay_bills'))
-    .on('postgres_changes',{event:'*',schema:'public',table:'pay_payments'},bump('pay_payments'))
-    .on('postgres_changes',{event:'*',schema:'public',table:'pay_memos'},bump('pay_memos'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'pay_bills'},on('pay_bills'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'pay_payments'},on('pay_payments'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'pay_memos'},on('pay_memos'))
     .subscribe();
 }
 function flashLive(){
@@ -6147,7 +6190,15 @@ async function printDayPack(){
    ================================================================== */
 let WALLET=[];
 
+/* กระเป๋าเงิน Ksher ไม่ได้ต่อ realtime ไว้ — เดิมถูกดึงใหม่ "ทุกครั้ง" ที่ตารางอื่นเปลี่ยน
+   ทั้งที่ยอดไม่ได้ขยับ → ดึงซ้ำอย่างมากทุก 5 นาที (ที่ตัวเองแก้เองยังดึงทันทีเหมือนเดิม) */
+let WALLET_AT=0;
+async function loadWalletIfStale(){
+  if(Date.now()-WALLET_AT<300000)return;      /* ดึงไปไม่ถึง 5 นาที = ใช้ของเดิม */
+  await loadWallet();
+}
 async function loadWallet(){
+  WALLET_AT=Date.now();
   const {data,error}=await sb.from('ksher_wallet').select('*').order('txn_date').order('created_at');
   if(error){ WALLET=[]; LOAD_ERR['ksher_wallet']=error.message; return; }
   delete LOAD_ERR['ksher_wallet']; WALLET=data||[];
