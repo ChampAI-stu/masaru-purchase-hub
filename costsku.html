@@ -69,7 +69,8 @@
   .toolbar input[type=search]{max-width:280px}
   .grow{flex:1}
   .hide{display:none!important}
-  view-only .edit-only{display:none!important}
+  body.view-only .edit-only{display:none!important}   /* เดิมเขียนตกคำว่า body. ทำให้ไม่เคยซ่อนปุ่มจริง */
+  body.view-only input,body.view-only select,body.view-only textarea{pointer-events:none;background:#f1f5f9}
   body.view-only .cell-in{background:#f1f5f9;pointer-events:none}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--navy);color:#fff;padding:11px 20px;border-radius:10px;opacity:0;transition:.25s;z-index:60;font-weight:600;box-shadow:0 8px 24px #0003}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -252,10 +253,13 @@ async function enterApp(session){
   const isExec=roles.includes('pr_exec')||roles.includes('executive');
   const isMgr=roles.includes('pr_manager');
   const isBuyer=roles.includes('purchase');
-  if(!isBuyer&&!isMgr&&!isExec){location.replace(PORTAL_URL);return;}   // เข้าได้เฉพาะ จัดซื้อ / หัวหน้า / ผู้บริหาร
-  currentRole=isBuyer?'purchase':(isMgr?'manager':'executive');
-  canEdit=true;   // จัดซื้อ + หัวหน้า + ผู้บริหาร แก้ไขได้ทั้งหมด
-  $('rolePill').textContent='บทบาท: '+({purchase:'จัดซื้อ (แก้ไขได้)',manager:'หัวหน้า (แก้ไขได้)',executive:'ผู้บริหาร (แก้ไขได้)'}[currentRole]);
+  /* 🎨 หัวหน้าแบรนดิ้ง — เข้าดูต้นทุนได้ แต่ "ดูอย่างเดียว" แก้ตัวเลขไม่ได้ */
+  const isBrand=roles.includes('brand_lead')&&!isBuyer&&!isMgr&&!isExec;
+  if(!isBuyer&&!isMgr&&!isExec&&!isBrand){location.replace(PORTAL_URL);return;}
+  currentRole=isBuyer?'purchase':(isMgr?'manager':(isBrand?'brand':'executive'));
+  canEdit=!isBrand;   // จัดซื้อ + หัวหน้า + ผู้บริหาร แก้ไขได้ · แบรนดิ้งดูอย่างเดียว
+  $('rolePill').textContent='บทบาท: '+({purchase:'จัดซื้อ (แก้ไขได้)',manager:'หัวหน้า (แก้ไขได้)',
+    executive:'ผู้บริหาร (แก้ไขได้)',brand:'🎨 หัวหน้าแบรนดิ้ง (ดูอย่างเดียว)'}[currentRole]);
   if(!canEdit)document.body.classList.add('view-only');
   await loadAll();
   $('boot').style.display='none';$('app').style.display='block';
