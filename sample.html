@@ -532,7 +532,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-16-gallery';
+const SM_VERSION='v01-17-gallery';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -1387,43 +1387,56 @@ function fileToB64(f){
   });
 }
 /* ย่อ + บีบรูปก่อนอัป — คืน base64 ล้วน (ไม่มี prefix) · ไม่ใช่รูป = null
-   ⚠️ เดิม: รูปที่ด้านยาวไม่เกิน 1600px จะ "ส่งไฟล์ดิบ" ไปเลย ไม่บีบ
-      รูปจากมือถือ/กล้องโรงงาน 1200×1600 แต่หนัก 4–6 MB → base64 โตอีก 33% เป็น ~8 MB
-      Apps Script รับ POST ก้อนใหญ่ขนาดนั้นไม่ไหว เลยตอบกลับมาเป็นหน้า HTML (ไม่ใช่ JSON)
-      หน้าเว็บจึงขึ้นว่า "ตอบกลับผิดรูปแบบ — เช็ค Deploy" ทั้งที่ Deploy ถูกอยู่แล้ว
-   ✅ ใหม่: วาดใหม่เป็น JPEG "ทุกครั้ง" และถ้ายังเกินงบ ค่อย ๆ ลดขนาด/คุณภาพจนพอดี
-      (กติกาเดียวกับสลิปในระบบจ่ายเงิน ที่ใช้งานมานานแล้วไม่มีปัญหา)            */
-const UP_BUDGET=1400000;            /* base64 ต่อไฟล์ ไม่เกิน ~1.4 MB */
-function shrink(file,max){
-  return new Promise(res=>{
-    if(!/^image\//.test(file.type||''))return res(null);   /* PDF/ไฟล์อื่น ส่งของเดิม */
-    const fr=new FileReader();
-    fr.onload=()=>{
-      const img=new Image();
-      img.onload=()=>{
-        let w=img.width, h=img.height;
-        const cap=max||1600;
-        if(Math.max(w,h)>cap){ const k=cap/Math.max(w,h); w=Math.round(w*k); h=Math.round(h*k); }
-        const cv=document.createElement('canvas');
-        let out='';
-        /* ไล่ลดจนกว่าจะเข้างบ — ส่วนใหญ่จบตั้งแต่รอบแรก */
-        const steps=[[1,.82],[1,.7],[.8,.7],[.65,.62],[.5,.55]];
-        for(let i=0;i<steps.length;i++){
-          const sc=steps[i][0], q=steps[i][1];
-          cv.width =Math.max(1,Math.round(w*sc));
-          cv.height=Math.max(1,Math.round(h*sc));
-          cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
-          out=(cv.toDataURL('image/jpeg',q).split(',')[1])||'';
-          if(out.length<=UP_BUDGET)break;
-        }
-        res(out||null);
-      };
-      img.onerror=()=>res(null);
-      img.src=String(fr.result);
-    };
-    fr.onerror=()=>res(null);
-    fr.readAsDataURL(file);
-  });
+   ★ เป้าหมาย: ชัดพอใช้งานจริง + เบาพอที่ Apps Script รับไหว + ทำให้เร็ว
+       · ด้านยาวสูงสุด 2200px (เดิม 1600 → เปิดดูแล้วเล็กไป)
+       · คุณภาพเริ่มที่ 0.92 แล้วค่อยลดเมื่อจำเป็น (เดิมเริ่ม 0.82)
+       · งบ base64 2.6 MB ต่อไฟล์ (ของจริง ~1.9 MB) — ยังห่างจุดที่ Google พังมาก
+   ⚡ ที่ทำให้เร็วขึ้น
+       · ใช้ createImageBitmap อ่านไฟล์ตรง ๆ  (เดิมต้องแปลงไฟล์ดิบเป็น base64 ก่อน
+         ทั้งช้าและกินแรม — ไฟล์ 5 MB ต้องสร้างสตริง 7 MB ทิ้งเปล่า ๆ)
+       · วัดขนาดจาก blob ไม่ต้องแปลงเป็น base64 ทุกรอบที่ลอง                     */
+const UP_MAXPX=2200, UP_BUDGET=2600000;
+function blobB64(b){
+  return new Promise(res=>{ const r=new FileReader();
+    r.onload=()=>res(String(r.result).split(',')[1]||'');
+    r.onerror=()=>res(''); r.readAsDataURL(b); });
+}
+function canvasBlob(cv,q){
+  return new Promise(res=>{ try{ cv.toBlob(b=>res(b),'image/jpeg',q); }catch(e){ res(null); } });
+}
+async function loadBitmap(file){
+  if(window.createImageBitmap){ try{ return await createImageBitmap(file); }catch(e){} }
+  return await new Promise(res=>{ const fr=new FileReader();
+    fr.onload=()=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>res(null);
+                    im.src=String(fr.result); };
+    fr.onerror=()=>res(null); fr.readAsDataURL(file); });
+}
+async function shrink(file,max){
+  if(!/^image\//.test(file.type||''))return null;      /* PDF/ไฟล์อื่น ส่งของเดิม */
+  const src=await loadBitmap(file); if(!src)return null;
+  let w=src.width||src.naturalWidth, h=src.height||src.naturalHeight;
+  if(!w||!h){ if(src.close)src.close(); return null; }
+  const cap=max||UP_MAXPX;
+  if(Math.max(w,h)>cap){ const k=cap/Math.max(w,h); w=Math.round(w*k); h=Math.round(h*k); }
+  const cv=document.createElement('canvas');
+  const draw=sc=>{ cv.width=Math.max(1,Math.round(w*sc)); cv.height=Math.max(1,Math.round(h*sc));
+                   cv.getContext('2d').drawImage(src,0,0,cv.width,cv.height); };
+  const steps=[[1,.92],[1,.85],[.9,.8],[.75,.72]];
+  let last='';
+  for(let i=0;i<steps.length;i++){
+    const sc=steps[i][0], q=steps[i][1], isLast=(i===steps.length-1);
+    draw(sc);
+    const b=await canvasBlob(cv,q);
+    if(b){
+      const approx=Math.ceil(b.size*4/3)+64;            /* เดาขนาด base64 โดยไม่ต้องแปลงจริง */
+      if(approx<=UP_BUDGET||isLast){ if(src.close)src.close(); return await blobB64(b); }
+      continue;
+    }
+    last=(cv.toDataURL('image/jpeg',q).split(',')[1])||'';   /* เบราว์เซอร์เก่าไม่มี toBlob */
+    if(last.length<=UP_BUDGET||isLast)break;
+  }
+  if(src.close)src.close();
+  return last||null;
 }
 
 /* ชื่อไฟล์ที่ Drive รับได้ — ตัดอักขระต้องห้ามทิ้ง
@@ -1749,48 +1762,58 @@ async function uploadPending(catName){
   const folder='สินค้าตัวอย่าง/'+clean2(catName||'ไม่ระบุหมวด')+(sub?('/'+clean2(sub)):'');
   /* คิวอัป = รูปของสินค้าแต่ละตัว + รูปรวมล็อต + หลักฐานการชำระ */
   const queues=SM_LINES.map(l=>l.pics).concat([PICS,PROOFS]);
-  let n=0, done=0;
-  queues.forEach(a=>arr(a).forEach(p=>{ if(p._file)n++; }));
+  const jobs=[];
+  queues.forEach(a=>arr(a).forEach(p=>{ if(p._file)jobs.push(p); }));
+  const n=jobs.length;
   if(!n)return true;
   if(!GAS_URL){ alert('อัปโหลดไฟล์ไม่ได้ — ยังไม่ได้ตั้ง GAS_URL\n\nเอาไฟล์ออกก่อน หรือใส่เป็นลิงก์แทน'); return false; }
-  for(const a of queues){
-    for(const p of a){
-      if(!p._file)continue;
-      done++; $('upStat').textContent='⏳ อัปขึ้น Google Drive '+done+'/'+n+' — '+p.name;
-      const small=await shrink(p._file,1600);
-      const data=small||await fileToB64(p._file);
-      /* ไฟล์ที่ไม่ใช่รูป (เช่น PDF) ย่อไม่ได้ — ใหญ่เกินไปต้องบอกตรง ๆ ก่อนยิง */
-      if(!small && data.length>6000000){
-        $('upStat').textContent='';
-        alert('ไฟล์ "'+p.name+'" ใหญ่เกินไป ('+Math.round(data.length/1.37/1048576)+' MB)\n\n'
-          +'Google Apps Script รับไฟล์ก้อนใหญ่ขนาดนี้ไม่ไหว\n'
-          +'→ ย่อไฟล์ก่อน หรือเอาขึ้น Drive เองแล้ววางเป็นลิงก์แทน');
-        return false;
-      }
-      const send=()=>gasCall({action:'upload',
-        filename:safeName(($('f_date').value||todayStr())+'_'
-                 +($('f_fac').value||'ไม่ระบุโรงงาน')+'_'+p.name),
-        folder, mime:small?'image/jpeg':(p.mime||'application/octet-stream'),
-        data, po:'ตัวอย่างสินค้า', vendor:$('f_fac').value||'', actor:ME||''});
-      let j=null, err=null;
-      for(let tryNo=1;tryNo<=2;tryNo++){
-        try{ j=await send(); err=null; break; }
-        catch(e){
-          err=e;
-          if(tryNo<2){                       /* เน็ตสะดุด/Google งอแงชั่วคราว → ลองอีกรอบ */
-            $('upStat').textContent='⏳ อัปไม่ผ่าน กำลังลองใหม่ '+done+'/'+n+' — '+p.name;
-            await new Promise(r=>setTimeout(r,1200));
-          }
-        }
-      }
-      if(err){
-        $('upStat').textContent='';
-        alert('อัปไฟล์ "'+p.name+'" ขึ้น Google Drive ไม่สำเร็จ (ลองแล้ว 2 ครั้ง)\n\n'+err.message
-          +'\n\nยังไม่ได้บันทึกอะไรลงระบบ — ลองกดบันทึกอีกครั้ง หรือเอาไฟล์นี้ออกแล้วใส่เป็นลิงก์');
-        return false;
-      }
-      p.url=j.openUrl||j.viewUrl||''; p.id=j.fileId||''; delete p._file;
+
+  const date=$('f_date').value||todayStr(), fac=$('f_fac').value||'';
+  let done=0, bad=null;
+  const tick=(extra)=>{ $('upStat').textContent='⏳ อัปขึ้น Google Drive '+done+'/'+n
+                        +(extra?(' — '+extra):'') };
+  tick();
+
+  async function one(p){
+    const small=await shrink(p._file,UP_MAXPX);
+    const data=small||await fileToB64(p._file);
+    /* ไฟล์ที่ไม่ใช่รูป (เช่น PDF) ย่อไม่ได้ — ใหญ่เกินไปต้องบอกตรง ๆ ก่อนยิง */
+    if(!small && data.length>6000000)
+      throw new Error('ไฟล์นี้ใหญ่เกินไป (~'+Math.round(data.length/1.37/1048576)+' MB)\n'
+        +'Google Apps Script รับไฟล์ก้อนใหญ่ขนาดนี้ไม่ไหว\n'
+        +'→ ย่อไฟล์ก่อน หรือเอาขึ้น Drive เองแล้ววางเป็นลิงก์แทน');
+    const send=()=>gasCall({action:'upload',
+      filename:safeName(date+'_'+(fac||'ไม่ระบุโรงงาน')+'_'+p.name),
+      folder, mime:small?'image/jpeg':(p.mime||'application/octet-stream'),
+      data, po:'ตัวอย่างสินค้า', vendor:fac, actor:ME||''});
+    let err=null;
+    for(let tryNo=1;tryNo<=2;tryNo++){
+      try{ const j=await send();
+           p.url=j.openUrl||j.viewUrl||''; p.id=j.fileId||''; delete p._file; return; }
+      catch(e){ err=e;
+        if(tryNo<2){ tick('ลองใหม่ '+p.name); await new Promise(r=>setTimeout(r,1000)); } }
     }
+    throw err;
+  }
+
+  /* ★ ยิงพร้อมกันทีละ 3 ไฟล์ — เดิมส่งทีละไฟล์ต่อคิว รอ Google ตอบทีละรอบ
+       3 รูปเคยใช้เวลา 3 รอบเต็ม ๆ ตอนนี้จบในรอบเดียว                        */
+  const CONC=Math.min(3,n);
+  const queue=jobs.slice();
+  async function worker(){
+    while(queue.length&&!bad){
+      const p=queue.shift();
+      try{ await one(p); }catch(e){ if(!bad)bad={p,e}; break; }
+      done++; tick();
+    }
+  }
+  await Promise.all(Array.from({length:CONC},worker));
+
+  if(bad){
+    $('upStat').textContent='';
+    alert('อัปไฟล์ "'+bad.p.name+'" ขึ้น Google Drive ไม่สำเร็จ\n\n'+(bad.e&&bad.e.message||bad.e)
+      +'\n\nยังไม่ได้บันทึกอะไรลงระบบ — ลองกดบันทึกอีกครั้ง หรือเอาไฟล์นี้ออกแล้วใส่เป็นลิงก์');
+    return false;
   }
   $('upStat').textContent='✅ อัปไฟล์ครบ '+n+' ไฟล์';
   SM_LINES.forEach((l,i)=>drawLinePics(i));
