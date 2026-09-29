@@ -257,6 +257,9 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
   <span class="masaru-logo" style="display:inline-block;width:128px;height:26px;flex:0 0 auto"></span>
   <div class="sub">| ทะเบียนสินค้าตัวอย่าง</div>
   <div class="sp"></div>
+  <span class="pill-top" id="livePill" title="อัปเดตเองเมื่อมีคนแก้ข้อมูล">
+    <span id="liveDot" style="width:7px;height:7px;border-radius:50%;background:#94A3B8;
+      display:inline-block;margin-right:5px;transition:transform .35s,background .35s"></span>realtime</span>
   <span class="pill-top" id="rolePill">—</span>
   <span class="pill-top" id="smVer" title="เวอร์ชันไฟล์ — ใช้เช็คว่าอัปไฟล์ใหม่แล้วหรือยัง"></span>
   <button class="btn-top" onclick="location.href='index.html'">🏠 หน้ารวม</button>
@@ -514,7 +517,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-09-gallery';
+const SM_VERSION='v01-10-gallery';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -566,12 +569,77 @@ let ME='', canEdit=false, ROWS=[], CATS=[], MODE='month';
   $('mo').value=monthStr();
   await loadCats();
   await load();
+  subscribeRealtime();
   sb.auth.onAuthStateChange((e,s)=>{ if(e==='SIGNED_OUT'&&!s)location.replace('index.html?logout=1'); });
 })();
 $('logoutBtn').addEventListener('click',async()=>{
   try{ await sb.auth.signOut(); }catch(e){}
   location.replace('index.html?logout=1');
 });
+
+/* ═════════════════ REALTIME — อัปเดตเองเมื่อมีคนแก้ ═════════════════
+   คนอื่นเพิ่ม/แก้/ลบรายการ หรือแก้หมวดหมู่ → หน้านี้ดึงของใหม่ให้เอง ไม่ต้องกดอะไร
+   ★ กันเปลืองไว้ 4 ชั้น เหมือนระบบอื่นใน Hub
+       ① โหลดเฉพาะ "ตารางที่เปลี่ยน" (รายการ / หมวดหมู่ แยกกัน)
+       ② รวมเหตุการณ์ถี่ ๆ ให้โหลดครั้งเดียว (รอ 2.5 วิ)
+       ③ แท็บที่ไม่ได้เปิดดูอยู่ ยังไม่โหลด — รอจนสลับกลับมา
+       ④ กำลังพิมพ์ / เปิดฟอร์มค้างอยู่ → รอให้เสร็จก่อน ของที่กรอกไม่หาย
+   ★ ที่ตัวเองบันทึกไม่โหลดซ้ำ (โค้ดเรียก load() ให้อยู่แล้ว)                    */
+let NEWS_N=0, NEWS_TBL=new Set(), NEWS_T=null;
+const NEWS_WAIT=2500, NEWS_RETRY=4000;
+/* ระหว่างที่ตัวเองกำลังเขียน — กันโหลดซ้ำจาก event ของตัวเอง */
+function selfWriting(ms){
+  window.SELF_WRITING=true;
+  clearTimeout(window.__sw);
+  window.__sw=setTimeout(()=>{ window.SELF_WRITING=false; }, ms||4000);
+}
+function newsBusy(){
+  const a=document.activeElement;
+  if(a&&(a.isContentEditable
+      ||(/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&!a.readOnly&&!a.disabled)))return true;
+  const box=document.querySelectorAll('.modal-bg,[id$="Bg"]');
+  /* ⚠️ ห้ามใช้ offsetParent — โมดัลเป็น position:fixed ซึ่ง offsetParent เป็น null เสมอ */
+  for(const el of box){ if(el.getClientRects().length)return true; }   /* เปิดค้างอยู่ */
+  return false;
+}
+function newsPing(tbl){
+  if(window.SELF_WRITING)return;
+  NEWS_N++; if(tbl)NEWS_TBL.add(tbl);
+  clearTimeout(NEWS_T); NEWS_T=setTimeout(newsFlush,NEWS_WAIT);
+}
+async function newsFlush(){
+  clearTimeout(NEWS_T); NEWS_T=null;
+  if(!NEWS_N)return;
+  if(document.hidden||newsBusy()){ NEWS_T=setTimeout(newsFlush,NEWS_RETRY); return; }
+  const t=new Set(NEWS_TBL);
+  NEWS_N=0; NEWS_TBL=new Set();
+  try{
+    if(t.has('sample_cats')){ await loadCats(); if($('tab-cat').style.display!=='none')renderCats(); }
+    if(t.has('sample_orders')||!t.size)await load();
+    flashLive(); toast('🔄 อัปเดตข้อมูลล่าสุดแล้ว');
+  }catch(e){ console.warn('[sample] auto reload:',e.message); }
+}
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&NEWS_N)newsFlush(); });
+function flashLive(){
+  const d=$('liveDot'); if(!d)return;
+  d.style.background='#22C55E'; d.style.transform='scale(1.9)';
+  setTimeout(()=>{ d.style.transform='scale(1)'; },450);
+}
+function subscribeRealtime(){
+  try{
+    sb.channel('sample-live')
+      .on('postgres_changes',{event:'*',schema:'public',table:'sample_orders'},()=>newsPing('sample_orders'))
+      .on('postgres_changes',{event:'*',schema:'public',table:'sample_cats'},  ()=>newsPing('sample_cats'))
+      .subscribe(st=>{
+        const d=$('liveDot'); if(!d)return;
+        d.style.background = st==='SUBSCRIBED' ? '#1D9E75' : '#94A3B8';
+        const pill=$('livePill');
+        if(pill)pill.title = st==='SUBSCRIBED'
+          ? 'อัปเดตเองเมื่อมีคนแก้ข้อมูล'
+          : 'ยังไม่เชื่อมต่อ realtime — ถ้าไม่อัปเดตเอง ให้รัน sample_realtime.sql บน Supabase';
+      });
+  }catch(e){ console.warn('[sample] realtime:',e.message); }
+}
 
 /* ═════════════════ TABS ═════════════════ */
 function goTab(t){
@@ -1083,6 +1151,7 @@ async function catInsert(name,parent,color){
   toast('เพิ่ม'+(parent?'หมวดย่อย':'หมวดหลัก')+' "'+name+'" แล้ว ✅');
 }
 async function addCat(){
+  selfWriting();
   const n=($('cNew').value||'').trim(); if(!n)return toast('ใส่ชื่อหมวดก่อน');
   const par=($('cParent')&&$('cParent').value)||'';
   await catInsert(n,par,$('cColor').value);
@@ -1095,6 +1164,7 @@ async function addSub(main){
   await catInsert(nn,main,'');
 }
 async function renCat(id){
+  selfWriting();
   const c=CATS.find(x=>String(x.id)===String(id)); if(!c)return;
   const lv=c.parent?('หมวดย่อยใต้ "'+c.parent+'"'):'หมวดหลัก';
   const n=prompt('เปลี่ยนชื่อ'+lv+'\n\n★ รายการเก่าที่ใช้ชื่อเดิมจะยังเป็นชื่อเดิม (ประวัติไม่เพี้ยน)\n'
@@ -1132,6 +1202,7 @@ function colCat(id){
   $('colBg').style.display='flex';
 }
 async function colApply(col){
+  selfWriting();
   const c=CATS.find(x=>String(x.id)===String(COL_ID)); if(!c)return;
   if(col&&!/^#[0-9a-fA-F]{6}$/.test(col))return toast('สีไม่ถูกรูปแบบ');
   const {error}=await sb.from('sample_cats').update({color:col||null}).eq('id',c.id).select();
@@ -1141,6 +1212,7 @@ async function colApply(col){
   toast(col?('เปลี่ยนสี "'+c.name+'" แล้ว ✅'):('"'+c.name+'" ใช้สีของหมวดหลักแล้ว ✅'));
 }
 async function tglCat(id){
+  selfWriting();
   const c=CATS.find(x=>String(x.id)===String(id)); if(!c)return;
   const {error}=await sb.from('sample_cats').update({active:c.active===false}).eq('id',c.id).select();
   if(error)return toast('แก้ไม่สำเร็จ: '+error.message);
@@ -1513,9 +1585,9 @@ async function save(){
       pics:clean(PICS), proofs:clean(PROOFS)};
     let error;
     if(EDIT_ID){ rec.updated_by=ME;
-      ({error}=await sb.from('sample_orders').update(rec).eq('id',EDIT_ID).select()); }
+      selfWriting(); ({error}=await sb.from('sample_orders').update(rec).eq('id',EDIT_ID).select()); }
     else { rec.created_by=ME;
-      ({error}=await sb.from('sample_orders').insert(rec).select()); }
+      selfWriting(); ({error}=await sb.from('sample_orders').insert(rec).select()); }
     if(error){
       if(/relation .*sample_orders.* does not exist|could not find the table/i.test(error.message))
         return alert('ยังไม่มีตาราง sample_orders ในฐานข้อมูล\n\nกรุณารันไฟล์ sample_orders.sql บน Supabase ก่อน');
@@ -1529,6 +1601,7 @@ async function del(id){
   const r=ROWS.find(x=>String(x.id)===String(id)); if(!r)return;
   if(!confirm('ลบรายการวันที่ '+thDate(r.req_date)+' ?\n\n'+String(r.items||'').slice(0,120)
     +'\n\n⚠️ ลบแล้วกู้คืนไม่ได้ · ไฟล์ใน Google Drive ไม่ถูกลบ'))return;
+  selfWriting();
   const {error}=await sb.from('sample_orders').delete().eq('id',id);
   if(error)return toast('ลบไม่สำเร็จ: '+error.message);
   await load(); toast('ลบแล้ว');
