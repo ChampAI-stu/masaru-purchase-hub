@@ -296,8 +296,10 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
       </div>
       <div class="row" style="margin-bottom:12px">
         <button class="btn mini ghost" id="segM" onclick="setMode('month')">📅 รายเดือน</button>
+        <button class="btn mini ghost" id="segY" onclick="setMode('year')">📆 รายปี</button>
         <button class="btn mini ghost" id="segR" onclick="setMode('range')">🗓️ ช่วงวันที่</button>
         <span id="ctlM"><input type="month" id="mo" style="width:170px" onchange="load()"></span>
+        <span id="ctlY" style="display:none"><select id="yr" style="width:170px" onchange="load()"></select></span>
         <span id="ctlR" style="display:none" class="row">
           <span class="muted" style="font-size:12px">ตั้งแต่</span>
           <input type="date" id="from" style="width:160px" onchange="load()">
@@ -517,7 +519,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-10-gallery';
+const SM_VERSION='v01-11-gallery';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -566,6 +568,7 @@ let ME='', canEdit=false, ROWS=[], CATS=[], MODE='month';
   $('loginScreen').style.display='none';
   $('app').style.display='block';
   if(!GAS_URL)$('noGas').style.display='';
+  fillYears();
   $('mo').value=monthStr();
   await loadCats();
   await load();
@@ -658,10 +661,20 @@ function goTab(t){
 function setMode(m){
   MODE=m;
   $('ctlM').style.display=m==='month'?'':'none';
+  $('ctlY').style.display=m==='year' ?'':'none';
   $('ctlR').style.display=m==='range'?'':'none';
   $('segM').classList.toggle('gold',m==='month');
+  $('segY').classList.toggle('gold',m==='year');
   $('segR').classList.toggle('gold',m==='range');
   load();
+}
+/* รายชื่อปีในดรอปดาวน์ — ย้อนหลัง 5 ปี (แสดงเป็น พ.ศ. ให้ตรงกับที่ทุกคนใช้พูดกัน) */
+function fillYears(){
+  const now=new Date().getFullYear();
+  const sel=$('yr'); if(!sel||sel.options.length)return;
+  const ys=[]; for(let y=now;y>=now-5;y--)ys.push(y);
+  sel.innerHTML=ys.map(y=>'<option value="'+y+'">ปี '+(y+543)+' (ค.ศ. '+y+')</option>').join('');
+  sel.value=String(now);
 }
 function quick(n){
   const d=new Date(); const p=x=>String(x).padStart(2,'0');
@@ -672,6 +685,10 @@ function quick(n){
   load();
 }
 function period(){
+  if(MODE==='year'){
+    const y=$('yr').value||String(new Date().getFullYear());
+    return {from:y+'-01-01', to:y+'-12-31', head:'ปี พ.ศ. '+(+y+543)};
+  }
   if(MODE==='range'){
     let f=$('from').value||'', t=$('to').value||'';
     if(f&&t&&f>t){const x=f;f=t;t=x;}
@@ -926,7 +943,8 @@ function render(){
 function sumBy(rows,key){
   const g={};
   rows.forEach(r=>{
-    const k=(key==='month')?String(r.req_date||'').slice(0,7)
+    const k=(key==='year') ?String(r.req_date||'').slice(0,4)
+           :(key==='month')?String(r.req_date||'').slice(0,7)
            :(key==='path')?((r.cat||'(ไม่ระบุ)')+' › '+(r.subcat||'(ไม่ระบุหมวดย่อย)'))
            :((r[key]||'(ไม่ระบุ)'));
     const c=String(r.currency||'CNY').toUpperCase();
@@ -1084,6 +1102,9 @@ function renderSum(){
   h+=rpBlock('🏭 ตามโรงงาน','จ่ายให้โรงงานไหนมากสุด',sumBy(rows,'factory'),null,cur);
   h+=rpBlock('👤 ตามผู้รับผิดชอบ','ใครเป็นคนดูแลรายการ',sumBy(rows,'responsible'),null,cur);
   h+=rpBlock('📅 ตามเดือน','เรียงตามเวลา',sumBy(rows,'month'),'key',cur);
+  /* ข้อมูลคร่อมหลายปี → เพิ่มมุมรายปี ให้เทียบปีต่อปีได้ในตาเดียว */
+  if(new Set(rows.map(r=>String(r.req_date||'').slice(0,4)).filter(Boolean)).size>1)
+    h+=rpBlock('📆 ตามปี','เทียบปีต่อปี',sumBy(rows,'year'),'key',cur);
   $('sumBody').innerHTML=h;
 }
 
@@ -1669,7 +1690,26 @@ if(window.ResizeObserver)new ResizeObserver(pgHeaderSize).observe(document.query
 window.addEventListener('resize',pgHeaderSize);pgHeaderSize();
 let PG_CATEGORY='', PG_LIMIT=40, PG_ROWS=[], PG_VIEW=[], PG_ITEM=0, PG_PIC=0;
 let PG_STATUS='loading', PG_ERROR='', PG_SCROLL='', PG_OPENER=null;
-function pgPics(r){return allPics(r).filter(p=>p&&typeof p==='object'&&!/pdf/i.test(p.mime||'')&&!/\.pdf($|\?)/i.test(p.name||p.url||'')&&(p.id||p.url));}
+/* ═══ แกลเลอรีดู "รายตัวสินค้า" ไม่ใช่ "รายล็อต" ═══════════════════
+   1 ล็อตมีสินค้าได้หลายตัว และแต่ละตัวมีรูปของตัวเอง → ในแกลเลอรีต้องแยกการ์ดกัน
+   (หน้าอื่น — ตาราง · รายงาน · Excel — ยังดูเป็นล็อตเหมือนเดิม ไม่กระทบ)
+   ★ สินค้าตัวไหนยังไม่ใส่รูปของตัวเอง จะยืมรูปรวมของล็อตมาแสดงให้ก่อน (ติดป้ายบอกไว้) */
+const pgOk=p=>p&&typeof p==='object'&&!/pdf/i.test(p.mime||'')
+  &&!/\.pdf($|\?)/i.test(p.name||p.url||'')&&(p.id||p.url);
+function pgUnits(r){
+  const L=arr(r.lines).filter(l=>l&&String(l.name||'').trim());
+  const lotPics=arr(r.pics).filter(pgOk);
+  if(!L.length)                                     /* รายการเก่า ยังไม่มีรายการสินค้าแยก */
+    return [{lot:r,idx:-1,n:1,name:r.items||'สินค้าตัวอย่าง',
+             qty:r.qty,price:r.unit_price,pics:allPics(r).filter(pgOk),borrowed:false}];
+  return L.map((l,i)=>{
+    const own=arr(l.pics).filter(pgOk);
+    return {lot:r,idx:i,n:L.length,name:l.name,qty:l.qty,price:l.price,
+            pics:own.length?own:lotPics.slice(), borrowed:!own.length&&lotPics.length>0};
+  });
+}
+function pgPics(u){ return (u&&u.pics)||[]; }
+const pgLineTotal=u=>num(u&&u.qty)*num(u&&u.price);
 function pgURL(p,w){
   const raw=thumbUrl(p,w);
   try{const u=new URL(raw,location.href);return /^https?:$/.test(u.protocol)||/^data:image\/(png|jpeg|gif|webp|avif);base64,/i.test(raw)?u.href:'';}catch(e){return '';}
@@ -1685,19 +1725,47 @@ function renderGallery(){
   $('pgCats').innerHTML=[''].concat(categories).map((cat,i)=>'<button type="button" class="pg-chip" data-category="'+i+'" aria-pressed="'+(cat===PG_CATEGORY)+'">'+esc(cat||'ทุกหมวด')+'</button>').join('');
   $('pgCats').querySelectorAll('button').forEach((b,i)=>b.onclick=()=>{PG_CATEGORY=[''].concat(categories)[i];PG_LIMIT=40;renderGallery();});
   const query=$('pgQuery').value.trim().toLocaleLowerCase('th'), photo=$('pgPhotoFilter').value;
-  PG_ROWS=ROWS.filter(r=>(!PG_CATEGORY||r.cat===PG_CATEGORY)&&(!query||[r.items,r.cat,r.subcat,r.factory,r.responsible,r.note].join(' ').toLocaleLowerCase('th').includes(query))&&(photo==='all'||(photo==='photos'?pgPics(r).length>0:pgPics(r).length===0)));
+  PG_ROWS=ROWS.flatMap(pgUnits).filter(u=>{
+    const r=u.lot;
+    if(PG_CATEGORY&&r.cat!==PG_CATEGORY)return false;
+    /* ★ ค้นด้วยชื่อ "สินค้าตัวนี้" ไม่เอา r.items (ที่รวมชื่อทุกตัวในล็อต)
+          ไม่งั้นค้นชื่อตัวหนึ่ง แล้วเพื่อนร่วมล็อตจะโผล่มาด้วยทั้งหมด */
+    if(query&&![u.name,r.cat,r.subcat,r.factory,r.responsible,r.note]
+      .join(' ').toLocaleLowerCase('th').includes(query))return false;
+    if(photo==='photos')return u.pics.length>0;
+    if(photo==='none')  return u.pics.length===0;
+    return true;
+  });
   const sort=$('pgSort').value;
-  PG_ROWS.sort((a,b)=>sort==='name'?String(a.items||'').localeCompare(String(b.items||''),'th'):sort==='photos'?pgPics(b).length-pgPics(a).length:sort==='old'?String(a.req_date||'').localeCompare(String(b.req_date||'')):String(b.req_date||'').localeCompare(String(a.req_date||'')));
-  $('pgResult').textContent=PG_STATUS==='loading'?'กำลังโหลดสินค้า…':PG_STATUS==='error'?'โหลดสินค้าไม่สำเร็จ':PG_ROWS.length+' รายการ · '+PG_ROWS.reduce((n,r)=>n+pgPics(r).length,0)+' รูป';
+  PG_ROWS.sort((a,b)=>sort==='name'?String(a.name||'').localeCompare(String(b.name||''),'th')
+    :sort==='photos'?b.pics.length-a.pics.length
+    :sort==='old'?String(a.lot.req_date||'').localeCompare(String(b.lot.req_date||''))
+    :String(b.lot.req_date||'').localeCompare(String(a.lot.req_date||'')));
+  $('pgResult').textContent=PG_STATUS==='loading'?'กำลังโหลดสินค้า…':PG_STATUS==='error'?'โหลดสินค้าไม่สำเร็จ'
+    :PG_ROWS.length+' ตัวสินค้า · '+PG_ROWS.reduce((n,u)=>n+u.pics.length,0)+' รูป'
+     +' · จาก '+new Set(PG_ROWS.map(u=>u.lot.id)).size+' ล็อต';
   $('pgRandom').disabled=PG_STATUS!=='ready'||!PG_ROWS.length;
   $('pgMore').hidden=PG_STATUS!=='ready'||PG_ROWS.length<=PG_LIMIT;
   if(PG_STATUS!=='ready'){
     $('pgGrid').innerHTML='<div class="pg-empty">'+(PG_STATUS==='loading'?'กำลังเตรียมคอลเลกชันสินค้า…':'โหลดสินค้าไม่สำเร็จ: '+esc(PG_ERROR)+'<br><button class="btn ghost" type="button" onclick="load()">ลองอีกครั้ง</button>')+'</div>';return;
   }
   if(!PG_ROWS.length){$('pgGrid').innerHTML='<div class="pg-empty">'+pgPlaceholder(ROWS.length?'ไม่พบสินค้าที่ตรงกับตัวกรอง':'ยังไม่มีสินค้าในช่วงวันที่นี้')+'ลองล้างตัวกรองหรือเลือกช่วงวันที่อื่น</div>';return;}
-  $('pgGrid').innerHTML=PG_ROWS.slice(0,PG_LIMIT).map((r,i)=>{
-    const pics=pgPics(r), title=r.items||'สินค้าตัวอย่าง';
-    return '<button type="button" class="pg-card" data-item="'+i+'" aria-label="'+esc('ดูสินค้า '+title)+'"><span class="pg-visual">'+(pics.length?pgImg(pics[0],600,title):pgPlaceholder())+'<span class="pg-count">'+(pics.length?'▧ '+pics.length+' รูป':'รอเพิ่มรูป')+'</span></span><span class="pg-cardbody"><span class="pg-category">'+esc([r.cat||'ไม่ระบุหมวด',r.subcat].filter(Boolean).join(' / '))+'</span><span class="pg-title">'+esc(title)+'</span><span class="pg-meta">'+esc(r.factory||'ไม่ระบุโรงงาน')+' · '+esc(thDate(r.req_date))+'</span><span class="pg-foot"><span>'+(r.is_free?'🎁 ได้ฟรี':'ยอดชำระ <b>'+esc(curSym(r.currency))+' '+money2(r.amount)+'</b>')+'</span><span>เปิดดู ↗</span></span></span></button>';
+  $('pgGrid').innerHTML=PG_ROWS.slice(0,PG_LIMIT).map((u,i)=>{
+    const r=u.lot, pics=u.pics, title=u.name||'สินค้าตัวอย่าง';
+    const line=pgLineTotal(u);
+    const money_=r.is_free?'🎁 ได้ฟรี'
+      :(line?('<b>'+esc(curSym(r.currency))+' '+money2(line)+'</b>')
+            :('ยอดล็อต <b>'+esc(curSym(r.currency))+' '+money2(r.amount)+'</b>'));
+    return '<button type="button" class="pg-card" data-item="'+i+'" aria-label="'+esc('ดูสินค้า '+title)+'">'
+      +'<span class="pg-visual">'+(pics.length?pgImg(pics[0],600,title):pgPlaceholder())
+      +'<span class="pg-count">'+(pics.length?((u.borrowed?'▧ รูปรวมล็อต ':'▧ ')+pics.length+' รูป'):'รอเพิ่มรูป')+'</span></span>'
+      +'<span class="pg-cardbody">'
+      +'<span class="pg-category">'+esc([r.cat||'ไม่ระบุหมวด',r.subcat].filter(Boolean).join(' / '))
+        +(u.n>1?(' · ล็อต '+u.n+' รายการ'):'')+'</span>'
+      +'<span class="pg-title">'+esc(title)+'</span>'
+      +'<span class="pg-meta">'+esc(r.factory||'ไม่ระบุโรงงาน')+' · '+esc(thDate(r.req_date))
+        +(num(u.qty)?(' · '+money(u.qty)+' ชิ้น'):'')+'</span>'
+      +'<span class="pg-foot"><span>'+money_+'</span><span>เปิดดู ↗</span></span></span></button>';
   }).join('');
   $('pgGrid').querySelectorAll('[data-item]').forEach(b=>b.onclick=()=>pgOpen(Number(b.dataset.item)));
 }
@@ -1707,18 +1775,43 @@ function pgOpen(index){
   pgDetail();PG_SCROLL=document.body.style.overflow;document.body.style.overflow='hidden';$('pgDialog').showModal();$('pgClose').focus();
 }
 function pgDetail(){
-  const r=PG_VIEW[PG_ITEM];if(!r)return;
+  const u=PG_VIEW[PG_ITEM];if(!u)return;
+  const r=u.lot, sym=curSym(r.currency), line=pgLineTotal(u);
   $('pgPosition').textContent='สินค้า '+(PG_ITEM+1)+' / '+PG_VIEW.length;
-  $('pgInfo').innerHTML='<div class="pg-category">'+esc([r.cat||'ไม่ระบุหมวด',r.subcat].filter(Boolean).join(' / '))+'</div><h3 id="pgDetailTitle">'+esc(r.items||'สินค้าตัวอย่าง')+'</h3><div class="pg-price"><small>'+(r.is_free?'ไม่มีค่าใช้จ่าย':'ยอดชำระรวม')+'</small><strong>'+(r.is_free?'🎁 ได้ฟรี':esc(curSym(r.currency))+' '+money2(r.amount))+'</strong></div><dl class="pg-facts">'+[['โรงงาน',r.factory||'—'],['ผู้รับผิดชอบ',r.responsible||'—'],['วันที่',thDate(r.req_date)],['จำนวน',r.qty!=null?money(r.qty)+' ชิ้น':'—'],['ราคาต่อชิ้น',arr(r.lines).length>1?(arr(r.lines).length+' รายการ (ดูด้านล่าง)'):(r.unit_price!=null?curSym(r.currency)+' '+money2(r.unit_price):'—')],['สกุลเงิน',r.currency||'CNY']].map(([k,v])=>'<div><dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd></div>').join('')+'</dl>'+(arr(r.lines).length>1||arr(r.lines).some(l=>arr(l&&l.pics).length)
-     ?'<div class="pg-note"><b>รายการสินค้า</b><br>'+itemsHtml(r)+'</div>':'')
-   +(r.note?'<div class="pg-note"><b>หมายเหตุ</b><br>'+esc(r.note)+'</div>':'');
+  /* สินค้าตัวอื่นที่มาในล็อตเดียวกัน — ให้รู้ว่าสั่งมาพร้อมอะไรบ้าง */
+  const mates=arr(r.lines).filter(l=>l&&String(l.name||'').trim())
+    .map((l,i)=>({l,i})).filter(x=>x.i!==u.idx);
+  $('pgInfo').innerHTML=
+     '<div class="pg-category">'+esc([r.cat||'ไม่ระบุหมวด',r.subcat].filter(Boolean).join(' / '))+'</div>'
+    +'<h3 id="pgDetailTitle">'+esc(u.name||'สินค้าตัวอย่าง')+'</h3>'
+    +'<div class="pg-price"><small>'+(r.is_free?'ไม่มีค่าใช้จ่าย'
+        :(line?'ยอดของสินค้าตัวนี้':'ยอดชำระทั้งล็อต'))+'</small>'
+      +'<strong>'+(r.is_free?'🎁 ได้ฟรี':esc(sym)+' '+money2(line||r.amount))+'</strong></div>'
+    +'<dl class="pg-facts">'+[
+        ['โรงงาน',r.factory||'—'],['ผู้รับผิดชอบ',r.responsible||'—'],
+        ['วันที่',thDate(r.req_date)],
+        ['จำนวน',num(u.qty)?money(u.qty)+' ชิ้น':'—'],
+        ['ราคาต่อชิ้น',num(u.price)?sym+' '+money2(u.price):'—'],
+        ['สกุลเงิน',r.currency||'CNY']
+      ].map(([k,v])=>'<div><dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd></div>').join('')+'</dl>'
+    +(u.borrowed?'<div class="pg-note">📷 <b>ยังไม่มีรูปของสินค้าตัวนี้</b> — กำลังแสดง'
+        +'<b>รูปรวมของล็อต</b>แทน · กด ✏️ แก้ไขรายการ แล้วใส่รูปที่บรรทัดของสินค้าตัวนี้ได้เลย</div>':'')
+    +(mates.length?'<div class="pg-note"><b>📦 สั่งมาในล็อตเดียวกัน</b><br>'
+        +mates.map(x=>esc(String(x.l.name||''))
+          +(num(x.l.qty)?(' <span class="muted" style="font-size:11.5px">— '+money(x.l.qty)+' ชิ้น'
+            +(num(x.l.price)?(' × '+esc(sym)+' '+money2(x.l.price)):'')+'</span>'):''))
+          .join('<br>')
+        +'<div class="muted" style="font-size:11.5px;margin-top:5px">ยอดรวมทั้งล็อต '
+          +esc(sym)+' '+money2(r.amount)+'</div></div>':'')
+    +(r.note?'<div class="pg-note"><b>หมายเหตุ</b><br>'+esc(r.note)+'</div>':'');
   $('pgPrevItem').disabled=$('pgNextItem').disabled=PG_VIEW.length<2;
   $('pgEdit').hidden=!canEdit;pgPhoto();
 }
 function pgPhoto(){
-  const r=PG_VIEW[PG_ITEM], pics=pgPics(r);
+  const u=PG_VIEW[PG_ITEM], r=u&&u.lot, pics=pgPics(u);
   $('pgStage').classList.remove('pg-zoom');$('pgZoom').setAttribute('aria-pressed','false');$('pgZoom').textContent='ขยายรูป';
-  $('pgStage').innerHTML=pics.length?pgImg(pics[PG_PIC],1600,r.items||'รูปสินค้า'):pgPlaceholder();
+  $('pgStage').innerHTML=pics.length?pgImg(pics[PG_PIC],1600,u.name||'รูปสินค้า')
+    :pgPlaceholder('ยังไม่มีรูปของสินค้าตัวนี้');
   const image=$('pgStage').querySelector('img');if(image){image.loading='eager';image.onclick=pgZoom;}
   $('pgPicPosition').textContent=pics.length?'รูป '+(PG_PIC+1)+' / '+pics.length:'ยังไม่มีรูป';
   $('pgPrevPic').disabled=$('pgNextPic').disabled=pics.length<2;$('pgZoom').disabled=!pics.length;
@@ -1739,7 +1832,7 @@ $('pgDialog').addEventListener('click',e=>{if(e.target===$('pgDialog')){const b=
 $('pgDialog').addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();pgStepPic(e.key==='ArrowLeft'?-1:1);}});
 $('pgPrevPic').onclick=()=>pgStepPic(-1);$('pgNextPic').onclick=()=>pgStepPic(1);$('pgZoom').onclick=pgZoom;
 $('pgPrevItem').onclick=()=>pgStepItem(-1);$('pgNextItem').onclick=()=>pgStepItem(1);
-$('pgEdit').onclick=()=>{const id=PG_VIEW[PG_ITEM].id;$('pgDialog').close();openForm(id);};
+$('pgEdit').onclick=()=>{const id=PG_VIEW[PG_ITEM].lot.id;$('pgDialog').close();openForm(id);};
 let pgTouch=null;
 $('pgStage').addEventListener('touchstart',e=>{pgTouch=e.touches.length===1?{x:e.touches[0].clientX,y:e.touches[0].clientY}:null;},{passive:true});
 $('pgStage').addEventListener('touchend',e=>{if(!pgTouch||$('pgStage').classList.contains('pg-zoom'))return;const dx=e.changedTouches[0].clientX-pgTouch.x,dy=e.changedTouches[0].clientY-pgTouch.y;if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)*1.5)pgStepPic(dx<0?1:-1);pgTouch=null;},{passive:true});
