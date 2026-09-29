@@ -1402,7 +1402,7 @@ let currentRole = null; let ROLE_LABEL = '';
      แล้วใช้ธง MKT_LEAD เปิดเฉพาะแท็บ 📦 + กระดิ่งเพิ่มให้ทีหลัง
    ⚠️ อย่าเผลอไปแตะ canSeePrice / canSeeResp ให้ true — ตกลงกันว่าไม่ให้เห็นต้นทุน */
 let MKT_LEAD = false;
-const BOARD_VERSION='v05-16';
+const BOARD_VERSION='v05-17';
 try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
 console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
@@ -1539,8 +1539,11 @@ function enterApp(session){
   const isExec = roles.includes('pr_exec') || roles.includes('executive');
   const isMgr  = roles.includes('pr_manager');
   const isShip = roles.includes('shipping');
-  const isMktLead = roles.includes('marketing_lead');
-  // อนุญาตเฉพาะบัญชีที่มีสิทธิ์ purchase/marketing/marketing_lead/shipping/หัวหน้า/ผู้บริหาร
+  /* หัวหน้าแบรนดิ้ง (brand_lead) — ในหน้านี้สิทธิ์เท่าหัวหน้าทีมการตลาดทุกอย่าง
+     ที่ต่างกันคือนอกหน้านี้: brand_lead เข้า 💰 ต้นทุนสินค้า + 🧪 ทะเบียนสินค้าตัวอย่าง ได้ (ดูอย่างเดียว) */
+  const isBrandLead = roles.includes('brand_lead');
+  const isMktLead = roles.includes('marketing_lead') || isBrandLead;
+  // อนุญาตเฉพาะบัญชีที่มีสิทธิ์ purchase/marketing/marketing_lead/brand_lead/shipping/หัวหน้า/ผู้บริหาร
   if(!roles.includes('purchase') && !roles.includes('marketing') && !isMktLead && !isShip && !isMgr && !isExec){
     location.replace('index.html');   // ไม่มีสิทธิ์ → กลับหน้ารวม HUB
     return;
@@ -1556,7 +1559,8 @@ function enterApp(session){
              : (isMgr ? '\ud83e\uddd1\u200d\ud83d\udcbc \u0e2b\u0e31\u0e27\u0e2b\u0e19\u0e49\u0e32'
              : (isExec ? '\ud83d\udc51 \u0e1c\u0e39\u0e49\u0e1a\u0e23\u0e34\u0e2b\u0e32\u0e23'
              : (isShip ? '\ud83d\ude9a \u0e0a\u0e34\u0e1b\u0e1b\u0e34\u0e49\u0e07 (\u0e14\u0e39\u0e2d\u0e22\u0e48\u0e32\u0e07\u0e40\u0e14\u0e35\u0e22\u0e27)'
-             : (MKT_LEAD ? '\ud83d\udce3 \u0e2b\u0e31\u0e27\u0e2b\u0e19\u0e49\u0e32\u0e17\u0e35\u0e21\u0e01\u0e32\u0e23\u0e15\u0e25\u0e32\u0e14'
+             : (MKT_LEAD ? (isBrandLead ? '\ud83c\udfa8 \u0e2b\u0e31\u0e27\u0e2b\u0e19\u0e49\u0e32\u0e41\u0e1a\u0e23\u0e19\u0e14\u0e34\u0e49\u0e07'
+                                        : '\ud83d\udce3 \u0e2b\u0e31\u0e27\u0e2b\u0e19\u0e49\u0e32\u0e17\u0e35\u0e21\u0e01\u0e32\u0e23\u0e15\u0e25\u0e32\u0e14')
              : '\ud83d\udc41\ufe0f \u0e1d\u0e48\u0e32\u0e22\u0e01\u0e32\u0e23\u0e15\u0e25\u0e32\u0e14'))));
   // ราคาสินค้า: เห็น+แก้ได้ เฉพาะ จัดซื้อ/หัวหน้า/ผู้บริหาร
   canSeePrice  = canManage;
