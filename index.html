@@ -1430,6 +1430,7 @@
             <option value="purchase">จัดซื้อ</option>
             <option value="marketing">การตลาด</option>
             <option value="marketing_lead">หัวหน้าทีมการตลาด</option>
+            <option value="brand_lead">หัวหน้าแบรนดิ้ง</option>
             <option value="head_purchase">หัวหน้าจัดซื้อ</option>
             <option value="shipping">ขนส่ง (Shipping)</option>
             <option value="executive">ผู้บริหาร</option>
@@ -1520,7 +1521,7 @@ const $ = id => document.getElementById(id);
 const APPS_FALLBACK = [
   { key:'board', icon:'📋', title:'Purchase Board',
     desc:'ติดตามสถานะ PO / SKU + แผนรับสินค้า แบบเรียลไทม์',
-    url:'board.html', roles:['purchase','marketing','marketing_lead','shipping'] },
+    url:'board.html', roles:['purchase','marketing','marketing_lead','brand_lead','shipping'] },
   { key:'pr', icon:'📝', title:'ใบขอซื้อ (PR)',
     desc:'ออกใบขอซื้อ + ตรวจ AI + อนุมัติ + พิมพ์ PDF',
     url:'pr.html', roles:['purchase'] },
@@ -1539,7 +1540,8 @@ const APPS_FALLBACK = [
     url:'cost.html', roles:['purchase','shipping'] },
   { key:'costsku', icon:'💰', title:'ต้นทุนสินค้า',
     desc:'Landed cost รายตัว · ปันส่วนค่าขนส่ง · KPI Cost Saving',
-    url:'costsku.html', roles:['purchase'] },
+    /* ⚠️ brand_lead ดูอย่างเดียว — ต้องตรงกับ costsku.html และ portal_brand_lead.sql */
+    url:'costsku.html', roles:['purchase','brand_lead'] },
   /* 🚫 เอาการ์ด 💾 สำรองข้อมูล ออกจากหน้ารวมแล้ว (ขอมา)
         ไฟล์ backup.html ยังอยู่ เข้าตรง URL ได้ — แค่ไม่โชว์เป็นการ์ด
         อยากเอากลับ: เอาคอมเมนต์นี้ออก + รัน portal_hide_backup.sql แบบ SHOW */
@@ -1549,7 +1551,8 @@ const APPS_FALLBACK = [
     url:'daily.html', roles:['purchase','pr_manager','pr_exec','executive','shipping'] },
   { key:'sample', icon:'🧪', title:'ทะเบียนสินค้าตัวอย่าง',
     desc:'ขอ/สั่งซื้อสินค้าตัวอย่าง — เก็บรูป · หลักฐานการชำระ · สรุปค่าใช้จ่ายแยกหมวด',
-    url:'sample.html', roles:['purchase','pr_manager','pr_exec','executive'] },
+    /* ⚠️ brand_lead ดูอย่างเดียว — ต้องตรงกับ sample.html และ portal_brand_lead.sql */
+    url:'sample.html', roles:['purchase','pr_manager','pr_exec','executive','brand_lead'] },
   /* 📕 เครื่องมือ PDF — เว็บนอก (คนละ repo) จึงใส่ URL เต็มและเปิดแท็บใหม่เสมอ */
   { key:'pdf', icon:'📕', title:'ระบบจัดการเอกสาร PDF',
     desc:'รวม · แยก · บีบอัด · แปลงไฟล์ · ใส่ลายน้ำ — ทำในเบราว์เซอร์ ไฟล์ไม่ออกจากเครื่อง',
@@ -1575,10 +1578,12 @@ async function loadApps(){
   }catch(e){ return APPS_FALLBACK; }
 }
 
-const ROLE_LABEL = { purchase:'จัดซื้อ', marketing:'การตลาด', marketing_lead:'หัวหน้าทีมการตลาด', pr_manager:'หัวหน้า (อนุมัติ)', pr_exec:'ผู้บริหาร', executive:'ผู้บริหาร', shipping:'ขนส่ง (Shipping)' };
+const ROLE_LABEL = { purchase:'จัดซื้อ', marketing:'การตลาด', marketing_lead:'หัวหน้าทีมการตลาด', brand_lead:'หัวหน้าแบรนดิ้ง', pr_manager:'หัวหน้า (อนุมัติ)', pr_exec:'ผู้บริหาร', executive:'ผู้บริหาร', shipping:'ขนส่ง (Shipping)' };
 /* marketing_lead = หัวหน้าทีมการตลาด — เห็นการ์ดเท่าการตลาด (Purchase Board)
-   ต่างกันที่ในตัว board.html เปิดแท็บ 📦 แจ้งสินค้าขาเข้า ให้ดูอย่างเดียว */
-const ALLOWED = ['purchase','marketing','marketing_lead','pr_manager','pr_exec','executive','shipping'];   // บทบาทที่เข้าหน้ารวมได้
+   ต่างกันที่ในตัว board.html เปิดแท็บ 📦 แจ้งสินค้าขาเข้า ให้ดูอย่างเดียว
+   brand_lead    = หัวหน้าแบรนดิ้ง — เหมือนหัวหน้าทีมการตลาดทุกอย่าง
+   เพิ่มให้: 💰 ต้นทุนสินค้า + 🧪 ทะเบียนสินค้าตัวอย่าง (ดูอย่างเดียวทั้งคู่) */
+const ALLOWED = ['purchase','marketing','marketing_lead','brand_lead','pr_manager','pr_exec','executive','shipping'];   // บทบาทที่เข้าหน้ารวมได้
 /* เว็บนอก (URL เต็ม http/https) — เปิดแท็บใหม่เสมอ ไม่พาออกจากหน้ารวม
    เช่น ระบบจัดการเอกสาร PDF ที่อยู่คนละ repo */
 const isExtUrl = u => /^https?:\/\//i.test(String(u||''));
