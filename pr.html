@@ -1614,7 +1614,9 @@ function newsBusy(){
   const box=document.querySelectorAll('dialog,.modal-bg,.ph-overlay,[id$="Bg"]');
   for(const el of box){
     if(el.tagName==='DIALOG'){ if(el.open)return true; continue; }
-    if(el.offsetParent!==null)return true;        /* มองเห็นอยู่ = เปิดค้าง */
+    /* ⚠️ ห้ามใช้ offsetParent — โมดัลเป็น position:fixed ซึ่ง offsetParent เป็น null เสมอ
+       ถึงจะเปิดค้างอยู่ก็ตาม · getClientRects() ว่าง = ไม่ได้แสดงผลจริง */
+    if(el.getClientRects().length)return true;   /* มองเห็นอยู่ = เปิดค้าง */
   }
   return false;
 }
