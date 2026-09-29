@@ -174,7 +174,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-62</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-63</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -1013,39 +1013,55 @@ async function liveRefs(rows){
 /* ⚠️ เดิม: ทุก event = โหลดใหม่ทั้ง 5 ตาราง ทันที
       อนุมัติทีเดียวหลายรายการ → โหลดซ้ำหลายสิบครั้ง × ทุกเบราว์เซอร์
    ✅ ใหม่: รวมเหตุการณ์ 2.5 วิ · แท็บพื้นหลังไม่โหลด (รอกลับมาดู) */
-/* ===== แถบ "มีข้อมูลใหม่ — กดเพื่อโหลด" =====
-   ⚠️ Egress 99.1% มาจาก PostgREST คือการ "อ่านตารางกลับมา"
-      ทุกครั้งที่มีคนแก้ ไม่ใช่ตัว realtime เอง (realtime แค่ 0.9%)
-   ✅ จึงคง realtime ไว้เป็น "สัญญาณเตือน" แต่ไม่ดึงข้อมูลเอง
-      → ขึ้นปุ่มให้ผู้ใช้กดโหลดเมื่อต้องการ = ไม่มีการอ่านตารางที่ไม่มีคนดู
-   งานที่ตัวเองบันทึก ยังโหลดใหม่ให้ทันทีเหมือนเดิม (ไม่กระทบการทำงาน) */
-let NEWS_N=0, NEWS_TBL=new Set();
-function newsEl(){
-  let el=document.getElementById('newsBar');
-  if(!el){
-    el=document.createElement('div'); el.id='newsBar';
-    el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9999;'
-      +'display:none;align-items:center;gap:9px;background:#1A2942;color:#fff;border-radius:24px;'
-      +'padding:10px 15px;font-family:Sarabun,sans-serif;font-size:13px;font-weight:600;'
-      +'box-shadow:0 6px 22px rgba(0,0,0,.28);cursor:pointer;user-select:none';
-    el.onclick=function(){ const t=new Set(NEWS_TBL); newsClear(); newsReload(t); };
-    el.title='มีคนแก้ข้อมูล — กดเพื่อดึงข้อมูลล่าสุด';
-    document.body.appendChild(el);
+/* ═════ อัปเดตเองเมื่อมีคนแก้ข้อมูล — ไม่มีกระดิ่งให้กดแล้ว ═════
+   เดิม: ขึ้นแถบ "🔔 มีข้อมูลใหม่ — กดเพื่อโหลด" เพราะแพ็กเกจฟรีมีโควตา Egress จำกัด
+         (Egress 99.1% มาจากการ "อ่านตารางกลับมา" ไม่ใช่ตัว realtime เอง)
+   ตอนนี้: ขึ้นแพ็กเกจ Pro แล้ว → ดึงข้อมูลใหม่ให้เองทันที ไม่ต้องกดอะไร
+   ★ ยังกันเปลืองไว้ 4 ชั้น — ไม่ใช่โหลดรัวทุก event
+       ① โหลดเฉพาะ "ตารางที่เปลี่ยน" ไม่โหลดทั้งระบบ
+       ② รวมเหตุการณ์ที่เข้ามาถี่ ๆ ให้โหลดครั้งเดียว (รอ 2.5 วิ)
+       ③ แท็บที่ไม่ได้เปิดดูอยู่ ยังไม่โหลด — รอจนสลับกลับมาดู
+       ④ กำลังพิมพ์ / เปิดฟอร์มค้างอยู่ → รอให้เสร็จก่อน ไม่ให้ข้อมูลหายกลางมือ
+   งานที่ตัวเองบันทึก ยังโหลดใหม่ให้ทันทีเหมือนเดิม (SELF_WRITING กันเตือนซ้ำ) */
+let NEWS_N=0, NEWS_TBL=new Set(), NEWS_T=null;
+const NEWS_WAIT=2500, NEWS_RETRY=4000;
+/* กำลังทำงานค้างอยู่ไหม — ถ้าใช่ ยังไม่โหลดทับ */
+function newsBusy(){
+  const a=document.activeElement;
+  if(a&&(a.isContentEditable
+      ||(/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&!a.readOnly&&!a.disabled)))return true;
+  const box=document.querySelectorAll('dialog,.modal-bg,.ph-overlay,[id$="Bg"]');
+  for(const el of box){
+    if(el.tagName==='DIALOG'){ if(el.open)return true; continue; }
+    if(el.offsetParent!==null)return true;        /* มองเห็นอยู่ = เปิดค้าง */
   }
-  return el;
+  return false;
 }
 function newsPing(tbl){
-  if(window.SELF_WRITING)return;             // ที่ตัวเองกำลังเขียน ไม่ต้องเตือนตัวเอง
+  if(window.SELF_WRITING)return;               /* ที่ตัวเองกำลังเขียน ไม่ต้องโหลดซ้ำ */
   NEWS_N++; if(tbl)NEWS_TBL.add(tbl);
-  const el=newsEl();
-  el.innerHTML='🔔 มีข้อมูลใหม่ '+NEWS_N+' รายการ'
-    +' <span style="background:#fff;color:#1A2942;border-radius:14px;padding:3px 11px;font-weight:800">กดเพื่อโหลด</span>';
-  el.style.display='flex';
+  clearTimeout(NEWS_T); NEWS_T=setTimeout(newsFlush,NEWS_WAIT);
 }
+function newsFlush(){
+  clearTimeout(NEWS_T); NEWS_T=null;
+  if(!NEWS_N)return;
+  if(document.hidden||newsBusy()){ NEWS_T=setTimeout(newsFlush,NEWS_RETRY); return; }
+  const t=new Set(NEWS_TBL);
+  NEWS_N=0; NEWS_TBL=new Set();
+  try{
+    newsReload(t);
+    if(typeof toast==='function')toast('🔄 อัปเดตข้อมูลล่าสุดแล้ว');
+  }catch(e){ console.warn('[rt] auto reload:',e.message); }
+}
+/* สลับกลับมาดูแท็บนี้ → โหลดของที่ค้างไว้ทันที */
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&NEWS_N)newsFlush(); });
 function newsClear(){
   NEWS_N=0; NEWS_TBL=new Set();
-  const el=document.getElementById('newsBar'); if(el)el.style.display='none';
+  clearTimeout(NEWS_T); NEWS_T=null;
+  const el=document.getElementById('newsBar'); if(el)el.remove();   /* เก็บแถบรุ่นเก่าทิ้ง */
 }
+/* เผื่อโค้ดเก่าเรียกอยู่ — ไม่มีแถบกระดิ่งแล้ว */
+function newsEl(){ return null; }
 
 function newsReload(){ loadAll(); }
 function subscribe(){
