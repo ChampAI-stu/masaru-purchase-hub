@@ -151,7 +151,13 @@ tbody tr:hover{background:#F8FAFC}
 .lot-x b{color:var(--ink);font-weight:600}
 .li-pics{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;
   margin:2px 0 2px;padding:5px 7px;border:1px dashed var(--line);border-radius:9px;background:#FAFCFF}
-.li-pics.drag{border-color:var(--teal,#0E7C86);background:#EAF6F7}
+.li-pics.drag{border-color:var(--teal,#0E7C86);background:#EAF6F7;border-style:solid}
+/* แถวที่ "เล็งไว้" — Ctrl+V แล้วรูปจะลงแถวนี้ */
+.li-row.armed .li-pics{border-color:var(--gold,#C9A84C);background:#FFFCF2;border-style:solid}
+.li-row.armed .li-pics .lab{color:#8A6D1F}
+.li-pics .lab .vv{display:none}
+.li-row.armed .li-pics .lab .vv{display:inline}
+.li-row.drag{background:#EAF6F7;border-radius:10px;outline:2px dashed var(--teal,#0E7C86);outline-offset:2px}
 .li-pics .lab{font-size:11px;color:var(--muted);font-weight:600}
 .li-pics .add{font-size:11.5px;padding:3px 9px}
 .li-th{position:relative;width:46px;height:46px;flex:0 0 auto}
@@ -526,7 +532,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-14-gallery';
+const SM_VERSION='v01-15-gallery';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -1466,10 +1472,15 @@ function fillLocList(){
 }
 function drawLines(){
   fillLocList();
+  if(SM_ACTIVE>=SM_LINES.length)SM_ACTIVE=SM_LINES.length-1;
   if(!SM_LINES.length)SM_LINES=[smLine({})];
   $('f_lines').innerHTML=SM_LINES.map((l,i)=>{
     const sum=lineSum(l);
-    return '<div class="li-row">'
+    /* ★ ทั้งแถวรับรูปที่ลากมาวาง ไม่ใช่เฉพาะแถบรูปบาง ๆ (ลากมาวางตรงไหนของแถวก็ได้)
+       ★ กดที่แถวไหน = เล็งแถวนั้นไว้ กด Ctrl+V แล้วรูปลงแถวนั้นเลย            */
+    return '<div class="li-row" onmousedown="armLine('+i+')" onfocusin="armLine('+i+')" '
+      +'ondragover="lineDrag(event,'+i+',1)" ondragleave="lineDrag(event,'+i+',0,1)" '
+      +'ondrop="lineDrag(event,'+i+',0)">'
       +'<input class="nm" value="'+esc(l.name)+'" placeholder="ชื่อสินค้า เช่น ชุดคีมแหวนล็อก 7 นิ้ว" '
         +'oninput="setLine('+i+',\'name\',this.value)">'
       +'<input type="number" step="1" style="text-align:right" value="'+esc(l.qty)+'" placeholder="จำนวน" '
@@ -1487,9 +1498,7 @@ function drawLines(){
           +'placeholder="\ud83e\uddea ผลการทดสอบ เช่น ใช้งานปกติ · แรงดันตก 5%" '
           +'oninput="setLine('+i+',&quot;test&quot;,this.value)">'
       +'</div>'
-      +'<div class="li-pics" ondragover="lineDrag(event,'+i+',1)" '
-        +'ondragleave="lineDrag(event,'+i+',0)" ondrop="lineDrag(event,'+i+',0)">'
-        +linePicsHtml(i)+'</div>'
+      +'<div class="li-pics">'+linePicsHtml(i)+'</div>'
       +'</div>';
   }).join('');
   const n=linesNames().length, t=linesTotal();
@@ -1502,7 +1511,7 @@ function drawLines(){
 function linePicsHtml(i){
   const l=SM_LINES[i]; if(!l)return '';
   if(!Array.isArray(l.pics))l.pics=arr(l.pics).slice();
-  return '<div class="lab">📷 รูปสินค้าตัวนี้</div>'
+  return '<div class="lab">📷 รูปสินค้าตัวนี้<span class="vv"> — กด Ctrl+V วางได้เลย</span></div>'
     +l.pics.map((p,j)=>{
       const src=p._file?(/^image\//.test(p.mime||'')?URL.createObjectURL(p._file):'')
                        :thumbUrl(p,200);
@@ -1515,12 +1524,21 @@ function linePicsHtml(i){
     +'<label class="btn mini ghost add" title="เพิ่มรูปของสินค้าตัวนี้">📷 เพิ่มรูป'
     +'<input type="file" accept="image/*" multiple style="display:none" '
     +'onchange="pickLinePics('+i+',this.files);this.value=\'\'"></label>'
-    +(l.pics.length?'':'<span class="muted" style="font-size:11px">ลากรูปมาวางที่แถวนี้ก็ได้</span>');
+    +(l.pics.length?'':'<span class="muted" style="font-size:11px">'
+        +'ลากรูปมาวางที่แถวนี้ · หรือกดที่แถวนี้แล้ว Ctrl+V</span>');
 }
 function drawLinePics(i){
   const row=$('f_lines').children[i]; if(!row)return;
   const box=row.querySelector('.li-pics'); if(!box)return;
   box.innerHTML=linePicsHtml(i);
+}
+/* ── "แถวที่เล็งไว้" — กดที่แถวไหน Ctrl+V แล้วรูปลงแถวนั้น ──────────
+   เดิม Ctrl+V ลงที่ "รูปรวมของล็อต" เสมอ ทำให้วางรูปเข้าสินค้าทีละตัวไม่ได้ */
+let SM_ACTIVE=-1;
+function armLine(i){
+  if(!SM_LINES[i])return;
+  SM_ACTIVE=i;
+  [...$('f_lines').children].forEach((el,k)=>el.classList.toggle('armed',k===i));
 }
 function pickLinePics(i,files){
   const l=SM_LINES[i]; if(!l)return;
@@ -1533,12 +1551,18 @@ function delLinePic(i,j){
   l.pics.splice(j,1); drawLinePics(i);
 }
 /* ลากรูปมาวางที่แถวสินค้าได้เลย */
-function lineDrag(e,i,on){
+function lineDrag(e,i,on,leave){
   e.preventDefault(); e.stopPropagation();
-  const box=e.currentTarget; box.classList.toggle('drag',!!on);
-  if(on)return;
+  const row=e.currentTarget;
+  /* ออกไปหาลูกของแถวเดิม ไม่นับว่าออกจากแถว (ไม่งั้นกรอบกะพริบ) */
+  if(leave&&e.relatedTarget&&row.contains(e.relatedTarget))return;
+  row.classList.toggle('drag',!!on);
+  const box=row.querySelector('.li-pics'); if(box)box.classList.toggle('drag',!!on);
+  if(on||leave)return;
+  armLine(i);
   const fs=[...((e.dataTransfer&&e.dataTransfer.files)||[])].filter(f=>/^image\//.test(f.type||''));
   if(fs.length)pickLinePics(i,fs);
+  else toast('วางได้เฉพาะไฟล์รูป');
 }
 
 const LINE_TEXT={name:1,loc:1,test:1};
@@ -1554,8 +1578,13 @@ function setLine(i,k,v){ if(!SM_LINES[i])return;
 }
 function addLine(){ SM_LINES.push(smLine({})); drawLines();
   const rows=$('f_lines').children; const last=rows[rows.length-1];
+  armLine(SM_LINES.length-1);
   if(last)last.querySelector('.nm').focus(); }
-function delLine(i){ if(SM_LINES.length<2)return; SM_LINES.splice(i,1); drawLines(); calcAmt(); }
+function delLine(i){
+  if(SM_LINES.length<2)return;
+  SM_LINES.splice(i,1); drawLines(); calcAmt();
+  armLine(Math.min(i,SM_LINES.length-1));      /* เล็งแถวที่ยังอยู่ ไม่ให้ค้างที่แถวที่ลบไป */
+}
 
 /* ยอดชำระ = จำนวน × ราคาต่อชิ้น — คิดให้จนกว่าจะพิมพ์ทับ
    (กติกาเดียวกับ "ยอดเต็มบิล" ในระบบวางแผนจ่ายเงิน คนใช้คุ้นอยู่แล้ว)
@@ -1596,7 +1625,7 @@ function openForm(id){
   $('formTitle').textContent=r?('✏️ แก้ไขรายการ — '+thDate(r.req_date)):'➕ เพิ่มรายการสินค้าตัวอย่าง';
   $('f_date').value=(r&&String(r.req_date||'').slice(0,10))||todayStr();
   $('f_fac').value=(r&&r.factory)||'';
-  SM_LINES=linesFrom(r);
+  SM_LINES=linesFrom(r); SM_ACTIVE=-1;
   $('f_free').checked=!!(r&&r.is_free);
   $('f_amt').value=(r&&r.amount!=null)?r.amount:'';
   $('f_cur').value=(r&&r.currency)||'CNY';
@@ -1655,7 +1684,16 @@ function drawThumbs(){
 document.addEventListener('paste',e=>{
   if($('formBg').style.display!=='flex')return;
   const fs=[...(e.clipboardData&&e.clipboardData.files||[])].filter(f=>/^image\//.test(f.type||''));
-  if(fs.length){ pickFiles('pics',fs); e.preventDefault(); }
+  if(!fs.length)return;
+  e.preventDefault();
+  /* เล็งแถวสินค้าไว้ → รูปลงแถวนั้น · ไม่ได้เล็ง → ลงรูปรวมของล็อตเหมือนเดิม */
+  if(SM_ACTIVE>=0&&SM_LINES[SM_ACTIVE]){
+    pickLinePics(SM_ACTIVE,fs);
+    toast('วางรูปที่ "'+(SM_LINES[SM_ACTIVE].name||('สินค้าตัวที่ '+(SM_ACTIVE+1)))+'" แล้ว');
+  } else {
+    pickFiles('pics',fs);
+    toast('วางรูปที่ "รูปรวมของล็อต" — อยากใส่รายตัว กดที่แถวสินค้าก่อนแล้วค่อยวาง');
+  }
 });
 /* ลากไฟล์มาวาง */
 ['dropPic','dropPrf'].forEach(id=>{
