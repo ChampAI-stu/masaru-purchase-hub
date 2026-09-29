@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-51</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-52</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -2557,36 +2557,53 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
   <h3 class="hh">ระบบไหนเข้าได้</h3>
   <div class="hp-tw"><table class="hp-t"><thead><tr><th>ระบบ</th>
     <th style="width:86px">จัดซื้อ</th><th style="width:106px">หัวหน้าจัดซื้อ</th><th style="width:90px">ผู้บริหาร</th>
-    <th style="width:86px">การตลาด</th><th style="width:80px">ขนส่ง</th></tr></thead><tbody>
+    <th style="width:86px">การตลาด</th>
+    <th style="width:96px">หัวหน้าทีม<br>การตลาด</th>
+    <th style="width:92px">หัวหน้า<br>แบรนดิ้ง</th>
+    <th style="width:80px">ขนส่ง</th></tr></thead><tbody>
     <tr><td>📋 Purchase Board</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
       <td class="hp-chk">✔<div class="muted" style="font-size:10.5px">จำกัด</div></td>
+      <td class="hp-chk">✔<div class="muted" style="font-size:10.5px">+ แท็บ 📦 ดูอย่างเดียว</div></td>
+      <td class="hp-chk">✔<div class="muted" style="font-size:10.5px">+ แท็บ 📦 ดูอย่างเดียว</div></td>
       <td class="hp-chk">✔<div class="muted" style="font-size:10.5px">ทุกแท็บ · ดูอย่างเดียว</div></td></tr>
     <tr><td>📝 ใบขอซื้อ (PR)</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
-      <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
     <tr><td>💳 วางแผนจ่ายเงิน</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
-      <td class="hp-x">✕</td>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-x">✕</td>
       <td class="hp-chk">✔<div class="muted" style="font-size:10.5px">แท็บ 🧾 หลักฐานฯ เท่านั้น</div></td></tr>
     <tr><td>✅ ขออนุมัติชำระเงิน</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
-      <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
     <tr><td>🚢 Shipment นำเข้า</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
-      <td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
     <tr><td>💰 ต้นทุนสินค้า</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
-      <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td>
+      <td class="hp-chk">✔<div class="muted" style="font-size:10.5px">ดูอย่างเดียว</div></td>
+      <td class="hp-x">✕</td></tr>
     <tr><td>📐 ตรวจค่าขนส่ง ตปท.</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
-      <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
     <tr><td>📖 คู่มือ (หน้านี้)</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
-      <td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
     <tr><td>🧪 ทะเบียนสินค้าตัวอย่าง</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
-      <td class="hp-x">✕</td><td class="hp-x">✕</td></tr>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td>
+      <td class="hp-chk">✔<div class="muted" style="font-size:10.5px">ดูอย่างเดียว</div></td>
+      <td class="hp-x">✕</td></tr>
     <tr><td>📝 บันทึกงานรายวัน
         <div class="muted" style="font-size:10.5px">ทุกบทบาทแก้ได้แค่ของตัวเอง</div></td>
       <td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
-      <td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
     <tr><td>📕 ระบบจัดการเอกสาร PDF
         <div class="muted" style="font-size:10.5px">เว็บแยก · เปิดแท็บใหม่</div></td>
       <td class="hp-chk">✔</td><td class="hp-chk">✔</td><td class="hp-chk">✔</td>
-      <td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
+      <td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-x">✕</td><td class="hp-chk">✔</td></tr>
   </tbody></table></div>
+  <div class="hp-tip">🎨 <b>หัวหน้าแบรนดิ้ง (brand_lead)</b> — บทบาทใหม่
+    <br>ในบอร์ด <b>สิทธิ์เท่าหัวหน้าทีมการตลาดทุกอย่าง</b> (เห็นแท็บ 📦 แจ้งสินค้าขาเข้า · ดูอย่างเดียว
+    · ไม่เห็นราคา/ผู้รับผิดชอบ/คิว/น้ำหนัก · มีกระดิ่ง)
+    <br><b>ที่ได้เพิ่ม:</b> เข้า <b>💰 ต้นทุนสินค้า</b> และ <b>🧪 ทะเบียนสินค้าตัวอย่าง</b> ได้ — <b>ดูอย่างเดียวทั้งคู่</b>
+    (ไม่มีปุ่มเพิ่ม/แก้/ลบ · ช่องกรอกกดไม่ได้ · บังคับในโค้ด ไม่ใช่แค่ซ่อนปุ่ม)
+    <div class="muted" style="font-size:11.5px;margin-top:4px">ติดตั้ง: รัน <code>portal_brand_lead.sql</code>
+      → ตั้งบทบาทให้คนด้วย <code>role_set_brand_lead.sql</code> (หรือ <code>invite_brand_lead.sql</code> ถ้าจะใช้รหัสเชิญ)
+      → อัปโหลด <code>index.html</code> · <code>board.html</code> · <code>costsku.html</code> · <code>sample.html</code></div></div>
   <div class="hp-info">ℹ️ การ์ดในหน้ารวมขึ้นตามตาราง <code>portal_apps</code> — ถ้าควรเห็นแต่ไม่เห็น
     ให้ผู้ดูแลตรวจว่าแถวของระบบนั้นใส่บทบาทครบไหม (ไม่ใช่ปัญหาของตัวระบบ)</div>
   <table class="kv"><tbody>
