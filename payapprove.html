@@ -174,7 +174,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-63</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-64</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -2970,12 +2970,20 @@ function gasCfg(){
 }
 const gasLocked=()=>!!GAS_URL;
 const gasUrl=()=>(gasCfg().url||'').trim();
+/* ★ ส่ง "ตั๋วของคนที่ล็อกอิน" ไปให้ Apps Script ตรวจ แทนรหัสลับคงที่
+   รหัสลับฝังในไฟล์เว็บ = ใครกด View Source ก็ได้ไป · ตั๋วมีอายุสั้นและเพิกถอนได้
+   (ยังส่ง secret ไปด้วยช่วงเปลี่ยนผ่าน เผื่อ Apps Script ยังไม่ได้อัป) */
+async function gasToken(){
+  try{ const {data}=await sb.auth.getSession();
+       return (data&&data.session&&data.session.access_token)||''; }
+  catch(e){ return ''; }
+}
 async function gasCall(payload){
   const c=gasCfg();
   if(!c.url)throw new Error('ยังไม่ได้ตั้งค่า Web app URL');
   const r=await fetch(c.url,{method:'POST',
     headers:{'Content-Type':'text/plain;charset=utf-8'},          // เลี่ยง CORS preflight
-    body:JSON.stringify(Object.assign({secret:c.secret||''},payload))});
+    body:JSON.stringify(Object.assign({secret:c.secret||'',token:await gasToken()},payload))});
   const t=await r.text();
   let j; try{ j=JSON.parse(t); }
   catch(e){ throw new Error('Apps Script ตอบกลับผิดรูปแบบ — เช็คว่า Deploy เป็น Web app และ Access = Anyone'); }
