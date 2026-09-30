@@ -3,10 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>หน้าหลัก · MASARU Facebook</title>
+<title>KPI ทีม Facebook · MASARU Facebook</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
 :root{
   --navy:#1A2942; --navy-2:#24365A; --red:#D0212B; --fb:#1877F2; --gold:#C9A84C;
@@ -148,28 +149,20 @@ table.t input.inp{padding:4px 7px;width:100%}
 @media (max-width:760px){.fb-top .sub{display:none}.fb-top h1{font-size:16.5px;white-space:nowrap}.fb-user>span{display:none}.tile .v{font-size:21px}.card-h{padding:12px 12px 8px}.card-b{padding:6px 12px 12px}}
 
 /* ===== page ===== */
-.auth-wrap{min-height:100vh;display:grid;place-items:center;padding:20px;background:linear-gradient(135deg,#1A2942 0%,#24365A 55%,#1877F2 140%)}
-.auth-card{width:100%;max-width:420px;background:#fff;border-radius:18px;box-shadow:0 30px 60px rgba(0,0,0,.3);overflow:hidden}
-.auth-head{background:var(--navy);color:#fff;padding:22px 24px;display:flex;gap:12px;align-items:center}
-.auth-head .fb-logo{width:46px;height:46px;font-size:24px}
-.auth-head b{font-size:18px;display:block}.auth-head small{color:#AFC0DA}
-.auth-body{padding:20px 24px 24px;display:flex;flex-direction:column;gap:12px}
-.hub-hero{background:linear-gradient(120deg,#1A2942,#24365A 60%,#1d4f9c);color:#fff;border-radius:16px;padding:22px 24px;display:grid;grid-template-columns:1.4fr 1fr;gap:22px;align-items:center}
-.hub-hero h2{font-size:21px;margin-bottom:4px}
-.hub-hero .big{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
-.hub-hero .bar{background:rgba(255,255,255,.18);height:14px}
-.hub-hero .bar>i{background:linear-gradient(90deg,#4F9BFF,#8CC4FF)}
-.hub-hero .pace{position:absolute;top:-3px;bottom:-3px;width:2px;background:#FFD166}
-.hub-hero .muted{color:#B9C8E0}
-.menu-card{display:flex;gap:12px;padding:14px 16px;align-items:flex-start;color:inherit;text-decoration:none;transition:transform .12s, box-shadow .12s}
-.menu-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(15,23,42,.1);text-decoration:none}
-.menu-card .ic{font-size:26px;width:44px;height:44px;border-radius:12px;background:#EEF4FF;display:grid;place-items:center;flex:none}
-.menu-card b{display:block;color:var(--navy);font-size:15px}
-.menu-card small{color:var(--muted);font-size:12.5px;line-height:1.45;display:block;margin-top:2px}
-.menu-card.soon{opacity:.6}
-.task-li{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line-2);font-size:13.5px}
-.task-li:last-child{border-bottom:0}
-@media (max-width:860px){.hub-hero{grid-template-columns:1fr}}
+.score-hero{display:grid;grid-template-columns:230px 1fr;gap:18px;padding:18px 20px;align-items:center}
+.ring{width:180px;height:180px;border-radius:50%;display:grid;place-items:center;margin:auto;position:relative}
+.ring .in{width:140px;height:140px;border-radius:50%;background:#fff;display:grid;place-items:center;text-align:center}
+.ring b{font-size:38px;color:var(--navy);display:block;line-height:1}
+.ring small{color:var(--muted)}
+.kpi-t td{vertical-align:top}
+.kpi-t .nm{font-weight:700;color:var(--navy)}
+.kpi-t .lv{font-size:11.5px;color:var(--muted)}
+.auto{font-size:10.5px;background:var(--info-bg);color:#0B4FB3;border-radius:5px;padding:1px 6px;font-weight:700}
+.ap li{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px dashed var(--line);list-style:none}
+.ap{padding:0;margin:0}
+.goal li{margin:3px 0}
+.sc-cell{font-weight:800;text-align:center!important}
+@media (max-width:760px){.score-hero{grid-template-columns:1fr}}
 </style>
 <style id="masaru-social-studio">
 /* MASARU · Social Studio — presentation layer, self-contained */
@@ -268,40 +261,25 @@ table.t td{padding:10px 12px;font-size:13px}table.t tr:hover td{background:#f1f6
 @media print{body{background:#fff}.studio-intro,.auth-story{display:none!important}.fb-main{margin-left:0}.fb-content{padding:0}.hub-hero{print-color-adjust:exact;-webkit-print-color-adjust:exact}.tile,.card{break-inside:avoid}.fb-top,.fb-side{display:none!important}}
 </style>
 </head>
-<body class="studio-page studio-index">
-<div id="auth" class="auth-wrap hidden"><div class="auth-story"><div class="auth-story-brand"><div class="fb-logo">f</div><div>MASARU FACEBOOK<small>THE TEAM WORKSPACE</small></div></div><span class="studio-eyebrow">A LITTLE SPACE FOR BIG IDEAS</span><h1>พื้นที่ของทีมเรา<br>ให้ทุกวัน <em>ไปได้ไกลขึ้น</em></h1><p>รวมงาน ยอดขาย และเป้าหมายไว้ด้วยกัน<br>พร้อมสร้างทุกความสำเร็จไปกับทีม Facebook</p><div class="auth-illustration"><svg class="studio-art" viewBox="0 0 300 200" fill="none" aria-hidden="true"><ellipse cx="157" cy="179" rx="111" ry="10" fill="#8AA5D7" opacity=".12"/><g transform="rotate(-7 138 103)"><rect x="53" y="39" width="172" height="123" rx="15" fill="#DCE8FB"/><rect x="47" y="31" width="172" height="123" rx="15" fill="white" stroke="#C9DAF3"/><path d="M48 60H219" stroke="#E8EEF8"/><circle cx="61" cy="46" r="3" fill="#F0B6C4"/><circle cx="72" cy="46" r="3" fill="#F5D691"/><circle cx="83" cy="46" r="3" fill="#B4DCCE"/><rect x="62" y="74" width="54" height="62" rx="8" fill="#E9F1FF"/><path d="M73 117L83 105L92 111L105 89" stroke="#548BE1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M99 89H106V97" stroke="#548BE1" stroke-width="4" stroke-linecap="round"/><rect x="130" y="79" width="64" height="6" rx="3" fill="#CCDDF5"/><rect x="130" y="93" width="44" height="5" rx="2.5" fill="#E0E9F8"/><rect x="130" y="114" width="53" height="21" rx="7" fill="#EEF5FF"/><path d="M142 124L147 128L154 119" stroke="#6C9ADB" stroke-width="2" stroke-linecap="round"/><path d="M161 124H173" stroke="#A4BFE6" stroke-width="3" stroke-linecap="round"/></g><g class="float"><rect x="208" y="13" width="56" height="54" rx="17" fill="#377EF0"/><path d="M239 57V34H245L246 27H239V24C239 21 240 20 243 20H247V14H242C234 14 231 18 231 24V27H226V34H231V57" fill="white" transform="translate(0 5) scale(.96)"/></g><g class="float"><rect x="17" y="112" width="70" height="49" rx="16" fill="#FCE6EE" stroke="#F4D5DF"/><path d="M43 137C29 128 43 116 49 126C57 116 69 129 49 140L43 137Z" fill="#DD8CA7"/><circle cx="68" cy="137" r="3" fill="#ECC0D0"/></g><g transform="rotate(7 224 150)"><rect x="184" y="129" width="101" height="47" rx="14" fill="#EDF8F2" stroke="#CAE6D8"/><circle cx="207" cy="152" r="11" fill="#AAD6C1"/><path d="M202 152L206 156L212 148" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M225 146H267M225 155H253" stroke="#9FC6B6" stroke-width="4" stroke-linecap="round"/></g><path d="M34 38V49M28.5 43.5H39.5M266 97V108M260.5 102.5H271.5" stroke="#ACBFE3" stroke-width="2" stroke-linecap="round"/><circle cx="119" cy="17" r="4" fill="#EDCD9C"/><circle cx="159" cy="185" r="3" fill="#B7C9EA"/></svg><div class="auth-tags"><span><i>✧</i>จัดการงานง่ายขึ้น</span><span><i>↗</i>มองเห็นทุกการเติบโต</span><span><i>♡</i>สำเร็จไปด้วยกัน</span></div></div></div>
-  <div class="auth-card">
-    <div class="auth-head"><div class="fb-logo">f</div><div><b>ยินดีต้อนรับกลับมา 👋</b><small>เข้าสู่พื้นที่ทำงานของทีม Facebook</small></div></div>
-    <div class="auth-body">
-      <div class="seg" style="align-self:flex-start"><button class="on" data-am="in">เข้าสู่ระบบ</button><button data-am="up">สมัครด้วยรหัสเชิญ</button></div>
-      <label class="f">อีเมล<input class="inp" id="aEmail" type="email" autocomplete="username" placeholder="name@example.com"></label>
-      <label class="f">รหัสผ่าน<span class="studio-password"><input class="inp" id="aPass" type="password" autocomplete="current-password" placeholder="อย่างน้อย 6 ตัวอักษร"><button type="button" id="studioPassToggle" aria-label="แสดงรหัสผ่าน" aria-pressed="false">แสดง</button></span></label>
-      <div id="upOnly" class="hidden" style="display:flex;flex-direction:column;gap:12px">
-        <label class="f">ชื่อที่แสดงในระบบ<input class="inp" id="aName" placeholder="เช่น อีฟ"></label>
-        <label class="f">รหัสเชิญ<input class="inp" id="aInvite" placeholder="ขอรหัสจากหัวหน้าทีม" style="text-transform:uppercase"></label>
-      </div>
-      <button class="btn pri" id="aGo" style="padding:10px">เข้าสู่ระบบ</button>
-      <div id="aMsg" class="small muted" role="status" aria-live="polite"></div>
-    </div>
-    <div class="auth-foot">MASARU GROUP · สำหรับสมาชิกทีม Facebook</div>
-  </div>
+<body class="studio-page studio-kpi">
+<div class="fb-main"><header class="fb-top"><h1>🎯 KPI ทีม Facebook</h1><span class="sub">9 ตัวชี้วัด · คะแนนถ่วงน้ำหนักอัตโนมัติ · Action Plan</span></header><main class="fb-content" id="page"><section class="studio-intro " aria-label="ภาพรวมหน้า"><div><span class="studio-eyebrow">TEAM GOALS</span><h2>เป้าหมายชัด ก้าวต่อได้เลย</h2><p>ติดตามตัวชี้วัด และวางแผนลงมือทำไปด้วยกัน</p></div><span class="studio-sticker" aria-hidden="true">🎯</span></section><div class="row mb no-print">
+  <label class="f" style="flex-direction:row;align-items:center;gap:6px">ปี <select class="inp" id="fYear"></select></label>
+  <label class="f" style="flex-direction:row;align-items:center;gap:6px">เดือน <select class="inp" id="fMonth"></select></label>
+  <span class="sp"></span>
+  <button class="btn" id="bDefs">⚙️ แก้ไขเกณฑ์ KPI</button>
+  <button class="btn" onclick="window.print()">🖨️ พิมพ์</button>
 </div>
-
-<div id="hubWrap" class="fb-main hidden">
-  <header class="fb-top"><h1>🏠 หน้าหลัก</h1><span class="sub" id="todayLbl"></span></header>
-  <main class="fb-content" id="page"><section class="studio-intro studio-home" aria-label="ภาพรวมหน้า"><div><span class="studio-eyebrow">YOUR TEAM, YOUR SPACE</span><h2>วันนี้ มาทำให้เต็มที่กัน ✨</h2><p>รวมทุกงานของทีม Facebook ไว้ในพื้นที่เดียว</p><div class="studio-shortcuts"><a href="board.html">🗂️ เปิดบอร์ดงาน</a><a href="board.html#routine">✅ Routine วันนี้</a><a href="manual.html">📖 คู่มือทีม</a></div></div><svg class="studio-art" viewBox="0 0 300 200" fill="none" aria-hidden="true"><ellipse cx="157" cy="179" rx="111" ry="10" fill="#8AA5D7" opacity=".12"/><g transform="rotate(-7 138 103)"><rect x="53" y="39" width="172" height="123" rx="15" fill="#DCE8FB"/><rect x="47" y="31" width="172" height="123" rx="15" fill="white" stroke="#C9DAF3"/><path d="M48 60H219" stroke="#E8EEF8"/><circle cx="61" cy="46" r="3" fill="#F0B6C4"/><circle cx="72" cy="46" r="3" fill="#F5D691"/><circle cx="83" cy="46" r="3" fill="#B4DCCE"/><rect x="62" y="74" width="54" height="62" rx="8" fill="#E9F1FF"/><path d="M73 117L83 105L92 111L105 89" stroke="#548BE1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M99 89H106V97" stroke="#548BE1" stroke-width="4" stroke-linecap="round"/><rect x="130" y="79" width="64" height="6" rx="3" fill="#CCDDF5"/><rect x="130" y="93" width="44" height="5" rx="2.5" fill="#E0E9F8"/><rect x="130" y="114" width="53" height="21" rx="7" fill="#EEF5FF"/><path d="M142 124L147 128L154 119" stroke="#6C9ADB" stroke-width="2" stroke-linecap="round"/><path d="M161 124H173" stroke="#A4BFE6" stroke-width="3" stroke-linecap="round"/></g><g class="float"><rect x="208" y="13" width="56" height="54" rx="17" fill="#377EF0"/><path d="M239 57V34H245L246 27H239V24C239 21 240 20 243 20H247V14H242C234 14 231 18 231 24V27H226V34H231V57" fill="white" transform="translate(0 5) scale(.96)"/></g><g class="float"><rect x="17" y="112" width="70" height="49" rx="16" fill="#FCE6EE" stroke="#F4D5DF"/><path d="M43 137C29 128 43 116 49 126C57 116 69 129 49 140L43 137Z" fill="#DD8CA7"/><circle cx="68" cy="137" r="3" fill="#ECC0D0"/></g><g transform="rotate(7 224 150)"><rect x="184" y="129" width="101" height="47" rx="14" fill="#EDF8F2" stroke="#CAE6D8"/><circle cx="207" cy="152" r="11" fill="#AAD6C1"/><path d="M202 152L206 156L212 148" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M225 146H267M225 155H253" stroke="#9FC6B6" stroke-width="4" stroke-linecap="round"/></g><path d="M34 38V49M28.5 43.5H39.5M266 97V108M260.5 102.5H271.5" stroke="#ACBFE3" stroke-width="2" stroke-linecap="round"/><circle cx="119" cy="17" r="4" fill="#EDCD9C"/><circle cx="159" cy="185" r="3" fill="#B7C9EA"/></svg></section>
-    <div id="hero"></div>
-    <div class="grid g4 keep2 mt" id="tiles"></div>
-    <div class="grid mt" style="grid-template-columns:1.6fr 1fr" id="midRow">
-      <div class="card"><div class="card-h"><h2>เมนูระบบ</h2><span class="hint">ทุกคนที่ล็อกอินเข้าถึงได้ทุกเมนู</span></div><div class="card-b"><div class="grid g2" id="menus"></div></div></div>
-      <div class="grid" style="align-content:start">
-        <div class="card"><div class="card-h"><h2>✅ Routine วันนี้ของฉัน</h2><span class="sp"></span><a class="btn sm" href="board.html#routine">เปิด</a></div><div class="card-b" id="myRoutine"></div></div>
-        <div class="card"><div class="card-h"><h2>🗂️ งานของฉันที่ยังไม่เสร็จ</h2><span class="sp"></span><a class="btn sm" href="board.html">บอร์ดงาน</a></div><div class="card-b" id="myTasks"></div></div>
-      </div>
-    </div>
-  </main>
-  <footer class="fb-foot">MASARU Group · ระบบแผนก Facebook · ข้อมูลภายในบริษัท ห้ามเผยแพร่</footer>
+<div class="card score-hero" id="hero"></div>
+<div class="card mt"><div class="card-h"><h2 id="scTitle">Scorecard</h2><span class="hint">พิมพ์ผลจริงในช่องเพื่อแทนค่าอัตโนมัติ · ลบค่าออกเพื่อกลับไปใช้ค่าอัตโนมัติ</span></div><div class="card-b"><div class="tbl-wrap" id="sc"></div></div></div>
+<div class="grid mt" style="grid-template-columns:1.25fr 1fr">
+  <div class="card"><div class="card-h"><h2>คะแนนรวมรายเดือน</h2></div><div class="card-b"><div class="legend mb"><span><i style="background:#2a78d6"></i>คะแนนถ่วงน้ำหนัก</span><span><i class="ln" style="background:#94A3B8"></i>ค่าเฉลี่ยธรรมดา (แบบไฟล์เดิม)</span></div><div class="chart-box"><canvas id="cYear"></canvas></div></div></div>
+  <div class="card"><div class="card-h"><h2>📊 ข้อมูลประกอบ KPI</h2><span class="hint" id="tmHint"></span></div><div class="card-b" id="tm"></div></div>
 </div>
+<div class="card mt"><div class="card-h"><h2 id="yrTitle">คะแนนรายข้อ ทั้งปี</h2></div><div class="card-b"><div class="tbl-wrap" id="yr"></div></div></div>
+<div class="grid g2 mt">
+  <div class="card"><div class="card-h"><h2>✅ Action Plan ประจำเดือน</h2><span class="hint" id="apHint"></span></div><div class="card-b"><ul class="ap" id="ap"></ul></div></div>
+  <div class="card"><div class="card-h"><h2>🎯 เป้าหมายทีม</h2></div><div class="card-b" id="goal"></div></div>
+</div></main><footer class="fb-foot">MASARU Group · ระบบแผนก Facebook · ข้อมูลภายในบริษัท ห้ามเผยแพร่</footer></div>
 <script>
 /* ===== MASARU FACEBOOK HUB — COMMON (ตั้งค่า Supabase ตรงนี้) ===== */
 const FB_SUPABASE_URL  = 'https://ufnlbccsjftjsbxipqkr.supabase.co';
@@ -528,165 +506,142 @@ async function fbBoot(active, title) {
   return FB;
 }
 
-let authMode = 'in';
-const next = new URLSearchParams(location.search).get('next');
+let Y, M, DEFS = [], ACT = [], TEAM = [], SALES = [], ADS = [], PM = [];
+const AP_DEFAULT = ['สรุปยอดขายและค่าแอดรายวัน','อัพเดตยอดขายสินค้าแบรนด์รายวัน','ลิสต์ SKU ทำโปรแคมเปญ + ยิงแอดโปรแคมเปญ Double Day','เสนอและเทสสินค้าใหม่อย่างน้อยคนละ 1 SKU','ลิสต์ SKU ทั้งหมดที่ทีมเสนอแล้วได้นำเข้ามาขาย','ตรวจสอบความเคลื่อนไหวย้อนหลัง 60 วัน (SKU ที่ทีมเสนอ)','สรุป Top 20 Hero Product ประจำเดือน','ยอดทิ้งบัญชีคนละ 2 บัญชี ยอดขั้นต่ำ 62,500 บาท','ตรวจเช็คและปิดแอดสินค้าแบรนด์ที่เข้าไม่ทันภายใน 7 วัน','เลือก 5 สินค้า Dead Stock ราคาถูกมาทำแอด กระตุ้นยอดกลางเดือน','ยิงแอดโปรล้างสต็อกสินค้า Dead Stock','ติดตามตัวเลขตีกลับจากทีมประสานงาน','ประชุม Sale Plan','ประชุมการตลาด Facebook x Admin','ประชุมรวมทีม Facebook (หัวหน้าทีม)','ประชุมอัพเดตปัญหาสินค้ากับทีมจัดซื้อ','ประชุมการตลาด Facebook x Graphics x Content','ประชุมผลสรุป KPI ประจำเดือน (สัปดาห์ที่ 2)','เข้าร่วมอบรมคอร์สเรียน'];
 
-$$('[data-am]').forEach(b => b.onclick = () => {
-  authMode = b.dataset.am; $$('[data-am]').forEach(x => x.classList.toggle('on', x === b));
-  $('#upOnly').classList.toggle('hidden', authMode !== 'up');
-  $('#aGo').textContent = authMode === 'up' ? 'สมัครและเข้าสู่ระบบ' : 'เข้าสู่ระบบ';
-  $('#aPass').autocomplete = authMode === 'up' ? 'new-password' : 'current-password';
-});
-$('#aPass').addEventListener('keydown', e => { if (e.key === 'Enter' && authMode === 'in') $('#aGo').click(); });
-$('#aGo').onclick = async () => {
-  const email = $('#aEmail').value.trim(), pass = $('#aPass').value;
-  const msg = t => $('#aMsg').innerHTML = t;
-  if (!email || pass.length < 6) return msg('<span class="down">กรอกอีเมลและรหัสผ่าน (อย่างน้อย 6 ตัว)</span>');
-  $('#aGo').disabled = true;
-  try {
-    if (authMode === 'up') {
-      const code = $('#aInvite').value.trim().toUpperCase(), name = $('#aName').value.trim();
-      if (!code || !name) { msg('<span class="down">กรอกชื่อที่แสดงและรหัสเชิญ</span>'); return; }
-      const { data: ok } = await sb.rpc('fb_verify_invite', { p_code: code });
-      if (!ok) { msg('<span class="down">รหัสเชิญไม่ถูกต้องหรือหมดอายุ</span>'); return; }
-      let { data, error } = await sb.auth.signUp({ email, password: pass, options: { data: { display_name: name } } });
-      if (error && /registered/i.test(error.message)) ({ data, error } = await sb.auth.signInWithPassword({ email, password: pass }));
-      if (error) { msg('<span class="down">' + esc(error.message) + '</span>'); return; }
-      if (!data.session) { msg('สมัครแล้ว กรุณายืนยันอีเมล แล้วกลับมาเข้าสู่ระบบ (หรือให้ผู้ดูแลปิด Confirm email ใน Supabase)'); localStorage.setItem('fb_pending_invite', JSON.stringify({ code, name })); return; }
-      const { data: r } = await sb.rpc('fb_claim_invite', { p_code: code, p_display_name: name, p_member_code: null });
-      if (r !== 'ok') { msg('<span class="down">ใช้รหัสเชิญไม่สำเร็จ: ' + esc(r) + '</span>'); return; }
-    } else {
-      const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-      if (error) { msg('<span class="down">เข้าสู่ระบบไม่สำเร็จ: ' + esc(error.message) + '</span>'); return; }
-    }
-    await start();
-  } finally { $('#aGo').disabled = false; }
-};
-
-async function start() {
-  if (FB_SUPABASE_URL.startsWith('__')) { $('#auth').classList.remove('hidden'); $('#aMsg').innerHTML = '<span class="down">⚠️ ยังไม่ได้ตั้งค่า Supabase URL / ANON KEY</span>'; return; }
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { $('#auth').classList.remove('hidden'); return; }
-  FB.user = session.user;
-  let { data: prof } = await sb.from('fb_profiles').select('*').eq('user_id', FB.user.id).maybeSingle();
-  if (!prof) {
-    const pend = JSON.parse(localStorage.getItem('fb_pending_invite') || 'null');
-    if (pend) { const { data: r } = await sb.rpc('fb_claim_invite', { p_code: pend.code, p_display_name: pend.name, p_member_code: null }); if (r === 'ok') { localStorage.removeItem('fb_pending_invite'); ({ data: prof } = await sb.from('fb_profiles').select('*').eq('user_id', FB.user.id).maybeSingle()); } }
-  }
-  if (!prof) {
-    $('#auth').classList.remove('hidden');
-    authMode = 'up'; $$('[data-am]')[1].click(); $('#aEmail').value = FB.user.email;
-    $('#aMsg').innerHTML = 'บัญชีนี้ยังไม่มีสิทธิ์เข้าระบบ กรอก <b>ชื่อที่แสดง</b> + <b>รหัสเชิญ</b> แล้วกดสมัคร (ใช้รหัสผ่านเดิม)';
-    return;
-  }
-  FB.profile = prof;
-  if (next && next !== 'index.html') { location.href = next; return; }
-  $('#auth').classList.add('hidden'); $('#hubWrap').classList.remove('hidden');
-  await Promise.all([loadMembers(), loadSettings()]);
-  FB.me = FB.mm[prof.member_code] || null;
-  renderShell('index');
-  $('#todayLbl').textContent = 'วันนี้ ' + thDate(todayISO());
-  if (!FB.me) askWhoAmI();
-  renderMenus();
-  loadHub();
+function scoreOf(d, a) {
+  if (a == null || isNaN(a)) return null;
+  for (const [t, s, open] of d.levels) { if (open) return s; if (d.direction === 'higher' ? a >= t : a <= t) return s; }
+  return 0;
 }
-
-function askWhoAmI() {
-  const opts = FB.members.filter(m => m.active && m.team !== 'page').map(m => `<button class="chip tog" data-c="${m.code}" style="padding:6px 12px;font-size:13px">${esc(m.emoji || '')} ${esc(m.nickname)}</button>`).join(' ');
-  const md = openModal({ title: '👋 คุณคือใครในทีม?', body: `<p class="muted small" style="margin-top:0">ผูกบัญชีกับชื่อในทีม เพื่อให้ระบบแสดง Routine / งานของคุณ (เปลี่ยนภายหลังได้ในหน้า ตั้งค่า)</p><div class="row">${opts}</div>`, foot: '<button class="btn" data-skip>ข้ามไปก่อน</button>' });
-  md.querySelector('[data-skip]').onclick = () => md.close();
-  md.querySelectorAll('[data-c]').forEach(b => b.onclick = async () => {
-    chk(await sb.from('fb_profiles').update({ member_code: b.dataset.c }).eq('user_id', FB.user.id), 'บันทึก');
-    FB.profile.member_code = b.dataset.c; FB.me = FB.mm[b.dataset.c]; md.close(); toast('ผูกชื่อเรียบร้อย', 'ok'); loadHub();
+function autoVal(d, m) {
+  const tm = TEAM.find(x => x.month === m) || {};
+  const sales = sum(SALES.filter(r => +r.d.slice(5, 7) === m), r => r.sales) || +tm.sales || 0;
+  const ads = tm.ads != null ? +tm.ads : sum(ADS.filter(r => +r.d_from.slice(5, 7) === m), r => r.spend) || null;
+  switch (d.auto_source) {
+    case 'sales': return sales ? { v: sales, src: 'ยอดขายรายวัน' } : null;
+    case 'ads_pct': return sales && ads ? { v: ads / sales * 100, src: tm.ads != null ? 'ค่าแอดสรุปทีม' : 'ค่าแอดรายคน' } : null;
+    case 'brand_pct': return sales && tm.brand_sales ? { v: tm.brand_sales / sales * 100, src: 'ยอดสินค้าแบรนด์' } : null;
+    case 'discard': { const p = sum(PM.filter(r => r.month === m), r => r.discard); return tm.discard != null ? { v: +tm.discard, src: 'ยอดทิ้งสรุปทีม' } : p ? { v: p, src: 'ยอดทิ้งรายคน' } : null; }
+    case 'cpo': return tm.orders && ads != null ? { v: (ads + (+tm.shipping || 0)) / tm.orders, src: '(ค่าแอด+ค่าส่ง)/ออเดอร์' } : null;
+  }
+  return null;
+}
+function evalMonth(m) {
+  return DEFS.map(d => {
+    const a = ACT.find(x => x.month === m && x.code === d.code);
+    const au = autoVal(d, m);
+    let actual = null, src = '', score = null, manual = false;
+    let hist = false;
+    if (a && a.actual != null) { actual = +a.actual; src = 'กรอกเอง'; manual = true; score = scoreOf(d, actual); }
+    else if (a && a.score != null) { score = +a.score; src = 'คะแนนย้อนหลัง (ไฟล์เดิม)'; hist = true; actual = au ? au.v : null; }
+    else if (au) { actual = au.v; src = au.src; score = scoreOf(d, actual); }
+    return { d, actual, src, score, manual, hist, note: a?.note || '' };
   });
 }
+const total = ev => { const w = sum(ev.filter(e => e.score != null), e => e.d.weight); return w ? { w: sum(ev, e => (e.score || 0) * e.d.weight) / 100, cov: w, avg: sum(ev.filter(e => e.score != null), e => e.score) / ev.filter(e => e.score != null).length } : null; };
+const band = s => s == null ? 'st-none' : s >= 80 ? 'st-good' : s >= 60 ? 'st-warn' : 'st-bad';
+const fmtA = (d, v) => v == null ? '' : d.unit === '%' ? v.toFixed(2) + '%' : d.unit === 'บาท' ? (v >= 1e6 ? fmtM(v) : fmt(v, v < 1000 ? 2 : 0)) : fmt(v, 0);
 
-function renderMenus() {
-  const M = [
-    ['sales.html', '📈', '1. ภาพรวมยอดขาย', 'ยอดขายรายวัน / เดือน / ปี เทียบปีก่อน + ความคืบหน้าเป้า 1,000 ล้าน'],
-    ['ads.html', '💸', '2. ค่าแอดรายคน', 'ค่าแอด ยอดขาย %ค่าแอด ROAS รายคน รายวัน/รายเดือน'],
-    ['people.html', '🏆', '3. ผลงานรายคน', 'ภาพรวมทั้งปี เทียบเป้ารายไตรมาส จัดอันดับ'],
-    ['expense.html', '💳', '4. ค่าใช้จ่าย', 'ยอดตัดบัตร เช็คตัดบัตร บัญชีโฆษณา งบประมาณ 2026'],
-    ['kpi.html', '🎯', '5. KPI', 'คะแนน KPI 9 ข้อ ถ่วงน้ำหนักอัตโนมัติ + Action Plan'],
-    ['board.html', '🗂️', 'บอร์ดงาน & Routine', 'TO DO / DOING / DONE · Routine รายวัน · รายงานประจำวัน'],
-    ['manual.html', '📖', '7. คู่มือการทำงาน', 'คู่มือ Digital Marketing 14 บท + SOP ทีม ค้นหาได้'],
-    ['#', '📚', '6. คอร์สเรียน', 'เฟส 2 — รอไฟล์ข้อมูลคอร์ส', 1],
-    ['#', '🎨', 'สั่งงานกราฟิก / คอนเทนต์ / KOL / ALL PAGE', 'เฟส 2', 1],
-    ['settings.html', '⚙️', 'ตั้งค่า', 'สมาชิก เป้าหมาย Routine ต้นแบบ รหัสเชิญ'],
-  ];
-  $('#menus').innerHTML = M.map(([h, ic, t, d, soon]) => `<a class="card menu-card ${soon ? 'soon' : ''}" href="${h}" ${soon ? 'onclick="toast(\'อยู่ในแผนเฟส 2\');return false"' : ''}><span class="ic">${ic}</span><span><b>${t}</b><small>${d}</small></span></a>`).join('');
-}
-
-async function loadHub() {
-  const today = todayISO(), Y = +today.slice(0, 4), M = +today.slice(5, 7);
-  const ystart = `${Y}-01-01`, pstart = `${Y - 1}-01-01`;
-  const [sales, adsRows, kpiRows] = await Promise.all([
-    fetchAll(() => sb.from('fb_sales_daily').select('d,sales').gte('d', pstart).lte('d', `${Y}-12-31`).order('d')),
-    fetchAll(() => sb.from('fb_ads_daily').select('member_code,d_from,spend,sales').gte('d_from', `${Y}-01-01`)),
-    sb.from('fb_kpi_actuals').select('month,code,score').eq('year', Y).then(r => r.data || []),
+async function load() {
+  const ty = +todayISO().slice(0, 4); if (!Y) Y = ty;
+  $('#fYear').innerHTML = [ty - 1, ty, ty + 1].map(y => `<option value="${y}">${y + 543}</option>`).join(''); $('#fYear').value = Y;
+  [DEFS, ACT, TEAM, SALES, ADS, PM] = await Promise.all([
+    sb.from('fb_kpi_defs').select('*').eq('active', true).order('sort').then(r => r.data || []),
+    sb.from('fb_kpi_actuals').select('*').eq('year', Y).then(r => r.data || []),
+    sb.from('fb_team_monthly').select('*').eq('year', Y).then(r => r.data || []),
+    fetchAll(() => sb.from('fb_sales_daily').select('d,sales').gte('d', `${Y}-01-01`).lte('d', `${Y}-12-31`)),
+    fetchAll(() => sb.from('fb_ads_daily').select('d_from,spend').gte('d_from', `${Y}-01-01`).lte('d_from', `${Y}-12-31`)),
+    sb.from('fb_person_monthly').select('month,discard').eq('year', Y).then(r => r.data || []),
   ]);
-  const cur = sales.filter(r => r.d >= ystart), prev = sales.filter(r => r.d < ystart);
-  const ytd = sum(cur, r => r.sales);
-  const last = cur.length ? cur[cur.length - 1].d : null;
-  const prevSame = last ? sum(prev.filter(r => r.d.slice(5) <= last.slice(5)), r => r.sales) : 0;
-  const target = (FB.settings.year_target || {})[Y] || 1000000000;
-  const dayOfYear = last ? Math.round((parseISO(last) - new Date(Y, 0, 1)) / 864e5) + 1 : 0;
-  const daysY = (Y % 4 === 0 ? 366 : 365);
-  const pacePct = dayOfYear / daysY * 100, pct = ytd / target * 100;
-  const remainMonths = last ? 12 - (+last.slice(5, 7)) + (+last.slice(8) < daysInMonth(Y, +last.slice(5, 7)) ? 1 - (+last.slice(8)) / daysInMonth(Y, +last.slice(5, 7)) : 0) : 12;
-  const needPerMonth = remainMonths > 0 ? (target - ytd) / remainMonths : 0;
-  const forecast = dayOfYear ? ytd / dayOfYear * daysY : 0;
-  $('#hero').innerHTML = `<div class="hub-hero"><div>
-      <div class="muted small">ยอดขายสะสมทีม Facebook ปี ${Y + 543} ${last ? '(ข้อมูลถึง ' + thDate(last) + ')' : ''}</div>
-      <div class="big">${fmtB(ytd)}</div>
-      <div class="row small"><span>เป้า ${fmtM(target, 0)}</span><span>·</span><b>${fmtP(pct)}</b><span class="muted">สำเร็จแล้ว</span><span>·</span><span>เทียบช่วงเดียวกันปีก่อน ${chg(ytd, prevSame)}</span></div>
-      <div class="bar tall mt" style="position:relative"><i style="width:${Math.min(100, pct)}%"></i><span class="pace" style="left:${Math.min(100, pacePct)}%" title="ควรถึง ${fmtP(pacePct)} ณ วันนี้"></span></div>
-      <div class="row xs mt muted"><span>▮ เส้นเหลือง = ความคืบหน้าที่ควรเป็นตามเวลา (${fmtP(pacePct)})</span></div>
-    </div>
-    <div class="grid g2" style="gap:10px">
-      <div><div class="muted small">คงเหลือถึงเป้า</div><div style="font-size:21px;font-weight:800">${fmtM(Math.max(0, target - ytd))}</div></div>
-      <div><div class="muted small">ต้องทำเฉลี่ย/เดือน</div><div style="font-size:21px;font-weight:800">${fmtM(Math.max(0, needPerMonth))}</div></div>
-      <div><div class="muted small">คาดการณ์ทั้งปี (อัตราปัจจุบัน)</div><div style="font-size:21px;font-weight:800">${fmtM(forecast)}</div></div>
-      <div><div class="muted small">คาดว่าจะได้ % ของเป้า</div><div style="font-size:21px;font-weight:800">${fmtP(forecast / target * 100)}</div></div>
-    </div></div>`;
-  // tiles
-  const mk = `${Y}-${pad2(M)}`;
-  const monthRows = cur.filter(r => r.d.startsWith(mk));
-  const lastM = last ? last.slice(0, 7) : mk;
-  const lmRows = cur.filter(r => r.d.startsWith(lastM));
-  const lmPrev = prev.filter(r => r.d.slice(5, 7) === lastM.slice(5, 7) && r.d.slice(8) <= (last || '').slice(8));
-  const adsM = adsRows.filter(r => r.d_from.startsWith(mk));
-  const adsSpend = sum(adsM, r => r.spend), adsSales = sum(adsM, r => r.sales);
-  const byM = {}; kpiRows.forEach(r => { (byM[r.month] = byM[r.month] || []).push(r); });
-  const defs = (await sb.from('fb_kpi_defs').select('code,weight')).data || [];
-  const wmap = Object.fromEntries(defs.map(d => [d.code, +d.weight]));
-  const kMonths = Object.keys(byM).map(Number).sort((a, b) => b - a);
-  const kLast = kMonths[0];
-  const kScore = kLast ? sum(byM[kLast], r => (+r.score || 0) * (wmap[r.code] || 0)) / 100 : null;
-  $('#tiles').innerHTML = [
-    ['ยอดขายเดือน ' + TH_MS[+lastM.slice(5) - 1] + ' (ถึงล่าสุด)', fmtM(sum(lmRows, r => r.sales)), `เทียบช่วงเดียวกันปีก่อน ${chg(sum(lmRows, r => r.sales), sum(lmPrev, r => r.sales))}`],
-    ['ยอดขายวันล่าสุด', last ? fmtM(cur[cur.length - 1].sales) : '–', last ? thDate(last) : 'ยังไม่มีข้อมูล'],
-    ['%ค่าแอด เดือนนี้ (ค่าแอดรายคน)', adsSpend ? adsBadge(adsSpend / adsSales * 100) : '–', adsSpend ? `ค่าแอด ${fmtM(adsSpend)} · ยอด ${fmtM(adsSales)}` : 'ยังไม่มีข้อมูลเดือนนี้'],
-    ['คะแนน KPI ล่าสุด', kScore != null ? kScore.toFixed(1) : '–', kLast ? `เดือน${TH_M[kLast - 1]} (ถ่วงน้ำหนัก)` : ''],
-  ].map(([l, v, d]) => `<div class="card tile"><span class="lb">${l}</span><span class="v">${v}</span><span class="d">${d}</span></div>`).join('');
-  // my routine + tasks
-  if (!FB.me) { $('#myRoutine').innerHTML = '<div class="muted small">ยังไม่ได้ผูกชื่อในทีม <a href="#" onclick="askWhoAmI();return false">ผูกตอนนี้</a></div>'; $('#myTasks').innerHTML = ''; return; }
-  const dow = ((parseISO(today).getDay() + 6) % 7) + 1;
-  const [tpl, logs, cards] = await Promise.all([
-    sb.from('fb_routine_templates').select('id,title,weekdays').eq('member_code', FB.me.code).eq('active', true).order('sort').then(r => r.data || []),
-    sb.from('fb_routine_logs').select('template_id').eq('d', today).eq('member_code', FB.me.code).then(r => r.data || []),
-    sb.from('fb_cards').select('id,title,due_date,list_id,priority').contains('assignees', [FB.me.code]).is('done_at', null).eq('archived', false).order('due_date', { ascending: true, nullsFirst: false }).limit(8).then(r => r.data || []),
-  ]);
-  const todayT = tpl.filter(t => (t.weekdays || []).includes(dow)), doneSet = new Set(logs.map(l => l.template_id));
-  const nDone = todayT.filter(t => doneSet.has(t.id)).length;
-  $('#myRoutine').innerHTML = todayT.length ? `<div class="row"><b style="font-size:22px">${nDone}/${todayT.length}</b><span class="muted small">รายการ</span><span class="sp"></span><span class="small">${fmtP(nDone / todayT.length * 100, 0)}</span></div><div class="bar mt"><i style="width:${nDone / todayT.length * 100}%;background:var(--good)"></i></div>
-    <div class="mt small">${todayT.filter(t => !doneSet.has(t.id)).slice(0, 4).map(t => `<div class="task-li">⬜ ${esc(t.title)}</div>`).join('')}</div>` : '<div class="muted small">ยังไม่มี Routine ต้นแบบของคุณ (ตั้งได้ในหน้า ตั้งค่า)</div>';
-  $('#myTasks').innerHTML = cards.length ? cards.map(c => {
-    const od = c.due_date && c.due_date < today, td = c.due_date === today;
-    return `<a class="task-li" href="board.html#card=${c.id}" style="color:inherit">${c.priority === 1 ? '🚨' : '▫️'} <span style="flex:1">${esc(c.title)}</span>${c.due_date ? `<span class="badge ${od ? 'st-bad' : td ? 'st-warn' : 'st-none'}">${od ? 'เลยกำหนด ' : ''}${thDate(c.due_date, false)}</span>` : ''}</a>`;
-  }).join('') : '<div class="muted small">ไม่มีงานค้าง 🎉</div>';
+  DEFS.forEach(d => { d.weight = +d.weight; d.target = d.target == null ? null : +d.target; });
+  const has = [...Array(12)].map((_, i) => i + 1).filter(m => evalMonth(m).some(e => e.score != null));
+  if (!M) { const cm = Y === ty ? +todayISO().slice(5, 7) : 12; M = has.length ? (has.includes(cm) ? cm : has[has.length - 1]) : cm; }
+  $('#fMonth').innerHTML = TH_M.map((t, i) => `<option value="${i + 1}">${t}${has.includes(i + 1) ? ' •' : ''}</option>`).join(''); $('#fMonth').value = M;
+  render();
 }
-start();
+function render() {
+  const ev = evalMonth(M), t = total(ev);
+  const s = t ? t.w : null;
+  const col = s == null ? '#CBD5E1' : s >= 80 ? '#15803d' : s >= 60 ? '#B45309' : '#B91C1C';
+  const prev = M > 1 ? total(evalMonth(M - 1)) : null;
+  $('#hero').innerHTML = `<div class="ring" style="background:conic-gradient(${col} ${(s || 0) * 3.6}deg,#E7ECF3 0)"><div class="in"><div><b>${s == null ? '–' : s.toFixed(1)}</b><small>คะแนน / 100</small></div></div></div>
+    <div><h2 style="font-size:20px;color:var(--navy)">คะแนน KPI เดือน${TH_M[M - 1]} ${Y + 543}</h2>
+    <div class="row mt small"><span class="badge ${band(s)}">${s == null ? 'ยังไม่มีข้อมูล' : s >= 80 ? '✔ ดีมาก' : s >= 60 ? '! พอใช้' : '✖ ต้องปรับปรุง'}</span>${prev ? `<span>เดือนก่อน ${prev.w.toFixed(1)} ${s != null ? `<span class="${s >= prev.w ? 'up' : 'down'}">${s >= prev.w ? '▲' : '▼'} ${Math.abs(s - prev.w).toFixed(1)}</span>` : ''}</span>` : ''}${t ? `<span class="muted">· ค่าเฉลี่ยธรรมดา ${t.avg.toFixed(1)} · มีข้อมูลครอบคลุมน้ำหนัก ${t.cov}%</span>` : ''}</div>
+    <div class="grid g3 mt">${ev.slice().sort((a, b) => (a.score ?? 999) - (b.score ?? 999)).slice(0, 3).map(e => `<div class="card tile" style="padding:10px 12px"><span class="lb">ควรโฟกัส</span><b style="color:var(--navy);font-size:13.5px">${esc(e.d.name)}</b><span class="d">คะแนน <span class="badge ${band(e.score)}">${e.score ?? '–'}</span> · น้ำหนัก ${e.d.weight}%</span></div>`).join('')}</div></div>`;
+  $('#scTitle').textContent = `Scorecard — ${TH_M[M - 1]} ${Y + 543}`;
+  $('#sc').innerHTML = `<table class="t kpi-t"><thead><tr><th>#</th><th>ตัวชี้วัด</th><th class="r">เป้าหมาย</th><th style="min-width:170px">ผลงานจริง</th><th class="c">คะแนน</th><th class="r">น้ำหนัก</th><th class="r">คะแนนถ่วง</th><th>เกณฑ์คะแนน</th></tr></thead><tbody>${ev.map(e => `<tr data-k="${e.d.code}"><td class="muted">${e.d.sort}</td><td><div class="nm">${esc(e.d.name)}</div><div class="lv">${esc(e.d.formula || '')}</div></td><td class="r">${esc(e.d.target_text && !/^[\d.,]+$/.test(e.d.target_text) ? e.d.target_text : fmtA(e.d, e.d.target))} <span class="muted xs">${esc(e.d.unit || '')}</span></td><td><input class="inp r" data-a value="${e.manual ? e.actual : ''}" placeholder="${e.actual != null && !e.manual ? fmtA(e.d, e.actual) : 'กรอกผลจริง'}" style="width:130px"><div class="xs mt">${e.src ? `<span class="auto">${esc(e.src)}</span>` : ''} ${!e.manual && e.actual != null ? (e.hist ? 'ค่าอัตโนมัติ ' : '') + fmtA(e.d, e.actual) : ''}${e.hist ? ` <a href="#" data-clr title="ลบคะแนนย้อนหลัง แล้วคิดจากข้อมูลในระบบ">ใช้ค่าในระบบ</a>` : ''}</div></td><td class="c"><span class="badge ${band(e.score)}" style="font-size:14px">${e.score ?? '–'}</span></td><td class="r">${e.d.weight}%</td><td class="r"><b>${e.score == null ? '–' : (e.score * e.d.weight / 100).toFixed(1)}</b></td><td class="lv">${e.d.levels.map(([t, s, o]) => `${o ? (e.d.direction === 'higher' ? '<' : '>') : ''}${fmtA(e.d, t)}=${s}`).join(' · ')}</td></tr>`).join('')}</tbody><tfoot><tr><td></td><td>รวม</td><td></td><td></td><td></td><td class="r">${sum(DEFS, d => d.weight)}%</td><td class="r">${s == null ? '–' : s.toFixed(1)}</td><td></td></tr></tfoot></table>`;
+  $$('#sc [data-a]').forEach(inp => inp.onchange = async () => {
+    const code = inp.closest('tr').dataset.k; const v = inp.value.replace(/[,%]/g, '').trim();
+    const ex = ACT.find(x => x.month === M && x.code === code);
+    const row = { year: Y, month: M, code, actual: v === '' ? null : +v, score: ex?.score ?? null, note: ex?.note ?? null, updated_at: new Date().toISOString() };
+    if (v !== '' && isNaN(row.actual)) return toast('ตัวเลขไม่ถูกต้อง', 'err');
+    chk(await sb.from('fb_kpi_actuals').upsert(row, { onConflict: 'year,month,code' }), 'บันทึก');
+    if (ex) Object.assign(ex, row); else ACT.push(row); toast('บันทึกแล้ว', 'ok'); render();
+  });
+  $$('#sc [data-clr]').forEach(a => a.onclick = async e => {
+    e.preventDefault(); const code = a.closest('tr').dataset.k;
+    if (!await confirmBox('ลบคะแนนย้อนหลังของข้อนี้ แล้วให้ระบบคิดคะแนนจากข้อมูลในระบบแทน?')) return;
+    chk(await sb.from('fb_kpi_actuals').update({ score: null }).eq('year', Y).eq('month', M).eq('code', code), 'บันทึก');
+    const ex = ACT.find(x => x.month === M && x.code === code); if (ex) ex.score = null; render();
+  });
+  // year
+  const mm = [...Array(12)].map((_, i) => i + 1);
+  const evs = mm.map(m => evalMonth(m));
+  const tots = evs.map(total);
+  const shown = mm.filter((m, i) => tots[i]);
+  $('#yrTitle').textContent = `คะแนนรายข้อ ทั้งปี ${Y + 543}`;
+  $('#yr').innerHTML = shown.length ? `<table class="t"><thead><tr><th>ตัวชี้วัด</th><th class="r">น้ำหนัก</th>${shown.map(m => `<th class="c">${TH_MS[m - 1]}</th>`).join('')}<th class="c">เฉลี่ย</th></tr></thead><tbody>${DEFS.map((d, di) => { const vals = shown.map(m => evs[m - 1][di].score); const v2 = vals.filter(v => v != null); return `<tr><td>${esc(d.name)}</td><td class="r muted">${d.weight}%</td>${vals.map(v => `<td class="sc-cell"><span class="badge ${band(v)}">${v ?? '–'}</span></td>`).join('')}<td class="sc-cell">${v2.length ? (sum(v2) / v2.length).toFixed(0) : '–'}</td></tr>`; }).join('')}</tbody><tfoot><tr><td>คะแนนถ่วงน้ำหนัก</td><td></td>${shown.map(m => `<td class="c">${tots[m - 1].w.toFixed(1)}</td>`).join('')}<td class="c">${(sum(shown, m => tots[m - 1].w) / shown.length).toFixed(1)}</td></tr><tr><td class="muted">ค่าเฉลี่ยธรรมดา (แบบไฟล์เดิม)</td><td></td>${shown.map(m => `<td class="c muted">${tots[m - 1].avg.toFixed(1)}</td>`).join('')}<td class="c muted">${(sum(shown, m => tots[m - 1].avg) / shown.length).toFixed(1)}</td></tr></tfoot></table>` : '<div class="empty">ยังไม่มีข้อมูล</div>';
+  drawChart('cYear', { type: 'bar', data: { labels: TH_MS, datasets: [
+    { label: 'ถ่วงน้ำหนัก', data: tots.map(t => t ? +t.w.toFixed(1) : null), backgroundColor: tots.map((t, i) => i + 1 === M ? '#1A2942' : '#2a78d6'), order: 2, maxBarThickness: 36 },
+    { type: 'line', label: 'ค่าเฉลี่ยธรรมดา', data: tots.map(t => t ? +t.avg.toFixed(1) : null), borderColor: '#94A3B8', borderDash: [5, 4], pointRadius: 3, pointBackgroundColor: '#94A3B8', spanGaps: true, order: 1 } ] },
+    options: { scales: { y: { min: 0, max: 100, grid: { color: '#EEF1F6' }, border: { display: false } }, x: axisX }, plugins: { tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.raw}` } } }, onClick: (e, els) => { if (els[0]) { M = els[0].index + 1; $('#fMonth').value = M; render(); } } } });
+  renderTeam(); renderAP(); renderGoal();
+}
+function renderTeam() {
+  const tm = TEAM.find(x => x.month === M) || {};
+  const f = [['ads', 'ค่าแอดทั้งทีม (บาท)'], ['discard', 'ยอดทิ้งบัญชี (บาท)'], ['shipping', 'ค่าส่ง (บาท)'], ['orders', 'จำนวนออเดอร์'], ['brand_sales', 'ยอดขายสินค้าแบรนด์ (บาท)'], ['sales', 'ยอดขายจริง (ถ้าต่างจากรายวัน)']];
+  $('#tmHint').textContent = `${TH_M[M - 1]} ${Y + 543}`;
+  $('#tm').innerHTML = `<div class="grid g2">${f.map(([k, t]) => `<label class="f">${t}<input class="inp r" data-f="${k}" value="${tm[k] ?? ''}"></label>`).join('')}</div>
+    <label class="f mt">หมายเหตุ<input class="inp" data-f="note" value="${esc(tm.note || '')}"></label>
+    <div class="row mt"><span class="small muted">ใช้คำนวณ KPI ข้อ 2, 3, 5, 8 อัตโนมัติ</span><span class="sp"></span><button class="btn pri sm" id="tmSave">บันทึก</button></div>`;
+  $('#tmSave').onclick = async () => {
+    const row = { year: Y, month: M, updated_at: new Date().toISOString() };
+    $$('#tm [data-f]').forEach(i => { const k = i.dataset.f; row[k] = k === 'note' ? (i.value || null) : (i.value.trim() === '' ? null : +i.value.replace(/,/g, '')); });
+    chk(await sb.from('fb_team_monthly').upsert(row, { onConflict: 'year,month' }), 'บันทึก');
+    TEAM = TEAM.filter(x => x.month !== M).concat([row]); toast('บันทึกแล้ว', 'ok'); render();
+  };
+}
+function renderAP() {
+  const items = FB.settings.action_plan_items || AP_DEFAULT;
+  const key = `action_plan_${Y}_${pad2(M)}`; const done = FB.settings[key] || {};
+  const n = items.filter((_, i) => done[i]).length;
+  $('#apHint').textContent = `${TH_M[M - 1]} · ทำแล้ว ${n}/${items.length}`;
+  $('#ap').innerHTML = items.map((t, i) => `<li><input type="checkbox" data-i="${i}" ${done[i] ? 'checked' : ''}><span style="flex:1">${esc(t)}</span>${done[i] ? `<span class="xs muted">${esc(done[i].by || '')}</span>` : ''}</li>`).join('');
+  $$('#ap [data-i]').forEach(c => c.onchange = async () => { const d = { ...(FB.settings[key] || {}) }; if (c.checked) d[c.dataset.i] = { by: FB.profile.display_name, at: new Date().toISOString() }; else delete d[c.dataset.i]; await saveSetting(key, d); renderAP(); });
+}
+function renderGoal() {
+  const g = FB.settings.team_goal || {};
+  $('#goal').innerHTML = `<b>เป้าหมาย</b><ol class="goal small">${(g.goals || []).map(x => `<li>${esc(x)}</li>`).join('')}</ol><b>วิธีลดต้นทุน เพิ่มรายได้</b><ol class="goal small">${(g.methods || []).map(x => `<li>${esc(x)}</li>`).join('')}</ol>${g.slogan ? `<div class="note mt">💬 สโลแกน: <b>“${esc(g.slogan)}”</b></div>` : ''}<div class="small muted mt">แก้ไขได้ที่ ตั้งค่า › เป้าหมาย</div>`;
+}
+$('#fYear').onchange = e => { Y = +e.target.value; M = null; load(); };
+$('#fMonth').onchange = e => { M = +e.target.value; render(); };
+$('#bDefs').onclick = () => {
+  const md = openModal({ title: '⚙️ แก้ไขเกณฑ์ KPI', size: 'xwide', body: `<div class="note small mb">เกณฑ์ 5 ระดับ: ใส่ค่าเกณฑ์และคะแนน (เรียงจากดีที่สุด) · ติ๊ก “ปลายเปิด” ที่ระดับสุดท้ายถ้าต่ำกว่า/เกินกว่านั้นยังได้คะแนนนั้น · น้ำหนักรวมควรเป็น 100%</div><div class="tbl-wrap"><table class="t"><thead><tr><th>#</th><th>ชื่อ KPI</th><th>น้ำหนัก%</th><th>ทิศทาง</th><th>เป้า (ข้อความ)</th><th>หน่วย</th><th>เกณฑ์ → คะแนน</th><th>คำนวณอัตโนมัติ</th></tr></thead><tbody>${DEFS.map(d => `<tr data-k="${d.code}"><td>${d.sort}</td><td><input class="inp" data-f="name" value="${esc(d.name)}" style="min-width:220px"></td><td><input class="inp r" data-f="weight" value="${d.weight}" style="width:60px"></td><td><select class="inp" data-f="direction"><option value="higher" ${d.direction === 'higher' ? 'selected' : ''}>ยิ่งมากยิ่งดี</option><option value="lower" ${d.direction === 'lower' ? 'selected' : ''}>ยิ่งน้อยยิ่งดี</option></select></td><td><input class="inp" data-f="target_text" value="${esc(d.target_text || '')}" style="width:90px"></td><td><input class="inp" data-f="unit" value="${esc(d.unit || '')}" style="width:60px"></td><td><div class="row nowrap">${d.levels.map(([t, s, o], i) => `<span class="row nowrap" style="gap:2px"><input class="inp r" data-lt="${i}" value="${t}" style="width:84px"><input class="inp r" data-ls="${i}" value="${s}" style="width:44px">${i === d.levels.length - 1 ? `<label class="xs"><input type="checkbox" data-lo ${o ? 'checked' : ''}>ปลายเปิด</label>` : ''}</span>`).join('')}</div></td><td><select class="inp" data-f="auto_source">${[['', 'กรอกเอง'], ['sales', 'ยอดขาย'], ['ads_pct', '%ค่าแอด'], ['brand_pct', '%สินค้าแบรนด์'], ['discard', 'ยอดทิ้งบัญชี'], ['cpo', 'CPO']].map(([v, t]) => `<option value="${v}" ${(d.auto_source || '') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div>`, foot: '<span class="small muted" id="wsum"></span><span class="sp"></span><button class="btn pri" id="dSave">บันทึก</button>' });
+  const upd = () => md.querySelector('#wsum').textContent = 'น้ำหนักรวม ' + sum([...md.querySelectorAll('[data-f=weight]')], i => +i.value) + '%';
+  md.querySelectorAll('[data-f=weight]').forEach(i => i.oninput = upd); upd();
+  md.querySelector('#dSave').onclick = async () => {
+    for (const tr of md.querySelectorAll('tr[data-k]')) {
+      const row = {}; tr.querySelectorAll('[data-f]').forEach(i => row[i.dataset.f] = i.dataset.f === 'weight' ? +i.value : (i.value || null));
+      const lv = [...tr.querySelectorAll('[data-lt]')].map((i, k) => [+i.value, +tr.querySelector(`[data-ls="${k}"]`).value, 0]);
+      if (lv.length) lv[lv.length - 1][2] = tr.querySelector('[data-lo]')?.checked ? 1 : 0;
+      row.levels = lv;
+      chk(await sb.from('fb_kpi_defs').update(row).eq('code', tr.dataset.k), 'บันทึก');
+    }
+    toast('บันทึกเกณฑ์แล้ว', 'ok'); md.close(); load();
+  };
+};
+fbBoot('kpi').then(load);
 </script>
 <script id="studio-interactions">
 (()=>{

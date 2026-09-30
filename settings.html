@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>หน้าหลัก · MASARU Facebook</title>
+<title>ตั้งค่า · MASARU Facebook</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -148,28 +148,10 @@ table.t input.inp{padding:4px 7px;width:100%}
 @media (max-width:760px){.fb-top .sub{display:none}.fb-top h1{font-size:16.5px;white-space:nowrap}.fb-user>span{display:none}.tile .v{font-size:21px}.card-h{padding:12px 12px 8px}.card-b{padding:6px 12px 12px}}
 
 /* ===== page ===== */
-.auth-wrap{min-height:100vh;display:grid;place-items:center;padding:20px;background:linear-gradient(135deg,#1A2942 0%,#24365A 55%,#1877F2 140%)}
-.auth-card{width:100%;max-width:420px;background:#fff;border-radius:18px;box-shadow:0 30px 60px rgba(0,0,0,.3);overflow:hidden}
-.auth-head{background:var(--navy);color:#fff;padding:22px 24px;display:flex;gap:12px;align-items:center}
-.auth-head .fb-logo{width:46px;height:46px;font-size:24px}
-.auth-head b{font-size:18px;display:block}.auth-head small{color:#AFC0DA}
-.auth-body{padding:20px 24px 24px;display:flex;flex-direction:column;gap:12px}
-.hub-hero{background:linear-gradient(120deg,#1A2942,#24365A 60%,#1d4f9c);color:#fff;border-radius:16px;padding:22px 24px;display:grid;grid-template-columns:1.4fr 1fr;gap:22px;align-items:center}
-.hub-hero h2{font-size:21px;margin-bottom:4px}
-.hub-hero .big{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
-.hub-hero .bar{background:rgba(255,255,255,.18);height:14px}
-.hub-hero .bar>i{background:linear-gradient(90deg,#4F9BFF,#8CC4FF)}
-.hub-hero .pace{position:absolute;top:-3px;bottom:-3px;width:2px;background:#FFD166}
-.hub-hero .muted{color:#B9C8E0}
-.menu-card{display:flex;gap:12px;padding:14px 16px;align-items:flex-start;color:inherit;text-decoration:none;transition:transform .12s, box-shadow .12s}
-.menu-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(15,23,42,.1);text-decoration:none}
-.menu-card .ic{font-size:26px;width:44px;height:44px;border-radius:12px;background:#EEF4FF;display:grid;place-items:center;flex:none}
-.menu-card b{display:block;color:var(--navy);font-size:15px}
-.menu-card small{color:var(--muted);font-size:12.5px;line-height:1.45;display:block;margin-top:2px}
-.menu-card.soon{opacity:.6}
-.task-li{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line-2);font-size:13.5px}
-.task-li:last-child{border-bottom:0}
-@media (max-width:860px){.hub-hero{grid-template-columns:1fr}}
+.wd{display:inline-flex;gap:2px}.wd span{width:24px;height:22px;border-radius:5px;background:#EEF2F7;display:grid;place-items:center;font-size:11px;cursor:pointer;color:var(--muted);font-weight:700}
+.wd span.on{background:var(--fb);color:#fff}
+.rt-row td{vertical-align:middle}
+.drag-h{cursor:grab;color:var(--muted-2)}
 </style>
 <style id="masaru-social-studio">
 /* MASARU · Social Studio — presentation layer, self-contained */
@@ -268,40 +250,20 @@ table.t td{padding:10px 12px;font-size:13px}table.t tr:hover td{background:#f1f6
 @media print{body{background:#fff}.studio-intro,.auth-story{display:none!important}.fb-main{margin-left:0}.fb-content{padding:0}.hub-hero{print-color-adjust:exact;-webkit-print-color-adjust:exact}.tile,.card{break-inside:avoid}.fb-top,.fb-side{display:none!important}}
 </style>
 </head>
-<body class="studio-page studio-index">
-<div id="auth" class="auth-wrap hidden"><div class="auth-story"><div class="auth-story-brand"><div class="fb-logo">f</div><div>MASARU FACEBOOK<small>THE TEAM WORKSPACE</small></div></div><span class="studio-eyebrow">A LITTLE SPACE FOR BIG IDEAS</span><h1>พื้นที่ของทีมเรา<br>ให้ทุกวัน <em>ไปได้ไกลขึ้น</em></h1><p>รวมงาน ยอดขาย และเป้าหมายไว้ด้วยกัน<br>พร้อมสร้างทุกความสำเร็จไปกับทีม Facebook</p><div class="auth-illustration"><svg class="studio-art" viewBox="0 0 300 200" fill="none" aria-hidden="true"><ellipse cx="157" cy="179" rx="111" ry="10" fill="#8AA5D7" opacity=".12"/><g transform="rotate(-7 138 103)"><rect x="53" y="39" width="172" height="123" rx="15" fill="#DCE8FB"/><rect x="47" y="31" width="172" height="123" rx="15" fill="white" stroke="#C9DAF3"/><path d="M48 60H219" stroke="#E8EEF8"/><circle cx="61" cy="46" r="3" fill="#F0B6C4"/><circle cx="72" cy="46" r="3" fill="#F5D691"/><circle cx="83" cy="46" r="3" fill="#B4DCCE"/><rect x="62" y="74" width="54" height="62" rx="8" fill="#E9F1FF"/><path d="M73 117L83 105L92 111L105 89" stroke="#548BE1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M99 89H106V97" stroke="#548BE1" stroke-width="4" stroke-linecap="round"/><rect x="130" y="79" width="64" height="6" rx="3" fill="#CCDDF5"/><rect x="130" y="93" width="44" height="5" rx="2.5" fill="#E0E9F8"/><rect x="130" y="114" width="53" height="21" rx="7" fill="#EEF5FF"/><path d="M142 124L147 128L154 119" stroke="#6C9ADB" stroke-width="2" stroke-linecap="round"/><path d="M161 124H173" stroke="#A4BFE6" stroke-width="3" stroke-linecap="round"/></g><g class="float"><rect x="208" y="13" width="56" height="54" rx="17" fill="#377EF0"/><path d="M239 57V34H245L246 27H239V24C239 21 240 20 243 20H247V14H242C234 14 231 18 231 24V27H226V34H231V57" fill="white" transform="translate(0 5) scale(.96)"/></g><g class="float"><rect x="17" y="112" width="70" height="49" rx="16" fill="#FCE6EE" stroke="#F4D5DF"/><path d="M43 137C29 128 43 116 49 126C57 116 69 129 49 140L43 137Z" fill="#DD8CA7"/><circle cx="68" cy="137" r="3" fill="#ECC0D0"/></g><g transform="rotate(7 224 150)"><rect x="184" y="129" width="101" height="47" rx="14" fill="#EDF8F2" stroke="#CAE6D8"/><circle cx="207" cy="152" r="11" fill="#AAD6C1"/><path d="M202 152L206 156L212 148" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M225 146H267M225 155H253" stroke="#9FC6B6" stroke-width="4" stroke-linecap="round"/></g><path d="M34 38V49M28.5 43.5H39.5M266 97V108M260.5 102.5H271.5" stroke="#ACBFE3" stroke-width="2" stroke-linecap="round"/><circle cx="119" cy="17" r="4" fill="#EDCD9C"/><circle cx="159" cy="185" r="3" fill="#B7C9EA"/></svg><div class="auth-tags"><span><i>✧</i>จัดการงานง่ายขึ้น</span><span><i>↗</i>มองเห็นทุกการเติบโต</span><span><i>♡</i>สำเร็จไปด้วยกัน</span></div></div></div>
-  <div class="auth-card">
-    <div class="auth-head"><div class="fb-logo">f</div><div><b>ยินดีต้อนรับกลับมา 👋</b><small>เข้าสู่พื้นที่ทำงานของทีม Facebook</small></div></div>
-    <div class="auth-body">
-      <div class="seg" style="align-self:flex-start"><button class="on" data-am="in">เข้าสู่ระบบ</button><button data-am="up">สมัครด้วยรหัสเชิญ</button></div>
-      <label class="f">อีเมล<input class="inp" id="aEmail" type="email" autocomplete="username" placeholder="name@example.com"></label>
-      <label class="f">รหัสผ่าน<span class="studio-password"><input class="inp" id="aPass" type="password" autocomplete="current-password" placeholder="อย่างน้อย 6 ตัวอักษร"><button type="button" id="studioPassToggle" aria-label="แสดงรหัสผ่าน" aria-pressed="false">แสดง</button></span></label>
-      <div id="upOnly" class="hidden" style="display:flex;flex-direction:column;gap:12px">
-        <label class="f">ชื่อที่แสดงในระบบ<input class="inp" id="aName" placeholder="เช่น อีฟ"></label>
-        <label class="f">รหัสเชิญ<input class="inp" id="aInvite" placeholder="ขอรหัสจากหัวหน้าทีม" style="text-transform:uppercase"></label>
-      </div>
-      <button class="btn pri" id="aGo" style="padding:10px">เข้าสู่ระบบ</button>
-      <div id="aMsg" class="small muted" role="status" aria-live="polite"></div>
-    </div>
-    <div class="auth-foot">MASARU GROUP · สำหรับสมาชิกทีม Facebook</div>
-  </div>
-</div>
-
-<div id="hubWrap" class="fb-main hidden">
-  <header class="fb-top"><h1>🏠 หน้าหลัก</h1><span class="sub" id="todayLbl"></span></header>
-  <main class="fb-content" id="page"><section class="studio-intro studio-home" aria-label="ภาพรวมหน้า"><div><span class="studio-eyebrow">YOUR TEAM, YOUR SPACE</span><h2>วันนี้ มาทำให้เต็มที่กัน ✨</h2><p>รวมทุกงานของทีม Facebook ไว้ในพื้นที่เดียว</p><div class="studio-shortcuts"><a href="board.html">🗂️ เปิดบอร์ดงาน</a><a href="board.html#routine">✅ Routine วันนี้</a><a href="manual.html">📖 คู่มือทีม</a></div></div><svg class="studio-art" viewBox="0 0 300 200" fill="none" aria-hidden="true"><ellipse cx="157" cy="179" rx="111" ry="10" fill="#8AA5D7" opacity=".12"/><g transform="rotate(-7 138 103)"><rect x="53" y="39" width="172" height="123" rx="15" fill="#DCE8FB"/><rect x="47" y="31" width="172" height="123" rx="15" fill="white" stroke="#C9DAF3"/><path d="M48 60H219" stroke="#E8EEF8"/><circle cx="61" cy="46" r="3" fill="#F0B6C4"/><circle cx="72" cy="46" r="3" fill="#F5D691"/><circle cx="83" cy="46" r="3" fill="#B4DCCE"/><rect x="62" y="74" width="54" height="62" rx="8" fill="#E9F1FF"/><path d="M73 117L83 105L92 111L105 89" stroke="#548BE1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M99 89H106V97" stroke="#548BE1" stroke-width="4" stroke-linecap="round"/><rect x="130" y="79" width="64" height="6" rx="3" fill="#CCDDF5"/><rect x="130" y="93" width="44" height="5" rx="2.5" fill="#E0E9F8"/><rect x="130" y="114" width="53" height="21" rx="7" fill="#EEF5FF"/><path d="M142 124L147 128L154 119" stroke="#6C9ADB" stroke-width="2" stroke-linecap="round"/><path d="M161 124H173" stroke="#A4BFE6" stroke-width="3" stroke-linecap="round"/></g><g class="float"><rect x="208" y="13" width="56" height="54" rx="17" fill="#377EF0"/><path d="M239 57V34H245L246 27H239V24C239 21 240 20 243 20H247V14H242C234 14 231 18 231 24V27H226V34H231V57" fill="white" transform="translate(0 5) scale(.96)"/></g><g class="float"><rect x="17" y="112" width="70" height="49" rx="16" fill="#FCE6EE" stroke="#F4D5DF"/><path d="M43 137C29 128 43 116 49 126C57 116 69 129 49 140L43 137Z" fill="#DD8CA7"/><circle cx="68" cy="137" r="3" fill="#ECC0D0"/></g><g transform="rotate(7 224 150)"><rect x="184" y="129" width="101" height="47" rx="14" fill="#EDF8F2" stroke="#CAE6D8"/><circle cx="207" cy="152" r="11" fill="#AAD6C1"/><path d="M202 152L206 156L212 148" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M225 146H267M225 155H253" stroke="#9FC6B6" stroke-width="4" stroke-linecap="round"/></g><path d="M34 38V49M28.5 43.5H39.5M266 97V108M260.5 102.5H271.5" stroke="#ACBFE3" stroke-width="2" stroke-linecap="round"/><circle cx="119" cy="17" r="4" fill="#EDCD9C"/><circle cx="159" cy="185" r="3" fill="#B7C9EA"/></svg></section>
-    <div id="hero"></div>
-    <div class="grid g4 keep2 mt" id="tiles"></div>
-    <div class="grid mt" style="grid-template-columns:1.6fr 1fr" id="midRow">
-      <div class="card"><div class="card-h"><h2>เมนูระบบ</h2><span class="hint">ทุกคนที่ล็อกอินเข้าถึงได้ทุกเมนู</span></div><div class="card-b"><div class="grid g2" id="menus"></div></div></div>
-      <div class="grid" style="align-content:start">
-        <div class="card"><div class="card-h"><h2>✅ Routine วันนี้ของฉัน</h2><span class="sp"></span><a class="btn sm" href="board.html#routine">เปิด</a></div><div class="card-b" id="myRoutine"></div></div>
-        <div class="card"><div class="card-h"><h2>🗂️ งานของฉันที่ยังไม่เสร็จ</h2><span class="sp"></span><a class="btn sm" href="board.html">บอร์ดงาน</a></div><div class="card-b" id="myTasks"></div></div>
-      </div>
-    </div>
-  </main>
-  <footer class="fb-foot">MASARU Group · ระบบแผนก Facebook · ข้อมูลภายในบริษัท ห้ามเผยแพร่</footer>
-</div>
+<body class="studio-page studio-settings">
+<div class="fb-main"><header class="fb-top"><h1>⚙️ ตั้งค่า</h1><span class="sub">สมาชิก · ผู้ใช้ระบบ · เป้าหมาย · Routine ต้นแบบ · ป้ายกำกับ · รหัสเชิญ</span></header><main class="fb-content" id="page"><section class="studio-intro " aria-label="ภาพรวมหน้า"><div><span class="studio-eyebrow">WORKSPACE SETTINGS</span><h2>พื้นที่ทำงานในแบบทีมเรา</h2><p>จัดการสมาชิก เป้าหมาย และการตั้งค่าที่ทีมใช้ร่วมกัน</p></div><span class="studio-sticker" aria-hidden="true">⚙️</span></section><div class="tabs" id="tabs"><button data-t="mem" class="on">👥 สมาชิก</button><button data-t="users">🔐 ผู้ใช้ระบบ</button><button data-t="goal">🎯 เป้าหมาย</button><button data-t="routine">✅ Routine ต้นแบบ</button><button data-t="label">🏷️ ป้ายกำกับ</button><button data-t="invite">🎟️ รหัสเชิญ</button><button data-t="sys">🗄️ ข้อมูลระบบ</button></div>
+<section data-p="mem"><div class="card"><div class="card-h"><h2>สมาชิกทีม</h2><span class="hint">รหัส (code) ใช้จับคู่กับชื่อชีทในไฟล์ Excel · ชื่อเรียกอื่น = ชื่อที่ใช้ในไฟล์ (คั่นด้วย ,)</span><span class="sp"></span><button class="btn pri sm" id="mAdd">➕ เพิ่มสมาชิก</button></div><div class="card-b"><div class="tbl-wrap" id="mTbl"></div></div></div></section>
+<section data-p="users" class="hidden"><div class="card"><div class="card-h"><h2>ผู้ใช้ที่เข้าระบบได้</h2><span class="hint">ผูกบัญชีกับชื่อในทีม เพื่อแสดง Routine / งานของฉัน · ลบ = ถอนสิทธิ์เข้าระบบ</span></div><div class="card-b"><div class="tbl-wrap" id="uTbl"></div></div></div></section>
+<section data-p="goal" class="hidden"><div class="grid g2">
+  <div class="card"><div class="card-h"><h2>เป้าหมายยอดขาย</h2></div><div class="card-b" id="gSales"></div></div>
+  <div class="card"><div class="card-h"><h2>เกณฑ์ %ค่าแอด</h2></div><div class="card-b" id="gBand"></div></div>
+  <div class="card"><div class="card-h"><h2>เป้าหมาย / วิธีการ / สโลแกนทีม</h2></div><div class="card-b" id="gTeam"></div></div>
+  <div class="card"><div class="card-h"><h2>อื่น ๆ</h2></div><div class="card-b" id="gOther"></div></div>
+</div></section>
+<section data-p="routine" class="hidden"><div class="card"><div class="card-h"><h2>Routine ต้นแบบรายคน</h2><span class="hint">รายการที่ต้องทำประจำ — ขึ้นในแท็บ Routine รายวันของบอร์ดงานตามวันในสัปดาห์ที่เลือก</span><span class="sp"></span><select class="inp" id="rMem"></select><button class="btn sm" id="rCopy">⧉ คัดลอกจากคนอื่น</button><button class="btn pri sm" id="rAdd">➕ เพิ่มรายการ</button></div><div class="card-b"><div class="tbl-wrap" id="rTbl"></div></div></div></section>
+<section data-p="label" class="hidden"><div class="card"><div class="card-h"><h2>ป้ายกำกับการ์ดงาน</h2><span class="sp"></span><button class="btn pri sm" id="lAdd">➕ เพิ่มป้าย</button></div><div class="card-b"><div class="tbl-wrap" id="lTbl"></div></div></div></section>
+<section data-p="invite" class="hidden"><div class="card"><div class="card-h"><h2>รหัสเชิญ</h2><span class="hint">ส่งรหัสให้คนในทีมเพื่อสมัครเข้าระบบ · ปิดรหัสเมื่อไม่ต้องการให้สมัครเพิ่ม</span><span class="sp"></span><button class="btn pri sm" id="iAdd">➕ สร้างรหัส</button></div><div class="card-b"><div class="tbl-wrap" id="iTbl"></div></div></div></section>
+<section data-p="sys" class="hidden"><div class="card"><div class="card-h"><h2>ข้อมูลในระบบ</h2><span class="sp"></span><button class="btn sm" id="sBackup">⬇️ สำรองข้อมูล (JSON)</button></div><div class="card-b"><div class="tbl-wrap" id="sTbl"></div><div class="note mt small">ไฟล์สำรองรวมทุกตาราง (ยกเว้นรหัสผ่าน) — เก็บไว้ที่ปลอดภัย เพราะมีข้อมูลยอดขายและบัตร</div></div></div></section></main><footer class="fb-foot">MASARU Group · ระบบแผนก Facebook · ข้อมูลภายในบริษัท ห้ามเผยแพร่</footer></div>
 <script>
 /* ===== MASARU FACEBOOK HUB — COMMON (ตั้งค่า Supabase ตรงนี้) ===== */
 const FB_SUPABASE_URL  = 'https://ufnlbccsjftjsbxipqkr.supabase.co';
@@ -528,165 +490,99 @@ async function fbBoot(active, title) {
   return FB;
 }
 
-let authMode = 'in';
-const next = new URLSearchParams(location.search).get('next');
-
-$$('[data-am]').forEach(b => b.onclick = () => {
-  authMode = b.dataset.am; $$('[data-am]').forEach(x => x.classList.toggle('on', x === b));
-  $('#upOnly').classList.toggle('hidden', authMode !== 'up');
-  $('#aGo').textContent = authMode === 'up' ? 'สมัครและเข้าสู่ระบบ' : 'เข้าสู่ระบบ';
-  $('#aPass').autocomplete = authMode === 'up' ? 'new-password' : 'current-password';
-});
-$('#aPass').addEventListener('keydown', e => { if (e.key === 'Enter' && authMode === 'in') $('#aGo').click(); });
-$('#aGo').onclick = async () => {
-  const email = $('#aEmail').value.trim(), pass = $('#aPass').value;
-  const msg = t => $('#aMsg').innerHTML = t;
-  if (!email || pass.length < 6) return msg('<span class="down">กรอกอีเมลและรหัสผ่าน (อย่างน้อย 6 ตัว)</span>');
-  $('#aGo').disabled = true;
-  try {
-    if (authMode === 'up') {
-      const code = $('#aInvite').value.trim().toUpperCase(), name = $('#aName').value.trim();
-      if (!code || !name) { msg('<span class="down">กรอกชื่อที่แสดงและรหัสเชิญ</span>'); return; }
-      const { data: ok } = await sb.rpc('fb_verify_invite', { p_code: code });
-      if (!ok) { msg('<span class="down">รหัสเชิญไม่ถูกต้องหรือหมดอายุ</span>'); return; }
-      let { data, error } = await sb.auth.signUp({ email, password: pass, options: { data: { display_name: name } } });
-      if (error && /registered/i.test(error.message)) ({ data, error } = await sb.auth.signInWithPassword({ email, password: pass }));
-      if (error) { msg('<span class="down">' + esc(error.message) + '</span>'); return; }
-      if (!data.session) { msg('สมัครแล้ว กรุณายืนยันอีเมล แล้วกลับมาเข้าสู่ระบบ (หรือให้ผู้ดูแลปิด Confirm email ใน Supabase)'); localStorage.setItem('fb_pending_invite', JSON.stringify({ code, name })); return; }
-      const { data: r } = await sb.rpc('fb_claim_invite', { p_code: code, p_display_name: name, p_member_code: null });
-      if (r !== 'ok') { msg('<span class="down">ใช้รหัสเชิญไม่สำเร็จ: ' + esc(r) + '</span>'); return; }
-    } else {
-      const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-      if (error) { msg('<span class="down">เข้าสู่ระบบไม่สำเร็จ: ' + esc(error.message) + '</span>'); return; }
-    }
-    await start();
-  } finally { $('#aGo').disabled = false; }
-};
-
-async function start() {
-  if (FB_SUPABASE_URL.startsWith('__')) { $('#auth').classList.remove('hidden'); $('#aMsg').innerHTML = '<span class="down">⚠️ ยังไม่ได้ตั้งค่า Supabase URL / ANON KEY</span>'; return; }
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { $('#auth').classList.remove('hidden'); return; }
-  FB.user = session.user;
-  let { data: prof } = await sb.from('fb_profiles').select('*').eq('user_id', FB.user.id).maybeSingle();
-  if (!prof) {
-    const pend = JSON.parse(localStorage.getItem('fb_pending_invite') || 'null');
-    if (pend) { const { data: r } = await sb.rpc('fb_claim_invite', { p_code: pend.code, p_display_name: pend.name, p_member_code: null }); if (r === 'ok') { localStorage.removeItem('fb_pending_invite'); ({ data: prof } = await sb.from('fb_profiles').select('*').eq('user_id', FB.user.id).maybeSingle()); } }
-  }
-  if (!prof) {
-    $('#auth').classList.remove('hidden');
-    authMode = 'up'; $$('[data-am]')[1].click(); $('#aEmail').value = FB.user.email;
-    $('#aMsg').innerHTML = 'บัญชีนี้ยังไม่มีสิทธิ์เข้าระบบ กรอก <b>ชื่อที่แสดง</b> + <b>รหัสเชิญ</b> แล้วกดสมัคร (ใช้รหัสผ่านเดิม)';
-    return;
-  }
-  FB.profile = prof;
-  if (next && next !== 'index.html') { location.href = next; return; }
-  $('#auth').classList.add('hidden'); $('#hubWrap').classList.remove('hidden');
-  await Promise.all([loadMembers(), loadSettings()]);
-  FB.me = FB.mm[prof.member_code] || null;
-  renderShell('index');
-  $('#todayLbl').textContent = 'วันนี้ ' + thDate(todayISO());
-  if (!FB.me) askWhoAmI();
-  renderMenus();
-  loadHub();
-}
-
-function askWhoAmI() {
-  const opts = FB.members.filter(m => m.active && m.team !== 'page').map(m => `<button class="chip tog" data-c="${m.code}" style="padding:6px 12px;font-size:13px">${esc(m.emoji || '')} ${esc(m.nickname)}</button>`).join(' ');
-  const md = openModal({ title: '👋 คุณคือใครในทีม?', body: `<p class="muted small" style="margin-top:0">ผูกบัญชีกับชื่อในทีม เพื่อให้ระบบแสดง Routine / งานของคุณ (เปลี่ยนภายหลังได้ในหน้า ตั้งค่า)</p><div class="row">${opts}</div>`, foot: '<button class="btn" data-skip>ข้ามไปก่อน</button>' });
-  md.querySelector('[data-skip]').onclick = () => md.close();
-  md.querySelectorAll('[data-c]').forEach(b => b.onclick = async () => {
-    chk(await sb.from('fb_profiles').update({ member_code: b.dataset.c }).eq('user_id', FB.user.id), 'บันทึก');
-    FB.profile.member_code = b.dataset.c; FB.me = FB.mm[b.dataset.c]; md.close(); toast('ผูกชื่อเรียบร้อย', 'ok'); loadHub();
+const TEAMS = [['lead', 'หัวหน้าทีม'], ['marketing', 'การตลาด Facebook'], ['support', 'Support Facebook'], ['graphic', 'กราฟิก'], ['content', 'คอนเทนต์'], ['page', 'เพจ/บัญชีแบรนด์']];
+const WD = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'];
+function showTab(t) { $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); $$('section[data-p]').forEach(s => s.classList.toggle('hidden', s.dataset.p !== t)); ({ mem: rMem, users: rUsers, goal: rGoal, routine: rRoutine, label: rLabel, invite: rInvite, sys: rSys })[t](); history.replaceState(null, '', '#' + t); }
+$$('#tabs button').forEach(b => b.onclick = () => showTab(b.dataset.t));
+/* ---- members ---- */
+function rMem() {
+  $('#mTbl').innerHTML = `<table class="t"><thead><tr><th>ลำดับ</th><th>รหัส</th><th>ชื่อเล่น</th><th>ชื่อ-นามสกุล</th><th>ทีม</th><th>ตำแหน่ง</th><th>สี / อีโมจิ</th><th>ชื่อเรียกอื่น</th><th class="r">เป้า/ไตรมาส</th><th class="c">รายงานแอด</th><th class="c">ใช้งาน</th></tr></thead><tbody>${FB.members.map(m => `<tr data-c="${esc(m.code)}"><td><input class="inp r" data-f="sort" value="${m.sort}" style="width:54px"></td><td><b class="mono">${esc(m.code)}</b></td><td><input class="inp" data-f="nickname" value="${esc(m.nickname)}" style="width:110px"></td><td><input class="inp" data-f="full_name" value="${esc(m.full_name || '')}" style="width:160px"></td><td><select class="inp" data-f="team">${TEAMS.map(([v, t]) => `<option value="${v}" ${m.team === v ? 'selected' : ''}>${t}</option>`).join('')}</select></td><td><input class="inp" data-f="position" value="${esc(m.position || '')}" style="width:150px"></td><td><div class="row nowrap"><input type="color" data-f="color" value="${m.color}"><input class="inp" data-f="emoji" value="${esc(m.emoji || '')}" style="width:48px;text-align:center"></div></td><td><input class="inp" data-f="aliases" value="${esc((m.aliases || []).join(', '))}" style="width:130px"></td><td><input class="inp r" data-f="quarterly_target" value="${+m.quarterly_target}" style="width:120px"></td><td class="c"><input type="checkbox" data-f="in_ads_report" ${m.in_ads_report ? 'checked' : ''}></td><td class="c"><input type="checkbox" data-f="active" ${m.active ? 'checked' : ''}></td></tr>`).join('')}</tbody></table>`;
+  $$('#mTbl [data-f]').forEach(i => i.onchange = async () => {
+    const code = i.closest('tr').dataset.c, f = i.dataset.f;
+    let v = i.type === 'checkbox' ? i.checked : i.value;
+    if (f === 'aliases') v = v.split(',').map(s => s.trim()).filter(Boolean);
+    if (f === 'sort' || f === 'quarterly_target') v = +String(v).replace(/,/g, '') || 0;
+    chk(await sb.from('fb_members').update({ [f]: v }).eq('code', code), 'บันทึก');
+    FB.mm[code][f] = v; toast('บันทึกแล้ว', 'ok');
   });
 }
-
-function renderMenus() {
-  const M = [
-    ['sales.html', '📈', '1. ภาพรวมยอดขาย', 'ยอดขายรายวัน / เดือน / ปี เทียบปีก่อน + ความคืบหน้าเป้า 1,000 ล้าน'],
-    ['ads.html', '💸', '2. ค่าแอดรายคน', 'ค่าแอด ยอดขาย %ค่าแอด ROAS รายคน รายวัน/รายเดือน'],
-    ['people.html', '🏆', '3. ผลงานรายคน', 'ภาพรวมทั้งปี เทียบเป้ารายไตรมาส จัดอันดับ'],
-    ['expense.html', '💳', '4. ค่าใช้จ่าย', 'ยอดตัดบัตร เช็คตัดบัตร บัญชีโฆษณา งบประมาณ 2026'],
-    ['kpi.html', '🎯', '5. KPI', 'คะแนน KPI 9 ข้อ ถ่วงน้ำหนักอัตโนมัติ + Action Plan'],
-    ['board.html', '🗂️', 'บอร์ดงาน & Routine', 'TO DO / DOING / DONE · Routine รายวัน · รายงานประจำวัน'],
-    ['manual.html', '📖', '7. คู่มือการทำงาน', 'คู่มือ Digital Marketing 14 บท + SOP ทีม ค้นหาได้'],
-    ['#', '📚', '6. คอร์สเรียน', 'เฟส 2 — รอไฟล์ข้อมูลคอร์ส', 1],
-    ['#', '🎨', 'สั่งงานกราฟิก / คอนเทนต์ / KOL / ALL PAGE', 'เฟส 2', 1],
-    ['settings.html', '⚙️', 'ตั้งค่า', 'สมาชิก เป้าหมาย Routine ต้นแบบ รหัสเชิญ'],
-  ];
-  $('#menus').innerHTML = M.map(([h, ic, t, d, soon]) => `<a class="card menu-card ${soon ? 'soon' : ''}" href="${h}" ${soon ? 'onclick="toast(\'อยู่ในแผนเฟส 2\');return false"' : ''}><span class="ic">${ic}</span><span><b>${t}</b><small>${d}</small></span></a>`).join('');
+$('#mAdd').onclick = () => {
+  const md = openModal({ title: '➕ เพิ่มสมาชิก', body: `<div class="grid g2"><label class="f">รหัส (ภาษาอังกฤษ ไม่ซ้ำ ตรงกับชื่อชีทในไฟล์)<input class="inp" id="nc" placeholder="เช่น JANE" style="text-transform:uppercase"></label><label class="f">ชื่อเล่น<input class="inp" id="nn"></label><label class="f">ทีม<select class="inp" id="nt">${TEAMS.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></label><label class="f">อีโมจิ<input class="inp" id="ne" value="🙂"></label></div>`, foot: '<button class="btn pri" id="ns">เพิ่ม</button>' });
+  md.querySelector('#ns').onclick = async () => { const code = md.querySelector('#nc').value.trim().toUpperCase(), nick = md.querySelector('#nn').value.trim(); if (!/^[A-Z0-9_]{2,20}$/.test(code) || !nick) return toast('รหัสต้องเป็น A-Z/0-9 และกรอกชื่อเล่น', 'err'); const PAL = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948']; const team = md.querySelector('#nt').value; const d = chk(await sb.from('fb_members').insert({ code, nickname: nick, team, emoji: md.querySelector('#ne').value, color: PAL[FB.members.length % 8], sort: 100 + FB.members.length, in_ads_report: team === 'marketing' }).select().single(), 'เพิ่ม'); FB.members.push(d); FB.mm[code] = d; md.close(); rMem(); };
+};
+/* ---- users ---- */
+async function rUsers() {
+  const us = (await sb.from('fb_profiles').select('*').order('created_at')).data || [];
+  $('#uTbl').innerHTML = `<table class="t"><thead><tr><th>ชื่อที่แสดง</th><th>ผูกกับชื่อในทีม</th><th>สมัครเมื่อ</th><th></th></tr></thead><tbody>${us.map(u => `<tr data-u="${u.user_id}"><td><input class="inp" data-f="display_name" value="${esc(u.display_name)}"></td><td><select class="inp" data-f="member_code"><option value="">— ไม่ผูก —</option>${FB.members.map(m => `<option value="${m.code}" ${u.member_code === m.code ? 'selected' : ''}>${esc(m.nickname)} (${m.code})</option>`).join('')}</select></td><td class="small muted">${new Date(u.created_at).toLocaleString('th-TH')}${u.user_id === FB.user.id ? ' <span class="chip">คุณ</span>' : ''}</td><td>${u.user_id === FB.user.id ? '' : '<button class="btn sm ghost" data-del>ถอนสิทธิ์</button>'}</td></tr>`).join('')}</tbody></table>`;
+  $$('#uTbl [data-f]').forEach(i => i.onchange = async () => { chk(await sb.from('fb_profiles').update({ [i.dataset.f]: i.value || null }).eq('user_id', i.closest('tr').dataset.u), 'บันทึก'); toast('บันทึกแล้ว', 'ok'); });
+  $$('#uTbl [data-del]').forEach(b => b.onclick = async () => { if (!await confirmBox('ถอนสิทธิ์ผู้ใช้นี้? (เข้าระบบได้อีกเมื่อใช้รหัสเชิญใหม่)', 'ถอนสิทธิ์', true)) return; chk(await sb.from('fb_profiles').delete().eq('user_id', b.closest('tr').dataset.u), 'ลบ'); rUsers(); });
 }
-
-async function loadHub() {
-  const today = todayISO(), Y = +today.slice(0, 4), M = +today.slice(5, 7);
-  const ystart = `${Y}-01-01`, pstart = `${Y - 1}-01-01`;
-  const [sales, adsRows, kpiRows] = await Promise.all([
-    fetchAll(() => sb.from('fb_sales_daily').select('d,sales').gte('d', pstart).lte('d', `${Y}-12-31`).order('d')),
-    fetchAll(() => sb.from('fb_ads_daily').select('member_code,d_from,spend,sales').gte('d_from', `${Y}-01-01`)),
-    sb.from('fb_kpi_actuals').select('month,code,score').eq('year', Y).then(r => r.data || []),
-  ]);
-  const cur = sales.filter(r => r.d >= ystart), prev = sales.filter(r => r.d < ystart);
-  const ytd = sum(cur, r => r.sales);
-  const last = cur.length ? cur[cur.length - 1].d : null;
-  const prevSame = last ? sum(prev.filter(r => r.d.slice(5) <= last.slice(5)), r => r.sales) : 0;
-  const target = (FB.settings.year_target || {})[Y] || 1000000000;
-  const dayOfYear = last ? Math.round((parseISO(last) - new Date(Y, 0, 1)) / 864e5) + 1 : 0;
-  const daysY = (Y % 4 === 0 ? 366 : 365);
-  const pacePct = dayOfYear / daysY * 100, pct = ytd / target * 100;
-  const remainMonths = last ? 12 - (+last.slice(5, 7)) + (+last.slice(8) < daysInMonth(Y, +last.slice(5, 7)) ? 1 - (+last.slice(8)) / daysInMonth(Y, +last.slice(5, 7)) : 0) : 12;
-  const needPerMonth = remainMonths > 0 ? (target - ytd) / remainMonths : 0;
-  const forecast = dayOfYear ? ytd / dayOfYear * daysY : 0;
-  $('#hero').innerHTML = `<div class="hub-hero"><div>
-      <div class="muted small">ยอดขายสะสมทีม Facebook ปี ${Y + 543} ${last ? '(ข้อมูลถึง ' + thDate(last) + ')' : ''}</div>
-      <div class="big">${fmtB(ytd)}</div>
-      <div class="row small"><span>เป้า ${fmtM(target, 0)}</span><span>·</span><b>${fmtP(pct)}</b><span class="muted">สำเร็จแล้ว</span><span>·</span><span>เทียบช่วงเดียวกันปีก่อน ${chg(ytd, prevSame)}</span></div>
-      <div class="bar tall mt" style="position:relative"><i style="width:${Math.min(100, pct)}%"></i><span class="pace" style="left:${Math.min(100, pacePct)}%" title="ควรถึง ${fmtP(pacePct)} ณ วันนี้"></span></div>
-      <div class="row xs mt muted"><span>▮ เส้นเหลือง = ความคืบหน้าที่ควรเป็นตามเวลา (${fmtP(pacePct)})</span></div>
-    </div>
-    <div class="grid g2" style="gap:10px">
-      <div><div class="muted small">คงเหลือถึงเป้า</div><div style="font-size:21px;font-weight:800">${fmtM(Math.max(0, target - ytd))}</div></div>
-      <div><div class="muted small">ต้องทำเฉลี่ย/เดือน</div><div style="font-size:21px;font-weight:800">${fmtM(Math.max(0, needPerMonth))}</div></div>
-      <div><div class="muted small">คาดการณ์ทั้งปี (อัตราปัจจุบัน)</div><div style="font-size:21px;font-weight:800">${fmtM(forecast)}</div></div>
-      <div><div class="muted small">คาดว่าจะได้ % ของเป้า</div><div style="font-size:21px;font-weight:800">${fmtP(forecast / target * 100)}</div></div>
-    </div></div>`;
-  // tiles
-  const mk = `${Y}-${pad2(M)}`;
-  const monthRows = cur.filter(r => r.d.startsWith(mk));
-  const lastM = last ? last.slice(0, 7) : mk;
-  const lmRows = cur.filter(r => r.d.startsWith(lastM));
-  const lmPrev = prev.filter(r => r.d.slice(5, 7) === lastM.slice(5, 7) && r.d.slice(8) <= (last || '').slice(8));
-  const adsM = adsRows.filter(r => r.d_from.startsWith(mk));
-  const adsSpend = sum(adsM, r => r.spend), adsSales = sum(adsM, r => r.sales);
-  const byM = {}; kpiRows.forEach(r => { (byM[r.month] = byM[r.month] || []).push(r); });
-  const defs = (await sb.from('fb_kpi_defs').select('code,weight')).data || [];
-  const wmap = Object.fromEntries(defs.map(d => [d.code, +d.weight]));
-  const kMonths = Object.keys(byM).map(Number).sort((a, b) => b - a);
-  const kLast = kMonths[0];
-  const kScore = kLast ? sum(byM[kLast], r => (+r.score || 0) * (wmap[r.code] || 0)) / 100 : null;
-  $('#tiles').innerHTML = [
-    ['ยอดขายเดือน ' + TH_MS[+lastM.slice(5) - 1] + ' (ถึงล่าสุด)', fmtM(sum(lmRows, r => r.sales)), `เทียบช่วงเดียวกันปีก่อน ${chg(sum(lmRows, r => r.sales), sum(lmPrev, r => r.sales))}`],
-    ['ยอดขายวันล่าสุด', last ? fmtM(cur[cur.length - 1].sales) : '–', last ? thDate(last) : 'ยังไม่มีข้อมูล'],
-    ['%ค่าแอด เดือนนี้ (ค่าแอดรายคน)', adsSpend ? adsBadge(adsSpend / adsSales * 100) : '–', adsSpend ? `ค่าแอด ${fmtM(adsSpend)} · ยอด ${fmtM(adsSales)}` : 'ยังไม่มีข้อมูลเดือนนี้'],
-    ['คะแนน KPI ล่าสุด', kScore != null ? kScore.toFixed(1) : '–', kLast ? `เดือน${TH_M[kLast - 1]} (ถ่วงน้ำหนัก)` : ''],
-  ].map(([l, v, d]) => `<div class="card tile"><span class="lb">${l}</span><span class="v">${v}</span><span class="d">${d}</span></div>`).join('');
-  // my routine + tasks
-  if (!FB.me) { $('#myRoutine').innerHTML = '<div class="muted small">ยังไม่ได้ผูกชื่อในทีม <a href="#" onclick="askWhoAmI();return false">ผูกตอนนี้</a></div>'; $('#myTasks').innerHTML = ''; return; }
-  const dow = ((parseISO(today).getDay() + 6) % 7) + 1;
-  const [tpl, logs, cards] = await Promise.all([
-    sb.from('fb_routine_templates').select('id,title,weekdays').eq('member_code', FB.me.code).eq('active', true).order('sort').then(r => r.data || []),
-    sb.from('fb_routine_logs').select('template_id').eq('d', today).eq('member_code', FB.me.code).then(r => r.data || []),
-    sb.from('fb_cards').select('id,title,due_date,list_id,priority').contains('assignees', [FB.me.code]).is('done_at', null).eq('archived', false).order('due_date', { ascending: true, nullsFirst: false }).limit(8).then(r => r.data || []),
-  ]);
-  const todayT = tpl.filter(t => (t.weekdays || []).includes(dow)), doneSet = new Set(logs.map(l => l.template_id));
-  const nDone = todayT.filter(t => doneSet.has(t.id)).length;
-  $('#myRoutine').innerHTML = todayT.length ? `<div class="row"><b style="font-size:22px">${nDone}/${todayT.length}</b><span class="muted small">รายการ</span><span class="sp"></span><span class="small">${fmtP(nDone / todayT.length * 100, 0)}</span></div><div class="bar mt"><i style="width:${nDone / todayT.length * 100}%;background:var(--good)"></i></div>
-    <div class="mt small">${todayT.filter(t => !doneSet.has(t.id)).slice(0, 4).map(t => `<div class="task-li">⬜ ${esc(t.title)}</div>`).join('')}</div>` : '<div class="muted small">ยังไม่มี Routine ต้นแบบของคุณ (ตั้งได้ในหน้า ตั้งค่า)</div>';
-  $('#myTasks').innerHTML = cards.length ? cards.map(c => {
-    const od = c.due_date && c.due_date < today, td = c.due_date === today;
-    return `<a class="task-li" href="board.html#card=${c.id}" style="color:inherit">${c.priority === 1 ? '🚨' : '▫️'} <span style="flex:1">${esc(c.title)}</span>${c.due_date ? `<span class="badge ${od ? 'st-bad' : td ? 'st-warn' : 'st-none'}">${od ? 'เลยกำหนด ' : ''}${thDate(c.due_date, false)}</span>` : ''}</a>`;
-  }).join('') : '<div class="muted small">ไม่มีงานค้าง 🎉</div>';
+/* ---- goals ---- */
+function rGoal() {
+  const ty = +todayISO().slice(0, 4);
+  const yt = FB.settings.year_target || {}, mt = FB.settings.team_month_target || {};
+  $('#gSales').innerHTML = `<table class="t"><thead><tr><th>ปี</th><th class="r">เป้าทั้งปี (บาท)</th><th class="r">เป้าทีมรายเดือน (บาท)</th></tr></thead><tbody>${[ty - 1, ty, ty + 1].map(y => `<tr data-y="${y}"><td>${y + 543}</td><td><input class="inp r" data-k="year_target" value="${yt[y] ?? ''}"></td><td><input class="inp r" data-k="team_month_target" value="${mt[y] ?? ''}"></td></tr>`).join('')}</tbody></table>`;
+  $$('#gSales input').forEach(i => i.onchange = async () => { const k = i.dataset.k, y = i.closest('tr').dataset.y; const v = { ...(FB.settings[k] || {}) }; if (i.value.trim()) v[y] = +i.value.replace(/,/g, ''); else delete v[y]; await saveSetting(k, v); toast('บันทึกแล้ว', 'ok'); });
+  const b = FB.settings.ads_pct_band || { good: 42, warn: 48 };
+  $('#gBand').innerHTML = `<div class="grid g2"><label class="f">✔ ดี: ไม่เกิน (%)<input class="inp r" id="bg" value="${b.good}"></label><label class="f">! เฝ้าระวัง: ไม่เกิน (%)<input class="inp r" id="bw" value="${b.warn}"></label></div><div class="small muted mt">เกินค่าเฝ้าระวัง = ✖ สูงเกิน (สีแดง) · ใช้ในหน้า ค่าแอดรายคน / ผลงานรายคน</div><button class="btn pri sm mt" id="bsave">บันทึก</button>`;
+  $('#bsave').onclick = async () => { await saveSetting('ads_pct_band', { good: +$('#bg').value, warn: +$('#bw').value }); toast('บันทึกแล้ว', 'ok'); };
+  const g = FB.settings.team_goal || { goals: [], methods: [], slogan: '' };
+  $('#gTeam').innerHTML = `<label class="f">เป้าหมาย (บรรทัดละข้อ)<textarea class="inp" id="tg" rows="6">${esc((g.goals || []).join('\n'))}</textarea></label><label class="f mt">วิธีลดต้นทุน เพิ่มรายได้<textarea class="inp" id="tm" rows="5">${esc((g.methods || []).join('\n'))}</textarea></label><label class="f mt">สโลแกน<input class="inp" id="ts" value="${esc(g.slogan || '')}"></label><button class="btn pri sm mt" id="tsave">บันทึก</button>`;
+  $('#tsave').onclick = async () => { const sp = s => $(s).value.split('\n').map(x => x.trim()).filter(Boolean); await saveSetting('team_goal', { goals: sp('#tg'), methods: sp('#tm'), slogan: $('#ts').value.trim() }); toast('บันทึกแล้ว', 'ok'); };
+  const gt = FB.settings.graphic_target || { day: 17.5, week: 105, month: 420 };
+  $('#gOther').innerHTML = `<div class="grid g3"><label class="f">เป้ากราฟิก/วัน (ภาพ)<input class="inp r" id="gd" value="${gt.day}"></label><label class="f">/สัปดาห์<input class="inp r" id="gw" value="${gt.week}"></label><label class="f">/เดือน<input class="inp r" id="gm" value="${gt.month}"></label></div><label class="f mt">โฟลเดอร์รูปคู่มือ (เว้นว่าง = manual-img)<input class="inp" id="mib" value="${esc(FB.settings.manual_img_base || '')}" placeholder="manual-img"></label><button class="btn pri sm mt" id="osave">บันทึก</button>`;
+  $('#osave').onclick = async () => { await saveSetting('graphic_target', { day: +$('#gd').value, week: +$('#gw').value, month: +$('#gm').value }); await saveSetting('manual_img_base', $('#mib').value.trim() || 'manual-img'); toast('บันทึกแล้ว', 'ok'); };
 }
-start();
+/* ---- routine ---- */
+let RT = [], MAN = [], LABS = [];
+async function rRoutine() {
+  if (!MAN.length) MAN = (await sb.from('fb_manual').select('id,chapter,title').order('sort')).data || [];
+  if (!LABS.length) LABS = (await sb.from('fb_labels').select('*').order('sort')).data || [];
+  const opts = FB.members.filter(m => m.active && m.team !== 'page');
+  const cur = $('#rMem').value || FB.me?.code || opts[0]?.code;
+  $('#rMem').innerHTML = opts.map(m => `<option value="${m.code}">${esc(m.emoji || '')} ${esc(m.nickname)}</option>`).join(''); $('#rMem').value = cur;
+  RT = (await sb.from('fb_routine_templates').select('*').eq('member_code', cur).order('sort')).data || [];
+  $('#rTbl').innerHTML = RT.length ? `<table class="t"><thead><tr><th></th><th>รายการ</th><th>วันที่ต้องทำ</th><th>ป้าย</th><th>คู่มือ</th><th class="c">ใช้งาน</th><th></th></tr></thead><tbody>${RT.map((t, i) => `<tr class="rt-row" data-id="${t.id}"><td class="drag-h"><button class="btn sm ghost" data-up ${i ? '' : 'disabled'}>▲</button></td><td><input class="inp" data-f="title" value="${esc(t.title)}" style="width:100%;min-width:260px"></td><td><span class="wd">${WD.map((w, k) => `<span class="${t.weekdays.includes(k + 1) ? 'on' : ''}" data-wd="${k + 1}">${w}</span>`).join('')}</span></td><td><button class="btn sm" data-lab style="max-width:220px;white-space:normal;text-align:left;justify-content:flex-start">${t.labels.length ? t.labels.map(esc).join(', ') : '＋ ป้าย'}</button></td><td><select class="inp" data-f="manual_id"><option value="">–</option>${MAN.map(m => `<option value="${m.id}" ${t.manual_id === m.id ? 'selected' : ''}>${m.chapter}. ${esc(m.title.slice(0, 26))}</option>`).join('')}</select></td><td class="c"><input type="checkbox" data-f="active" ${t.active ? 'checked' : ''}></td><td><button class="btn sm ghost" data-del>🗑️</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty">ยังไม่มี Routine ของคนนี้ — กด “เพิ่มรายการ” หรือ “คัดลอกจากคนอื่น”</div>';
+  const up = async (id, patch) => { chk(await sb.from('fb_routine_templates').update(patch).eq('id', id), 'บันทึก'); Object.assign(RT.find(t => t.id === id), patch); toast('บันทึกแล้ว', 'ok'); };
+  $$('#rTbl [data-f]').forEach(i => i.onchange = () => { const id = i.closest('tr').dataset.id, f = i.dataset.f; const v = f === 'active' ? i.checked : f === 'labels' ? [...i.selectedOptions].map(o => o.value) : (i.value || null); up(id, { [f]: v }); });
+  $$('#rTbl [data-lab]').forEach(b => b.onclick = () => { const id = b.closest('tr').dataset.id; const t = RT.find(x => x.id === id); const md = openModal({ title: 'เลือกป้าย', body: LABS.map(l => `<label class="row" style="padding:4px 0"><input type="checkbox" value="${esc(l.name)}" ${t.labels.includes(l.name) ? 'checked' : ''}><span class="chip" style="background:${l.color};color:#fff">${esc(l.name)}</span></label>`).join(''), foot: '<button class="btn pri" data-ok>บันทึก</button>' }); md.querySelector('[data-ok]').onclick = async () => { await up(id, { labels: [...md.querySelectorAll('input:checked')].map(i => i.value) }); md.close(); rRoutine(); }; });
+  $$('#rTbl [data-wd]').forEach(s => s.onclick = () => { const id = s.closest('tr').dataset.id; const t = RT.find(x => x.id === id); const d = +s.dataset.wd; const w = t.weekdays.includes(d) ? t.weekdays.filter(x => x !== d) : [...t.weekdays, d].sort(); s.classList.toggle('on'); up(id, { weekdays: w }); });
+  $$('#rTbl [data-del]').forEach(b => b.onclick = async () => { if (!await confirmBox('ลบรายการนี้? (ประวัติการติ๊กของรายการนี้จะถูกลบด้วย — ถ้าแค่ไม่ใช้แล้วให้เอาติ๊ก “ใช้งาน” ออก)', 'ลบ', true)) return; chk(await sb.from('fb_routine_templates').delete().eq('id', b.closest('tr').dataset.id), 'ลบ'); rRoutine(); });
+  $$('#rTbl [data-up]').forEach(b => b.onclick = async () => { const i = RT.findIndex(t => t.id === b.closest('tr').dataset.id); const a = RT[i - 1], c = RT[i]; const sa = a.sort, sc = c.sort === sa ? sa + 1 : c.sort; await sb.from('fb_routine_templates').update({ sort: sc }).eq('id', a.id); await sb.from('fb_routine_templates').update({ sort: sa }).eq('id', c.id); rRoutine(); });
+}
+$('#rMem').onchange = rRoutine;
+$('#rAdd').onclick = async () => { const code = $('#rMem').value; const t = prompt('ชื่อรายการ Routine'); if (!t) return; chk(await sb.from('fb_routine_templates').insert({ member_code: code, title: t.trim(), weekdays: [1, 2, 3, 4, 5, 6], sort: (RT.length ? Math.max(...RT.map(x => x.sort)) : 0) + 10 }), 'เพิ่ม'); rRoutine(); };
+$('#rCopy').onclick = () => {
+  const to = $('#rMem').value;
+  const md = openModal({ title: `⧉ คัดลอก Routine มาให้ ${esc(mem(to).nickname)}`, body: `<label class="f">คัดลอกจาก<select class="inp" id="cf">${FB.members.filter(m => m.code !== to).map(m => `<option value="${m.code}">${esc(m.nickname)}</option>`).join('')}</select></label><div class="small muted mt">รายการที่ชื่อซ้ำจะไม่ถูกเพิ่ม</div>`, foot: '<button class="btn pri" id="cgo">คัดลอก</button>' });
+  md.querySelector('#cgo').onclick = async () => { const src = (await sb.from('fb_routine_templates').select('*').eq('member_code', md.querySelector('#cf').value)).data || []; const have = new Set(RT.map(t => t.title)); const rows = src.filter(s => !have.has(s.title)).map(({ id, member_code, ...r }) => ({ ...r, member_code: to })); if (rows.length) chk(await sb.from('fb_routine_templates').insert(rows), 'คัดลอก'); toast(`คัดลอก ${rows.length} รายการ`, 'ok'); md.close(); rRoutine(); };
+};
+/* ---- labels ---- */
+async function rLabel() {
+  LABS = (await sb.from('fb_labels').select('*').order('sort')).data || [];
+  $('#lTbl').innerHTML = `<table class="t"><thead><tr><th>ลำดับ</th><th>ชื่อป้าย</th><th>สี</th><th>ตัวอย่าง</th><th></th></tr></thead><tbody>${LABS.map(l => `<tr data-id="${l.id}"><td><input class="inp r" data-f="sort" value="${l.sort}" style="width:60px"></td><td><input class="inp" data-f="name" value="${esc(l.name)}"></td><td><input type="color" data-f="color" value="${l.color}"></td><td><span class="chip" style="background:${l.color};color:#fff">${esc(l.name)}</span></td><td><button class="btn sm ghost" data-del>🗑️</button></td></tr>`).join('')}</tbody></table><div class="small muted mt">เปลี่ยนชื่อป้ายแล้ว การ์ดเดิมที่ใช้ชื่อเก่าจะไม่เปลี่ยนตาม</div>`;
+  $$('#lTbl [data-f]').forEach(i => i.onchange = async () => { const f = i.dataset.f; chk(await sb.from('fb_labels').update({ [f]: f === 'sort' ? +i.value : i.value }).eq('id', i.closest('tr').dataset.id), 'บันทึก'); rLabel(); });
+  $$('#lTbl [data-del]').forEach(b => b.onclick = async () => { if (!await confirmBox('ลบป้ายนี้?', 'ลบ', true)) return; chk(await sb.from('fb_labels').delete().eq('id', b.closest('tr').dataset.id), 'ลบ'); rLabel(); });
+}
+$('#lAdd').onclick = async () => { const n = prompt('ชื่อป้าย (ใส่อีโมจินำหน้าได้)'); if (!n) return; chk(await sb.from('fb_labels').insert({ name: n.trim(), color: '#2a78d6', sort: 100 }), 'เพิ่ม'); rLabel(); };
+/* ---- invites ---- */
+async function rInvite() {
+  const iv = (await sb.from('fb_invites').select('*').order('created_at')).data || [];
+  $('#iTbl').innerHTML = `<table class="t"><thead><tr><th>รหัส</th><th>หมายเหตุ</th><th class="r">ใช้แล้ว / สูงสุด</th><th class="c">เปิดใช้</th><th></th></tr></thead><tbody>${iv.map(i => `<tr data-c="${esc(i.code)}"><td><b class="kbd" style="font-size:14px">${esc(i.code)}</b></td><td><input class="inp" data-f="note" value="${esc(i.note || '')}"></td><td class="r">${i.used} / <input class="inp r" data-f="max_uses" value="${i.max_uses}" style="width:70px"></td><td class="c"><input type="checkbox" data-f="active" ${i.active ? 'checked' : ''}></td><td><button class="btn sm ghost" data-cp>📋</button><button class="btn sm ghost" data-del>🗑️</button></td></tr>`).join('')}</tbody></table>`;
+  $$('#iTbl [data-f]').forEach(i => i.onchange = async () => { const f = i.dataset.f; chk(await sb.from('fb_invites').update({ [f]: f === 'active' ? i.checked : f === 'max_uses' ? +i.value : i.value }).eq('code', i.closest('tr').dataset.c), 'บันทึก'); toast('บันทึกแล้ว', 'ok'); });
+  $$('#iTbl [data-cp]').forEach(b => b.onclick = () => { navigator.clipboard.writeText(`สมัครเข้าระบบ MASARU Facebook Hub\n${location.href.replace(/settings\.html.*/, 'index.html')}\nรหัสเชิญ: ${b.closest('tr').dataset.c}`); toast('คัดลอกข้อความเชิญแล้ว', 'ok'); });
+  $$('#iTbl [data-del]').forEach(b => b.onclick = async () => { if (!await confirmBox('ลบรหัสนี้?', 'ลบ', true)) return; chk(await sb.from('fb_invites').delete().eq('code', b.closest('tr').dataset.c), 'ลบ'); rInvite(); });
+}
+$('#iAdd').onclick = async () => { const c = (prompt('รหัสเชิญใหม่', 'MASARU-FB-' + Math.random().toString(36).slice(2, 6).toUpperCase()) || '').trim().toUpperCase(); if (!c) return; chk(await sb.from('fb_invites').insert({ code: c, note: '', max_uses: 50 }), 'สร้าง'); rInvite(); };
+/* ---- system ---- */
+const TABLES = ['fb_members', 'fb_profiles', 'fb_invites', 'fb_settings', 'fb_sales_daily', 'fb_team_monthly', 'fb_ads_daily', 'fb_person_monthly', 'fb_card_charges', 'fb_ad_accounts', 'fb_unmatched_codes', 'fb_budget', 'fb_kpi_defs', 'fb_kpi_actuals', 'fb_board_lists', 'fb_labels', 'fb_cards', 'fb_card_comments', 'fb_routine_templates', 'fb_routine_logs', 'fb_daily_notes', 'fb_manual'];
+async function rSys() {
+  $('#sTbl').innerHTML = loadingHTML();
+  const counts = await Promise.all(TABLES.map(t => sb.from(t).select('*', { count: 'exact', head: true }).then(r => r.count ?? '–')));
+  $('#sTbl').innerHTML = `<table class="t"><thead><tr><th>ตาราง</th><th class="r">จำนวนแถว</th></tr></thead><tbody>${TABLES.map((t, i) => `<tr><td class="mono">${t}</td><td class="r">${fmt(counts[i])}</td></tr>`).join('')}</tbody></table><div class="small muted mt">เวอร์ชันระบบ ${FB_VERSION}</div>`;
+}
+$('#sBackup').onclick = async () => { toast('กำลังรวบรวมข้อมูล...'); const out = {}; for (const t of TABLES) out[t] = await fetchAll(() => sb.from(t).select('*')); downloadFile(`masaru-fb-backup-${todayISO()}.json`, JSON.stringify(out), 'application/json'); };
+fbBoot('settings').then(() => showTab((location.hash.slice(1) && document.querySelector(`#tabs [data-t="${location.hash.slice(1)}"]`)) ? location.hash.slice(1) : 'mem'));
 </script>
 <script id="studio-interactions">
 (()=>{

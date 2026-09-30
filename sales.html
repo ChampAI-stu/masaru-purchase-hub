@@ -3,10 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>หน้าหลัก · MASARU Facebook</title>
+<title>ภาพรวมยอดขาย · MASARU Facebook</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
   --navy:#1A2942; --navy-2:#24365A; --red:#D0212B; --fb:#1877F2; --gold:#C9A84C;
@@ -148,28 +150,14 @@ table.t input.inp{padding:4px 7px;width:100%}
 @media (max-width:760px){.fb-top .sub{display:none}.fb-top h1{font-size:16.5px;white-space:nowrap}.fb-user>span{display:none}.tile .v{font-size:21px}.card-h{padding:12px 12px 8px}.card-b{padding:6px 12px 12px}}
 
 /* ===== page ===== */
-.auth-wrap{min-height:100vh;display:grid;place-items:center;padding:20px;background:linear-gradient(135deg,#1A2942 0%,#24365A 55%,#1877F2 140%)}
-.auth-card{width:100%;max-width:420px;background:#fff;border-radius:18px;box-shadow:0 30px 60px rgba(0,0,0,.3);overflow:hidden}
-.auth-head{background:var(--navy);color:#fff;padding:22px 24px;display:flex;gap:12px;align-items:center}
-.auth-head .fb-logo{width:46px;height:46px;font-size:24px}
-.auth-head b{font-size:18px;display:block}.auth-head small{color:#AFC0DA}
-.auth-body{padding:20px 24px 24px;display:flex;flex-direction:column;gap:12px}
-.hub-hero{background:linear-gradient(120deg,#1A2942,#24365A 60%,#1d4f9c);color:#fff;border-radius:16px;padding:22px 24px;display:grid;grid-template-columns:1.4fr 1fr;gap:22px;align-items:center}
-.hub-hero h2{font-size:21px;margin-bottom:4px}
-.hub-hero .big{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
-.hub-hero .bar{background:rgba(255,255,255,.18);height:14px}
-.hub-hero .bar>i{background:linear-gradient(90deg,#4F9BFF,#8CC4FF)}
-.hub-hero .pace{position:absolute;top:-3px;bottom:-3px;width:2px;background:#FFD166}
-.hub-hero .muted{color:#B9C8E0}
-.menu-card{display:flex;gap:12px;padding:14px 16px;align-items:flex-start;color:inherit;text-decoration:none;transition:transform .12s, box-shadow .12s}
-.menu-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(15,23,42,.1);text-decoration:none}
-.menu-card .ic{font-size:26px;width:44px;height:44px;border-radius:12px;background:#EEF4FF;display:grid;place-items:center;flex:none}
-.menu-card b{display:block;color:var(--navy);font-size:15px}
-.menu-card small{color:var(--muted);font-size:12.5px;line-height:1.45;display:block;margin-top:2px}
-.menu-card.soon{opacity:.6}
-.task-li{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line-2);font-size:13.5px}
-.task-li:last-child{border-bottom:0}
-@media (max-width:860px){.hub-hero{grid-template-columns:1fr}}
+.target-card{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;padding:18px 20px}
+.target-card .big{font-size:32px;font-weight:800;color:var(--navy);font-variant-numeric:tabular-nums}
+.pace{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--gold)}
+.mini{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.mini div b{display:block;font-size:19px;color:var(--navy);font-variant-numeric:tabular-nums}
+.mini div span{font-size:12px;color:var(--muted)}
+tr.cur td{background:#F2F7FF}
+@media (max-width:860px){.target-card{grid-template-columns:1fr}}
 </style>
 <style id="masaru-social-studio">
 /* MASARU · Social Studio — presentation layer, self-contained */
@@ -268,40 +256,28 @@ table.t td{padding:10px 12px;font-size:13px}table.t tr:hover td{background:#f1f6
 @media print{body{background:#fff}.studio-intro,.auth-story{display:none!important}.fb-main{margin-left:0}.fb-content{padding:0}.hub-hero{print-color-adjust:exact;-webkit-print-color-adjust:exact}.tile,.card{break-inside:avoid}.fb-top,.fb-side{display:none!important}}
 </style>
 </head>
-<body class="studio-page studio-index">
-<div id="auth" class="auth-wrap hidden"><div class="auth-story"><div class="auth-story-brand"><div class="fb-logo">f</div><div>MASARU FACEBOOK<small>THE TEAM WORKSPACE</small></div></div><span class="studio-eyebrow">A LITTLE SPACE FOR BIG IDEAS</span><h1>พื้นที่ของทีมเรา<br>ให้ทุกวัน <em>ไปได้ไกลขึ้น</em></h1><p>รวมงาน ยอดขาย และเป้าหมายไว้ด้วยกัน<br>พร้อมสร้างทุกความสำเร็จไปกับทีม Facebook</p><div class="auth-illustration"><svg class="studio-art" viewBox="0 0 300 200" fill="none" aria-hidden="true"><ellipse cx="157" cy="179" rx="111" ry="10" fill="#8AA5D7" opacity=".12"/><g transform="rotate(-7 138 103)"><rect x="53" y="39" width="172" height="123" rx="15" fill="#DCE8FB"/><rect x="47" y="31" width="172" height="123" rx="15" fill="white" stroke="#C9DAF3"/><path d="M48 60H219" stroke="#E8EEF8"/><circle cx="61" cy="46" r="3" fill="#F0B6C4"/><circle cx="72" cy="46" r="3" fill="#F5D691"/><circle cx="83" cy="46" r="3" fill="#B4DCCE"/><rect x="62" y="74" width="54" height="62" rx="8" fill="#E9F1FF"/><path d="M73 117L83 105L92 111L105 89" stroke="#548BE1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M99 89H106V97" stroke="#548BE1" stroke-width="4" stroke-linecap="round"/><rect x="130" y="79" width="64" height="6" rx="3" fill="#CCDDF5"/><rect x="130" y="93" width="44" height="5" rx="2.5" fill="#E0E9F8"/><rect x="130" y="114" width="53" height="21" rx="7" fill="#EEF5FF"/><path d="M142 124L147 128L154 119" stroke="#6C9ADB" stroke-width="2" stroke-linecap="round"/><path d="M161 124H173" stroke="#A4BFE6" stroke-width="3" stroke-linecap="round"/></g><g class="float"><rect x="208" y="13" width="56" height="54" rx="17" fill="#377EF0"/><path d="M239 57V34H245L246 27H239V24C239 21 240 20 243 20H247V14H242C234 14 231 18 231 24V27H226V34H231V57" fill="white" transform="translate(0 5) scale(.96)"/></g><g class="float"><rect x="17" y="112" width="70" height="49" rx="16" fill="#FCE6EE" stroke="#F4D5DF"/><path d="M43 137C29 128 43 116 49 126C57 116 69 129 49 140L43 137Z" fill="#DD8CA7"/><circle cx="68" cy="137" r="3" fill="#ECC0D0"/></g><g transform="rotate(7 224 150)"><rect x="184" y="129" width="101" height="47" rx="14" fill="#EDF8F2" stroke="#CAE6D8"/><circle cx="207" cy="152" r="11" fill="#AAD6C1"/><path d="M202 152L206 156L212 148" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M225 146H267M225 155H253" stroke="#9FC6B6" stroke-width="4" stroke-linecap="round"/></g><path d="M34 38V49M28.5 43.5H39.5M266 97V108M260.5 102.5H271.5" stroke="#ACBFE3" stroke-width="2" stroke-linecap="round"/><circle cx="119" cy="17" r="4" fill="#EDCD9C"/><circle cx="159" cy="185" r="3" fill="#B7C9EA"/></svg><div class="auth-tags"><span><i>✧</i>จัดการงานง่ายขึ้น</span><span><i>↗</i>มองเห็นทุกการเติบโต</span><span><i>♡</i>สำเร็จไปด้วยกัน</span></div></div></div>
-  <div class="auth-card">
-    <div class="auth-head"><div class="fb-logo">f</div><div><b>ยินดีต้อนรับกลับมา 👋</b><small>เข้าสู่พื้นที่ทำงานของทีม Facebook</small></div></div>
-    <div class="auth-body">
-      <div class="seg" style="align-self:flex-start"><button class="on" data-am="in">เข้าสู่ระบบ</button><button data-am="up">สมัครด้วยรหัสเชิญ</button></div>
-      <label class="f">อีเมล<input class="inp" id="aEmail" type="email" autocomplete="username" placeholder="name@example.com"></label>
-      <label class="f">รหัสผ่าน<span class="studio-password"><input class="inp" id="aPass" type="password" autocomplete="current-password" placeholder="อย่างน้อย 6 ตัวอักษร"><button type="button" id="studioPassToggle" aria-label="แสดงรหัสผ่าน" aria-pressed="false">แสดง</button></span></label>
-      <div id="upOnly" class="hidden" style="display:flex;flex-direction:column;gap:12px">
-        <label class="f">ชื่อที่แสดงในระบบ<input class="inp" id="aName" placeholder="เช่น อีฟ"></label>
-        <label class="f">รหัสเชิญ<input class="inp" id="aInvite" placeholder="ขอรหัสจากหัวหน้าทีม" style="text-transform:uppercase"></label>
-      </div>
-      <button class="btn pri" id="aGo" style="padding:10px">เข้าสู่ระบบ</button>
-      <div id="aMsg" class="small muted" role="status" aria-live="polite"></div>
-    </div>
-    <div class="auth-foot">MASARU GROUP · สำหรับสมาชิกทีม Facebook</div>
+<body class="studio-page studio-sales">
+<div class="fb-main"><header class="fb-top"><h1>📈 ภาพรวมยอดขาย</h1><span class="sub">รายวัน / เดือน / ปี เทียบปีก่อน · ความคืบหน้าเป้าหมาย</span></header><main class="fb-content" id="page"><section class="studio-intro " aria-label="ภาพรวมหน้า"><div><span class="studio-eyebrow">SALES OVERVIEW</span><h2>ทุกการเติบโต มองเห็นได้</h2><p>ติดตามยอดขายและความคืบหน้า เพื่อก้าวไปถึงเป้าหมายด้วยกัน</p></div><span class="studio-sticker" aria-hidden="true">📈</span></section><div class="row mb no-print">
+  <label class="f" style="flex-direction:row;align-items:center;gap:6px">ปี <select class="inp" id="fYear"></select></label>
+  <span class="muted small" id="cmpLbl"></span>
+  <span class="sp"></span>
+  <button class="btn" id="bExport">⬇️ ส่งออก CSV</button>
+  <button class="btn pri" id="bImport">📥 นำเข้า / แก้ไขยอดขาย</button>
+</div>
+<div class="card target-card" id="target"></div>
+<div class="grid g4 keep2 mt" id="tiles"></div>
+<div class="card mt">
+  <div class="card-h"><h2 id="chartTitle">ยอดขายรายเดือน</h2><span class="sp"></span>
+    <select class="inp hidden" id="fMonth"></select>
+    <div class="seg" id="view"><button data-v="month" class="on">รายเดือน</button><button data-v="day">รายวัน</button><button data-v="cum">สะสม vs เป้า</button><button data-v="year">รายปี</button></div>
   </div>
+  <div class="card-b"><div class="legend mb" id="legend"></div><div class="chart-box lg"><canvas id="cMain"></canvas></div></div>
 </div>
-
-<div id="hubWrap" class="fb-main hidden">
-  <header class="fb-top"><h1>🏠 หน้าหลัก</h1><span class="sub" id="todayLbl"></span></header>
-  <main class="fb-content" id="page"><section class="studio-intro studio-home" aria-label="ภาพรวมหน้า"><div><span class="studio-eyebrow">YOUR TEAM, YOUR SPACE</span><h2>วันนี้ มาทำให้เต็มที่กัน ✨</h2><p>รวมทุกงานของทีม Facebook ไว้ในพื้นที่เดียว</p><div class="studio-shortcuts"><a href="board.html">🗂️ เปิดบอร์ดงาน</a><a href="board.html#routine">✅ Routine วันนี้</a><a href="manual.html">📖 คู่มือทีม</a></div></div><svg class="studio-art" viewBox="0 0 300 200" fill="none" aria-hidden="true"><ellipse cx="157" cy="179" rx="111" ry="10" fill="#8AA5D7" opacity=".12"/><g transform="rotate(-7 138 103)"><rect x="53" y="39" width="172" height="123" rx="15" fill="#DCE8FB"/><rect x="47" y="31" width="172" height="123" rx="15" fill="white" stroke="#C9DAF3"/><path d="M48 60H219" stroke="#E8EEF8"/><circle cx="61" cy="46" r="3" fill="#F0B6C4"/><circle cx="72" cy="46" r="3" fill="#F5D691"/><circle cx="83" cy="46" r="3" fill="#B4DCCE"/><rect x="62" y="74" width="54" height="62" rx="8" fill="#E9F1FF"/><path d="M73 117L83 105L92 111L105 89" stroke="#548BE1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M99 89H106V97" stroke="#548BE1" stroke-width="4" stroke-linecap="round"/><rect x="130" y="79" width="64" height="6" rx="3" fill="#CCDDF5"/><rect x="130" y="93" width="44" height="5" rx="2.5" fill="#E0E9F8"/><rect x="130" y="114" width="53" height="21" rx="7" fill="#EEF5FF"/><path d="M142 124L147 128L154 119" stroke="#6C9ADB" stroke-width="2" stroke-linecap="round"/><path d="M161 124H173" stroke="#A4BFE6" stroke-width="3" stroke-linecap="round"/></g><g class="float"><rect x="208" y="13" width="56" height="54" rx="17" fill="#377EF0"/><path d="M239 57V34H245L246 27H239V24C239 21 240 20 243 20H247V14H242C234 14 231 18 231 24V27H226V34H231V57" fill="white" transform="translate(0 5) scale(.96)"/></g><g class="float"><rect x="17" y="112" width="70" height="49" rx="16" fill="#FCE6EE" stroke="#F4D5DF"/><path d="M43 137C29 128 43 116 49 126C57 116 69 129 49 140L43 137Z" fill="#DD8CA7"/><circle cx="68" cy="137" r="3" fill="#ECC0D0"/></g><g transform="rotate(7 224 150)"><rect x="184" y="129" width="101" height="47" rx="14" fill="#EDF8F2" stroke="#CAE6D8"/><circle cx="207" cy="152" r="11" fill="#AAD6C1"/><path d="M202 152L206 156L212 148" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M225 146H267M225 155H253" stroke="#9FC6B6" stroke-width="4" stroke-linecap="round"/></g><path d="M34 38V49M28.5 43.5H39.5M266 97V108M260.5 102.5H271.5" stroke="#ACBFE3" stroke-width="2" stroke-linecap="round"/><circle cx="119" cy="17" r="4" fill="#EDCD9C"/><circle cx="159" cy="185" r="3" fill="#B7C9EA"/></svg></section>
-    <div id="hero"></div>
-    <div class="grid g4 keep2 mt" id="tiles"></div>
-    <div class="grid mt" style="grid-template-columns:1.6fr 1fr" id="midRow">
-      <div class="card"><div class="card-h"><h2>เมนูระบบ</h2><span class="hint">ทุกคนที่ล็อกอินเข้าถึงได้ทุกเมนู</span></div><div class="card-b"><div class="grid g2" id="menus"></div></div></div>
-      <div class="grid" style="align-content:start">
-        <div class="card"><div class="card-h"><h2>✅ Routine วันนี้ของฉัน</h2><span class="sp"></span><a class="btn sm" href="board.html#routine">เปิด</a></div><div class="card-b" id="myRoutine"></div></div>
-        <div class="card"><div class="card-h"><h2>🗂️ งานของฉันที่ยังไม่เสร็จ</h2><span class="sp"></span><a class="btn sm" href="board.html">บอร์ดงาน</a></div><div class="card-b" id="myTasks"></div></div>
-      </div>
-    </div>
-  </main>
-  <footer class="fb-foot">MASARU Group · ระบบแผนก Facebook · ข้อมูลภายในบริษัท ห้ามเผยแพร่</footer>
-</div>
+<div class="card mt">
+  <div class="card-h"><h2 id="tblTitle">ตารางเปรียบเทียบรายเดือน</h2><span class="sp"></span><span class="hint" id="tblHint"></span></div>
+  <div class="card-b"><div class="tbl-wrap" id="tbl"></div>
+  <div class="note mt small">💡 <b>%เปลี่ยนแปลง</b> คิดจากยอดขาย<b>รวม</b>เทียบยอดรวม (ในไฟล์เดิมคิดจากยอด “ไม่รวมเทเล” จึงไม่ตรงกับยอดรวม) — ระบบแสดงทั้งสองแบบให้เทียบ · เดือนปัจจุบันเทียบแบบ <b>ช่วงวันเดียวกัน</b> (MTD)</div></div>
+</div></main><footer class="fb-foot">MASARU Group · ระบบแผนก Facebook · ข้อมูลภายในบริษัท ห้ามเผยแพร่</footer></div>
 <script>
 /* ===== MASARU FACEBOOK HUB — COMMON (ตั้งค่า Supabase ตรงนี้) ===== */
 const FB_SUPABASE_URL  = 'https://ufnlbccsjftjsbxipqkr.supabase.co';
@@ -528,165 +504,495 @@ async function fbBoot(active, title) {
   return FB;
 }
 
-let authMode = 'in';
-const next = new URLSearchParams(location.search).get('next');
+/* ===== FB PARSERS : อ่านไฟล์ Excel เดิมของทีม (ใช้ SheetJS) ===== */
+const FBP = (() => {
+  const TH_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const TH_MONTH_ALT = { 'กุรกฎาคม': 7 };
+  const TH_ABBR = { 'ม.ค.':1,'ก.พ.':2,'มี.ค.':3,'เม.ย.':4,'พ.ค.':5,'มิ.ย.':6,'ก.ค.':7,'ส.ค.':8,'ก.ย.':9,'ต.ค.':10,'พ.ย.':11,'ธ.ค.':12 };
+  const pad = n => String(n).padStart(2, '0');
+  const iso = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+  const num = v => (typeof v === 'number' && isFinite(v)) ? v : (typeof v === 'string' && v.trim() !== '' && !isNaN(+v.replace(/,/g, '')) ? +v.replace(/,/g, '') : null);
+  const str = v => v == null ? null : (typeof v === 'number' && Number.isInteger(v) ? String(v) : String(v)).trim() || null;
+  const rows = ws => XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  const daysIn = (y, m) => new Date(y, m, 0).getDate();
 
-$$('[data-am]').forEach(b => b.onclick = () => {
-  authMode = b.dataset.am; $$('[data-am]').forEach(x => x.classList.toggle('on', x === b));
-  $('#upOnly').classList.toggle('hidden', authMode !== 'up');
-  $('#aGo').textContent = authMode === 'up' ? 'สมัครและเข้าสู่ระบบ' : 'เข้าสู่ระบบ';
-  $('#aPass').autocomplete = authMode === 'up' ? 'new-password' : 'current-password';
-});
-$('#aPass').addEventListener('keydown', e => { if (e.key === 'Enter' && authMode === 'in') $('#aGo').click(); });
-$('#aGo').onclick = async () => {
-  const email = $('#aEmail').value.trim(), pass = $('#aPass').value;
-  const msg = t => $('#aMsg').innerHTML = t;
-  if (!email || pass.length < 6) return msg('<span class="down">กรอกอีเมลและรหัสผ่าน (อย่างน้อย 6 ตัว)</span>');
-  $('#aGo').disabled = true;
-  try {
-    if (authMode === 'up') {
-      const code = $('#aInvite').value.trim().toUpperCase(), name = $('#aName').value.trim();
-      if (!code || !name) { msg('<span class="down">กรอกชื่อที่แสดงและรหัสเชิญ</span>'); return; }
-      const { data: ok } = await sb.rpc('fb_verify_invite', { p_code: code });
-      if (!ok) { msg('<span class="down">รหัสเชิญไม่ถูกต้องหรือหมดอายุ</span>'); return; }
-      let { data, error } = await sb.auth.signUp({ email, password: pass, options: { data: { display_name: name } } });
-      if (error && /registered/i.test(error.message)) ({ data, error } = await sb.auth.signInWithPassword({ email, password: pass }));
-      if (error) { msg('<span class="down">' + esc(error.message) + '</span>'); return; }
-      if (!data.session) { msg('สมัครแล้ว กรุณายืนยันอีเมล แล้วกลับมาเข้าสู่ระบบ (หรือให้ผู้ดูแลปิด Confirm email ใน Supabase)'); localStorage.setItem('fb_pending_invite', JSON.stringify({ code, name })); return; }
-      const { data: r } = await sb.rpc('fb_claim_invite', { p_code: code, p_display_name: name, p_member_code: null });
-      if (r !== 'ok') { msg('<span class="down">ใช้รหัสเชิญไม่สำเร็จ: ' + esc(r) + '</span>'); return; }
-    } else {
-      const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-      if (error) { msg('<span class="down">เข้าสู่ระบบไม่สำเร็จ: ' + esc(error.message) + '</span>'); return; }
-    }
-    await start();
-  } finally { $('#aGo').disabled = false; }
-};
-
-async function start() {
-  if (FB_SUPABASE_URL.startsWith('__')) { $('#auth').classList.remove('hidden'); $('#aMsg').innerHTML = '<span class="down">⚠️ ยังไม่ได้ตั้งค่า Supabase URL / ANON KEY</span>'; return; }
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { $('#auth').classList.remove('hidden'); return; }
-  FB.user = session.user;
-  let { data: prof } = await sb.from('fb_profiles').select('*').eq('user_id', FB.user.id).maybeSingle();
-  if (!prof) {
-    const pend = JSON.parse(localStorage.getItem('fb_pending_invite') || 'null');
-    if (pend) { const { data: r } = await sb.rpc('fb_claim_invite', { p_code: pend.code, p_display_name: pend.name, p_member_code: null }); if (r === 'ok') { localStorage.removeItem('fb_pending_invite'); ({ data: prof } = await sb.from('fb_profiles').select('*').eq('user_id', FB.user.id).maybeSingle()); } }
+  function monthFromText(t) {
+    if (!t) return null;
+    for (const [k, v] of Object.entries(TH_MONTH_ALT)) if (t.includes(k)) return v;
+    // เลือกชื่อเดือนที่ยาวที่สุดที่เจอ (กันซ้อนกัน)
+    let best = null, len = 0;
+    TH_MONTHS.forEach((n, i) => { if (t.includes(n) && n.length > len) { best = i + 1; len = n.length; } });
+    return best;
   }
-  if (!prof) {
-    $('#auth').classList.remove('hidden');
-    authMode = 'up'; $$('[data-am]')[1].click(); $('#aEmail').value = FB.user.email;
-    $('#aMsg').innerHTML = 'บัญชีนี้ยังไม่มีสิทธิ์เข้าระบบ กรอก <b>ชื่อที่แสดง</b> + <b>รหัสเชิญ</b> แล้วกดสมัคร (ใช้รหัสผ่านเดิม)';
+  function yearFromText(t) {
+    const m = String(t || '').match(/(25\d\d|20\d\d)/);
+    if (!m) return null;
+    const y = +m[1];
+    return y > 2400 ? y - 543 : y;
+  }
+  // จับชื่อสมาชิกจากข้อความ/ชื่อชีท
+  function memberMatcher(members) {
+    const list = [];
+    members.forEach(m => {
+      [m.code, m.nickname, ...(m.aliases || [])].filter(Boolean).forEach(n => list.push([String(n).trim().toUpperCase(), m.code]));
+    });
+    list.sort((a, b) => b[0].length - a[0].length);
+    return txt => {
+      const t = String(txt || '').trim().toUpperCase();
+      if (!t) return null;
+      const exact = list.find(([n]) => n === t);
+      if (exact) return exact[1];
+      const inc = list.find(([n]) => n.length >= 2 && t.includes(n));
+      return inc ? inc[1] : null;
+    };
+  }
+  function toDate(v) {
+    if (v instanceof Date && !isNaN(v)) return v;
+    if (typeof v === 'number' && v > 20000 && v < 80000) { // Excel serial
+      const d = XLSX.SSF.parse_date_code(v);
+      return new Date(d.y, d.m - 1, d.d, d.H || 0, d.M || 0);
+    }
+    if (typeof v === 'string') {
+      const s = v.trim();
+      let m = s.match(/^(\d{1,2})\s+(\S+)\s+(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+      if (m && TH_ABBR[m[2]]) { let y = +m[3]; if (y > 2400) y -= 543; return new Date(y, TH_ABBR[m[2]] - 1, +m[1], +(m[4] || 0), +(m[5] || 0)); }
+      m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/);
+      if (m) return new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0));
+      m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+      if (m) { let y = +m[3]; if (y > 2400) y -= 543; return new Date(y, +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0)); }
+    }
+    return null;
+  }
+  const dISO = d => iso(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  const tsISO = d => `${dISO(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+
+  /* ---------- 1) ยอดขายรายวัน ----------
+     รองรับ (ก) ชีท "เปรียบเทียบยอดขาย" (บล็อกรายเดือน ปีก่อน/ปีนี้)
+           (ข) ตารางง่าย: วันที่ | ยอดขาย | ยอดเทเลเซลล์                          */
+  function salesDaily(wb) {
+    const out = new Map();
+    const put = (d, s, t) => { if (s == null) return; out.set(d, { d, sales: Math.round(s * 100) / 100, telesale: Math.round((t || 0) * 100) / 100 }); };
+    for (const name of wb.SheetNames) {
+      const R = rows(wb.Sheets[name]);
+      const hi = R.findIndex(r => r && r.some(c => typeof c === 'string' && /^ยอดขาย\s*20\d\d$/.test(c.trim())));
+      if (hi >= 0) {
+        const H = R[hi];
+        for (let i = 0; i < H.length; i++) {
+          const h1 = str(H[i + 1]), h4 = str(H[i + 4]);
+          if (!h1 || !/^ยอดขาย\s*20\d\d$/.test(h1) || !h4 || !/^ยอดขาย\s*20\d\d$/.test(h4)) continue;
+          const y1 = +h1.match(/20\d\d/)[0], y2 = +h4.match(/20\d\d/)[0];
+          for (let r = hi + 1; r < R.length; r++) {
+            const row = R[r]; if (!row) continue;
+            const dt = toDate(row[i]); if (!dt) continue;
+            const m = dt.getMonth() + 1, d = dt.getDate();
+            const s1 = num(row[i + 1]), t1 = num(row[i + 2]), s2 = num(row[i + 4]), t2 = num(row[i + 5]);
+            if (s1 != null && s1 !== 0 && d <= daysIn(y1, m)) put(iso(y1, m, d), s1, t1);
+            if (s2 != null && s2 !== 0 && d <= daysIn(y2, m)) put(iso(y2, m, d), s2, t2);
+          }
+        }
+        continue;
+      }
+      // ตารางง่าย
+      const si = R.findIndex(r => r && r.some(c => str(c) === 'วันที่') && r.some(c => /^ยอดขาย/.test(str(c) || '')));
+      if (si >= 0) {
+        const H = R[si].map(str);
+        const cd = H.indexOf('วันที่'), cs = H.findIndex(h => h && /^ยอดขาย/.test(h) && !/เทเล/.test(h)), ct = H.findIndex(h => h && /เทเล/.test(h));
+        for (let r = si + 1; r < R.length; r++) {
+          const row = R[r]; if (!row) continue;
+          const dt = toDate(row[cd]); if (!dt) continue;
+          put(dISO(dt), num(row[cs]), ct >= 0 ? num(row[ct]) : 0);
+        }
+      }
+    }
+    return [...out.values()].sort((a, b) => a.d.localeCompare(b.d));
+  }
+
+  /* ---------- 2) ค่าแอดรายคน รายวัน (ชีท individual) ---------- */
+  function adsIndividual(wb, members) {
+    const match = memberMatcher(members);
+    const out = [], skipped = [];
+    for (const name of wb.SheetNames) {
+      const R = rows(wb.Sheets[name]);
+      const hi = R.findIndex(r => r && r.filter(c => str(c) === 'DATE').length >= 2);
+      if (hi < 1) continue;
+      const H = R[hi];
+      // หาแถวชื่อบล็อก (แถวบนสุดที่มี "ค่าโฆษณา")
+      const ti = R.slice(0, hi).findIndex(r => r && r.some(c => /ค่าโฆษณา/.test(str(c) || '')));
+      const T = ti >= 0 ? R[ti] : [];
+      for (let i = 0; i < H.length; i++) {
+        if (str(H[i]) !== 'DATE') continue;
+        const title = str(T[i]) || '';
+        const month = monthFromText(title), year = yearFromText(title);
+        const rest = title.replace(/ค่าโฆษณา/, '').replace(/เดือน\S*/, '').replace(/(25\d\d|20\d\d)/, '').trim();
+        const code = rest ? match(rest) : null;
+        if (!rest) continue;                 // บล็อกรวมทั้งทีม
+        if (!code || !month || !year) { skipped.push(title); continue; }
+        for (let r = hi + 1; r < R.length; r++) {
+          const row = R[r]; if (!row) continue;
+          const lab = str(row[i]); if (!lab) continue;
+          const m = lab.match(/^(\d{1,2})(?:\.0)?(?:\s*-\s*(\d{1,2}))?$/); if (!m) continue;
+          const spend = num(row[i + 1]), sales = num(row[i + 4]);
+          if (spend == null && sales == null) continue;
+          if (!spend && !sales) continue;
+          const d1 = +m[1], d2 = m[2] ? +m[2] : d1;
+          if (d1 > daysIn(year, month) || d2 > daysIn(year, month)) continue;
+          out.push({ member_code: code, d_from: iso(year, month, d1), d_to: iso(year, month, d2),
+            spend: Math.round((spend || 0) * 100) / 100, results: Math.round(num(row[i + 2]) || 0),
+            purchases: Math.round(num(row[i + 3]) || 0), sales: Math.round((sales || 0) * 100) / 100 });
+        }
+      }
+    }
+    return { rows: out, skipped };
+  }
+
+  /* ---------- 3) ผลงานรายคน รายเดือน (ไฟล์สรุปยอดขายรายคน) ---------- */
+  function personMonthly(wb, members, defaultYear) {
+    const match = memberMatcher(members);
+    const out = new Map(), skipped = new Set();
+    const key = (y, m, c) => `${y}-${m}-${c}`;
+    for (const name of wb.SheetNames) {
+      const R = rows(wb.Sheets[name]);
+      const yearSheet = yearFromText(name) || defaultYear;
+      // บล็อก "เดือนXXX" + header "รายชื่อ | ค่าใช้จ่าย | ยอดขาย | % | ยอดทิ้งบัญชี"
+      for (let r = 0; r < R.length; r++) {
+        const row = R[r] || [];
+        for (let c = 0; c < Math.min(row.length, 3); c++) {
+          const t = str(row[c]); if (!t) continue;
+          const mo = /^เดือน/.test(t) ? monthFromText(t) : (TH_MONTHS.includes(t) || TH_MONTH_ALT[t] ? monthFromText(t) : null);
+          if (!mo) continue;
+          const next = R[r + 1] || [];
+          // รูปแบบ ก: แถวถัดไปเป็น header รายชื่อ
+          let start = r + 1, cSpend = c + 1, cSales = c + 2, cDisc = -1;
+          if (str(next[c]) === 'รายชื่อ') {
+            start = r + 2;
+            const H = next.map(str);
+            cSpend = H.indexOf('ค่าใช้จ่าย'); cSales = H.indexOf('ยอดขาย'); cDisc = H.indexOf('ยอดทิ้งบัญชี');
+          } else if (str(row[c + 1]) === 'ค่าใช้จ่าย' && str(row[c + 2]) === 'ยอดขาย') {
+            start = r + 1;
+          } else continue;
+          for (let k = start; k < Math.min(R.length, start + 20); k++) {
+            const rr = R[k] || [];
+            const nm = str(rr[c]); if (!nm) break;
+            if (/^เดือน/.test(nm) || TH_MONTHS.includes(nm) || nm === 'รายชื่อ') break;
+            const code = match(nm); if (!code) { skipped.add(nm); continue; }
+            const sp = num(rr[cSpend]), sa = num(rr[cSales]);
+            if (sp == null && sa == null) continue;
+            const kk = key(yearSheet, mo, code);
+            const prev = out.get(kk);
+            const disc = cDisc >= 0 ? num(rr[cDisc]) : null;
+            // บล็อกที่มียอดทิ้งบัญชีมีความสำคัญกว่า
+            if (prev && prev._hasDisc && cDisc < 0) continue;
+            out.set(kk, { year: yearSheet, month: mo, member_code: code, spend: Math.round((sp || 0) * 100) / 100,
+              sales: Math.round((sa || 0) * 100) / 100, discard: Math.round((disc || 0) * 100) / 100, _hasDisc: cDisc >= 0 });
+          }
+        }
+      }
+    }
+    return { rows: [...out.values()].map(({ _hasDisc, ...x }) => x), skipped: [...skipped] };
+  }
+
+  /* ---------- 3b) สรุปทีมรายเดือน (ชีท "ยอดขายจริง YYYY") ---------- */
+  function teamMonthly(wb, defaultYear) {
+    const out = [];
+    for (const name of wb.SheetNames) {
+      const R = rows(wb.Sheets[name]);
+      const hi = R.findIndex(r => r && str(r[0]) === 'เดือน' && r.some(c => /ยอดขายจริง/.test(str(c) || '')));
+      if (hi < 0) continue;
+      const H = R[hi].map(str), year = yearFromText(name) || defaultYear;
+      const col = re => H.findIndex(h => h && re.test(h));
+      const cS = col(/ยอดขายจริง/), cA = col(/^ค่า ADS/i), cD = col(/^ยอดทิ้ง/), cSh = col(/^ค่าส่ง/), cO = col(/ออเดอร์/);
+      for (let r = hi + 1; r < R.length; r++) {
+        const row = R[r] || []; const m = num(row[0]);
+        if (!m || m < 1 || m > 12) continue;
+        const s = num(row[cS]); if (!s) continue;
+        out.push({ year, month: m, sales: s, ads: num(row[cA]), discard: num(row[cD]), shipping: num(row[cSh]), orders: num(row[cO]) });
+      }
+    }
+    return out;
+  }
+
+  /* ---------- 4) ยอดตัดบัตร (ไฟล์เก็บยอดตัดบัตร: 1 ชีท/คน, บล็อกละเดือน) ---------- */
+  function cardCharges(wb, members) {
+    const match = memberMatcher(members);
+    const out = [], skipped = [];
+    for (const name of wb.SheetNames) {
+      if (/MAP|หาไม่เจอ/i.test(name)) continue;
+      const R = rows(wb.Sheets[name]);
+      const hi = R.findIndex(r => r && r.some(c => str(c) === 'USER'));
+      if (hi < 0) continue;
+      const code = match(name);
+      if (!code) { skipped.push(name); continue; }
+      const H = R[hi];
+      for (let c = 0; c < H.length; c++) {
+        if (str(H[c]) !== 'USER') continue;
+        for (let r = hi + 1; r < R.length; r++) {
+          const row = R[r]; if (!row) continue;
+          const amt = num(row[c + 7]); if (amt == null) continue;
+          const dt = toDate(row[c + 8]); if (!dt) continue;
+          const ref = str(row[c + 6]); if (!ref) continue;
+          const chk = row[c + 9];
+          out.push({ member_code: code, card_user: str(row[c]), biz_name: str(row[c + 1]), biz_id: str(row[c + 2]),
+            account_name: str(row[c + 3]), account_id: str(row[c + 4]), card: str(row[c + 5]), ref_no: ref,
+            amount: Math.round(amt * 100) / 100, charged_at: tsISO(dt),
+            checked: chk === true || (typeof chk === 'string' && /^(true|✓|✔|ok|เช็คแล้ว|ตรง)$/i.test(chk.trim())),
+            check_note: typeof chk === 'string' && chk.trim() && !/^(true|false)$/i.test(chk.trim()) ? chk.trim() : null });
+        }
+      }
+    }
+    // กันแถวซ้ำในไฟล์เดียวกัน
+    const seen = new Set();
+    const rowsU = out.filter(o => { const k = o.ref_no + '|' + o.charged_at + '|' + o.amount; if (seen.has(k)) return false; seen.add(k); return true; });
+    return { rows: rowsU, skipped };
+  }
+  function adAccountsMap(wb, members) {
+    const match = memberMatcher(members);
+    const ws = wb.Sheets['MAP']; if (!ws) return [];
+    const R = rows(ws); const hi = R.findIndex(r => r && str(r[0]) === 'USER'); if (hi < 0) return [];
+    const H = R[hi].map(str);
+    const cB = H.indexOf('Biz Name'), cI = H.indexOf('Biz ID'), cA = H.indexOf('Account Name');
+    const m = new Map();
+    for (let r = hi + 1; r < R.length; r++) {
+      const row = R[r] || []; const an = str(row[cA]); if (!an) continue;
+      const biz = str(row[cB]) || '';
+      const prefix = (biz.split(/[-\s/]/)[0] || '') ;
+      m.set(an, { account_name: an, card_user: str(row[0]), biz_name: biz, biz_id: str(row[cI]), member_code: match(prefix) || match(an.split(/[-\s]/)[0]) });
+    }
+    return [...m.values()];
+  }
+  function unmatchedCodes(wb, year) {
+    const name = wb.SheetNames.find(n => /หาไม่เจอ/.test(n)); if (!name) return [];
+    const R = rows(wb.Sheets[name]); const out = []; let mo = null;
+    R.forEach(r => (r || []).forEach(c => {
+      const t = str(c); if (!t) return;
+      const mm = t.match(/^เดือน\s*(\d{1,2})$/); if (mm) { mo = +mm[1]; return; }
+      if (/^FACEBK/i.test(t)) out.push({ code: t, period: mo ? `${year}-${pad(mo)}` : null });
+    }));
+    return out;
+  }
+
+  // ตรวจชนิดไฟล์อัตโนมัติ
+  function detect(wb) {
+    const names = wb.SheetNames.join('|');
+    if (/individual/i.test(names)) return 'ads';
+    if (/เปรียบเทียบยอดขาย/.test(names)) return 'sales';
+    if (/รายเดือน|ยอดขายจริง|รายคน/.test(names)) return 'person';
+    if (/MAP/.test(names) || wb.SheetNames.some(n => { const R = rows(wb.Sheets[n]).slice(0, 4); return R.some(r => r && r.some(c => str(c) === 'หมายเลขอ้างอิง')); })) return 'cards';
+    return null;
+  }
+
+  return { salesDaily, adsIndividual, personMonthly, teamMonthly, cardCharges, adAccountsMap, unmatchedCodes, detect, monthFromText, yearFromText, toDate, TH_MONTHS };
+})();
+
+let ALL = [], Y, VIEW = 'month', SEL_M = null;
+const byD = new Map();
+const C_CUR = '#2a78d6', C_PREV = '#9FB7D6', C_TGT = '#C9A84C';
+
+async function load() {
+  ALL = await fetchAll(() => sb.from('fb_sales_daily').select('d,sales,telesale,note').order('d'));
+  byD.clear(); ALL.forEach(r => byD.set(r.d, r));
+  const years = [...new Set(ALL.map(r => +r.d.slice(0, 4)))].sort();
+  const ty = +todayISO().slice(0, 4); if (!years.includes(ty)) years.push(ty);
+  const sel = $('#fYear'); const keep = +sel.value || (years.includes(ty) ? ty : years[years.length - 1]);
+  sel.innerHTML = years.map(y => `<option value="${y}">${y + 543} (${y})</option>`).join(''); sel.value = keep;
+  Y = keep; render();
+}
+function mSum(y, m, f = r => r.sales, maxDay = 31) {
+  let s = 0, n = 0; const dim = daysInMonth(y, m);
+  for (let d = 1; d <= Math.min(dim, maxDay); d++) { const r = byD.get(`${y}-${pad2(m)}-${pad2(d)}`); if (r) { s += +f(r) || 0; n++; } }
+  return { s, n };
+}
+function lastDate(y) { const rows = ALL.filter(r => r.d.startsWith(y + '-')); return rows.length ? rows[rows.length - 1].d : null; }
+function render() {
+  const P = Y - 1, last = lastDate(Y);
+  $('#cmpLbl').textContent = `เทียบกับปี ${P + 543}`;
+  const target = (FB.settings.year_target || {})[Y] || 1000000000;
+  const mTarget = (FB.settings.team_month_target || {})[Y] || target / 12;
+  const ytd = sum(ALL.filter(r => r.d.startsWith(Y + '-')), r => r.sales);
+  const ytdTele = sum(ALL.filter(r => r.d.startsWith(Y + '-')), r => r.telesale);
+  const prevSame = last ? sum(ALL.filter(r => r.d.startsWith(P + '-') && r.d.slice(5) <= last.slice(5)), r => r.sales) : 0;
+  const prevYear = sum(ALL.filter(r => r.d.startsWith(P + '-')), r => r.sales);
+  const doy = last ? Math.round((parseISO(last) - new Date(Y, 0, 1)) / 864e5) + 1 : 0, diy = (Y % 4 ? 365 : 366);
+  const pct = ytd / target * 100, pace = doy / diy * 100;
+  const forecast = doy ? ytd / doy * diy : 0;
+  const lm = last ? +last.slice(5, 7) : 0, ld = last ? +last.slice(8) : 0;
+  const remMonths = last ? (12 - lm) + (1 - ld / daysInMonth(Y, lm)) : 12;
+  $('#target').innerHTML = `<div>
+      <div class="muted small">ยอดขายสะสมปี ${Y + 543} ${last ? '· ข้อมูลถึง ' + thDate(last) : '· ยังไม่มีข้อมูล'} ${last && Y === +todayISO().slice(0, 4) && last < addDays(todayISO(), -3) ? `<span class="badge st-warn">! ข้อมูลล่าช้า ${Math.round((parseISO(todayISO()) - parseISO(last)) / 864e5)} วัน — กด นำเข้า เพื่ออัปเดต</span>` : ''}</div>
+      <div class="big">${fmtB(ytd)}</div>
+      <div class="row small"><span>เป้าหมาย <b>${fmtB(target)}</b></span><span>·</span><b style="color:var(--fb)">สำเร็จ ${fmtP(pct, 2)}</b><span>·</span><span>ช่วงเดียวกันปีก่อน ${fmtM(prevSame)} ${chg(ytd, prevSame)}</span></div>
+      <div class="bar tall mt" style="position:relative"><i style="width:${Math.min(100, pct)}%"></i><span class="pace" style="left:${Math.min(100, pace)}%"></span></div>
+      <div class="row xs mt muted"><span><span class="dot" style="background:var(--fb)"></span> ทำได้จริง ${fmtP(pct)}</span><span><span class="dot" style="background:var(--gold)"></span> ควรถึงตามเวลา ${fmtP(pace)}</span><span>${pct >= pace ? '✅ เร็วกว่าแผน' : '⚠️ ช้ากว่าแผน ' + fmtP(pace - pct) + ' (≈ ' + fmtM(target * (pace - pct) / 100) + ')'}</span></div>
+    </div>
+    <div class="mini">
+      <div><span>คงเหลือถึงเป้า</span><b>${fmtM(Math.max(0, target - ytd))}</b></div>
+      <div><span>ต้องทำเฉลี่ยต่อเดือน (ที่เหลือ ${remMonths.toFixed(1)} เดือน)</span><b>${fmtM(Math.max(0, (target - ytd) / Math.max(remMonths, .01)))}</b></div>
+      <div><span>คาดการณ์ทั้งปี (อัตราเฉลี่ยปัจจุบัน)</span><b>${fmtM(forecast)} <small class="muted">(${fmtP(forecast / target * 100, 0)})</small></b></div>
+      <div><span>ยอดทั้งปี ${P + 543}</span><b>${fmtM(prevYear)}</b></div>
+    </div>`;
+  // tiles
+  const mt = mSum(Y, lm || 1, r => r.sales, ld || 31), mp = mSum(P, lm || 1, r => r.sales, ld || 31);
+  const lastRow = last ? byD.get(last) : null, lastPrev = last ? byD.get(`${P}${last.slice(4)}`) : null;
+  const nDays = ALL.filter(r => r.d.startsWith(Y + '-')).length;
+  $('#tiles').innerHTML = [
+    [`ยอดขาย ${TH_M[(lm || 1) - 1]} (1–${ld || '-'})`, fmtM(mt.s), `ช่วงเดียวกันปีก่อน ${fmtM(mp.s)} ${chg(mt.s, mp.s)}`],
+    ['ยอดขายวันล่าสุด', lastRow ? fmtM(lastRow.sales) : '–', last ? `${thDate(last)} · ปีก่อน ${lastPrev ? fmtM(lastPrev.sales) : '–'} ${lastPrev ? chg(lastRow.sales, lastPrev.sales) : ''}` : ''],
+    ['เฉลี่ยต่อวัน ปีนี้', fmtM(nDays ? ytd / nDays : 0), `ต้องได้ ${fmtM((target - ytd) / Math.max(1, diy - doy))}/วัน เพื่อถึงเป้า`],
+    ['สัดส่วนเทเลเซลล์ (ปีนี้)', fmtP(ytd ? ytdTele / ytd * 100 : null), `ยอดเทเล ${fmtM(ytdTele)}`],
+  ].map(([l, v, d]) => `<div class="card tile"><span class="lb">${l}</span><span class="v">${v}</span><span class="d">${d}</span></div>`).join('');
+  // month selector for daily view
+  const months = [...new Set(ALL.filter(r => r.d.startsWith(Y + '-')).map(r => +r.d.slice(5, 7)))];
+  if (!months.length) months.push(+todayISO().slice(5, 7));
+  if (!SEL_M || !months.includes(SEL_M)) SEL_M = months[months.length - 1];
+  $('#fMonth').innerHTML = months.map(m => `<option value="${m}">${TH_M[m - 1]}</option>`).join(''); $('#fMonth').value = SEL_M;
+  renderChart(target, mTarget); renderTable(mTarget, last);
+}
+function renderChart(target, mTarget) {
+  const P = Y - 1;
+  $('#fMonth').classList.toggle('hidden', VIEW !== 'day');
+  const lg = (items) => $('#legend').innerHTML = items.map(([c, t, ln]) => `<span><i class="${ln ? 'ln' : ''}" style="background:${c}"></i>${t}</span>`).join('');
+  if (VIEW === 'month') {
+    $('#chartTitle').textContent = `ยอดขายรายเดือน ${Y + 543} เทียบ ${P + 543}`;
+    const cur = TH_MS.map((_, i) => mSum(Y, i + 1).s || null), prev = TH_MS.map((_, i) => mSum(P, i + 1).s || null);
+    lg([[C_CUR, `ปี ${Y + 543}`], [C_PREV, `ปี ${P + 543}`], [C_TGT, `เป้ารายเดือน ${fmtM(mTarget, 0)}`, 1]]);
+    drawChart('cMain', { type: 'bar', data: { labels: TH_MS, datasets: [
+      { label: `ปี ${Y + 543}`, data: cur, backgroundColor: C_CUR, borderColor: '#fff', borderWidth: { top: 0, left: 1, right: 1 }, categoryPercentage: .7, barPercentage: .9, order: 2 },
+      { label: `ปี ${P + 543}`, data: prev, backgroundColor: C_PREV, categoryPercentage: .7, barPercentage: .9, order: 3 },
+      { type: 'line', label: 'เป้า', data: TH_MS.map(() => mTarget), borderColor: C_TGT, borderDash: [6, 4], borderWidth: 2, pointRadius: 0, order: 1 } ] },
+      options: { scales: { y: axisMoney, x: axisX }, plugins: { tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtB(c.raw)}`, afterBody: it => { const a = it.find(x => x.datasetIndex === 0)?.raw, b = it.find(x => x.datasetIndex === 1)?.raw; return a && b ? `เปลี่ยนแปลง ${((a - b) / b * 100).toFixed(1)}%` : ''; } } } } } });
+  } else if (VIEW === 'day') {
+    const m = SEL_M, dim = daysInMonth(Y, m);
+    $('#chartTitle').textContent = `ยอดขายรายวัน ${TH_M[m - 1]} ${Y + 543} เทียบ ${P + 543}`;
+    const labels = Array.from({ length: dim }, (_, i) => i + 1);
+    const cur = labels.map(d => byD.get(`${Y}-${pad2(m)}-${pad2(d)}`)?.sales ?? null), prev = labels.map(d => byD.get(`${P}-${pad2(m)}-${pad2(d)}`)?.sales ?? null);
+    const avg = mTarget / dim;
+    lg([[C_CUR, `ปี ${Y + 543}`], [C_PREV, `ปี ${P + 543}`, 1], [C_TGT, `เป้าเฉลี่ย/วัน ${fmtM(avg)}`, 1]]);
+    drawChart('cMain', { type: 'bar', data: { labels, datasets: [
+      { label: `ปี ${Y + 543}`, data: cur, backgroundColor: C_CUR, categoryPercentage: .8, barPercentage: .9, order: 2 },
+      { type: 'line', label: `ปี ${P + 543}`, data: prev, borderColor: C_PREV, pointRadius: 2, pointBackgroundColor: C_PREV, order: 1 },
+      { type: 'line', label: 'เป้าเฉลี่ย/วัน', data: labels.map(() => avg), borderColor: C_TGT, borderDash: [6, 4], order: 0 } ] },
+      options: { scales: { y: axisMoney, x: axisX }, plugins: { tooltip: { callbacks: { title: it => `${it[0].label} ${TH_MS[m - 1]} (${TH_DOW[new Date(Y, m - 1, +it[0].label).getDay()]})`, label: c => `${c.dataset.label}: ${fmtB(c.raw)}` } } } } });
+  } else if (VIEW === 'cum') {
+    $('#chartTitle').textContent = `ยอดขายสะสม ${Y + 543} เทียบเป้า ${fmtM(target, 0)}`;
+    const cumOf = y => { let s = 0; const lastD = lastDate(y); return TH_MS.map((_, i) => { const x = mSum(y, i + 1); if (!x.n && lastD && `${y}-${pad2(i + 1)}` > lastD.slice(0, 7)) return null; s += x.s; return x.n ? s : (s || null); }); };
+    const cur = cumOf(Y), prev = cumOf(Y - 1), tgt = TH_MS.map((_, i) => target / 12 * (i + 1));
+    lg([[C_CUR, `สะสม ${Y + 543}`, 1], [C_PREV, `สะสม ${P + 543}`, 1], [C_TGT, 'เส้นเป้าหมาย', 1]]);
+    drawChart('cMain', { type: 'line', data: { labels: TH_MS, datasets: [
+      { label: `สะสม ${Y + 543}`, data: cur, borderColor: C_CUR, backgroundColor: 'rgba(42,120,214,.08)', fill: true, pointRadius: 3, pointBackgroundColor: C_CUR },
+      { label: `สะสม ${P + 543}`, data: prev, borderColor: C_PREV, pointRadius: 2 },
+      { label: 'เป้าหมาย', data: tgt, borderColor: C_TGT, borderDash: [6, 4] } ] },
+      options: { scales: { y: { ...axisMoney, beginAtZero: true }, x: axisX }, plugins: { tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtB(c.raw)}` } } } } });
+  } else {
+    $('#chartTitle').textContent = 'ยอดขายรายปี';
+    const years = [...new Set(ALL.map(r => +r.d.slice(0, 4)))].sort();
+    const tot = years.map(y => sum(ALL.filter(r => r.d.startsWith(y + '-')), r => r.sales));
+    const tgts = years.map(y => (FB.settings.year_target || {})[y] || null);
+    lg([[C_CUR, 'ยอดขายทั้งปี'], [C_TGT, 'เป้าหมายปี', 1]]);
+    drawChart('cMain', { type: 'bar', data: { labels: years.map(y => y + 543), datasets: [
+      { label: 'ยอดขาย', data: tot, backgroundColor: years.map(y => y === Y ? C_CUR : C_PREV), maxBarThickness: 90, order: 2 },
+      { type: 'line', label: 'เป้า', data: tgts, borderColor: C_TGT, borderDash: [6, 4], pointRadius: 5, pointBackgroundColor: C_TGT, showLine: false, order: 1 } ] },
+      options: { scales: { y: { ...axisMoney, beginAtZero: true }, x: axisX }, plugins: { tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtB(c.raw)}` } } } } });
+  }
+}
+function renderTable(mTarget, last) {
+  const P = Y - 1;
+  if (VIEW === 'day') {
+    const m = SEL_M, dim = daysInMonth(Y, m); let rows = '';
+    let t1 = 0, t2 = 0;
+    for (let d = 1; d <= dim; d++) {
+      const a = byD.get(`${Y}-${pad2(m)}-${pad2(d)}`), b = byD.get(`${P}-${pad2(m)}-${pad2(d)}`);
+      if (!a && !b) continue; t1 += a?.sales || 0; t2 += a ? (b?.sales || 0) : 0;
+      const dow = new Date(Y, m - 1, d).getDay();
+      rows += `<tr><td>${d} ${TH_MS[m - 1]} <span class="muted xs">${TH_DOW[dow]}</span></td><td class="r">${b ? fmt(b.sales) : '–'}</td><td class="r"><b>${a ? fmt(a.sales) : '–'}</b></td><td class="r">${a && b ? chg(a.sales, b.sales) : '–'}</td><td class="r">${a ? fmt(a.telesale) : '–'}</td><td class="r">${a ? fmt(a.sales - a.telesale) : '–'}</td><td class="r">${a && b ? chg(a.sales - a.telesale, b.sales - b.telesale) : '–'}</td><td class="small muted">${esc(a?.note || '')}</td></tr>`;
+    }
+    $('#tblTitle').textContent = `ตารางรายวัน ${TH_M[m - 1]} ${Y + 543}`; $('#tblHint').textContent = '';
+    $('#tbl').innerHTML = `<table class="t"><thead><tr><th>วันที่</th><th class="r">ปี ${P + 543}</th><th class="r">ปี ${Y + 543}</th><th class="r">%เปลี่ยน</th><th class="r">เทเลเซลล์</th><th class="r">ไม่รวมเทเล</th><th class="r">%เปลี่ยน (ไม่รวมเทเล)</th><th>หมายเหตุ</th></tr></thead><tbody>${rows || '<tr><td colspan=8 class="empty">ไม่มีข้อมูล</td></tr>'}</tbody><tfoot><tr><td>รวม (วันที่มีข้อมูลปีนี้)</td><td class="r">${fmt(t2)}</td><td class="r">${fmt(t1)}</td><td class="r">${chg(t1, t2)}</td><td colspan=4></td></tr></tfoot></table>`;
     return;
   }
-  FB.profile = prof;
-  if (next && next !== 'index.html') { location.href = next; return; }
-  $('#auth').classList.add('hidden'); $('#hubWrap').classList.remove('hidden');
-  await Promise.all([loadMembers(), loadSettings()]);
-  FB.me = FB.mm[prof.member_code] || null;
-  renderShell('index');
-  $('#todayLbl').textContent = 'วันนี้ ' + thDate(todayISO());
-  if (!FB.me) askWhoAmI();
-  renderMenus();
-  loadHub();
+  $('#tblTitle').textContent = `ตารางเปรียบเทียบรายเดือน ${Y + 543} vs ${P + 543}`;
+  $('#tblHint').textContent = `เป้ารายเดือน ${fmtM(mTarget, 0)}`;
+  let rows = '', T = { a: 0, b: 0, tele: 0, an: 0, bn: 0 };
+  const lm = last ? last.slice(0, 7) : '';
+  for (let m = 1; m <= 12; m++) {
+    const isCur = lm === `${Y}-${pad2(m)}` && +last.slice(8) < daysInMonth(Y, m);
+    const maxDay = isCur ? +last.slice(8) : 31;
+    const a = mSum(Y, m), b = mSum(P, m, r => r.sales, maxDay), bFull = mSum(P, m);
+    const at = mSum(Y, m, r => r.telesale), bt = mSum(P, m, r => r.telesale, maxDay);
+    if (!a.n && !bFull.n) continue;
+    T.a += a.s; T.tele += at.s; if (a.n) { T.b += b.s; T.an += a.s - at.s; T.bn += b.s - bt.s; }
+    const vsT = a.n ? a.s / mTarget * 100 : null;
+    rows += `<tr class="${isCur ? 'cur' : ''}"><td><b>${TH_M[m - 1]}</b>${isCur ? ` <span class="chip">MTD 1–${maxDay}</span>` : ''}</td>
+      <td class="r">${fmt(isCur ? b.s : bFull.s)}</td><td class="r"><b>${a.n ? fmt(a.s) : '–'}</b></td>
+      <td class="r">${a.n ? fmt(a.s - (isCur ? b.s : bFull.s)) : '–'}</td><td class="r">${a.n ? chg(a.s, isCur ? b.s : bFull.s) : '–'}</td>
+      <td class="r">${a.n ? fmt(at.s) : '–'}</td><td class="r">${a.n ? chg(a.s - at.s, b.s - bt.s) : '–'}</td>
+      <td class="r">${vsT != null ? `<span class="badge ${vsT >= 100 ? 'st-good' : vsT >= 88 ? 'st-warn' : 'st-bad'}">${fmtP(vsT, 0)}</span>` : '–'}</td>
+      <td class="c small muted">${a.n}</td></tr>`;
+  }
+  $('#tbl').innerHTML = `<table class="t"><thead><tr><th>เดือน</th><th class="r">ปี ${P + 543}</th><th class="r">ปี ${Y + 543}</th><th class="r">ต่าง (บาท)</th><th class="r">%เปลี่ยน (ยอดรวม)</th><th class="r">เทเลเซลล์</th><th class="r">%เปลี่ยน (ไม่รวมเทเล)</th><th class="r">เทียบเป้า</th><th class="c">วันที่มีข้อมูล</th></tr></thead><tbody>${rows || '<tr><td colspan=9 class="empty">ยังไม่มีข้อมูล — กด “นำเข้า / แก้ไขยอดขาย”</td></tr>'}</tbody>
+  <tfoot><tr><td>รวม (ช่วงที่มีข้อมูลปีนี้)</td><td class="r">${fmt(T.b)}</td><td class="r">${fmt(T.a)}</td><td class="r">${fmt(T.a - T.b)}</td><td class="r">${chg(T.a, T.b)}</td><td class="r">${fmt(T.tele)}</td><td class="r">${chg(T.an, T.bn)}</td><td></td><td></td></tr></tfoot></table>`;
 }
+$('#fYear').onchange = e => { Y = +e.target.value; render(); };
+$('#fMonth').onchange = e => { SEL_M = +e.target.value; render(); };
+$$('#view button').forEach(b => b.onclick = () => { VIEW = b.dataset.v; $$('#view button').forEach(x => x.classList.toggle('on', x === b)); render(); });
+$('#bExport').onclick = () => downloadFile(`ยอดขายรายวัน_${Y}.csv`, toCSV(ALL.filter(r => r.d.startsWith(Y + '-') || r.d.startsWith((Y - 1) + '-')), [{ t: 'วันที่', v: 'd' }, { t: 'ยอดขาย', v: 'sales' }, { t: 'ยอดเทเลเซลล์', v: 'telesale' }, { t: 'หมายเหตุ', v: 'note' }]));
 
-function askWhoAmI() {
-  const opts = FB.members.filter(m => m.active && m.team !== 'page').map(m => `<button class="chip tog" data-c="${m.code}" style="padding:6px 12px;font-size:13px">${esc(m.emoji || '')} ${esc(m.nickname)}</button>`).join(' ');
-  const md = openModal({ title: '👋 คุณคือใครในทีม?', body: `<p class="muted small" style="margin-top:0">ผูกบัญชีกับชื่อในทีม เพื่อให้ระบบแสดง Routine / งานของคุณ (เปลี่ยนภายหลังได้ในหน้า ตั้งค่า)</p><div class="row">${opts}</div>`, foot: '<button class="btn" data-skip>ข้ามไปก่อน</button>' });
-  md.querySelector('[data-skip]').onclick = () => md.close();
-  md.querySelectorAll('[data-c]').forEach(b => b.onclick = async () => {
-    chk(await sb.from('fb_profiles').update({ member_code: b.dataset.c }).eq('user_id', FB.user.id), 'บันทึก');
-    FB.profile.member_code = b.dataset.c; FB.me = FB.mm[b.dataset.c]; md.close(); toast('ผูกชื่อเรียบร้อย', 'ok'); loadHub();
-  });
-}
-
-function renderMenus() {
-  const M = [
-    ['sales.html', '📈', '1. ภาพรวมยอดขาย', 'ยอดขายรายวัน / เดือน / ปี เทียบปีก่อน + ความคืบหน้าเป้า 1,000 ล้าน'],
-    ['ads.html', '💸', '2. ค่าแอดรายคน', 'ค่าแอด ยอดขาย %ค่าแอด ROAS รายคน รายวัน/รายเดือน'],
-    ['people.html', '🏆', '3. ผลงานรายคน', 'ภาพรวมทั้งปี เทียบเป้ารายไตรมาส จัดอันดับ'],
-    ['expense.html', '💳', '4. ค่าใช้จ่าย', 'ยอดตัดบัตร เช็คตัดบัตร บัญชีโฆษณา งบประมาณ 2026'],
-    ['kpi.html', '🎯', '5. KPI', 'คะแนน KPI 9 ข้อ ถ่วงน้ำหนักอัตโนมัติ + Action Plan'],
-    ['board.html', '🗂️', 'บอร์ดงาน & Routine', 'TO DO / DOING / DONE · Routine รายวัน · รายงานประจำวัน'],
-    ['manual.html', '📖', '7. คู่มือการทำงาน', 'คู่มือ Digital Marketing 14 บท + SOP ทีม ค้นหาได้'],
-    ['#', '📚', '6. คอร์สเรียน', 'เฟส 2 — รอไฟล์ข้อมูลคอร์ส', 1],
-    ['#', '🎨', 'สั่งงานกราฟิก / คอนเทนต์ / KOL / ALL PAGE', 'เฟส 2', 1],
-    ['settings.html', '⚙️', 'ตั้งค่า', 'สมาชิก เป้าหมาย Routine ต้นแบบ รหัสเชิญ'],
-  ];
-  $('#menus').innerHTML = M.map(([h, ic, t, d, soon]) => `<a class="card menu-card ${soon ? 'soon' : ''}" href="${h}" ${soon ? 'onclick="toast(\'อยู่ในแผนเฟส 2\');return false"' : ''}><span class="ic">${ic}</span><span><b>${t}</b><small>${d}</small></span></a>`).join('');
-}
-
-async function loadHub() {
-  const today = todayISO(), Y = +today.slice(0, 4), M = +today.slice(5, 7);
-  const ystart = `${Y}-01-01`, pstart = `${Y - 1}-01-01`;
-  const [sales, adsRows, kpiRows] = await Promise.all([
-    fetchAll(() => sb.from('fb_sales_daily').select('d,sales').gte('d', pstart).lte('d', `${Y}-12-31`).order('d')),
-    fetchAll(() => sb.from('fb_ads_daily').select('member_code,d_from,spend,sales').gte('d_from', `${Y}-01-01`)),
-    sb.from('fb_kpi_actuals').select('month,code,score').eq('year', Y).then(r => r.data || []),
-  ]);
-  const cur = sales.filter(r => r.d >= ystart), prev = sales.filter(r => r.d < ystart);
-  const ytd = sum(cur, r => r.sales);
-  const last = cur.length ? cur[cur.length - 1].d : null;
-  const prevSame = last ? sum(prev.filter(r => r.d.slice(5) <= last.slice(5)), r => r.sales) : 0;
-  const target = (FB.settings.year_target || {})[Y] || 1000000000;
-  const dayOfYear = last ? Math.round((parseISO(last) - new Date(Y, 0, 1)) / 864e5) + 1 : 0;
-  const daysY = (Y % 4 === 0 ? 366 : 365);
-  const pacePct = dayOfYear / daysY * 100, pct = ytd / target * 100;
-  const remainMonths = last ? 12 - (+last.slice(5, 7)) + (+last.slice(8) < daysInMonth(Y, +last.slice(5, 7)) ? 1 - (+last.slice(8)) / daysInMonth(Y, +last.slice(5, 7)) : 0) : 12;
-  const needPerMonth = remainMonths > 0 ? (target - ytd) / remainMonths : 0;
-  const forecast = dayOfYear ? ytd / dayOfYear * daysY : 0;
-  $('#hero').innerHTML = `<div class="hub-hero"><div>
-      <div class="muted small">ยอดขายสะสมทีม Facebook ปี ${Y + 543} ${last ? '(ข้อมูลถึง ' + thDate(last) + ')' : ''}</div>
-      <div class="big">${fmtB(ytd)}</div>
-      <div class="row small"><span>เป้า ${fmtM(target, 0)}</span><span>·</span><b>${fmtP(pct)}</b><span class="muted">สำเร็จแล้ว</span><span>·</span><span>เทียบช่วงเดียวกันปีก่อน ${chg(ytd, prevSame)}</span></div>
-      <div class="bar tall mt" style="position:relative"><i style="width:${Math.min(100, pct)}%"></i><span class="pace" style="left:${Math.min(100, pacePct)}%" title="ควรถึง ${fmtP(pacePct)} ณ วันนี้"></span></div>
-      <div class="row xs mt muted"><span>▮ เส้นเหลือง = ความคืบหน้าที่ควรเป็นตามเวลา (${fmtP(pacePct)})</span></div>
+/* ---------- นำเข้า / แก้ไข ---------- */
+$('#bImport').onclick = () => {
+  const m = openModal({ title: '📥 นำเข้า / แก้ไขยอดขายรายวัน', size: 'wide', body: `
+    <div class="tabs"><button class="on" data-t="file">อัปโหลดไฟล์</button><button data-t="manual">กรอก / แก้ไขรายวัน</button></div>
+    <div data-p="file">
+      <div class="drop" id="dz">📂 ลากไฟล์มาวาง หรือคลิกเพื่อเลือกไฟล์<br><span class="small">รองรับ: ไฟล์ “ลิงค์รวมค่าโฆษณา Facebook” (ชีท เปรียบเทียบยอดขาย) หรือตาราง วันที่ | ยอดขาย | ยอดเทเลเซลล์</span></div>
+      <div class="row mt small"><a href="#" id="tpl">⬇️ ดาวน์โหลดไฟล์ตัวอย่าง (CSV)</a></div>
+      <div id="pv" class="mt"></div>
     </div>
-    <div class="grid g2" style="gap:10px">
-      <div><div class="muted small">คงเหลือถึงเป้า</div><div style="font-size:21px;font-weight:800">${fmtM(Math.max(0, target - ytd))}</div></div>
-      <div><div class="muted small">ต้องทำเฉลี่ย/เดือน</div><div style="font-size:21px;font-weight:800">${fmtM(Math.max(0, needPerMonth))}</div></div>
-      <div><div class="muted small">คาดการณ์ทั้งปี (อัตราปัจจุบัน)</div><div style="font-size:21px;font-weight:800">${fmtM(forecast)}</div></div>
-      <div><div class="muted small">คาดว่าจะได้ % ของเป้า</div><div style="font-size:21px;font-weight:800">${fmtP(forecast / target * 100)}</div></div>
-    </div></div>`;
-  // tiles
-  const mk = `${Y}-${pad2(M)}`;
-  const monthRows = cur.filter(r => r.d.startsWith(mk));
-  const lastM = last ? last.slice(0, 7) : mk;
-  const lmRows = cur.filter(r => r.d.startsWith(lastM));
-  const lmPrev = prev.filter(r => r.d.slice(5, 7) === lastM.slice(5, 7) && r.d.slice(8) <= (last || '').slice(8));
-  const adsM = adsRows.filter(r => r.d_from.startsWith(mk));
-  const adsSpend = sum(adsM, r => r.spend), adsSales = sum(adsM, r => r.sales);
-  const byM = {}; kpiRows.forEach(r => { (byM[r.month] = byM[r.month] || []).push(r); });
-  const defs = (await sb.from('fb_kpi_defs').select('code,weight')).data || [];
-  const wmap = Object.fromEntries(defs.map(d => [d.code, +d.weight]));
-  const kMonths = Object.keys(byM).map(Number).sort((a, b) => b - a);
-  const kLast = kMonths[0];
-  const kScore = kLast ? sum(byM[kLast], r => (+r.score || 0) * (wmap[r.code] || 0)) / 100 : null;
-  $('#tiles').innerHTML = [
-    ['ยอดขายเดือน ' + TH_MS[+lastM.slice(5) - 1] + ' (ถึงล่าสุด)', fmtM(sum(lmRows, r => r.sales)), `เทียบช่วงเดียวกันปีก่อน ${chg(sum(lmRows, r => r.sales), sum(lmPrev, r => r.sales))}`],
-    ['ยอดขายวันล่าสุด', last ? fmtM(cur[cur.length - 1].sales) : '–', last ? thDate(last) : 'ยังไม่มีข้อมูล'],
-    ['%ค่าแอด เดือนนี้ (ค่าแอดรายคน)', adsSpend ? adsBadge(adsSpend / adsSales * 100) : '–', adsSpend ? `ค่าแอด ${fmtM(adsSpend)} · ยอด ${fmtM(adsSales)}` : 'ยังไม่มีข้อมูลเดือนนี้'],
-    ['คะแนน KPI ล่าสุด', kScore != null ? kScore.toFixed(1) : '–', kLast ? `เดือน${TH_M[kLast - 1]} (ถ่วงน้ำหนัก)` : ''],
-  ].map(([l, v, d]) => `<div class="card tile"><span class="lb">${l}</span><span class="v">${v}</span><span class="d">${d}</span></div>`).join('');
-  // my routine + tasks
-  if (!FB.me) { $('#myRoutine').innerHTML = '<div class="muted small">ยังไม่ได้ผูกชื่อในทีม <a href="#" onclick="askWhoAmI();return false">ผูกตอนนี้</a></div>'; $('#myTasks').innerHTML = ''; return; }
-  const dow = ((parseISO(today).getDay() + 6) % 7) + 1;
-  const [tpl, logs, cards] = await Promise.all([
-    sb.from('fb_routine_templates').select('id,title,weekdays').eq('member_code', FB.me.code).eq('active', true).order('sort').then(r => r.data || []),
-    sb.from('fb_routine_logs').select('template_id').eq('d', today).eq('member_code', FB.me.code).then(r => r.data || []),
-    sb.from('fb_cards').select('id,title,due_date,list_id,priority').contains('assignees', [FB.me.code]).is('done_at', null).eq('archived', false).order('due_date', { ascending: true, nullsFirst: false }).limit(8).then(r => r.data || []),
-  ]);
-  const todayT = tpl.filter(t => (t.weekdays || []).includes(dow)), doneSet = new Set(logs.map(l => l.template_id));
-  const nDone = todayT.filter(t => doneSet.has(t.id)).length;
-  $('#myRoutine').innerHTML = todayT.length ? `<div class="row"><b style="font-size:22px">${nDone}/${todayT.length}</b><span class="muted small">รายการ</span><span class="sp"></span><span class="small">${fmtP(nDone / todayT.length * 100, 0)}</span></div><div class="bar mt"><i style="width:${nDone / todayT.length * 100}%;background:var(--good)"></i></div>
-    <div class="mt small">${todayT.filter(t => !doneSet.has(t.id)).slice(0, 4).map(t => `<div class="task-li">⬜ ${esc(t.title)}</div>`).join('')}</div>` : '<div class="muted small">ยังไม่มี Routine ต้นแบบของคุณ (ตั้งได้ในหน้า ตั้งค่า)</div>';
-  $('#myTasks').innerHTML = cards.length ? cards.map(c => {
-    const od = c.due_date && c.due_date < today, td = c.due_date === today;
-    return `<a class="task-li" href="board.html#card=${c.id}" style="color:inherit">${c.priority === 1 ? '🚨' : '▫️'} <span style="flex:1">${esc(c.title)}</span>${c.due_date ? `<span class="badge ${od ? 'st-bad' : td ? 'st-warn' : 'st-none'}">${od ? 'เลยกำหนด ' : ''}${thDate(c.due_date, false)}</span>` : ''}</a>`;
-  }).join('') : '<div class="muted small">ไม่มีงานค้าง 🎉</div>';
-}
-start();
+    <div data-p="manual" class="hidden">
+      <div class="grid g4" style="align-items:end"><label class="f">วันที่<input class="inp" type="date" id="mD" value="${todayISO()}"></label><label class="f">ยอดขายรวม (บาท)<input class="inp" id="mS" inputmode="decimal"></label><label class="f">ยอดเทเลเซลล์<input class="inp" id="mT" inputmode="decimal" value="0"></label><label class="f">หมายเหตุ<input class="inp" id="mN"></label></div>
+      <div class="row mt"><button class="btn pri" id="mSave">บันทึกวันนี้</button><span class="muted small">ถ้าวันที่นั้นมีข้อมูลแล้วจะบันทึกทับ</span></div>
+      <h4 class="mt2" style="color:var(--navy)">แก้ไขย้อนหลัง 40 วันล่าสุด</h4>
+      <div class="tbl-wrap mt" style="max-height:340px" id="recent"></div>
+    </div>` });
+  m.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { m.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b)); m.querySelectorAll('[data-p]').forEach(p => p.classList.toggle('hidden', p.dataset.p !== b.dataset.t)); });
+  m.querySelector('#tpl').onclick = e => { e.preventDefault(); downloadFile('ตัวอย่าง_ยอดขายรายวัน.csv', 'วันที่,ยอดขาย,ยอดเทเลเซลล์\n2026-10-01,2150000,210000\n2026-10-02,2080000,195000\n'); };
+  dropZone(m.querySelector('#dz'), async f => {
+    const pv = m.querySelector('#pv'); pv.innerHTML = loadingHTML('กำลังอ่านไฟล์...');
+    try {
+      const wb = await readWorkbook(f); const rows = FBP.salesDaily(wb);
+      if (!rows.length) { pv.innerHTML = '<div class="note warn">ไม่พบข้อมูลยอดขายในไฟล์นี้</div>'; return; }
+      const g = {}; rows.forEach(r => { const k = r.d.slice(0, 7); (g[k] = g[k] || { n: 0, s: 0, upd: 0, same: 0 }); g[k].n++; g[k].s += r.sales; const o = byD.get(r.d); if (o) { if (Math.abs(o.sales - r.sales) > .5 || Math.abs(o.telesale - r.telesale) > .5) g[k].upd++; else g[k].same++; } });
+      pv.innerHTML = `<div class="note">พบ <b>${rows.length}</b> วัน (${thDate(rows[0].d)} – ${thDate(rows[rows.length - 1].d)})</div>
+        <div class="tbl-wrap mt" style="max-height:300px"><table class="t"><thead><tr><th>เดือน</th><th class="r">จำนวนวัน</th><th class="r">ยอดรวม</th><th class="r">ใหม่</th><th class="r">เปลี่ยนค่า</th><th class="r">เหมือนเดิม</th></tr></thead><tbody>${Object.entries(g).map(([k, v]) => `<tr><td>${TH_M[+k.slice(5) - 1]} ${+k.slice(0, 4) + 543}</td><td class="r">${v.n}</td><td class="r">${fmt(v.s)}</td><td class="r">${v.n - v.upd - v.same}</td><td class="r">${v.upd ? `<b class="down">${v.upd}</b>` : 0}</td><td class="r muted">${v.same}</td></tr>`).join('')}</tbody></table></div>
+        <div class="row mt"><button class="btn pri" id="doImp">💾 บันทึก ${rows.length} วัน</button><span class="muted small" id="prog"></span></div>`;
+      pv.querySelector('#doImp').onclick = async ev => {
+        ev.target.disabled = true;
+        const by = FB.profile.display_name;
+        await upsertChunks('fb_sales_daily', rows.map(r => ({ ...r, updated_by: by, updated_at: new Date().toISOString() })), { onConflict: 'd' }, (d, t) => pv.querySelector('#prog').textContent = `${d}/${t}`);
+        toast('นำเข้ายอดขายเรียบร้อย', 'ok'); m.close(); load();
+      };
+    } catch (err) { console.error(err); pv.innerHTML = `<div class="note warn">อ่านไฟล์ไม่ได้: ${esc(err.message)}</div>`; }
+  });
+  const recent = () => {
+    const rows = ALL.slice(-40).reverse();
+    m.querySelector('#recent').innerHTML = `<table class="t"><thead><tr><th>วันที่</th><th class="r">ยอดขาย</th><th class="r">เทเลเซลล์</th><th>หมายเหตุ</th><th></th></tr></thead><tbody>${rows.map(r => `<tr data-d="${r.d}"><td>${thDate(r.d)} <span class="muted xs">${TH_DOW[parseISO(r.d).getDay()]}</span></td><td><input class="inp r" data-f="sales" value="${r.sales}"></td><td><input class="inp r" data-f="telesale" value="${r.telesale}"></td><td><input class="inp" data-f="note" value="${esc(r.note || '')}"></td><td><button class="btn sm ghost" data-del title="ลบ">🗑️</button></td></tr>`).join('')}</tbody></table>`;
+    m.querySelectorAll('#recent input').forEach(i => i.onchange = async () => {
+      const d = i.closest('tr').dataset.d, f = i.dataset.f; const v = f === 'note' ? i.value : +String(i.value).replace(/,/g, '');
+      if (f !== 'note' && isNaN(v)) return toast('ตัวเลขไม่ถูกต้อง', 'err');
+      chk(await sb.from('fb_sales_daily').update({ [f]: v, updated_by: FB.profile.display_name, updated_at: new Date().toISOString() }).eq('d', d), 'บันทึก');
+      byD.get(d)[f] = v; toast('บันทึกแล้ว', 'ok'); render();
+    });
+    m.querySelectorAll('#recent [data-del]').forEach(b => b.onclick = async () => {
+      const d = b.closest('tr').dataset.d; if (!await confirmBox(`ลบยอดขายวันที่ ${thDate(d)} ?`, 'ลบ', true)) return;
+      chk(await sb.from('fb_sales_daily').delete().eq('d', d), 'ลบ'); ALL = ALL.filter(r => r.d !== d); byD.delete(d); recent(); render();
+    });
+  };
+  recent();
+  m.querySelector('#mSave').onclick = async () => {
+    const d = m.querySelector('#mD').value, s = +m.querySelector('#mS').value.replace(/,/g, ''), t = +m.querySelector('#mT').value.replace(/,/g, '') || 0;
+    if (!d || !s) return toast('กรอกวันที่และยอดขาย', 'err');
+    chk(await sb.from('fb_sales_daily').upsert({ d, sales: s, telesale: t, note: m.querySelector('#mN').value || null, updated_by: FB.profile.display_name, updated_at: new Date().toISOString() }), 'บันทึก');
+    toast('บันทึกแล้ว', 'ok'); await load(); recent();
+  };
+};
+
+fbBoot('sales').then(load);
 </script>
 <script id="studio-interactions">
 (()=>{

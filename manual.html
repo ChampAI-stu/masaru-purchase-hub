@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>หน้าหลัก · MASARU Facebook</title>
+<title>คู่มือการทำงาน · MASARU Facebook</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -148,28 +148,44 @@ table.t input.inp{padding:4px 7px;width:100%}
 @media (max-width:760px){.fb-top .sub{display:none}.fb-top h1{font-size:16.5px;white-space:nowrap}.fb-user>span{display:none}.tile .v{font-size:21px}.card-h{padding:12px 12px 8px}.card-b{padding:6px 12px 12px}}
 
 /* ===== page ===== */
-.auth-wrap{min-height:100vh;display:grid;place-items:center;padding:20px;background:linear-gradient(135deg,#1A2942 0%,#24365A 55%,#1877F2 140%)}
-.auth-card{width:100%;max-width:420px;background:#fff;border-radius:18px;box-shadow:0 30px 60px rgba(0,0,0,.3);overflow:hidden}
-.auth-head{background:var(--navy);color:#fff;padding:22px 24px;display:flex;gap:12px;align-items:center}
-.auth-head .fb-logo{width:46px;height:46px;font-size:24px}
-.auth-head b{font-size:18px;display:block}.auth-head small{color:#AFC0DA}
-.auth-body{padding:20px 24px 24px;display:flex;flex-direction:column;gap:12px}
-.hub-hero{background:linear-gradient(120deg,#1A2942,#24365A 60%,#1d4f9c);color:#fff;border-radius:16px;padding:22px 24px;display:grid;grid-template-columns:1.4fr 1fr;gap:22px;align-items:center}
-.hub-hero h2{font-size:21px;margin-bottom:4px}
-.hub-hero .big{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
-.hub-hero .bar{background:rgba(255,255,255,.18);height:14px}
-.hub-hero .bar>i{background:linear-gradient(90deg,#4F9BFF,#8CC4FF)}
-.hub-hero .pace{position:absolute;top:-3px;bottom:-3px;width:2px;background:#FFD166}
-.hub-hero .muted{color:#B9C8E0}
-.menu-card{display:flex;gap:12px;padding:14px 16px;align-items:flex-start;color:inherit;text-decoration:none;transition:transform .12s, box-shadow .12s}
-.menu-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(15,23,42,.1);text-decoration:none}
-.menu-card .ic{font-size:26px;width:44px;height:44px;border-radius:12px;background:#EEF4FF;display:grid;place-items:center;flex:none}
-.menu-card b{display:block;color:var(--navy);font-size:15px}
-.menu-card small{color:var(--muted);font-size:12.5px;line-height:1.45;display:block;margin-top:2px}
-.menu-card.soon{opacity:.6}
-.task-li{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line-2);font-size:13.5px}
-.task-li:last-child{border-bottom:0}
-@media (max-width:860px){.hub-hero{grid-template-columns:1fr}}
+.man{display:grid;grid-template-columns:290px 1fr;gap:18px;align-items:start}
+.toc{position:sticky;top:74px;max-height:calc(100vh - 90px);overflow:auto;padding:12px}
+.toc .ch{display:flex;gap:8px;padding:7px 9px;border-radius:8px;cursor:pointer;font-size:13.5px;color:var(--ink-2);align-items:flex-start}
+.toc .ch:hover{background:#F2F5F9}
+.toc .ch.on{background:var(--info-bg);color:#0B4FB3;font-weight:700}
+.toc .ch .n{min-width:24px;height:22px;border-radius:6px;background:#EEF2F7;display:grid;place-items:center;font-size:11.5px;font-weight:800;color:var(--muted)}
+.toc .ch.on .n{background:var(--fb);color:#fff}
+.toc .subs{margin:2px 0 6px 32px;border-left:2px solid var(--line);padding-left:8px}
+.toc .subs a{display:block;font-size:12.5px;color:var(--muted);padding:3px 4px;text-decoration:none;border-radius:5px}
+.toc .subs a:hover{color:var(--fb);background:#F6F8FB}
+.toc .grp{font-size:11px;font-weight:800;color:var(--muted-2);letter-spacing:.5px;margin:12px 8px 4px;text-transform:uppercase}
+.doc{padding:26px 34px 34px;min-height:70vh}
+.doc-h{display:flex;gap:12px;align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
+.doc-h .num{font-size:14px;font-weight:800;color:#fff;background:var(--navy);border-radius:10px;padding:6px 11px}
+.doc-h h2{font-size:24px;color:var(--navy)}
+.art{font-size:15.5px;line-height:1.75;color:#1E293B;max-width:860px}
+.art h3{font-size:18.5px;color:var(--navy);margin:26px 0 10px;padding-top:6px;border-top:1px dashed var(--line)}
+.art h4{font-size:16px;color:var(--navy-2);margin:18px 0 8px}
+.art p{margin:8px 0}
+.art img{max-width:100%;height:auto;border-radius:10px;border:1px solid var(--line);margin:8px 0;cursor:zoom-in;box-shadow:var(--shadow)}
+.art blockquote{margin:10px 0;padding:8px 14px;border-left:4px solid var(--fb);background:#F6F9FF;border-radius:0 10px 10px 0}
+.art table{border-collapse:collapse;width:100%;margin:10px 0;font-size:14px}
+.art td,.art th{border:1px solid var(--line);padding:6px 9px;vertical-align:top}
+.art th{background:#F6F8FB}
+.art ul,.art ol{padding-left:24px}
+.art .lead{font-size:16px;background:var(--info-bg);border-radius:10px;padding:10px 14px}
+.art .tag{font-size:11.5px;background:#EEF2F7;border-radius:5px;padding:1px 6px;color:var(--muted);font-weight:700;white-space:nowrap}
+.art mark{background:#FFE58F;padding:0 2px;border-radius:3px}
+.art[contenteditable=true]{outline:2px dashed #93C5FD;outline-offset:8px;border-radius:6px}
+.tb{position:sticky;top:64px;z-index:5;display:flex;gap:4px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px;margin-bottom:14px;box-shadow:var(--shadow)}
+.res{padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line-2)}
+.res:hover{background:#F2F5F9}.res b{color:var(--navy)}.res .sn{color:var(--muted);font-size:12px}
+.lbx{position:fixed;inset:0;background:rgba(10,15,25,.85);z-index:95;display:grid;place-items:center;cursor:zoom-out;padding:20px}
+.lbx img{max-width:96vw;max-height:92vh;border-radius:8px}
+.nav2{display:flex;justify-content:space-between;gap:10px;margin-top:30px;border-top:1px solid var(--line);padding-top:16px}
+.rel{margin-top:26px;background:#FAFBFD;border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+@media (max-width:980px){.man{grid-template-columns:1fr}.toc{position:static;max-height:none}.doc{padding:18px}}
+@media print{.toc,.tb,.nav2,.rel,.doc-h .btn{display:none!important}.man{display:block}.doc{border:0;box-shadow:none;padding:0}}
 </style>
 <style id="masaru-social-studio">
 /* MASARU · Social Studio — presentation layer, self-contained */
@@ -268,40 +284,16 @@ table.t td{padding:10px 12px;font-size:13px}table.t tr:hover td{background:#f1f6
 @media print{body{background:#fff}.studio-intro,.auth-story{display:none!important}.fb-main{margin-left:0}.fb-content{padding:0}.hub-hero{print-color-adjust:exact;-webkit-print-color-adjust:exact}.tile,.card{break-inside:avoid}.fb-top,.fb-side{display:none!important}}
 </style>
 </head>
-<body class="studio-page studio-index">
-<div id="auth" class="auth-wrap hidden"><div class="auth-story"><div class="auth-story-brand"><div class="fb-logo">f</div><div>MASARU FACEBOOK<small>THE TEAM WORKSPACE</small></div></div><span class="studio-eyebrow">A LITTLE SPACE FOR BIG IDEAS</span><h1>พื้นที่ของทีมเรา<br>ให้ทุกวัน <em>ไปได้ไกลขึ้น</em></h1><p>รวมงาน ยอดขาย และเป้าหมายไว้ด้วยกัน<br>พร้อมสร้างทุกความสำเร็จไปกับทีม Facebook</p><div class="auth-illustration"><svg class="studio-art" viewBox="0 0 300 200" fill="none" aria-hidden="true"><ellipse cx="157" cy="179" rx="111" ry="10" fill="#8AA5D7" opacity=".12"/><g transform="rotate(-7 138 103)"><rect x="53" y="39" width="172" height="123" rx="15" fill="#DCE8FB"/><rect x="47" y="31" width="172" height="123" rx="15" fill="white" stroke="#C9DAF3"/><path d="M48 60H219" stroke="#E8EEF8"/><circle cx="61" cy="46" r="3" fill="#F0B6C4"/><circle cx="72" cy="46" r="3" fill="#F5D691"/><circle cx="83" cy="46" r="3" fill="#B4DCCE"/><rect x="62" y="74" width="54" height="62" rx="8" fill="#E9F1FF"/><path d="M73 117L83 105L92 111L105 89" stroke="#548BE1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M99 89H106V97" stroke="#548BE1" stroke-width="4" stroke-linecap="round"/><rect x="130" y="79" width="64" height="6" rx="3" fill="#CCDDF5"/><rect x="130" y="93" width="44" height="5" rx="2.5" fill="#E0E9F8"/><rect x="130" y="114" width="53" height="21" rx="7" fill="#EEF5FF"/><path d="M142 124L147 128L154 119" stroke="#6C9ADB" stroke-width="2" stroke-linecap="round"/><path d="M161 124H173" stroke="#A4BFE6" stroke-width="3" stroke-linecap="round"/></g><g class="float"><rect x="208" y="13" width="56" height="54" rx="17" fill="#377EF0"/><path d="M239 57V34H245L246 27H239V24C239 21 240 20 243 20H247V14H242C234 14 231 18 231 24V27H226V34H231V57" fill="white" transform="translate(0 5) scale(.96)"/></g><g class="float"><rect x="17" y="112" width="70" height="49" rx="16" fill="#FCE6EE" stroke="#F4D5DF"/><path d="M43 137C29 128 43 116 49 126C57 116 69 129 49 140L43 137Z" fill="#DD8CA7"/><circle cx="68" cy="137" r="3" fill="#ECC0D0"/></g><g transform="rotate(7 224 150)"><rect x="184" y="129" width="101" height="47" rx="14" fill="#EDF8F2" stroke="#CAE6D8"/><circle cx="207" cy="152" r="11" fill="#AAD6C1"/><path d="M202 152L206 156L212 148" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M225 146H267M225 155H253" stroke="#9FC6B6" stroke-width="4" stroke-linecap="round"/></g><path d="M34 38V49M28.5 43.5H39.5M266 97V108M260.5 102.5H271.5" stroke="#ACBFE3" stroke-width="2" stroke-linecap="round"/><circle cx="119" cy="17" r="4" fill="#EDCD9C"/><circle cx="159" cy="185" r="3" fill="#B7C9EA"/></svg><div class="auth-tags"><span><i>✧</i>จัดการงานง่ายขึ้น</span><span><i>↗</i>มองเห็นทุกการเติบโต</span><span><i>♡</i>สำเร็จไปด้วยกัน</span></div></div></div>
-  <div class="auth-card">
-    <div class="auth-head"><div class="fb-logo">f</div><div><b>ยินดีต้อนรับกลับมา 👋</b><small>เข้าสู่พื้นที่ทำงานของทีม Facebook</small></div></div>
-    <div class="auth-body">
-      <div class="seg" style="align-self:flex-start"><button class="on" data-am="in">เข้าสู่ระบบ</button><button data-am="up">สมัครด้วยรหัสเชิญ</button></div>
-      <label class="f">อีเมล<input class="inp" id="aEmail" type="email" autocomplete="username" placeholder="name@example.com"></label>
-      <label class="f">รหัสผ่าน<span class="studio-password"><input class="inp" id="aPass" type="password" autocomplete="current-password" placeholder="อย่างน้อย 6 ตัวอักษร"><button type="button" id="studioPassToggle" aria-label="แสดงรหัสผ่าน" aria-pressed="false">แสดง</button></span></label>
-      <div id="upOnly" class="hidden" style="display:flex;flex-direction:column;gap:12px">
-        <label class="f">ชื่อที่แสดงในระบบ<input class="inp" id="aName" placeholder="เช่น อีฟ"></label>
-        <label class="f">รหัสเชิญ<input class="inp" id="aInvite" placeholder="ขอรหัสจากหัวหน้าทีม" style="text-transform:uppercase"></label>
-      </div>
-      <button class="btn pri" id="aGo" style="padding:10px">เข้าสู่ระบบ</button>
-      <div id="aMsg" class="small muted" role="status" aria-live="polite"></div>
-    </div>
-    <div class="auth-foot">MASARU GROUP · สำหรับสมาชิกทีม Facebook</div>
-  </div>
-</div>
-
-<div id="hubWrap" class="fb-main hidden">
-  <header class="fb-top"><h1>🏠 หน้าหลัก</h1><span class="sub" id="todayLbl"></span></header>
-  <main class="fb-content" id="page"><section class="studio-intro studio-home" aria-label="ภาพรวมหน้า"><div><span class="studio-eyebrow">YOUR TEAM, YOUR SPACE</span><h2>วันนี้ มาทำให้เต็มที่กัน ✨</h2><p>รวมทุกงานของทีม Facebook ไว้ในพื้นที่เดียว</p><div class="studio-shortcuts"><a href="board.html">🗂️ เปิดบอร์ดงาน</a><a href="board.html#routine">✅ Routine วันนี้</a><a href="manual.html">📖 คู่มือทีม</a></div></div><svg class="studio-art" viewBox="0 0 300 200" fill="none" aria-hidden="true"><ellipse cx="157" cy="179" rx="111" ry="10" fill="#8AA5D7" opacity=".12"/><g transform="rotate(-7 138 103)"><rect x="53" y="39" width="172" height="123" rx="15" fill="#DCE8FB"/><rect x="47" y="31" width="172" height="123" rx="15" fill="white" stroke="#C9DAF3"/><path d="M48 60H219" stroke="#E8EEF8"/><circle cx="61" cy="46" r="3" fill="#F0B6C4"/><circle cx="72" cy="46" r="3" fill="#F5D691"/><circle cx="83" cy="46" r="3" fill="#B4DCCE"/><rect x="62" y="74" width="54" height="62" rx="8" fill="#E9F1FF"/><path d="M73 117L83 105L92 111L105 89" stroke="#548BE1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M99 89H106V97" stroke="#548BE1" stroke-width="4" stroke-linecap="round"/><rect x="130" y="79" width="64" height="6" rx="3" fill="#CCDDF5"/><rect x="130" y="93" width="44" height="5" rx="2.5" fill="#E0E9F8"/><rect x="130" y="114" width="53" height="21" rx="7" fill="#EEF5FF"/><path d="M142 124L147 128L154 119" stroke="#6C9ADB" stroke-width="2" stroke-linecap="round"/><path d="M161 124H173" stroke="#A4BFE6" stroke-width="3" stroke-linecap="round"/></g><g class="float"><rect x="208" y="13" width="56" height="54" rx="17" fill="#377EF0"/><path d="M239 57V34H245L246 27H239V24C239 21 240 20 243 20H247V14H242C234 14 231 18 231 24V27H226V34H231V57" fill="white" transform="translate(0 5) scale(.96)"/></g><g class="float"><rect x="17" y="112" width="70" height="49" rx="16" fill="#FCE6EE" stroke="#F4D5DF"/><path d="M43 137C29 128 43 116 49 126C57 116 69 129 49 140L43 137Z" fill="#DD8CA7"/><circle cx="68" cy="137" r="3" fill="#ECC0D0"/></g><g transform="rotate(7 224 150)"><rect x="184" y="129" width="101" height="47" rx="14" fill="#EDF8F2" stroke="#CAE6D8"/><circle cx="207" cy="152" r="11" fill="#AAD6C1"/><path d="M202 152L206 156L212 148" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M225 146H267M225 155H253" stroke="#9FC6B6" stroke-width="4" stroke-linecap="round"/></g><path d="M34 38V49M28.5 43.5H39.5M266 97V108M260.5 102.5H271.5" stroke="#ACBFE3" stroke-width="2" stroke-linecap="round"/><circle cx="119" cy="17" r="4" fill="#EDCD9C"/><circle cx="159" cy="185" r="3" fill="#B7C9EA"/></svg></section>
-    <div id="hero"></div>
-    <div class="grid g4 keep2 mt" id="tiles"></div>
-    <div class="grid mt" style="grid-template-columns:1.6fr 1fr" id="midRow">
-      <div class="card"><div class="card-h"><h2>เมนูระบบ</h2><span class="hint">ทุกคนที่ล็อกอินเข้าถึงได้ทุกเมนู</span></div><div class="card-b"><div class="grid g2" id="menus"></div></div></div>
-      <div class="grid" style="align-content:start">
-        <div class="card"><div class="card-h"><h2>✅ Routine วันนี้ของฉัน</h2><span class="sp"></span><a class="btn sm" href="board.html#routine">เปิด</a></div><div class="card-b" id="myRoutine"></div></div>
-        <div class="card"><div class="card-h"><h2>🗂️ งานของฉันที่ยังไม่เสร็จ</h2><span class="sp"></span><a class="btn sm" href="board.html">บอร์ดงาน</a></div><div class="card-b" id="myTasks"></div></div>
-      </div>
-    </div>
-  </main>
-  <footer class="fb-foot">MASARU Group · ระบบแผนก Facebook · ข้อมูลภายในบริษัท ห้ามเผยแพร่</footer>
-</div>
+<body class="studio-page studio-manual">
+<div class="fb-main"><header class="fb-top"><h1>📖 คู่มือการทำงาน</h1><span class="sub">Digital Marketing · Facebook Ads · SOP ทีม — ค้นหาได้ แก้ไขได้</span></header><main class="fb-content" id="page"><section class="studio-intro " aria-label="ภาพรวมหน้า"><div><span class="studio-eyebrow">TEAM PLAYBOOK</span><h2>เรื่องน่ารู้ อยู่ตรงนี้</h2><p>เปิดคู่มือ ค้นหาคำตอบ และแบ่งปันวิธีทำงานให้ทีม</p></div><span class="studio-sticker" aria-hidden="true">📖</span></section><div class="man">
+  <aside class="card toc no-print">
+    <input class="inp" id="q" placeholder="🔎 ค้นหาในคู่มือ เช่น Retarget, อุทธรณ์" style="width:100%">
+    <div id="results" class="hidden mt"></div>
+    <div id="tocList"></div>
+    <div class="row mt"><button class="btn sm" id="bAdd" style="width:100%">➕ เพิ่มบท / SOP ใหม่</button></div>
+  </aside>
+  <article class="card doc" id="doc"><div class="loading"><span class="spin"></span>กำลังโหลดคู่มือ...</div></article>
+</div></main><footer class="fb-foot">MASARU Group · ระบบแผนก Facebook · ข้อมูลภายในบริษัท ห้ามเผยแพร่</footer></div>
 <script>
 /* ===== MASARU FACEBOOK HUB — COMMON (ตั้งค่า Supabase ตรงนี้) ===== */
 const FB_SUPABASE_URL  = 'https://ufnlbccsjftjsbxipqkr.supabase.co';
@@ -528,165 +520,126 @@ async function fbBoot(active, title) {
   return FB;
 }
 
-let authMode = 'in';
-const next = new URLSearchParams(location.search).get('next');
-
-$$('[data-am]').forEach(b => b.onclick = () => {
-  authMode = b.dataset.am; $$('[data-am]').forEach(x => x.classList.toggle('on', x === b));
-  $('#upOnly').classList.toggle('hidden', authMode !== 'up');
-  $('#aGo').textContent = authMode === 'up' ? 'สมัครและเข้าสู่ระบบ' : 'เข้าสู่ระบบ';
-  $('#aPass').autocomplete = authMode === 'up' ? 'new-password' : 'current-password';
-});
-$('#aPass').addEventListener('keydown', e => { if (e.key === 'Enter' && authMode === 'in') $('#aGo').click(); });
-$('#aGo').onclick = async () => {
-  const email = $('#aEmail').value.trim(), pass = $('#aPass').value;
-  const msg = t => $('#aMsg').innerHTML = t;
-  if (!email || pass.length < 6) return msg('<span class="down">กรอกอีเมลและรหัสผ่าน (อย่างน้อย 6 ตัว)</span>');
-  $('#aGo').disabled = true;
-  try {
-    if (authMode === 'up') {
-      const code = $('#aInvite').value.trim().toUpperCase(), name = $('#aName').value.trim();
-      if (!code || !name) { msg('<span class="down">กรอกชื่อที่แสดงและรหัสเชิญ</span>'); return; }
-      const { data: ok } = await sb.rpc('fb_verify_invite', { p_code: code });
-      if (!ok) { msg('<span class="down">รหัสเชิญไม่ถูกต้องหรือหมดอายุ</span>'); return; }
-      let { data, error } = await sb.auth.signUp({ email, password: pass, options: { data: { display_name: name } } });
-      if (error && /registered/i.test(error.message)) ({ data, error } = await sb.auth.signInWithPassword({ email, password: pass }));
-      if (error) { msg('<span class="down">' + esc(error.message) + '</span>'); return; }
-      if (!data.session) { msg('สมัครแล้ว กรุณายืนยันอีเมล แล้วกลับมาเข้าสู่ระบบ (หรือให้ผู้ดูแลปิด Confirm email ใน Supabase)'); localStorage.setItem('fb_pending_invite', JSON.stringify({ code, name })); return; }
-      const { data: r } = await sb.rpc('fb_claim_invite', { p_code: code, p_display_name: name, p_member_code: null });
-      if (r !== 'ok') { msg('<span class="down">ใช้รหัสเชิญไม่สำเร็จ: ' + esc(r) + '</span>'); return; }
-    } else {
-      const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-      if (error) { msg('<span class="down">เข้าสู่ระบบไม่สำเร็จ: ' + esc(error.message) + '</span>'); return; }
-    }
-    await start();
-  } finally { $('#aGo').disabled = false; }
+let CH = [], CUR = null, EDIT = false, TPLS = [];
+const IMG_BASE = () => (FB.settings.manual_img_base || 'manual-img').replace(/\/$/, '');
+/* รูปคู่มือ: รวมเป็นไฟล์ละบท manual-img/chNN.js (โหลดเฉพาะบทที่เปิด) */
+const IMG_CH = {"78":1,"192":1,"292":1,"173":1,"232":1,"60":1,"130":1,"132":2,"190":2,"122":2,"44":2,"172":2,"127":2,"54":2,"68":2,"199":2,"70":2,"71":2,"80":2,"65":2,"117":2,"139":2,"245":2,"207":2,"271":2,"221":2,"118":2,"283":2,"265":2,"109":2,"155":2,"213":2,"150":3,"220":3,"280":3,"35":3,"242":3,"214":3,"42":3,"231":3,"107":3,"246":3,"244":3,"131":3,"104":3,"69":3,"224":3,"226":3,"204":3,"113":3,"180":3,"43":3,"227":3,"185":3,"206":3,"121":3,"129":3,"38":3,"58":4,"198":4,"85":4,"252":4,"100":4,"234":4,"167":4,"88":4,"22":4,"205":4,"81":4,"166":5,"230":5,"91":5,"176":5,"108":5,"212":5,"12":5,"238":5,"74":5,"267":5,"288":5,"5":5,"29":5,"76":5,"120":5,"79":5,"189":5,"20":5,"142":5,"86":6,"141":6,"10":6,"160":6,"83":6,"48":6,"87":6,"200":6,"287":6,"285":6,"106":6,"179":6,"4":6,"181":6,"16":6,"61":6,"18":6,"153":6,"1":6,"111":6,"135":6,"103":6,"216":6,"133":6,"31":6,"41":6,"177":6,"102":6,"228":6,"250":6,"165":6,"25":6,"157":6,"202":6,"93":6,"272":6,"140":6,"276":6,"262":6,"195":6,"21":6,"98":6,"134":6,"274":6,"208":6,"154":6,"247":6,"161":6,"196":6,"77":6,"294":6,"62":6,"136":6,"258":6,"116":6,"52":6,"40":6,"261":6,"188":6,"59":6,"290":6,"39":6,"45":6,"197":6,"149":6,"222":7,"193":7,"95":7,"73":7,"281":7,"171":7,"63":7,"194":7,"203":7,"3":7,"143":7,"286":7,"273":7,"72":7,"24":7,"282":7,"49":7,"51":7,"255":7,"89":7,"114":7,"9":7,"26":7,"27":7,"90":7,"158":7,"240":7,"145":7,"33":7,"259":7,"291":7,"175":7,"251":7,"162":7,"169":7,"187":7,"278":7,"257":7,"11":7,"210":7,"151":7,"219":7,"235":7,"119":7,"239":7,"30":7,"6":8,"46":8,"99":8,"163":8,"168":8,"125":8,"266":8,"110":8,"275":8,"279":8,"14":8,"34":8,"8":8,"144":8,"201":8,"269":8,"223":8,"82":8,"268":8,"174":8,"178":8,"293":8,"209":8,"124":8,"211":8,"170":9,"277":9,"17":9,"249":9,"270":9,"237":9,"112":9,"126":9,"123":9,"55":10,"36":10,"92":10,"2":10,"233":10,"53":10,"137":10,"186":10,"164":10,"146":10,"254":10,"97":10,"94":10,"128":10,"101":10,"66":10,"253":10,"64":10,"13":10,"241":12,"284":12,"84":12,"264":12,"67":12,"37":12,"50":12,"105":12,"32":12,"256":13,"152":13,"23":13,"289":13,"156":13,"7":13,"236":13,"19":13,"28":13,"15":13,"147":13,"191":13,"297":13,"183":13,"296":13,"57":13,"263":13,"115":13,"248":13,"225":13,"218":13,"148":14,"243":14,"295":14,"56":14,"182":14,"159":14,"260":14,"75":14,"229":14,"215":14,"138":14,"96":14,"184":14,"217":14};
+const IMG_PIX = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+const IMG_BUNDLES = {};
+const resolve = h => (h || '').replace(/src="\{\{IMG\}\}\/([^"]+)"/g, (m, n) => `src="${IMG_PIX}" data-fbimg="${n}"`);
+const unresolve = el => { const c = el.cloneNode(true); c.querySelectorAll('img[data-fbimg]').forEach(i => { i.setAttribute('src', '{{IMG}}/' + i.dataset.fbimg); i.removeAttribute('data-fbimg'); }); return c.innerHTML.replaceAll(`src="${IMG_BASE()}/`, 'src="{{IMG}}/'); };
+function loadImgBundle(ch) {
+  if (!IMG_BUNDLES[ch]) IMG_BUNDLES[ch] = new Promise(res => { const s = document.createElement('script'); s.src = `${IMG_BASE()}/ch${String(ch).padStart(2, '0')}.js`; s.onload = () => res(true); s.onerror = () => res(false); document.head.appendChild(s); });
+  return IMG_BUNDLES[ch];
+}
+async function fillImages(root) {
+  const imgs = [...root.querySelectorAll('img[data-fbimg]')]; if (!imgs.length) return;
+  const need = new Set();
+  imgs.forEach(i => { const n = i.dataset.fbimg; if (!(window.__FBIMG || {})[n]) need.add(IMG_CH[(n.match(/\d+/) || [])[0]] || CUR?.chapter); });
+  await Promise.all([...need].filter(Boolean).map(loadImgBundle));
+  imgs.forEach(i => { if (!i.isConnected) return; const n = i.dataset.fbimg; i.src = (window.__FBIMG || {})[n] || `${IMG_BASE()}/${n}`; });
+}
+const plain = h => h.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+async function load() {
+  CH = (await sb.from('fb_manual').select('*').order('sort').order('chapter')).data || [];
+  TPLS = (await sb.from('fb_routine_templates').select('title,member_code,manual_id').not('manual_id', 'is', null)).data || [];
+  CH.forEach(c => c._t = plain(c.html).toLowerCase());
+  renderToc();
+  const m = location.hash.match(/#ch-(\d+)(?:-s(\d+))?/);
+  const first = m ? CH.find(c => c.chapter === +m[1]) : CH[0];
+  if (first) open(first.id, m && m[2] ? +m[2] : null); else $('#doc').innerHTML = '<div class="empty">ยังไม่มีคู่มือ — รันไฟล์ 03_fb_manual_seed.sql หรือกด “เพิ่มบท”</div>';
+}
+function subsOf(c) { const d = document.createElement('div'); d.innerHTML = c.html; return [...d.querySelectorAll('h3')].map(h => h.textContent.trim()).filter(Boolean); }
+function renderToc() {
+  const grp = (t, list) => list.length ? `<div class="grp">${t}</div>` + list.map(c => `<div class="ch ${CUR?.id === c.id ? 'on' : ''}" data-id="${c.id}"><span class="n">${c.chapter}</span><span>${esc(c.title)}</span></div>${CUR?.id === c.id ? `<div class="subs">${subsOf(c).map((s, i) => `<a href="#ch-${c.chapter}-s${i}" data-s="${i}">${esc((t => t.length > 56 ? t.slice(0, 56) + '…' : t)(s.replace(/^\d+(\.\d+)*\.?\s*/, '')))}</a>`).join('')}</div>` : ''}`).join('') : '';
+  $('#tocList').innerHTML = grp('คู่มือ Digital Marketing', CH.filter(c => c.chapter <= 14)) + grp('SOP & ทีม', CH.filter(c => c.chapter > 14));
+  $$('#tocList .ch').forEach(el => el.onclick = () => open(el.dataset.id));
+  $$('#tocList .subs a').forEach(a => a.onclick = e => { e.preventDefault(); scrollSub(+a.dataset.s); history.replaceState(null, '', a.getAttribute('href')); });
+}
+function scrollSub(i) { const h = $$('#art h3')[i]; if (h) window.scrollTo({ top: h.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth' }); }
+function open(id, sub = null, hl = null) {
+  if (EDIT && !confirm('ยังไม่ได้บันทึกการแก้ไข ออกจากโหมดแก้ไข?')) return;
+  EDIT = false; CUR = CH.find(c => c.id === id); if (!CUR) return;
+  history.replaceState(null, '', `#ch-${CUR.chapter}${sub != null ? '-s' + sub : ''}`);
+  const i = CH.indexOf(CUR), prev = CH[i - 1], next = CH[i + 1];
+  const rel = TPLS.filter(t => t.manual_id === CUR.id);
+  $('#doc').innerHTML = `<div class="doc-h"><span class="num">บทที่ ${CUR.chapter}</span><div style="flex:1"><h2 id="dTitle">${esc(CUR.title)}</h2><div class="row mt small">${(CUR.tags || []).map(t => `<span class="chip">#${esc(t)}</span>`).join('')}<span class="muted">แก้ไขล่าสุด ${new Date(CUR.updated_at).toLocaleDateString('th-TH')} ${CUR.updated_by && CUR.updated_by !== 'seed' ? 'โดย ' + esc(CUR.updated_by) : ''}</span></div></div><div class="row no-print"><button class="btn sm" id="bEdit">✏️ แก้ไข</button><button class="btn sm" onclick="window.print()">🖨️</button><button class="btn sm" id="bLink" title="คัดลอกลิงก์บทนี้">🔗</button></div></div>
+    <div id="tbWrap"></div><div class="art" id="art">${resolve(CUR.html)}</div>
+    ${rel.length ? `<div class="rel no-print"><b>✅ งาน Routine ที่ใช้บทนี้</b><div class="row mt">${rel.map(t => `<span class="chip">${esc(mem(t.member_code).nickname)} · ${esc(t.title)}</span>`).join('')}</div></div>` : ''}
+    <div class="nav2 no-print">${prev ? `<button class="btn" data-go="${prev.id}">‹ บทที่ ${prev.chapter} ${esc(prev.title)}</button>` : '<span></span>'}${next ? `<button class="btn" data-go="${next.id}">บทที่ ${next.chapter} ${esc(next.title)} ›</button>` : ''}</div>`;
+  $$('#doc [data-go]').forEach(b => b.onclick = () => { open(b.dataset.go); window.scrollTo({ top: 0 }); });
+  fillImages($('#art'));
+  $$('#art img').forEach(im => { im.onerror = () => { im.style.display = 'none'; }; im.onclick = () => { if (EDIT) return; const l = document.createElement('div'); l.className = 'lbx'; l.innerHTML = `<img src="${im.src}">`; l.onclick = () => l.remove(); document.body.appendChild(l); }; });
+  $('#bEdit').onclick = startEdit;
+  $('#bLink').onclick = async () => { try { await navigator.clipboard.writeText(location.href); toast('คัดลอกลิงก์แล้ว', 'ok'); } catch { } };
+  renderToc();
+  if (hl) { highlight(hl); } else if (sub != null) setTimeout(() => scrollSub(sub), 60); else window.scrollTo({ top: 0 });
+}
+function highlight(q) {
+  const art = $('#art'); const w = document.createTreeWalker(art, NodeFilter.SHOW_TEXT); const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'); const nodes = [];
+  while (w.nextNode()) if (re.test(w.currentNode.nodeValue)) nodes.push(w.currentNode);
+  nodes.forEach(n => { const s = document.createElement('span'); s.innerHTML = esc(n.nodeValue).replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), m => `<mark>${m}</mark>`); n.replaceWith(s); });
+  const f = $('#art mark'); if (f) setTimeout(() => window.scrollTo({ top: f.getBoundingClientRect().top + window.scrollY - 120, behavior: 'smooth' }), 60);
+}
+$('#q').oninput = debounce(() => {
+  const q = $('#q').value.trim().toLowerCase(), box = $('#results');
+  if (q.length < 2) { box.classList.add('hidden'); $('#tocList').classList.remove('hidden'); return; }
+  const res = [];
+  CH.forEach(c => { let i = c._t.indexOf(q), n = 0; const tHit = c.title.toLowerCase().includes(q); if (i < 0 && !tHit) return; const cnt = c._t.split(q).length - 1; const sn = i >= 0 ? c._t.slice(Math.max(0, i - 40), i + 70) : ''; res.push({ c, cnt, sn, tHit }); });
+  res.sort((a, b) => (b.tHit - a.tHit) || (b.cnt - a.cnt));
+  $('#tocList').classList.add('hidden'); box.classList.remove('hidden');
+  box.innerHTML = res.length ? `<div class="xs muted mb">พบใน ${res.length} บท</div>` + res.map(r => `<div class="res" data-id="${r.c.id}"><b>${r.c.chapter}. ${esc(r.c.title)}</b> <span class="xs muted">(${r.cnt} จุด)</span><div class="sn">…${esc(r.sn).replace(new RegExp(esc(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), m => `<mark>${m}</mark>`)}…</div></div>`).join('') + '<button class="btn sm mt" id="qClr">✕ ล้างการค้นหา</button>' : '<div class="muted small">ไม่พบ</div>';
+  $$('#results .res').forEach(el => el.onclick = () => open(el.dataset.id, null, $('#q').value.trim()));
+  $('#qClr') && ($('#qClr').onclick = () => { $('#q').value = ''; $('#q').oninput(); });
+}, 250);
+/* ---------- edit ---------- */
+function startEdit() {
+  EDIT = true; const art = $('#art'); art.contentEditable = 'true'; art.focus();
+  $('#dTitle').contentEditable = 'true';
+  $('#tbWrap').innerHTML = `<div class="tb no-print">
+    ${[['bold', '<b>B</b>'], ['italic', '<i>I</i>'], ['underline', '<u>U</u>'], ['h3', 'หัวข้อ'], ['h4', 'หัวข้อย่อย'], ['p', 'ย่อหน้า'], ['insertUnorderedList', '• รายการ'], ['insertOrderedList', '1. รายการ'], ['blockquote', '❝ กล่องเน้น'], ['link', '🔗 ลิงก์'], ['img', '🖼️ รูป'], ['removeFormat', 'ล้างรูปแบบ']].map(([c, t]) => `<button class="btn sm" data-cmd="${c}">${t}</button>`).join('')}
+    <span class="sp"></span><input class="inp" id="eTags" value="${esc((CUR.tags || []).join(', '))}" placeholder="แท็ก คั่นด้วย ," style="width:180px"><button class="btn sm red" id="eDel">ลบบท</button><button class="btn sm" id="eCancel">ยกเลิก</button><button class="btn sm pri" id="eSave">💾 บันทึก</button></div>`;
+  $$('[data-cmd]').forEach(b => b.onmousedown = e => { e.preventDefault(); const c = b.dataset.cmd;
+    if (['h3', 'h4', 'p', 'blockquote'].includes(c)) document.execCommand('formatBlock', false, c);
+    else if (c === 'link') { const u = prompt('ลิงก์ (https://...)'); if (u) document.execCommand('createLink', false, u); }
+    else if (c === 'img') pickImage();
+    else document.execCommand(c, false, null); });
+  $('#eCancel').onclick = () => { EDIT = false; open(CUR.id); };
+  $('#eSave').onclick = async () => {
+    const html = unresolve($('#art')).replace(/<mark>(.*?)<\/mark>/g, '$1');
+    const title = $('#dTitle').textContent.trim() || CUR.title;
+    const tags = $('#eTags').value.split(',').map(s => s.trim()).filter(Boolean);
+    chk(await sb.from('fb_manual').update({ html, title, tags, updated_at: new Date().toISOString(), updated_by: FB.profile.display_name }).eq('id', CUR.id), 'บันทึกคู่มือ');
+    Object.assign(CUR, { html, title, tags, updated_at: new Date().toISOString(), updated_by: FB.profile.display_name, _t: plain(html).toLowerCase() });
+    EDIT = false; toast('บันทึกคู่มือแล้ว', 'ok'); open(CUR.id);
+  };
+  $('#eDel').onclick = async () => { if (!await confirmBox(`ลบบทที่ ${CUR.chapter} “${esc(CUR.title)}” ถาวร?`, 'ลบ', true)) return; chk(await sb.from('fb_manual').delete().eq('id', CUR.id), 'ลบ'); EDIT = false; CH = CH.filter(c => c.id !== CUR.id); CUR = null; renderToc(); CH[0] ? open(CH[0].id) : ($('#doc').innerHTML = ''); };
+}
+function pickImage() {
+  const sel = window.getSelection(); const range = sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return; toast('กำลังอัปโหลดรูป...');
+    const blob = await shrink(f, 1100);
+    const path = `manual/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.webp`;
+    const { error } = await sb.storage.from('fb-files').upload(path, blob, { contentType: 'image/webp', upsert: false });
+    if (error) return toast('อัปโหลดไม่สำเร็จ: ' + error.message, 'err');
+    const url = sb.storage.from('fb-files').getPublicUrl(path).data.publicUrl;
+    $('#art').focus(); if (range) { sel.removeAllRanges(); sel.addRange(range); }
+    document.execCommand('insertHTML', false, `<p><img src="${url}" loading="lazy"></p>`); toast('แทรกรูปแล้ว', 'ok');
+  };
+  inp.click();
+}
+function shrink(file, maxW) {
+  return new Promise(res => { const img = new Image(); img.onload = () => { const s = Math.min(1, maxW / img.width); const c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); c.toBlob(b => res(b || file), 'image/webp', .8); }; img.onerror = () => res(file); img.src = URL.createObjectURL(file); });
+}
+$('#bAdd').onclick = () => {
+  const nx = Math.max(0, ...CH.map(c => c.chapter)) + 1;
+  const md = openModal({ title: '➕ เพิ่มบท / SOP ใหม่', body: `<div class="grid g2"><label class="f">เลขบท<input class="inp" id="nN" value="${nx}"></label><label class="f">ชื่อบท<input class="inp" id="nT" placeholder="เช่น SOP การปิดแอดที่ %ค่าแอดสูง"></label></div><label class="f mt">แท็ก (คั่นด้วย ,)<input class="inp" id="nG"></label>`, foot: '<button class="btn pri" id="nS">สร้างแล้วเริ่มเขียน</button>' });
+  md.querySelector('#nS').onclick = async () => { const t = md.querySelector('#nT').value.trim(); if (!t) return toast('กรอกชื่อบท', 'err'); const n = +md.querySelector('#nN').value || nx; const d = chk(await sb.from('fb_manual').insert({ chapter: n, title: t, html: '<p>เริ่มเขียนเนื้อหาที่นี่...</p>', tags: md.querySelector('#nG').value.split(',').map(s => s.trim()).filter(Boolean), sort: n * 10, updated_by: FB.profile.display_name }).select().single(), 'สร้างบท'); md.close(); d._t = ''; CH.push(d); CH.sort((a, b) => a.sort - b.sort || a.chapter - b.chapter); open(d.id); startEdit(); };
 };
-
-async function start() {
-  if (FB_SUPABASE_URL.startsWith('__')) { $('#auth').classList.remove('hidden'); $('#aMsg').innerHTML = '<span class="down">⚠️ ยังไม่ได้ตั้งค่า Supabase URL / ANON KEY</span>'; return; }
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { $('#auth').classList.remove('hidden'); return; }
-  FB.user = session.user;
-  let { data: prof } = await sb.from('fb_profiles').select('*').eq('user_id', FB.user.id).maybeSingle();
-  if (!prof) {
-    const pend = JSON.parse(localStorage.getItem('fb_pending_invite') || 'null');
-    if (pend) { const { data: r } = await sb.rpc('fb_claim_invite', { p_code: pend.code, p_display_name: pend.name, p_member_code: null }); if (r === 'ok') { localStorage.removeItem('fb_pending_invite'); ({ data: prof } = await sb.from('fb_profiles').select('*').eq('user_id', FB.user.id).maybeSingle()); } }
-  }
-  if (!prof) {
-    $('#auth').classList.remove('hidden');
-    authMode = 'up'; $$('[data-am]')[1].click(); $('#aEmail').value = FB.user.email;
-    $('#aMsg').innerHTML = 'บัญชีนี้ยังไม่มีสิทธิ์เข้าระบบ กรอก <b>ชื่อที่แสดง</b> + <b>รหัสเชิญ</b> แล้วกดสมัคร (ใช้รหัสผ่านเดิม)';
-    return;
-  }
-  FB.profile = prof;
-  if (next && next !== 'index.html') { location.href = next; return; }
-  $('#auth').classList.add('hidden'); $('#hubWrap').classList.remove('hidden');
-  await Promise.all([loadMembers(), loadSettings()]);
-  FB.me = FB.mm[prof.member_code] || null;
-  renderShell('index');
-  $('#todayLbl').textContent = 'วันนี้ ' + thDate(todayISO());
-  if (!FB.me) askWhoAmI();
-  renderMenus();
-  loadHub();
-}
-
-function askWhoAmI() {
-  const opts = FB.members.filter(m => m.active && m.team !== 'page').map(m => `<button class="chip tog" data-c="${m.code}" style="padding:6px 12px;font-size:13px">${esc(m.emoji || '')} ${esc(m.nickname)}</button>`).join(' ');
-  const md = openModal({ title: '👋 คุณคือใครในทีม?', body: `<p class="muted small" style="margin-top:0">ผูกบัญชีกับชื่อในทีม เพื่อให้ระบบแสดง Routine / งานของคุณ (เปลี่ยนภายหลังได้ในหน้า ตั้งค่า)</p><div class="row">${opts}</div>`, foot: '<button class="btn" data-skip>ข้ามไปก่อน</button>' });
-  md.querySelector('[data-skip]').onclick = () => md.close();
-  md.querySelectorAll('[data-c]').forEach(b => b.onclick = async () => {
-    chk(await sb.from('fb_profiles').update({ member_code: b.dataset.c }).eq('user_id', FB.user.id), 'บันทึก');
-    FB.profile.member_code = b.dataset.c; FB.me = FB.mm[b.dataset.c]; md.close(); toast('ผูกชื่อเรียบร้อย', 'ok'); loadHub();
-  });
-}
-
-function renderMenus() {
-  const M = [
-    ['sales.html', '📈', '1. ภาพรวมยอดขาย', 'ยอดขายรายวัน / เดือน / ปี เทียบปีก่อน + ความคืบหน้าเป้า 1,000 ล้าน'],
-    ['ads.html', '💸', '2. ค่าแอดรายคน', 'ค่าแอด ยอดขาย %ค่าแอด ROAS รายคน รายวัน/รายเดือน'],
-    ['people.html', '🏆', '3. ผลงานรายคน', 'ภาพรวมทั้งปี เทียบเป้ารายไตรมาส จัดอันดับ'],
-    ['expense.html', '💳', '4. ค่าใช้จ่าย', 'ยอดตัดบัตร เช็คตัดบัตร บัญชีโฆษณา งบประมาณ 2026'],
-    ['kpi.html', '🎯', '5. KPI', 'คะแนน KPI 9 ข้อ ถ่วงน้ำหนักอัตโนมัติ + Action Plan'],
-    ['board.html', '🗂️', 'บอร์ดงาน & Routine', 'TO DO / DOING / DONE · Routine รายวัน · รายงานประจำวัน'],
-    ['manual.html', '📖', '7. คู่มือการทำงาน', 'คู่มือ Digital Marketing 14 บท + SOP ทีม ค้นหาได้'],
-    ['#', '📚', '6. คอร์สเรียน', 'เฟส 2 — รอไฟล์ข้อมูลคอร์ส', 1],
-    ['#', '🎨', 'สั่งงานกราฟิก / คอนเทนต์ / KOL / ALL PAGE', 'เฟส 2', 1],
-    ['settings.html', '⚙️', 'ตั้งค่า', 'สมาชิก เป้าหมาย Routine ต้นแบบ รหัสเชิญ'],
-  ];
-  $('#menus').innerHTML = M.map(([h, ic, t, d, soon]) => `<a class="card menu-card ${soon ? 'soon' : ''}" href="${h}" ${soon ? 'onclick="toast(\'อยู่ในแผนเฟส 2\');return false"' : ''}><span class="ic">${ic}</span><span><b>${t}</b><small>${d}</small></span></a>`).join('');
-}
-
-async function loadHub() {
-  const today = todayISO(), Y = +today.slice(0, 4), M = +today.slice(5, 7);
-  const ystart = `${Y}-01-01`, pstart = `${Y - 1}-01-01`;
-  const [sales, adsRows, kpiRows] = await Promise.all([
-    fetchAll(() => sb.from('fb_sales_daily').select('d,sales').gte('d', pstart).lte('d', `${Y}-12-31`).order('d')),
-    fetchAll(() => sb.from('fb_ads_daily').select('member_code,d_from,spend,sales').gte('d_from', `${Y}-01-01`)),
-    sb.from('fb_kpi_actuals').select('month,code,score').eq('year', Y).then(r => r.data || []),
-  ]);
-  const cur = sales.filter(r => r.d >= ystart), prev = sales.filter(r => r.d < ystart);
-  const ytd = sum(cur, r => r.sales);
-  const last = cur.length ? cur[cur.length - 1].d : null;
-  const prevSame = last ? sum(prev.filter(r => r.d.slice(5) <= last.slice(5)), r => r.sales) : 0;
-  const target = (FB.settings.year_target || {})[Y] || 1000000000;
-  const dayOfYear = last ? Math.round((parseISO(last) - new Date(Y, 0, 1)) / 864e5) + 1 : 0;
-  const daysY = (Y % 4 === 0 ? 366 : 365);
-  const pacePct = dayOfYear / daysY * 100, pct = ytd / target * 100;
-  const remainMonths = last ? 12 - (+last.slice(5, 7)) + (+last.slice(8) < daysInMonth(Y, +last.slice(5, 7)) ? 1 - (+last.slice(8)) / daysInMonth(Y, +last.slice(5, 7)) : 0) : 12;
-  const needPerMonth = remainMonths > 0 ? (target - ytd) / remainMonths : 0;
-  const forecast = dayOfYear ? ytd / dayOfYear * daysY : 0;
-  $('#hero').innerHTML = `<div class="hub-hero"><div>
-      <div class="muted small">ยอดขายสะสมทีม Facebook ปี ${Y + 543} ${last ? '(ข้อมูลถึง ' + thDate(last) + ')' : ''}</div>
-      <div class="big">${fmtB(ytd)}</div>
-      <div class="row small"><span>เป้า ${fmtM(target, 0)}</span><span>·</span><b>${fmtP(pct)}</b><span class="muted">สำเร็จแล้ว</span><span>·</span><span>เทียบช่วงเดียวกันปีก่อน ${chg(ytd, prevSame)}</span></div>
-      <div class="bar tall mt" style="position:relative"><i style="width:${Math.min(100, pct)}%"></i><span class="pace" style="left:${Math.min(100, pacePct)}%" title="ควรถึง ${fmtP(pacePct)} ณ วันนี้"></span></div>
-      <div class="row xs mt muted"><span>▮ เส้นเหลือง = ความคืบหน้าที่ควรเป็นตามเวลา (${fmtP(pacePct)})</span></div>
-    </div>
-    <div class="grid g2" style="gap:10px">
-      <div><div class="muted small">คงเหลือถึงเป้า</div><div style="font-size:21px;font-weight:800">${fmtM(Math.max(0, target - ytd))}</div></div>
-      <div><div class="muted small">ต้องทำเฉลี่ย/เดือน</div><div style="font-size:21px;font-weight:800">${fmtM(Math.max(0, needPerMonth))}</div></div>
-      <div><div class="muted small">คาดการณ์ทั้งปี (อัตราปัจจุบัน)</div><div style="font-size:21px;font-weight:800">${fmtM(forecast)}</div></div>
-      <div><div class="muted small">คาดว่าจะได้ % ของเป้า</div><div style="font-size:21px;font-weight:800">${fmtP(forecast / target * 100)}</div></div>
-    </div></div>`;
-  // tiles
-  const mk = `${Y}-${pad2(M)}`;
-  const monthRows = cur.filter(r => r.d.startsWith(mk));
-  const lastM = last ? last.slice(0, 7) : mk;
-  const lmRows = cur.filter(r => r.d.startsWith(lastM));
-  const lmPrev = prev.filter(r => r.d.slice(5, 7) === lastM.slice(5, 7) && r.d.slice(8) <= (last || '').slice(8));
-  const adsM = adsRows.filter(r => r.d_from.startsWith(mk));
-  const adsSpend = sum(adsM, r => r.spend), adsSales = sum(adsM, r => r.sales);
-  const byM = {}; kpiRows.forEach(r => { (byM[r.month] = byM[r.month] || []).push(r); });
-  const defs = (await sb.from('fb_kpi_defs').select('code,weight')).data || [];
-  const wmap = Object.fromEntries(defs.map(d => [d.code, +d.weight]));
-  const kMonths = Object.keys(byM).map(Number).sort((a, b) => b - a);
-  const kLast = kMonths[0];
-  const kScore = kLast ? sum(byM[kLast], r => (+r.score || 0) * (wmap[r.code] || 0)) / 100 : null;
-  $('#tiles').innerHTML = [
-    ['ยอดขายเดือน ' + TH_MS[+lastM.slice(5) - 1] + ' (ถึงล่าสุด)', fmtM(sum(lmRows, r => r.sales)), `เทียบช่วงเดียวกันปีก่อน ${chg(sum(lmRows, r => r.sales), sum(lmPrev, r => r.sales))}`],
-    ['ยอดขายวันล่าสุด', last ? fmtM(cur[cur.length - 1].sales) : '–', last ? thDate(last) : 'ยังไม่มีข้อมูล'],
-    ['%ค่าแอด เดือนนี้ (ค่าแอดรายคน)', adsSpend ? adsBadge(adsSpend / adsSales * 100) : '–', adsSpend ? `ค่าแอด ${fmtM(adsSpend)} · ยอด ${fmtM(adsSales)}` : 'ยังไม่มีข้อมูลเดือนนี้'],
-    ['คะแนน KPI ล่าสุด', kScore != null ? kScore.toFixed(1) : '–', kLast ? `เดือน${TH_M[kLast - 1]} (ถ่วงน้ำหนัก)` : ''],
-  ].map(([l, v, d]) => `<div class="card tile"><span class="lb">${l}</span><span class="v">${v}</span><span class="d">${d}</span></div>`).join('');
-  // my routine + tasks
-  if (!FB.me) { $('#myRoutine').innerHTML = '<div class="muted small">ยังไม่ได้ผูกชื่อในทีม <a href="#" onclick="askWhoAmI();return false">ผูกตอนนี้</a></div>'; $('#myTasks').innerHTML = ''; return; }
-  const dow = ((parseISO(today).getDay() + 6) % 7) + 1;
-  const [tpl, logs, cards] = await Promise.all([
-    sb.from('fb_routine_templates').select('id,title,weekdays').eq('member_code', FB.me.code).eq('active', true).order('sort').then(r => r.data || []),
-    sb.from('fb_routine_logs').select('template_id').eq('d', today).eq('member_code', FB.me.code).then(r => r.data || []),
-    sb.from('fb_cards').select('id,title,due_date,list_id,priority').contains('assignees', [FB.me.code]).is('done_at', null).eq('archived', false).order('due_date', { ascending: true, nullsFirst: false }).limit(8).then(r => r.data || []),
-  ]);
-  const todayT = tpl.filter(t => (t.weekdays || []).includes(dow)), doneSet = new Set(logs.map(l => l.template_id));
-  const nDone = todayT.filter(t => doneSet.has(t.id)).length;
-  $('#myRoutine').innerHTML = todayT.length ? `<div class="row"><b style="font-size:22px">${nDone}/${todayT.length}</b><span class="muted small">รายการ</span><span class="sp"></span><span class="small">${fmtP(nDone / todayT.length * 100, 0)}</span></div><div class="bar mt"><i style="width:${nDone / todayT.length * 100}%;background:var(--good)"></i></div>
-    <div class="mt small">${todayT.filter(t => !doneSet.has(t.id)).slice(0, 4).map(t => `<div class="task-li">⬜ ${esc(t.title)}</div>`).join('')}</div>` : '<div class="muted small">ยังไม่มี Routine ต้นแบบของคุณ (ตั้งได้ในหน้า ตั้งค่า)</div>';
-  $('#myTasks').innerHTML = cards.length ? cards.map(c => {
-    const od = c.due_date && c.due_date < today, td = c.due_date === today;
-    return `<a class="task-li" href="board.html#card=${c.id}" style="color:inherit">${c.priority === 1 ? '🚨' : '▫️'} <span style="flex:1">${esc(c.title)}</span>${c.due_date ? `<span class="badge ${od ? 'st-bad' : td ? 'st-warn' : 'st-none'}">${od ? 'เลยกำหนด ' : ''}${thDate(c.due_date, false)}</span>` : ''}</a>`;
-  }).join('') : '<div class="muted small">ไม่มีงานค้าง 🎉</div>';
-}
-start();
+window.addEventListener('beforeunload', e => { if (EDIT) { e.preventDefault(); e.returnValue = ''; } });
+fbBoot('manual').then(load);
 </script>
 <script id="studio-interactions">
 (()=>{
