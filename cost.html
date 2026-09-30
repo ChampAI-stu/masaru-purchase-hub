@@ -88,6 +88,17 @@
   .dlg-body{padding:18px;max-height:70vh;overflow:auto}
   .cb-row{display:grid;grid-template-columns:1fr 92px 34px;gap:6px;align-items:center;margin-bottom:5px}
 .cb-row input{font-size:12.5px}
+/* 🧩 การ์ดรายการในชุด — 1 การ์ด = 1 บรรทัดบนใบ INV */
+.cb-card{background:#fff;border:1px solid var(--line);border-left:3px solid #8E44AD;
+  border-radius:9px;padding:9px 10px;margin-bottom:9px}
+.cb-card .cb-head{display:flex;align-items:center;gap:8px;font-size:12px;color:#8E44AD;margin-bottom:7px}
+.cb-card .cb-head .cb-x{margin-left:auto;width:30px}
+.cb-card label{display:block;font-size:10.5px;color:var(--muted);font-weight:600;margin:5px 0 2px}
+.cb-card input,.cb-card textarea{width:100%;font-size:12.5px;box-sizing:border-box}
+.cb-card textarea{min-height:66px;line-height:1.5;resize:vertical}
+.cb-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:620px){.cb-2{grid-template-columns:1fr}}
+.lt-b{background:#F3E8FA;color:#6C3483}
 .cb-x{border:0;background:#FDECEC;color:#C0392B;border-radius:7px;height:30px;cursor:pointer;font-weight:700}
 .cb-box{background:#F7F9FC;border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin-top:4px}
 .cb-tag{display:inline-block;background:#8E44AD;color:#fff;border-radius:9px;
@@ -351,6 +362,8 @@
             <button class="btn gold" onclick="addLineBySku()">+ เพิ่มรายการ</button>
             <button class="btn ghost edit-only" onclick="kitCollapse()"
               title="รวมบรรทัดของสินค้าที่อยู่ในชุด ให้เหลือบรรทัดเดียวด้วยรหัสชุด">🧩 ยุบเป็นชุด</button>
+            <button class="btn ghost edit-only" onclick="kitExpand()"
+              title="แตกบรรทัดรหัสชุด ออกเป็นหลายบรรทัดบน INVOICE (Packing List ยังเป็นบรรทัดเดียว) · กดซ้ำเพื่อรวมกลับ">🧩 แตกรายการชุด</button>
           </div>
           <div id="lineItems" style="overflow-x:auto"></div>
           <input type="file" id="lineImgFile" accept="image/*" style="display:none" onchange="onLineImg(this)">
@@ -565,12 +578,11 @@
     <div class="cb-box">
       <div class="muted" style="font-size:11.5px;line-height:1.7;margin-bottom:8px">
         ใช้ตอนของหลายตัวถูกแพ็กขายเป็น <b>ชุด</b> แล้วออกใบขนสินค้าเป็น <b>1 รหัส</b>
-        <br>· ใบ INV + PL จะออกเป็น <b>1 บรรทัด</b> ใช้ชื่อ/HS/ขนาดกล่อง/CBM/น้ำหนัก ของรหัสนี้
+        <br>· <b>PACKING LIST</b> ออกเป็น <b>1 บรรทัด</b> ใช้ชื่อ/ขนาดกล่อง/CBM/น้ำหนัก ของรหัสนี้
+        <br>· <b>INVOICE</b> ออกได้ <b>หลายบรรทัด</b> — 1 การ์ดข้างล่าง = 1 บรรทัด
+        <br>&nbsp;&nbsp;&nbsp;ทุกบรรทัดใช้รหัส/MODEL ของชุด แต่ <b>DESCRIPTION · COMPONENT · ชื่อไทย แยกกันได้</b>
         <br>· <b>ขนาดกล่อง/CBM/น้ำหนัก กรอกที่ด้านบน</b> (ชุดมีกล่องของตัวเอง) ไม่ได้บวกจากลูก
         <br>· เว้นว่างไว้ = เป็น SKU ปกติ
-      </div>
-      <div class="cb-row" style="font-size:11px;color:var(--muted);font-weight:600">
-        <div>SKU ที่อยู่ในชุด</div><div>จำนวน/ชุด</div><div></div>
       </div>
       <div id="e_combo"></div>
       <div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap">
@@ -585,6 +597,22 @@
     <div class="muted" style="margin-top:8px">📷 รูปสินค้า: ไปแนบตอนออกใบ INV (แท็บ “ออก INV + PL”) แนบเฉพาะบิลนั้น ล้างได้ ไม่เก็บถาวร</div>
   </div>
   <div class="dlg-foot"><button class="btn ghost" onclick="expDlg.close()">ยกเลิก</button><button class="btn green edit-only" onclick="saveExport();return false">บันทึก</button></div>
+</form></dialog>
+
+<dialog id="ltDlg"><form method="dialog">
+  <div class="dlg-head">✏️ ข้อความบนใบ — เฉพาะบรรทัดนี้<button class="x" onclick="ltDlg.close()">×</button></div>
+  <div class="dlg-body">
+    <div class="muted" style="font-size:11.5px;line-height:1.7;margin-bottom:10px">
+      บรรทัด: <b id="lt_who"></b>
+      <br>เว้นว่าง = ใช้ข้อมูลจากทะเบียน SKU ตามเดิม (ข้อความจาง ๆ ในช่องคือค่าที่จะถูกใช้)
+      <br>ใช้ตอนรหัสเดียวมีหลายบรรทัดบนใบ เช่น <b>รหัสชุด (Combo)</b>
+    </div>
+    <div><label>DESCRIPTION (EN) — คอลัมน์แรกของ INVOICE</label><input id="lt_dsc"></div>
+    <div><label>ชื่อไทย — บรรทัดท้ายช่อง Remark</label><input id="lt_nth"></div>
+    <div><label>COMPONENT — บรรทัดละ 1 อย่าง</label><textarea id="lt_comp" style="min-height:110px"></textarea></div>
+    <div><label>Specification</label><input id="lt_spec"></div>
+  </div>
+  <div class="dlg-foot"><button class="btn ghost" onclick="clearLineTxt();return false">ล้างทั้งหมด</button><button class="btn ghost" onclick="ltDlg.close()">ยกเลิก</button><button class="btn green edit-only" onclick="saveLineTxt();return false">บันทึก</button></div>
 </form></dialog>
 
 <dialog id="partyDlg"><form method="dialog">
@@ -722,7 +750,7 @@ function comboSet(id,val){
 }
 function comboVal(id){const inp=$(id);return inp?(inp.dataset.val||''):'';}
 
-const COST_VERSION='v01-05';
+const COST_VERSION='v01-06';
 try{ const _v=document.getElementById('cstVer'); if(_v)_v.textContent=COST_VERSION; }catch(e){}
 let db={master:[],hist:[],expMap:{},shipcosts:[],shipments:[],products:[],tracking:[],parties:[],budget:[],po:[],taxsum:[]};
 let currentRole='view', canEdit=false;
@@ -1111,7 +1139,9 @@ function openExport(sku){
   $('e_box').value=e.box_size||'';
   $('e_cbm').value=e.cbm_ctn||'';
   $('e_customs').value=e.customs_status||'';
-  CB_ITEMS=kitOf(sku).map(x=>({sku:String(x.sku||''),qty:Math.max(1,+x.qty||1)}));
+  CB_ITEMS=kitOf(sku).map(x=>({sku:String(x.sku||''),qty:Math.max(1,+x.qty||1),
+    name_en:String(x.name_en||''),name_th:String(x.name_th||''),
+    comp:String(x.comp||''),spec:String(x.spec||'')}));
   if($('e_cbAdd'))$('e_cbAdd').value=''; if($('e_cbQty'))$('e_cbQty').value=1;
   kitDraw();
   $('expDlg').showModal();
@@ -1125,7 +1155,23 @@ function openExport(sku){
    · ใบ INV + PL ออกเป็น 1 บรรทัด ใช้ข้อมูลของชุด
    ══════════════════════════════════════════════════════════════════ */
 const kitOf   = sku => { const e=db.expMap[String(sku||'').trim()]||{};
-  const a=e.combo_items; return Array.isArray(a)?a.filter(x=>x&&x.sku):[]; };
+  const a=e.combo_items;
+  /* ★ รหัสลูกไม่บังคับแล้ว — ของบางชิ้นในชุดไม่มีรหัสใน JST (ขายเฉพาะเป็นชุด)
+       ขอแค่มี "รหัส" หรือ "ชื่อ EN" อย่างใดอย่างหนึ่ง ก็นับเป็น 1 บรรทัดบนใบ */
+  return Array.isArray(a)?a.filter(x=>x&&(String(x.sku||'').trim()||String(x.name_en||'').trim())):[]; };
+/* ป้ายเรียกรายการลูก — ใช้รหัสถ้ามี ไม่มีก็ใช้ชื่อ EN */
+const kitLbl  = x => String((x&&x.sku)||'').trim() || String((x&&x.name_en)||'').trim() || '(ไม่มีรหัส)';
+/* ═══ ข้อความที่พิมพ์ลงใบ "รายบรรทัด" ═══════════════════════════════
+   ปกติ DESCRIPTION / COMPONENT / ชื่อไทย ดึงจากทะเบียนของ SKU นั้น
+   แต่รหัสชุดมีหลายบรรทัดที่ใช้ "รหัสเดียวกัน" → ดึงจากทะเบียนจะได้ข้อความซ้ำกันหมด
+   ⇒ ให้แต่ละบรรทัดเก็บข้อความของตัวเองได้ (dsc / comp / nth / spec)
+      เว้นว่าง = ใช้ของทะเบียน SKU ตามเดิม ใบเก่าจึงไม่เปลี่ยนแม้แต่ตัวเดียว */
+const txDsc = (o,p)=>String((o&&o.dsc )||'').trim()||String((p&&(p.name_en||p.product_name))||'')||String((o&&o.sku)||'');
+const txNth = (o,p)=>String((o&&o.nth )||'').trim()||String((p&&p.name_th)||'');
+const txCmp = (o,p)=>String((o&&o.comp)||'')       ||String((p&&p.component)||'');
+const txSpc = (o,p)=>String((o&&o.spec)||'').trim()||String((p&&p.spec)||'');
+const txKey = o => (o&&(o.dsc||o.comp||o.nth||o.spec))
+  ? ('|t'+(o.dsc||'')+'\u0001'+(o.comp||'')+'\u0001'+(o.nth||'')+'\u0001'+(o.spec||'')) : '';
 const isKit   = sku => kitOf(sku).length>0;
 /* ชื่อสั้นของ SKU ลูก — ใช้โชว์ในตาราง/ทูลทิป */
 const kitName = sku => { const p=prod(sku);
@@ -1133,18 +1179,35 @@ const kitName = sku => { const p=prod(sku);
 /* ข้อความสรุปรายการในชุด */
 function kitTxt(sku,sep){
   const a=kitOf(sku); if(!a.length)return '';
-  return a.map(x=>x.sku+' ×'+(+x.qty||1)).join(sep||' + ');
+  return a.map(x=>kitLbl(x)+' ×'+(+x.qty||1)).join(sep||' + ');
 }
 /* ── กล่องแก้ไข: รายการลูกของชุด ── */
 let CB_ITEMS=[];
 function kitDraw(){
   const box=$('e_combo'); if(!box)return;
-  box.innerHTML = CB_ITEMS.length ? CB_ITEMS.map((x,i)=>
-      '<div class="cb-row">'
-      +'<input list="skuList" value="'+esc(x.sku||'')+'" onchange="kitSet('+i+',\'sku\',this.value)">'
-      +'<input type="number" min="1" step="1" value="'+(+x.qty||1)+'" onchange="kitSet('+i+',\'qty\',this.value)">'
-      +'<button type="button" class="cb-x edit-only" title="เอาออกจากชุด" onclick="kitDel('+i+');return false">✕</button>'
-      +'</div>').join('')
+  box.innerHTML = CB_ITEMS.length ? CB_ITEMS.map(function(x,i){
+      const p=x.sku?(prod(x.sku)||{}):{};
+      return '<div class="cb-card">'
+      +'<div class="cb-head"><b>🧩 บรรทัดที่ '+(i+1)+' บนใบ INV</b>'
+        +'<button type="button" class="cb-x edit-only" title="เอาออกจากชุด" onclick="kitDel('+i+');return false">✕</button></div>'
+      +'<div class="cb-2">'
+        +'<div><label>รหัสลูก (เว้นว่างได้ ถ้าไม่มีใน JST)</label>'
+          +'<input list="skuList" value="'+esc(x.sku||'')+'" placeholder="— ไม่มีรหัส —" onchange="kitSet('+i+',\'sku\',this.value)"></div>'
+        +'<div><label>จำนวน/ชุด</label>'
+          +'<input type="number" min="1" step="1" value="'+(+x.qty||1)+'" onchange="kitSet('+i+',\'qty\',this.value)"></div>'
+      +'</div>'
+      +'<div class="cb-2">'
+        +'<div><label>DESCRIPTION (EN) — คอลัมน์แรกของใบ</label>'
+          +'<input value="'+esc(x.name_en||'')+'" placeholder="'+esc(p.name_en||p.product_name||'CORDLESS IMPACT SCREWDRIVER')+'" onchange="kitSet('+i+',\'name_en\',this.value)"></div>'
+        +'<div><label>ชื่อไทย — บรรทัดท้ายช่อง Remark</label>'
+          +'<input value="'+esc(x.name_th||'')+'" placeholder="'+esc(p.name_th||'สว่านไขควงกระแทกไร้สาย')+'" onchange="kitSet('+i+',\'name_th\',this.value)"></div>'
+      +'</div>'
+      +'<label>COMPONENT — อุปกรณ์ในกล่อง บรรทัดละ 1 อย่าง</label>'
+      +'<textarea onchange="kitSet('+i+',\'comp\',this.value)" placeholder="1 x CORDLESS IMPACT SCREWDRIVER Body&#10;1 x Packing box&#10;4 x Drill bits, size 3/4/5/6">'+esc(x.comp||'')+'</textarea>'
+      +'<label>Specification</label>'
+      +'<input value="'+esc(x.spec||'')+'" placeholder="'+esc(p.spec||'English description')+'" onchange="kitSet('+i+',\'spec\',this.value)">'
+      +'</div>';
+    }).join('')
     : '<div class="muted" style="font-size:11.5px">— ยังไม่มีรายการ · เว้นว่าง = SKU ปกติ ไม่ใช่ชุด —</div>';
   kitSum();
 }
@@ -1159,7 +1222,7 @@ function kitSum(){
     if(!p){ if(x.sku)miss.push(x.sku); return; }
     cbm += (+p.cbm_ctn||0)*q; kg += (+p.w_ctn||0)*q;
   });
-  el.innerHTML = '🧩 ในชุดมี <b>'+CB_ITEMS.filter(x=>x.sku).length+'</b> รายการ'
+  el.innerHTML = '🧩 ในชุดมี <b>'+CB_ITEMS.filter(x=>(x.sku||x.name_en)).length+'</b> บรรทัดบนใบ INV'
     + (cbm||kg ? ' · <span title="ผลบวกของลูก ใช้อ้างอิงเท่านั้น ระบบไม่เอาไปใส่ให้">อ้างอิงถ้าแยกกล่อง: '
         + (cbm?cbm.toFixed(4)+' CBM':'') + (cbm&&kg?' · ':'') + (kg?kg.toFixed(2)+' Kg':'') + '</span>' : '')
     + (miss.length ? '<br><span style="color:#B45309">⚠️ ไม่พบรหัสนี้ในระบบ: '+esc(miss.join(', '))+'</span>' : '');
@@ -1172,15 +1235,25 @@ function kitSet(i,k,v){
 function kitDel(i){ CB_ITEMS.splice(i,1); kitDraw(); }
 function kitAdd(){
   const el=$('e_cbAdd'), sku=(el.value||'').trim();
-  if(!sku)return;
   const me=($('e_sku').value||'').trim();
-  if(sku.toUpperCase()===me.toUpperCase())return alert('ใส่รหัสตัวเองเข้าไปในชุดไม่ได้');
-  if(isKit(sku))return alert('รหัส '+sku+' เป็นรหัสชุดอยู่แล้ว — ใส่ชุดซ้อนชุดไม่ได้\n\nให้ใส่เป็นรายการสินค้าเดี่ยวแทน');
-  const hit=CB_ITEMS.findIndex(x=>String(x.sku).toUpperCase()===sku.toUpperCase());
   const q=Math.max(1,parseInt($('e_cbQty').value,10)||1);
-  if(hit>=0) CB_ITEMS[hit].qty=(+CB_ITEMS[hit].qty||1)+q;   /* ใส่ซ้ำ = บวกจำนวน */
-  else       CB_ITEMS.push({sku,qty:q});
-  el.value=''; $('e_cbQty').value=1; kitDraw(); el.focus();
+  if(sku){
+    if(sku.toUpperCase()===me.toUpperCase())return alert('ใส่รหัสตัวเองเข้าไปในชุดไม่ได้');
+    if(isKit(sku))return alert('รหัส '+sku+' เป็นรหัสชุดอยู่แล้ว — ใส่ชุดซ้อนชุดไม่ได้\n\nให้ใส่เป็นรายการสินค้าเดี่ยวแทน');
+    const hit=CB_ITEMS.findIndex(x=>String(x.sku||'').toUpperCase()===sku.toUpperCase());
+    if(hit>=0){ CB_ITEMS[hit].qty=(+CB_ITEMS[hit].qty||1)+q;   /* ใส่ซ้ำ = บวกจำนวน */
+      el.value=''; $('e_cbQty').value=1; kitDraw(); el.focus(); return; }
+  }
+  /* ★ มีรหัสก็ดึงชื่อ/COMPONENT ของรหัสนั้นมาตั้งต้นให้ แก้ทับได้
+       ไม่มีรหัสก็เพิ่มบรรทัดเปล่าให้พิมพ์เอง (ของที่ขายเฉพาะเป็นชุด) */
+  const p=sku?(prod(sku)||{}):{};
+  CB_ITEMS.push({sku:sku,qty:q,
+    name_en:String(p.name_en||p.product_name||''),
+    name_th:String(p.name_th||''),
+    comp:String(p.component||''), spec:String(p.spec||'')});
+  el.value=''; $('e_cbQty').value=1; kitDraw();
+  if(!sku){ const t=$('e_combo').querySelectorAll('.cb-card input'); if(t.length)t[t.length-4].focus(); }
+  else el.focus();
 }
 
 function parseBox(s){const m=String(s||'').match(/([\d.]+)\s*[x×X]\s*([\d.]+)\s*[x×X]\s*([\d.]+)/);return m?{w:+m[1],l:+m[2],h:+m[3]}:{w:0,l:0,h:0};}
@@ -1200,8 +1273,10 @@ async function saveExport(){
     box_size:$('e_box').value.trim(),cbm_ctn:+$('e_cbm').value||null,customs_status:$('e_customs').value||null,
     /* 🧩 รายการในชุด — ว่าง = SKU ปกติ */
     combo_items:(function(){
-      const a=CB_ITEMS.filter(x=>String(x.sku||'').trim())
-        .map(x=>({sku:String(x.sku).trim(),qty:Math.max(1,+x.qty||1)}));
+      const a=CB_ITEMS.filter(x=>String(x.sku||'').trim()||String(x.name_en||'').trim())
+        .map(x=>({sku:String(x.sku||'').trim(),qty:Math.max(1,+x.qty||1),
+          name_en:String(x.name_en||'').trim(), name_th:String(x.name_th||'').trim(),
+          comp:String(x.comp||''),            spec:String(x.spec||'').trim()}));
       return a.length?a:null; })()};
   const ok=await dbWrite(()=>sb.from('sku_export_info').upsert(rec,{onConflict:'sku'}));
   if(ok){await reloadExport();$('expDlg').close();renderSkuTable();}
@@ -2587,6 +2662,101 @@ function setLineSku(i,val){
 }
 const SHARED_KEYS=['gw','w','l','h','mark'];
 function groupColor(gid){if(!gid)return'';const pal=['#2E75B6','#1E7145','#C9A84C','#8E44AD','#C2410C','#0EA5E9','#B03060'];let s=0;for(const c of String(gid))s=(s+c.charCodeAt(0))%pal.length;return pal[s];}
+/* ══════════════════════════════════════════════════════════════════
+   🧩 แตกรหัสชุด → หลายบรรทัดบน INVOICE   (และรวมกลับ)
+   ──────────────────────────────────────────────────────────────────
+   เคสจริง: SCCG-110 = สว่านไขควงกระแทก + เครื่องเจียร ขายเป็นชุดเดียว
+     · INVOICE  ต้องแยก 2 บรรทัด — DESCRIPTION / COMPONENT / ชื่อไทย คนละอย่าง
+       แต่ MODEL และรหัสยังเป็น SCCG-110 เหมือนกันทั้งคู่ · GW ใช้ร่วมกัน (merge)
+     · PACKING LIST ยังเป็น 1 บรรทัด นับเป็น "ชุด" ไม่ใช่ชิ้น
+   ★ ราคา/หน่วย = ราคาชุด ÷ จำนวนชิ้นรวมต่อชุด → ผลรวมเท่าเดิมเป๊ะ
+   ★ กดปุ่มซ้ำ = รวมกลับเป็นบรรทัดเดียว (ระบบดูให้เองว่าตอนนี้ควรแตกหรือรวม)
+   ══════════════════════════════════════════════════════════════════ */
+function kitExpand(){
+  if(!canEdit)return;
+  if(!curItems.length)return alert('ยังไม่มีรายการในใบนี้');
+  const todo=[];   /* บรรทัดรหัสชุดที่ยังไม่แตก */
+  curItems.forEach((it,i)=>{ if(!it.kit && kitOf(it.sku).length) todo.push(i); });
+  if(!todo.length){ return kitFold(); }   /* ไม่มีอะไรให้แตก → ลองรวมกลับแทน */
+  const info=todo.map(i=>{ const it=curItems[i], a=kitOf(it.sku);
+    return '· '+it.sku+'  '+money(+it.qty||0)+' ชุด  →  '+a.length+' บรรทัด'
+      +'\n   '+a.map(x=>String(x.name_en||kitLbl(x))).join('  |  '); });
+  if(!confirm('🧩 แตกรหัสชุดเป็นหลายบรรทัดบน INVOICE\n\n'+info.join('\n')
+    +'\n\n• DESCRIPTION / COMPONENT / ชื่อไทย ใช้ที่ตั้งไว้ในรหัสชุด'
+    +'\n• ราคา/หน่วย = ราคาชุด ÷ จำนวนชิ้นรวมต่อชุด (ยอดรวมเท่าเดิม)'
+    +'\n• GW · ขนาดกล่อง · Shipping Mark ใช้ร่วมกันทั้งกลุ่ม'
+    +'\n• PACKING LIST ยังออกเป็นบรรทัดเดียวตามเดิม'
+    +'\n\nยืนยัน?'))return;
+  for(let i=curItems.length-1;i>=0;i--){
+    const it=curItems[i], a=kitOf(it.sku);
+    if(it.kit||!a.length)continue;
+    const sets=+it.qty||0;
+    const per =a.reduce((t,x)=>t+Math.max(1,+x.qty||1),0)||1;
+    const unit=Math.round(((+it.price||0)/per)*10000)/10000;
+    const g='g'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    const rows=a.map(function(x,mi){
+      const p=x.sku?(prod(x.sku)||{}):{};
+      return {sku:it.sku, price:unit, qty:sets*Math.max(1,+x.qty||1),
+        ctn:(mi===0?(+it.ctn||0):0), perctn:it.perctn||'', nw:(mi===0?(+it.nw||0):0),
+        gw:+it.gw||0, mark:it.mark||'',
+        pic:it.pic||'', pic_url:it.pic_url||'', pic_id:it.pic_id||'',
+        w:+it.w||0, l:+it.l||0, h:+it.h||0, gid:g, foc:!!it.foc,
+        kit:1, kitSets:(mi===0?sets:0),
+        dsc :String(x.name_en||p.name_en||p.product_name||x.sku||'').trim(),
+        nth :String(x.name_th||p.name_th||'').trim(),
+        comp:String(x.comp||p.component||''),
+        spec:String(x.spec||p.spec||'')};
+    });
+    curItems.splice.apply(curItems,[i,1].concat(rows));
+  }
+  renderLines(); renderDoc();
+}
+/* รวมบรรทัดที่แตกไว้ กลับเป็นบรรทัดเดียวของรหัสชุด */
+function kitFold(){
+  if(!canEdit)return;
+  const gids=[]; curItems.forEach(x=>{ if(x.kit&&x.gid&&gids.indexOf(x.gid)<0)gids.push(x.gid); });
+  if(!gids.length)return alert('ไม่พบบรรทัดที่เป็นรหัสชุด\n\nต้องมีบรรทัดที่ใช้ "รหัส Combo" ซึ่งผูกรายการไว้แล้วก่อน\n(ผูกที่แท็บ สินค้า → แก้ข้อมูลส่งออก → 🧩 รหัส Combo)');
+  if(!confirm('🧩 รวมบรรทัดที่แตกไว้ '+gids.length+' ชุด กลับเป็นบรรทัดเดียว?\n\nข้อความรายบรรทัดที่พิมพ์เพิ่มเองบนใบนี้จะหายไป\n(ข้อมูลในทะเบียนรหัสชุดยังอยู่ครบ)'))return;
+  gids.forEach(function(g){
+    const idxs=[]; curItems.forEach((x,i)=>{ if(x.gid===g)idxs.push(i); });
+    if(!idxs.length)return;
+    const head=curItems[idxs[0]];
+    const sets=+head.kitSets||0;
+    const val =idxs.reduce((t,i)=>t+(+curItems[i].price||0)*(+curItems[i].qty||0),0);
+    const one={...head, qty:sets, price:(sets?Math.round((val/sets)*10000)/10000:(+head.price||0)),
+      ctn:idxs.reduce((t,i)=>t+(+curItems[i].ctn||0),0),
+      nw :idxs.reduce((t,i)=>t+(+curItems[i].nw ||0),0),
+      gid:null};
+    delete one.kit; delete one.kitSets;
+    delete one.dsc; delete one.nth; delete one.comp; delete one.spec;
+    curItems.splice(idxs[0],idxs.length,one);
+  });
+  renderLines(); renderDoc();
+}
+/* ── กล่องแก้ข้อความ "เฉพาะบรรทัดนี้" ── */
+let LT_I=-1;
+function openLineTxt(i){
+  const it=curItems[i]; if(!it)return;
+  LT_I=i; const p=prod(it.sku)||{};
+  $('lt_who').textContent=(it.sku||'(ไม่มีรหัส)')+' · บรรทัดที่ '+(i+1);
+  const set=(id,v,ph)=>{ const el=$(id); el.value=v||''; el.placeholder=ph||'— ใช้ของทะเบียน SKU —'; };
+  set('lt_dsc', it.dsc,  p.name_en||p.product_name||it.sku||'');
+  set('lt_nth', it.nth,  p.name_th||'');
+  set('lt_comp',it.comp, p.component||'');
+  set('lt_spec',it.spec, p.spec||'');
+  $('ltDlg').showModal();
+}
+function saveLineTxt(){
+  const it=curItems[LT_I]; if(!it)return;
+  it.dsc =$('lt_dsc').value.trim();
+  it.nth =$('lt_nth').value.trim();
+  it.comp=$('lt_comp').value;
+  it.spec=$('lt_spec').value.trim();
+  $('ltDlg').close(); renderLines(); renderDoc();
+}
+function clearLineTxt(){
+  ['lt_dsc','lt_nth','lt_comp','lt_spec'].forEach(id=>{ $(id).value=''; });
+}
 function groupFirstIndex(gid){return curItems.findIndex(x=>x.gid===gid);}
 function addSubLine(i){
   let g=curItems[i].gid;
@@ -2622,10 +2792,14 @@ function renderLines(){
        +`<br><button class="mini btn red" onclick="clearLineImage(${i})">ลบรูป</button>`
       :`<input style="width:130px;font-size:11px" placeholder="วางลิงก์รูป (URL)" onchange="setLineImageUrl(${i},this.value)"><br><button class="mini btn ghost" style="margin-top:3px" onclick="attachLineImage(${i})">📷 อัปโหลดแทน</button>`;
     h+=`<tr><td${bt}>${grpTag}<input list="skuList" value="${esc(it.sku||'')}" onchange="setLineSku(${i},this.value)" style="width:110px;font-weight:700" placeholder="รหัส SKU">${p?'':(it.sku?' <span class="pill up">ไม่พบ</span>':'')}<br><span class="muted">${p?esc(p.name_en||p.product_name||''):''}</span>${(function(){
+        if(it.kit)
+          return '<br><span class="cb-tag" title="บรรทัดที่แตกมาจากรหัสชุด — INVOICE แยกบรรทัด · Packing List รวมเป็นบรรทัดเดียว">🧩 บรรทัดในชุด</span>'
+            +'<div class="cb-kid">'+esc(it.dsc||'(ยังไม่ได้ตั้ง DESCRIPTION)')
+            +(it.kitSets?'<br>'+money(it.kitSets)+' ชุด':'')+'</div>';
         const a=kitOf(it.sku); if(!a.length)return '';
-        return '<br><span class="cb-tag" title="รหัสชุด — ออกใบเป็น 1 บรรทัด\nข้างในมี: '
+        return '<br><span class="cb-tag" title="รหัสชุด — กด 🧩 แตกรายการชุด เพื่อแยกบรรทัดบน INVOICE\nข้างในมี: '
           +esc(kitTxt(it.sku,' + '))+'">🧩 ชุด '+a.length+' รายการ</span>'
-          +'<div class="cb-kid">'+a.map(x=>'· '+esc(x.sku)+' ×'+(+x.qty||1)).join('<br>')+'</div>';
+          +'<div class="cb-kid">'+a.map(x=>'· '+esc(kitLbl(x))+' ×'+(+x.qty||1)).join('<br>')+'</div>';
       })()}</td>
       <td style="text-align:center"${bt}>${picCell}</td>
       <td${bt}><input style="width:80px" type="number" step="0.01" value="${it.price}" onchange="updItem(${i},'price',this.value)"></td>
@@ -2640,7 +2814,7 @@ function renderLines(){
       <td style="text-align:right;white-space:nowrap"${bt}>${lineCbmCtn(it)?lineCbmCtn(it).toFixed(4):'<span class="muted">—</span>'}</td>
       <td${bt}>${shared('mark','',it.mark)}</td>
       <td${bt} style="text-align:center"><input type="checkbox" ${it.foc?'checked':''} onchange="updItem(${i},'foc',this.checked)" title="ของแถม (FOC)"></td>
-      <td${bt} style="white-space:nowrap"><button class="mini btn ghost" title="เพิ่มสินค้าย่อยในกลุ่มนี้ (ใช้ GW/ขนาด/Mark ร่วมกัน)" onclick="addSubLine(${i})">+ ย่อย</button>${isGrp?` <button class="mini btn ghost" title="เอาออกจากกลุ่ม" onclick="ungroupLine(${i})">⊘</button>`:''} <button class="mini btn red" onclick="curItems.splice(${i},1);renderLines();renderDoc()">✕</button></td></tr>`;});
+      <td${bt} style="white-space:nowrap"><button class="mini btn ghost lt-b" title="แก้ DESCRIPTION / COMPONENT / ชื่อไทย เฉพาะบรรทัดนี้" onclick="openLineTxt(${i})">✏️ ข้อความ${(it.dsc||it.comp||it.nth||it.spec)?' ●':''}</button> <button class="mini btn ghost" title="เพิ่มสินค้าย่อยในกลุ่มนี้ (ใช้ GW/ขนาด/Mark ร่วมกัน)" onclick="addSubLine(${i})">+ ย่อย</button>${isGrp?` <button class="mini btn ghost" title="เอาออกจากกลุ่ม" onclick="ungroupLine(${i})">⊘</button>`:''} <button class="mini btn red" onclick="curItems.splice(${i},1);renderLines();renderDoc()">✕</button></td></tr>`;});
   $('lineItems').innerHTML=h+'</tbody></table>';
 }
 function updItem(i,k,v){curItems[i][k]=(k==='mark'||k==='sku')?v:(k==='foc'?!!v:(+v||0));
@@ -2870,8 +3044,10 @@ function renderDoc(){
   // Invoice: รวมแถวที่ SKU เดียวกัน (บวก Qty/Total/GW) — Packing List ยังแยกทุกบรรทัด
   const invGroups=[]; const gi={};
   d.items.forEach((it,idx)=>{
-    const key=(it.sku?('sku:'+it.sku):('__blank'+idx))+(it.gid?('|g'+it.gid):'')+(it.foc?'|foc':'');
-    if(gi[key]==null){gi[key]=invGroups.length;invGroups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:0,total:0,pic:picOf(it),mixed:false,gid:it.gid||null,foc:!!it.foc});}
+    /* ★ รวมแถวที่ "SKU เดียวกัน" ได้ตามเดิม — แต่ต้องไม่รวมแถวที่ตั้งข้อความไว้คนละอย่าง
+         (รหัสชุดแตกเป็นหลายบรรทัด ใช้ SKU เดียวกันทั้งหมด ถ้ารวมจะเหลือบรรทัดเดียว) */
+    const key=(it.sku?('sku:'+it.sku):('__blank'+idx))+(it.gid?('|g'+it.gid):'')+(it.foc?'|foc':'')+txKey(it);
+    if(gi[key]==null){gi[key]=invGroups.length;invGroups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:0,total:0,pic:picOf(it),mixed:false,gid:it.gid||null,foc:!!it.foc,dsc:it.dsc||'',comp:it.comp||'',nth:it.nth||'',spec:it.spec||''});}
     const g=invGroups[gi[key]];
     if((+it.price||0)!==g.price)g.mixed=true;
     g.qty+=+it.qty||0; g.gw+=+it.gw||0; g.total+=(+it.price||0)*(+it.qty||0);
@@ -2882,11 +3058,12 @@ function renderDoc(){
       if(gid){let m=k+1;while(m<invGroups.length&&invGroups[m].gid===gid){run.push(invGroups[m]);m++;}}
       const span=run.length; const grpGw=+run[0].gw||0;   // GW ใช้ร่วมทั้งกลุ่ม → โชว์ครั้งเดียว (rowspan)
       run.forEach((g,ri)=>{const p=prod(g.sku)||{};
-        const remark=`${g.foc?'FREE OF CHARGE — ของแถม (ไม่คิดเงิน)\n\n':''}BRAND ：${p.brand||''}\nMODEL：${p.model||g.sku}\n\n${p.name_en||''} : ${g.sku}\n${p.name_th||''}`;
+        const _dsc=txDsc(g,p), _nth=txNth(g,p), _cmp=txCmp(g,p), _spc=txSpc(g,p);
+        const remark=`${g.foc?'FREE OF CHARGE — ของแถม (ไม่คิดเงิน)\n\n':''}BRAND ：${p.brand||''}\nMODEL：${p.model||g.sku}\n\n${_dsc} : ${g.sku}\n${_nth}`;
         const pic=g.pic?`<img class="pic" src="${esc(g.pic)}">`:'';
         const up=(g.mixed&&g.qty)?(g.total/g.qty):g.price;
-        out+=`<tr${g.foc?' style="background:#FFFBEB"':''}><td>${esc(p.name_en||p.product_name||g.sku)}<br>${esc(p.model||g.sku)}${g.foc?' <b style="color:#B45309">(FOC)</b>':''}</td><td style="text-align:center">${pic}</td>`+
-          `<td style="white-space:pre-line">${esc(p.component||'')}</td><td>${esc(p.spec||'')}</td>`+
+        out+=`<tr${g.foc?' style="background:#FFFBEB"':''}><td>${esc(_dsc)}<br>${esc(p.model||g.sku)}${g.foc?' <b style="color:#B45309">(FOC)</b>':''}</td><td style="text-align:center">${pic}</td>`+
+          `<td style="white-space:pre-line">${esc(_cmp)}</td><td>${esc(_spc)}</td>`+
           `<td style="text-align:right">${money2(up)}</td><td style="text-align:right">${money(g.qty)}</td>`+
           `<td style="text-align:right">${money2(g.total)}</td>`+
           `<td style="text-align:right;${(ri===0?'':'border-top:none;')+(ri===span-1?'':'border-bottom:none;')}">${ri===0?money(grpGw):''}</td>`+
@@ -2903,7 +3080,17 @@ function renderDoc(){
       const it=d.items[i], gid=it.gid; let members=[it];
       if(gid){let j=i+1;while(j<d.items.length&&d.items[j].gid===gid){members.push(d.items[j]);j++;}}
       const span=members.length;
-      if(span===1){
+      /* ★ กลุ่มที่แตกมาจาก "รหัสชุด" → PL ออกบรรทัดเดียวด้วยชื่อของชุด
+           จำนวนที่โชว์คือ "จำนวนชุด" ไม่ใช่ผลบวกชิ้นของลูก */
+      if(span>1 && it.kit){
+        const p=prod(it.sku)||{}; idx++;
+        const grpCtn=members.reduce((s,m)=>s+(+m.ctn||0),0);
+        const sets=+it.kitSets||0;
+        const dim=dimOf(grpCtn,sets,p,it.w,it.l,it.h,it.perctn);
+        out+=`<tr${it.foc?' style="background:#FFFBEB"':''}><td style="text-align:center">${idx}</td><td>${esc(p.name_en||it.sku)}<br>${thName(p)}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||it.sku)}${it.foc?'<br><b style="color:#B45309">*** FREE OF CHARGE — ของแถม ***</b>':''}</td>
+          <td style="white-space:pre-line">${esc(dim)}</td><td style="text-align:right">${money2(it.gw)}</td><td style="white-space:pre-line">${esc(it.mark||'')}</td></tr>`;
+      }
+      else if(span===1){
         const p=prod(it.sku)||{}; idx++;
         const dim=dimOf(it.ctn,it.qty,p,it.w,it.l,it.h,it.perctn);
         out+=`<tr${it.foc?' style="background:#FFFBEB"':''}><td style="text-align:center">${idx}</td><td>${esc(p.name_en||it.sku)}<br>${thName(p)}<br>BRAND：${esc(p.brand||'')} MODEL：${esc(p.model||it.sku)}${it.foc?'<br><b style="color:#B45309">*** FREE OF CHARGE — ของแถม ***</b>':''}</td>
@@ -2942,7 +3129,7 @@ function exportInvPlExcel(){
   rows.push(['Company',d.scomp,'','Invoice No',d.invno]);rows.push(['Address',d.saddr,'','Gross Weight',d.items.reduce((s,i)=>s+ +i.gw,0)]);
   rows.push(['Consignee',d.cname,'','Total Package',d.items.reduce((s,i)=>s+ +i.ctn,0)]);rows.push(['Address',d.caddr,'','TERM',d.term]);rows.push([]);
   rows.push(['DESCRIPTION','COMPONENT','Specification','Unit Price','Qty (PCS)','Total Price/'+d.cur,'GW (Kg)','Remark','(รูปอยู่ในไฟล์ PDF)']);
-  d.items.forEach(it=>{const p=prod(it.sku)||{};rows.push([p.name_en||p.product_name||it.sku,p.component||'',p.spec||'',it.price,it.qty,it.price*it.qty,it.gw,`BRAND：${p.brand||''} MODEL：${p.model||it.sku} ${p.name_th||''}`]);});
+  d.items.forEach(it=>{const p=prod(it.sku)||{};rows.push([txDsc(it,p),txCmp(it,p),txSpc(it,p),it.price,it.qty,it.price*it.qty,it.gw,`BRAND：${p.brand||''} MODEL：${p.model||it.sku} ${txNth(it,p)}`]);});
   rows.push(['','','Logistics costs','','','',d.logi]);rows.push(['','','','','Total',d.items.reduce((s,i)=>s+i.price*i.qty,0)+d.logi]);rows.push([]);rows.push([]);
   rows.push(['PACKING LIST']);rows.push(['ITEM No.','DESCRIPTION OF GOODS','Dimension','GW (Kg)','Shipping Mark']);
   d.items.forEach((it,i)=>{const p=prod(it.sku)||{};rows.push([i+1,`${p.name_en||it.sku} / ${p.name_th||''} / ${p.brand||''} ${p.model||it.sku}`,`${it.ctn} Ctn*${p.per_ctn||''}=${it.qty} ${p.unit||''}; Box ${p.box_size||''}; ${((it.ctn||0)*(p.cbm_ctn||0)).toFixed(2)} CBM; ${p.w_ctn||''}Kg/Ctn`,it.gw,it.mark||'']);});
@@ -3322,8 +3509,8 @@ function exportInvoiceExcel(ev){
   if(!window.ExcelJS){alert('กำลังโหลดไลบรารี Excel — ลองกดใหม่อีกครั้ง');return;}
   const d=formData();
   const groups=[]; const gi={};
-  d.items.forEach((it,idx)=>{const key=(it.sku?('sku:'+it.sku):('__b'+idx))+(it.gid?('|g'+it.gid):'')+(it.foc?'|foc':'');
-    if(gi[key]==null){gi[key]=groups.length;groups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:+it.gw||0,total:0,pic:picOf(it),mixed:false,gid:it.gid||null,foc:!!it.foc});}
+  d.items.forEach((it,idx)=>{const key=(it.sku?('sku:'+it.sku):('__b'+idx))+(it.gid?('|g'+it.gid):'')+(it.foc?'|foc':'')+txKey(it);
+    if(gi[key]==null){gi[key]=groups.length;groups.push({sku:it.sku||'',price:+it.price||0,qty:0,gw:+it.gw||0,total:0,pic:picOf(it),mixed:false,gid:it.gid||null,foc:!!it.foc,dsc:it.dsc||'',comp:it.comp||'',nth:it.nth||'',spec:it.spec||''});}
     const g=groups[gi[key]];if((+it.price||0)!==g.price)g.mixed=true;
     g.qty+=+it.qty||0;g.total+=(+it.price||0)*(+it.qty||0); if(!g.pic)g.pic=picOf(it);});
   const totalPrice=d.items.reduce((s,i)=>s+(i.foc?0:(+i.price*+i.qty)),0);
@@ -3364,8 +3551,9 @@ function exportInvoiceExcel(ev){
     if(gid){let m=k+1;while(m<groups.length&&groups[m].gid===gid){run.push(groups[m]);m++;}}
     const span=run.length; const grpGw=+run[0].gw||0; const startR=r;
     run.forEach((g,ri)=>{const p=prod(g.sku)||{}; const up=(g.mixed&&g.qty)?(g.total/g.qty):g.price;
-      const remark=(g.foc?'FREE OF CHARGE — ของแถม (ไม่คิดเงิน)\n\n':'')+'BRAND ：'+(p.brand||'')+'\nMODEL：'+(p.model||g.sku)+'\n\n'+(p.name_en||'')+' : '+g.sku+'\n'+(p.name_th||'');
-      const vals=[(p.name_en||p.product_name||g.sku)+'\n'+(p.model||g.sku),'',p.component||'',p.spec||'',(+up||0),g.qty,g.total,(ri===0?grpGw:''),remark];
+      const _dsc=txDsc(g,p), _nth=txNth(g,p), _cmp=txCmp(g,p), _spc=txSpc(g,p);
+      const remark=(g.foc?'FREE OF CHARGE — ของแถม (ไม่คิดเงิน)\n\n':'')+'BRAND ：'+(p.brand||'')+'\nMODEL：'+(p.model||g.sku)+'\n\n'+_dsc+' : '+g.sku+'\n'+_nth;
+      const vals=[_dsc+'\n'+(p.model||g.sku),'',_cmp,_spc,(+up||0),g.qty,g.total,(ri===0?grpGw:''),remark];
       const row=wsI.getRow(r);
       vals.forEach((v,i)=>{const c=row.getCell(i+1);c.value=v;c.border=border;c.alignment={vertical:'top',wrapText:true,horizontal:(i>=4&&i<=7)?'right':'left'};});
       [5,7].forEach(ci=>row.getCell(ci).numFmt='#,##0.00'); row.getCell(6).numFmt='#,##0'; if(ri===0)row.getCell(8).numFmt='#,##0.00';
@@ -3391,19 +3579,24 @@ function exportInvoiceExcel(ev){
     const it=d.items[ii], gid=it.gid; let members=[it];
     if(gid){let j=ii+1;while(j<d.items.length&&d.items[j].gid===gid){members.push(d.items[j]);j++;}}
     const span=members.length; const p0=prod(it.sku)||{};
+    /* ★ กลุ่มที่แตกมาจากรหัสชุด → PL ออกบรรทัดเดียว ใช้ชื่อ/จำนวนชุดของตัวชุด */
+    const isKitG = span>1 && !!it.kit;
+    const grpCtnAll=members.reduce((s,mm)=>s+(+mm.ctn||0),0);
+    const grpQtyAll=members.reduce((s,mm)=>s+(+mm.qty||0),0);
+    const plRows = isKitG ? [it] : members;
     const startRow=pr;
-    members.forEach((m,mi)=>{const p=prod(m.sku)||{};
+    plRows.forEach((m,mi)=>{const p=prod(m.sku)||{};
       const desc=(p.name_en||m.sku)+'\n'+thNameX(p)+'\nBRAND：'+(p.brand||'')+' MODEL：'+(p.model||m.sku)+(m.foc?'\n*** FREE OF CHARGE — ของแถม ***':'');
       const row=wsP.getRow(pr);
       row.getCell(1).value=(pr-top); row.getCell(2).value=desc;
       if(mi===0){
-        const grpCtn=members.reduce((s,mm)=>s+(+mm.ctn||0),0), grpQty=members.reduce((s,mm)=>s+(+mm.qty||0),0);
-        row.getCell(3).value= span>1 ? dimOfX(grpCtn,grpQty,p0,it.w,it.l,it.h,it.perctn) : dimOfX(it.ctn,it.qty,p0,it.w,it.l,it.h,it.perctn);
+        row.getCell(3).value= isKitG ? dimOfX(grpCtnAll,(+it.kitSets||0),p0,it.w,it.l,it.h,it.perctn)
+          : (span>1 ? dimOfX(grpCtnAll,grpQtyAll,p0,it.w,it.l,it.h,it.perctn) : dimOfX(it.ctn,it.qty,p0,it.w,it.l,it.h,it.perctn));
         row.getCell(4).value=+it.gw||0; row.getCell(4).numFmt='#,##0.00'; row.getCell(5).value=it.mark||'';
       }
       for(let ci=1;ci<=5;ci++){const c=row.getCell(ci);c.border=border;c.alignment={vertical:(ci>=3?'middle':'top'),wrapText:true,horizontal:(ci===1?'center':(ci===4?'right':'left'))};}
       pr++;});
-    if(span>1){wsP.mergeCells(startRow,3,startRow+span-1,3);wsP.mergeCells(startRow,4,startRow+span-1,4);wsP.mergeCells(startRow,5,startRow+span-1,5);}
+    if(!isKitG && span>1){wsP.mergeCells(startRow,3,startRow+span-1,3);wsP.mergeCells(startRow,4,startRow+span-1,4);wsP.mergeCells(startRow,5,startRow+span-1,5);}
     ii+=span;
   }
   // แถวรวม Total (จำนวนลัง · CBM · GW) — ให้ตรงกับ PDF
