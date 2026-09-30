@@ -51,6 +51,13 @@
   header.top .masaru-logo{height:28px;width:136px}
   header.top .spacer{flex:1}
   .role-pill{background:rgba(255,255,255,.14);padding:5px 13px;border-radius:20px;font-size:13px;font-weight:600}
+  /* 📖 คู่มือ — ลิงก์เล็ก ๆ บนแถบหัว ไม่ปนกับการ์ดระบบหลัก */
+  .guide-link{display:inline-flex;align-items:center;gap:5px;text-decoration:none;white-space:nowrap;
+    padding:6px 12px;border:1px solid rgba(255,255,255,.18);border-radius:20px;
+    background:rgba(255,255,255,.08);color:#e6edf7;font-size:12.5px;font-weight:600;
+    transition:background .18s,border-color .18s,transform .18s}
+  .guide-link:hover{background:rgba(255,255,255,.17);border-color:rgba(255,255,255,.34);transform:translateY(-1px)}
+  .guide-link.hide{display:none}
   .logout{background:transparent;border:1px solid #4A6394;color:#fff;border-radius:8px;padding:7px 14px;font-size:13px}
 
   main{max-width:1000px;margin:0 auto;padding:34px 22px}
@@ -611,6 +618,8 @@
     color:#dce7f6;
     font-size:.79rem;
   }
+  .guide-link{padding:7px 12px;border-radius:10px;border-color:rgba(255,255,255,.13);
+    background:rgba(255,255,255,.06);color:#cfe0f5;font-size:.79rem}
   .logout{
     min-height:38px;
     padding:7px 15px;
@@ -796,6 +805,7 @@
     .top-title{display:none}
     .top-inner .spacer{flex:1}
     .role-pill{order:4;width:100%;text-align:center;padding:5px 10px}
+    .guide-link{order:3;padding:5px 10px;font-size:12px}
     main{padding:24px 16px 44px}
     .hub-hero{min-height:180px;margin-bottom:24px;padding:29px 25px;border-radius:20px}
     .hub-hero::before{font-size:3rem;bottom:-12px}
@@ -880,6 +890,8 @@
   #hubScreen header.top .masaru-logo{height:34px;width:165px;filter:drop-shadow(0 7px 14px rgba(0,0,0,.35))}
   #hubScreen .top-title{color:#c8d7e9;letter-spacing:.02em}
   #hubScreen .role-pill{border-color:rgba(121,169,235,.22);background:rgba(64,111,177,.10);box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+  #hubScreen .guide-link{border-color:rgba(121,169,235,.26);background:rgba(64,111,177,.14);color:#dbe8f8}
+  #hubScreen .guide-link:hover{border-color:rgba(160,199,245,.5);background:rgba(88,140,210,.24)}
   #hubScreen .logout{border-color:rgba(255,255,255,.16);background:rgba(255,255,255,.045)}
 
   #hubScreen main{position:relative;z-index:1;width:min(1320px,100%);padding:52px 30px 82px}
@@ -1047,6 +1059,7 @@
   #hubScreen .top-inner{width:min(1240px,100%);min-height:74px}
   #hubScreen header.top .masaru-logo{height:31px;width:150px}
   #hubScreen .role-pill{border-color:rgba(255,255,255,.13);background:rgba(255,255,255,.075);color:#dce7f6}
+  #hubScreen .guide-link{border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.07);color:#dce7f6}
 
   #hubScreen main{width:min(1240px,100%);padding:30px 28px 62px}
   /* ★ ย่อแบนเนอร์หัวหน้าให้เตี้ยลง เห็นการ์ดระบบเร็วขึ้นโดยไม่ต้องเลื่อน */
@@ -1459,6 +1472,8 @@
       <span class="masaru-logo"></span>
       <span class="top-title">ศูนย์รวมระบบฝ่ายจัดซื้อ</span>
       <div class="spacer"></div>
+      <a class="guide-link hide" id="guideLink" href="guide.html"
+         title="คู่มือทุกระบบรวมที่เดียว">📖 คู่มือ</a>
       <span class="role-pill" id="rolePill">—</span>
       <button class="logout" id="logoutBtn">ออกจากระบบ</button>
     </div>
@@ -1600,6 +1615,18 @@ function remindNow(){
   return REMIND_DAYS.includes(d.getDay()) && d.getHours() >= REMIND_HOUR;
 }
 let REMIND_URL = '', remindTimer = null;
+/* คู่มือ — จับจาก key ก่อน เผื่อ portal_apps ตั้งชื่อคนละแบบก็ยังจับจาก URL ได้ */
+const isGuideApp = a => a && (String(a.key||'')==='guide' || /(^|\/)guide\.html(\?|#|$)/i.test(String(a.url||'')));
+function paintGuideLink(a){
+  const el = $('guideLink'); if(!el) return;
+  if(!a){ el.classList.add('hide'); return; }
+  el.href = a.url || 'guide.html';
+  el.title = a.desc || a.title || 'คู่มือระบบ';
+  el.textContent = '📖 คู่มือ';
+  if(isExtUrl(a.url)){ el.target = '_blank'; el.rel = 'noopener'; }
+  el.classList.remove('hide');
+}
+
 function paintRemind(){
   const on = !!REMIND_URL && remindNow();
   const bar = $('remindBar'); if(bar) bar.classList.toggle('on', on);
@@ -1695,7 +1722,7 @@ async function showHub(session){
   // หัวหน้าจัดซื้อ + ผู้บริหาร → เห็นทุกระบบ ไม่ต้องกรอง
   const all = await loadApps();
   const seeAll = roles.some(seeAllRole);
-  const apps = seeAll ? all : all.filter(a => (a.roles||[]).some(r => roles.includes(r)));
+  let apps = seeAll ? all : all.filter(a => (a.roles||[]).some(r => roles.includes(r)));
 
   // มีเว็บเดียว → พาเข้าเว็บนั้นเลย ไม่ต้องเห็นหน้าเลือก
   // (ยกเว้นเพิ่งกดออกจากระบบมา — กันวนกลับเข้าเว็บเดิมจนไม่เห็นหน้า login)
@@ -1704,6 +1731,13 @@ async function showHub(session){
     window.location.replace(apps[0].url);
     return;
   }
+
+  /* ★ คู่มือไม่ใช่ "ระบบงาน" — ย้ายไปเป็นลิงก์เล็ก ๆ บนแถบหัว
+     ไม่ให้ปนกับการ์ดโมดูลหลัก (การ์ดเลยเหลือแต่ของที่ใช้ทำงานจริง)
+     เช็คเงื่อนไขพาเข้าเว็บเดียวไปแล้วก่อนหน้านี้ จึงไม่กระทบ */
+  const guide = apps.find(isGuideApp);
+  paintGuideLink(guide);
+  if(guide) apps = apps.filter(a => !isGuideApp(a));
 
   $('hubSub').textContent = apps.length
     ? `คุณมีสิทธิ์เข้าใช้งาน ${apps.length} ระบบ — แตะการ์ดเพื่อเปิดในแท็บใหม่ (เปิดพร้อมกันได้หลายเว็บ)`
