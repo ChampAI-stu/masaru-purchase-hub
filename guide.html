@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-70</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-71</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -1928,8 +1928,20 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
     <tr><td><b>🏢 ผู้ขาย/ผู้ซื้อ</b></td><td>ทะเบียน Vender / Consignee ไว้เลือกตอนออกบิล (กรอกครั้งเดียวใช้ตลอด)</td></tr>
     <tr><td><b>📄 ออก INV + PL</b></td><td>ออก Invoice + Packing List พร้อมตัวอย่างสด → PDF / Excel
       <div style="background:#F3EAFB;border:1px solid #D9BEEE;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
-        🧩 <b>ใช้รหัสชุดในใบ</b> — พิมพ์รหัสชุดตามปกติ ได้ <b>1 บรรทัด</b> ใช้ชื่อ/ขนาดกล่อง/CBM/น้ำหนัก ของชุด
-        · บรรทัดนั้นติดป้าย <b>🧩</b> บอกว่าข้างในมีอะไร
+        🧩 <b>ใช้รหัสชุดในใบ</b> <span class="muted">(v01-07 — แยกให้อัตโนมัติแล้ว)</span>
+        <br>พิมพ์รหัสชุดตามปกติ <b>ไม่ต้องกดปุ่มอะไรเพิ่ม</b>
+        <table class="kv" style="margin-top:6px"><thead><tr><th>ที่ไหน</th><th>ออกมาเป็น</th></tr></thead><tbody>
+          <tr><td><b>ตารางรายการ</b></td><td><b>1 บรรทัด</b> · จำนวน = <b>จำนวนชุด</b> · ติดป้าย 🧩 บอกว่าข้างในมีอะไร</td></tr>
+          <tr><td><b>INVOICE</b></td><td><b>แยกหลายบรรทัดอัตโนมัติ</b> ตามรายการที่ผูกไว้ในรหัสชุด
+            <br>DESCRIPTION · COMPONENT · Specification · ชื่อไทย <b>แยกกันคนละบรรทัด</b>
+            <br>รหัสและ MODEL เป็นรหัสชุดเหมือนกันทุกบรรทัด · <b>GW รวมเป็นช่องเดียว</b></td></tr>
+          <tr><td><b>PACKING LIST</b></td><td><b>1 บรรทัด</b> ใช้ชื่อ/กล่อง/CBM/น้ำหนัก ของชุด
+            <br>Dimension นับเป็น <b>ชุด</b> เช่น <code>250 Cartons*4= 1,000 SET</code></td></tr>
+        </tbody></table>
+        <div style="margin-top:5px">· <b>จำนวน/บรรทัด</b> = จำนวนชุด × จำนวนต่อชุด
+          <br>· <b>ราคา/หน่วย</b> = ราคาชุด ÷ จำนวนชิ้นรวมต่อชุด → <b>ยอดรวมเท่าเดิมเป๊ะ</b>
+          <br>&nbsp;&nbsp;&nbsp;<span class="muted">ชุดละ 236.50 มีของ 2 ชิ้น → บรรทัดละ 118.25 · Qty รวม 2,000 · ยอด 236,500</span>
+          <br>· ใช้ได้ทั้ง <b>ตัวอย่างบนจอ · PDF · Excel</b></div>
         <div style="margin-top:5px">🔻 <b>ปุ่ม "🧩 ยุบเป็นชุด"</b> — ดึงรายการจาก PO มาแล้วได้ของแยกทีละตัว
           กดปุ่มนี้จะ<b>รวมบรรทัดลูกให้เหลือบรรทัดเดียว</b>ด้วยรหัสชุด
           <br>· <b>จำนวนชุด</b> คิดจากลูกที่มีน้อยสุด (จำนวนลูก ÷ จำนวนต่อชุด)
@@ -1938,19 +1950,13 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
           <br>· ถามยืนยันพร้อมบอกรายละเอียดก่อนทุกครั้ง · ของที่ไม่อยู่ในชุดไม่ถูกแตะ
           <br>· ลูกไม่ครบในใบ = ยุบไม่ได้ ระบบบอกเหตุผลให้</div>
         <div style="background:#fff;border:1px solid #D9BEEE;border-radius:8px;padding:7px 9px;margin-top:7px">
-          🔺 <b>ปุ่ม "🧩 แตกรายการชุด"</b> <span class="muted">(ของใหม่ v01-06)</span>
-          — แตกบรรทัดรหัสชุด ออกเป็น<b>หลายบรรทัดบน INVOICE</b> ตามที่ผูกไว้ในทะเบียน
-          <table class="kv" style="margin-top:6px"><thead><tr><th>เอกสาร</th><th>ผลที่ได้</th></tr></thead><tbody>
-            <tr><td><b>INVOICE</b></td><td><b>หลายบรรทัด</b> — DESCRIPTION / COMPONENT / ชื่อไทย แยกกัน
-              <br>รหัสและ MODEL เป็นรหัสชุดเหมือนกันทุกบรรทัด · <b>GW รวมเป็นช่องเดียว</b> (merge)</td></tr>
-            <tr><td><b>PACKING LIST</b></td><td><b>บรรทัดเดียว</b> ใช้ชื่อ/กล่อง/CBM/น้ำหนัก ของชุด
-              <br>Dimension นับเป็น <b>ชุด</b> ไม่ใช่ชิ้น เช่น <code>250 Cartons*4= 1,000 SET</code></td></tr>
-          </tbody></table>
-          <div style="margin-top:5px">· <b>จำนวน/บรรทัด</b> = จำนวนชุด × จำนวนต่อชุด
-            <br>· <b>ราคา/หน่วย</b> = ราคาชุด ÷ จำนวนชิ้นรวมต่อชุด → <b>ยอดรวมเท่าเดิมเป๊ะ</b>
-            <br>&nbsp;&nbsp;&nbsp;<span class="muted">ตัวอย่าง: ชุดละ 236.50 มีของ 2 ชิ้น → บรรทัดละ 118.25</span>
-            <br>· <b>กดปุ่มซ้ำ = รวมกลับ</b>เป็นบรรทัดเดียว (ระบบดูให้เองว่าตอนนี้ควรแตกหรือรวม)
-            <br>· ถามยืนยันพร้อมบอกรายละเอียดก่อนทุกครั้ง</div>
+          🔺 <b>ปุ่ม "🧩 แตกให้แก้รายบรรทัด"</b> <span class="muted">(ใช้เฉพาะเวลาต้องการ)</span>
+          <br>ใบ INVOICE แยกบรรทัดให้อัตโนมัติอยู่แล้ว — ปุ่มนี้ใช้ตอนอยาก<b>แก้ข้อความ / ราคา / จำนวน
+          ของแต่ละบรรทัดเป็นรายใบ</b> (เช่นใบนี้ชื่อไม่เหมือนที่ตั้งในทะเบียน)
+          <div style="margin-top:5px">· กดแล้วบรรทัดรหัสชุดจะกลายเป็น<b>หลายบรรทัดจริงในตาราง</b> แก้ได้ทุกช่อง
+            <br>· <b>กดปุ่มซ้ำ = รวมกลับ</b>เป็นบรรทัดเดียว (ระบบดูให้เองว่าควรแตกหรือรวม)
+            <br>· ถามยืนยันพร้อมบอกรายละเอียดก่อนทุกครั้ง
+            <br>· บรรทัดที่แตกไว้แล้ว ระบบไม่แตะซ้ำ — ถือว่าคนตั้งใจคุมเอง</div>
         </div>
         <div style="background:#fff;border:1px solid #D9BEEE;border-radius:8px;padding:7px 9px;margin-top:7px">
           ✏️ <b>ปุ่ม "✏️ ข้อความ" ในทุกบรรทัด</b> <span class="muted">(ของใหม่ v01-06)</span>
