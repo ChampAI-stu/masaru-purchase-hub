@@ -1402,7 +1402,7 @@ let currentRole = null; let ROLE_LABEL = '';
      แล้วใช้ธง MKT_LEAD เปิดเฉพาะแท็บ 📦 + กระดิ่งเพิ่มให้ทีหลัง
    ⚠️ อย่าเผลอไปแตะ canSeePrice / canSeeResp ให้ true — ตกลงกันว่าไม่ให้เห็นต้นทุน */
 let MKT_LEAD = false;
-const BOARD_VERSION='v05-18';
+const BOARD_VERSION='v05-19';
 try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
 console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
@@ -5261,6 +5261,17 @@ function openArrIn(id){
     background:#F8FAFC;border:1px dashed var(--line);border-radius:9px;font-size:11.5px;color:var(--muted)">
     ▸ บรรทัดพ่วง ${extras.length} รายการ (${extras.map(x=>esc(x.sku||'-')).join(', ')})
     — <b>ไม่ต้องกรอก</b> ระบบตัดเข้าคลังตามบรรทัดแม่ให้เอง</div>`;
+  /* ★ บอกล่วงหน้าว่าบรรทัดไหนจับคู่กับ PO บนบอร์ดไม่ได้ — จะได้ไม่เสียเวลากรอกแล้วเด้ง
+        (เคสจริง: SKU เดียวกันมา 2 บรรทัด คนละ PO แต่บอร์ดมี PO เดียว) */
+  {
+    const nopo = its.filter(x => !arrFindPO(x, ''));
+    if(nopo.length) $('arrInBody').innerHTML += `<div style="margin-top:8px;padding:10px 12px;
+      background:#FDECEC;border:1px solid #F3B6B6;border-radius:9px;font-size:12px;line-height:1.65">
+      ⚠️ <b>${nopo.length} บรรทัดนี้จะไม่ไปอัปเดต Purchase Board</b> (ตัดเข้าคลังได้ตามปกติ)
+      <div style="margin-top:4px">${nopo.map(x=>'· '+esc(arrPoMissTxt(x))).join('<br>')}</div>
+      <div style="color:var(--muted);margin-top:5px">อยากให้ยอดไปลง PO ด้วย — เพิ่ม/แก้แถว PO นั้นใน
+        <b>Purchase Board</b> ให้มี SKU นี้ แล้วกด ⟳ โหลดใหม่ ก่อนตัดเข้าคลัง</div></div>`;
+  }
   /* ★ ใบที่ "ชิ้นครบแล้ว แต่ลังไม่ลงตัว" — เดิมกรอกอะไรไม่ได้เลย ใบค้างตลอดกาล
         ใส่ปุ่มปิดเศษให้กดจบในคลิกเดียว */
   {
@@ -5317,17 +5328,55 @@ function arrInAll(){
    • สถานะ PO: รับครบ → เข้าคลังแล้ว · รับบางส่วน → รอนำส่งเข้าคลัง
    จับคู่ด้วย PO + SKU · บรรทัดพ่วงไม่มี PO ก็ยืม PO ของบรรทัดแม่
    ══════════════════════════════════════════════════════════════════ */
-function arrFindPO(it, poHint){
-  const sku = String(it.sku||'').trim().toUpperCase();
-  if(!sku || !allOrders.length) return null;
-  const same = allOrders.filter(o => String(o.sku||'').trim().toUpperCase()===sku);
-  if(!same.length) return null;
-  const po = String(it.po_number||'').trim() || String(poHint||'').trim();
-  let c = po ? same.filter(o => String(o.po_number||'').trim()===po) : [];
-  if(!c.length) c = same;                       // ไม่มี PO ตรง → ใช้ SKU อย่างเดียว
-  const open = c.filter(o => (+o.received_qty||0) < (+o.quantity||0));
-  return (open.length?open:c).slice()
+/* เลือกแถวที่เหมาะสุดจากตัวเลือกที่ "ถูก PO" แล้ว — เอาแถวที่ยังรับไม่ครบก่อน */
+function arrPickPO(list){
+  if(!list || !list.length) return null;
+  const open = list.filter(o => (+o.received_qty||0) < (+o.quantity||0));
+  return (open.length?open:list).slice()
     .sort((a,b)=>String(a.eta||'9999-12-31').localeCompare(String(b.eta||'9999-12-31')))[0] || null;
+}
+const arrNorm = x => String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+/* ══════════════════════════════════════════════════════════════════
+   🔗 หาแถว PO บนบอร์ดที่ตรงกับบรรทัดในใบแจ้ง
+   ──────────────────────────────────────────────────────────────────
+   ⚠️ เคสจริงที่พลาด: ใบแจ้งใบเดียวมี SKU เดียวกัน 2 บรรทัด คนละ PO
+      SCS-435N · PO 19596 = 3,700 ชิ้น  +  SCS-435N · PO 19650 = 2 ชิ้น
+      แต่บอร์ดไม่มีแถว PO 19650 → โค้ดเดิม "ถอยไปใช้ SKU อย่างเดียว"
+      ⇒ 2 ชิ้นของ 19650 ไปบวกที่ 19596 → รับ 3,702 > สั่ง 3,700 (เกิน 2)
+      แก้จำนวนที่ PO 19596 เท่าไหร่ก็ไม่จบ เพราะของ 2 ชิ้นนั้นไม่ใช่ของ PO นี้
+   ⇒ บรรทัดที่ระบุ PO มาเอง ต้องลงที่ PO นั้นเท่านั้น หาไม่เจอให้บอกตรง ๆ
+   ══════════════════════════════════════════════════════════════════ */
+function arrFindPO(it, poHint){
+  if(!allOrders.length) return null;
+  const sku = String(it.sku||'').trim().toUpperCase();
+  const bySku = sku ? allOrders.filter(o => String(o.sku||'').trim().toUpperCase()===sku) : [];
+  const po = String(it.po_number||'').trim();
+  if(po){
+    const exact = bySku.filter(o => String(o.po_number||'').trim()===po);
+    if(exact.length) return arrPickPO(exact);
+    /* PO ตรงแต่ SKU บนบอร์ดสะกดต่าง (ขีด/ช่องว่าง) — ยังถือว่าแถวเดียวกัน */
+    const loose = allOrders.filter(o => String(o.po_number||'').trim()===po
+      && (!String(o.sku||'').trim() || arrNorm(o.sku)===arrNorm(sku)));
+    if(loose.length) return arrPickPO(loose);
+    return null;                      /* ★ ไม่เดา PO อื่นแทนแล้ว */
+  }
+  if(!bySku.length) return null;
+  /* ไม่ได้ระบุ PO (เช่นบรรทัดพ่วง) → ยืม PO ของบรรทัดแม่ก่อน ถ้าไม่มีค่อยใช้ SKU */
+  const hint = String(poHint||'').trim();
+  if(hint){
+    const h = bySku.filter(o => String(o.po_number||'').trim()===hint);
+    if(h.length) return arrPickPO(h);
+  }
+  return arrPickPO(bySku);
+}
+/* บอกเหตุผลที่จับคู่ไม่ได้ — ให้ข้อความเตือนมีประโยชน์ ไม่ใช่แค่ชื่อ SKU */
+function arrPoMissTxt(it){
+  const sku = String(it.sku||'-').trim() || '-';
+  const po  = String(it.po_number||'').trim();
+  if(!po) return sku + ' (ไม่มี PO ในบรรทัดนี้ และหา SKU นี้บนบอร์ดไม่เจอ)';
+  const hasPo  = allOrders.some(o => String(o.po_number||'').trim()===po);
+  return sku + (hasPo ? (' (PO '+po+' มีบนบอร์ด แต่ไม่มี SKU นี้ในนั้น)')
+                      : (' (ไม่มี PO '+po+' บนบอร์ด)'));
 }
 /* ตรวจล่วงหน้าว่าชุดนี้จะทำให้ PO ไหนรับเกินไหม — คืนข้อความที่จะเอาไปเตือน
    ⚠️ ต้องรวมยอดที่จะบวกของ "PO แถวเดียวกัน" ก่อนเทียบ
@@ -5337,8 +5386,10 @@ function arrOverCheck(list){
   (list||[]).forEach(function(x){
     const o = arrFindPO(x.it, x.poHint); if(!o) return;
     const k = String(o.id);
-    const p = by[k] || (by[k] = {o:o, add:0});
+    const p = by[k] || (by[k] = {o:o, add:0, from:[]});
     p.add += x.addPcs;
+    p.from.push(String(x.it.sku||'-') + (x.it.po_number?(' · PO '+String(x.it.po_number).trim()):'')
+                + ' → ' + Math.round(x.addPcs).toLocaleString() + ' ชิ้น');
   });
   const out = [];
   Object.keys(by).forEach(function(k){
@@ -5346,7 +5397,9 @@ function arrOverCheck(list){
     const newR = Math.round((+o.received_qty||0) + by[k].add);
     if(overRecv(qty, newR))
       out.push('PO ' + (o.po_number||'-') + ' · ' + overTxt(o.sku, qty, newR)
-               + '  [เดิมเข้าแล้ว ' + (+o.received_qty||0).toLocaleString() + ']');
+               + '  [เดิมเข้าแล้ว ' + (+o.received_qty||0).toLocaleString() + ']'
+               /* ★ บอกว่ายอดนี้มาจากบรรทัดไหนในใบแจ้ง — ถ้ามีหลายบรรทัดมารวมกัน จะเห็นทันทีว่าผิดที่ไหน */
+               + (by[k].from.length>1 ? ('\n   มาจาก: ' + by[k].from.join('  +  ')) : ''));
   });
   return out;
 }
@@ -5358,7 +5411,7 @@ async function arrPushPO(list){
   try{
     for(const x of list){
       const o = arrFindPO(x.it, x.poHint);
-      if(!o){ miss.push(x.it.sku||'-'); continue; }
+      if(!o){ miss.push(arrPoMissTxt(x.it)); continue; }
       const qty = +o.quantity||0, oldR = +o.received_qty||0;
       const newR = Math.round(oldR + x.addPcs);
       /* ชั้นกันสุดท้าย — ปกติ saveArrIn ตรวจให้แล้ว แต่ถ้ามีคนเรียกฟังก์ชันนี้จากที่อื่น
@@ -5430,8 +5483,12 @@ async function saveArrIn(){
     });
     const over = arrOverCheck(chk);
     if(over.length) return overAlert(over,
-      'ถ้าของมาเกินจริง ให้ไปแก้ "จำนวน" ของ PO นั้นใน Purchase Board ให้ตรงของจริงก่อน\n'
-      +'แล้วกลับมาตัดเข้าคลังอีกครั้ง (ยอดในใบแจ้งยังไม่ถูกบันทึก ไม่ต้องกรอกใหม่ทั้งใบ)');
+      'เช็ค 2 อย่างนี้ก่อน\n'
+      +'① ถ้าบรรทัด "มาจาก:" มีหลาย PO รวมกัน = PO ที่บรรทัดนั้นเขียนไว้ยังไม่มีบนบอร์ด\n'
+      +'   → ไปเพิ่ม/แก้แถว PO นั้นใน Purchase Board (ให้มี SKU นี้อยู่ในนั้น) แล้วยอดจะแยกกันถูก\n'
+      +'② ถ้าของมาเกินจริง → แก้ "จำนวน" ของ PO นั้นใน Purchase Board ให้ตรงของจริง\n\n'
+      +'แล้วกด ⟳ โหลดใหม่ 1 ครั้ง ค่อยกลับมาตัดเข้าคลัง\n'
+      +'(ยอดในใบแจ้งยังไม่ถูกบันทึก ไม่ต้องกรอกใหม่ทั้งใบ)');
   }
   const btn=$('arrInSaveBtn'); btn.disabled=true; btn.textContent='กำลังบันทึก...';
   for(const u of ups){
