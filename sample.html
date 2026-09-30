@@ -601,7 +601,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-22-gallery';
+const SM_VERSION='v01-23-gallery';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -1744,11 +1744,19 @@ async function tglCat(id){
 }
 
 /* ═════════════════ Google Drive (Apps Script) ═════════════════ */
+/* ★ ส่ง "ตั๋วของคนที่ล็อกอิน" ไปให้ Apps Script ตรวจ แทนรหัสลับคงที่
+   รหัสลับฝังในไฟล์เว็บ = ใครกด View Source ก็ได้ไป · ตั๋วมีอายุสั้นและเพิกถอนได้
+   (ยังส่ง secret ไปด้วยช่วงเปลี่ยนผ่าน เผื่อ Apps Script ยังไม่ได้อัป) */
+async function gasToken(){
+  try{ const {data}=await sb.auth.getSession();
+       return (data&&data.session&&data.session.access_token)||''; }
+  catch(e){ return ''; }
+}
 async function gasCall(payload){
   if(!GAS_URL)throw new Error('ยังไม่ได้ตั้งลิงก์ Apps Script (GAS_URL)');
   const r=await fetch(GAS_URL,{method:'POST',
     headers:{'Content-Type':'text/plain;charset=utf-8'},          // เลี่ยง preflight
-    body:JSON.stringify(Object.assign({secret:GAS_SECRET},payload))});
+    body:JSON.stringify(Object.assign({secret:GAS_SECRET,token:await gasToken()},payload))});
   const t=await r.text();
   let j; try{ j=JSON.parse(t); }
   catch(e){
