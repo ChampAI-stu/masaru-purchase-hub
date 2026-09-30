@@ -13,6 +13,7 @@
   --navy:#1F3864; --blue:#2E75B6; --gold:#C9A84C;
   --bg:#f3f5f9; --card:#fff; --line:#e3e7ef; --text:#1d2433; --muted:#6b7488;
   --done:#1e8e3e; --done-bg:#e6f4ea; --doing:#2E75B6; --doing-bg:#e8f0fb; --pend:#b06000; --pend-bg:#fef3e0;
+  --fail:#c62828; --fail-bg:#fdecec;
   --red:#c62828;
 }
 *{box-sizing:border-box}
@@ -96,7 +97,19 @@ main{padding:18px 20px 60px;max-width:1400px;margin:0 auto}
 .st.done{background:var(--done-bg);color:var(--done)}
 .st.doing{background:var(--doing-bg);color:var(--doing)}
 .st.pending{background:var(--pend-bg);color:var(--pend)}
+.st.fail{background:var(--fail-bg);color:var(--fail)}
+.st[data-act]{cursor:pointer}
+.st[data-act]:after{content:' ▾';font-weight:400;opacity:.55}
 .st:disabled{cursor:default}
+.st:disabled:after{content:''}
+/* เมนูเลือกสถานะ — 4 สถานะแล้ว กดวนทีละอันจะช้า เลยให้เลือกตรง ๆ */
+.stmenu{position:absolute;z-index:60;background:#fff;border:1px solid var(--line);border-radius:10px;
+  box-shadow:0 10px 30px #0000002e;padding:5px;min-width:172px}
+.stmenu button{display:flex;align-items:center;gap:8px;width:100%;border:0;background:none;
+  padding:7px 8px;border-radius:7px;cursor:pointer;text-align:left}
+.stmenu button:hover{background:#f2f5fa}
+.stmenu button.on{background:#eef3fb;font-weight:700}
+.stmenu .tick{width:14px;color:var(--blue)}
 .tx{flex:1;min-width:0}
 .ttext{width:100%;min-height:30px;border:1px solid transparent;border-radius:6px;padding:3px 6px;resize:none;background:transparent;line-height:1.45;overflow:hidden;display:block}
 textarea.ttext:hover{border-color:var(--line)}
@@ -250,6 +263,7 @@ table.mem .act{white-space:nowrap;text-align:right}
           <label class="fld">ตั้งแต่<input type="date" id="hFrom"></label>
           <label class="fld">ถึง<input type="date" id="hTo"></label>
           <label class="fld">สมาชิก<select id="hMem"></select></label>
+          <label class="fld">สถานะ<select id="hSt"><option value="">ทุกสถานะ</option><option value="done">✅ เสร็จแล้ว</option><option value="doing">🔵 กำลังทำ</option><option value="pending">🟠 รอ/ติดปัญหา</option><option value="fail">❌ ไม่สำเร็จ</option><option value="open">ยังไม่เสร็จ (รวมไม่สำเร็จ)</option></select></label>
           <label class="fld" style="flex:1;min-width:180px">ค้นหางาน<input type="search" id="hSearch" placeholder="เช่น PO, supplier, ชื่อสินค้า"></label>
           <button class="btn pri" id="hGo">ค้นหา</button>
         </div>
@@ -335,7 +349,7 @@ table.mem .act{white-space:nowrap;text-align:right}
 
 <script>
 /* ===================== CONFIG ===================== */
-const DAILY_VERSION = 'v01-00';
+const DAILY_VERSION = 'v01-01';
 try { const _v=document.getElementById('dlVer'); if(_v)_v.textContent=DAILY_VERSION; } catch(e){}
 
 const SUPABASE_URL = 'https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -368,8 +382,12 @@ function toast(msg, err=false){ const t=$('#toast'); t.textContent=msg; t.classN
 function fail(e){ console.error(e); toast('เกิดข้อผิดพลาด: '+(e && e.message ? e.message : e), true); }
 function autosize(el){ if (!el.offsetParent) return; el.style.height='auto'; el.style.height=(el.scrollHeight+2)+'px'; }
 
-const STATUS = { done:'เสร็จแล้ว', doing:'กำลังทำ', pending:'รอ/ติดปัญหา' };
-const NEXT_ST = { done:'doing', doing:'pending', pending:'done' };
+/* ★ 4 สถานะ — เพิ่ม "ไม่สำเร็จ" สำหรับงานที่ทำแล้วไม่ผ่าน/ทำไม่ได้ (คนละเรื่องกับ "รอ/ติดปัญหา" ที่ยังค้างอยู่) */
+const STATUS   = { done:'เสร็จแล้ว', doing:'กำลังทำ', pending:'รอ/ติดปัญหา', fail:'ไม่สำเร็จ' };
+const ST_ICON  = { done:'✅', doing:'🔵', pending:'🟠', fail:'❌' };
+const ST_KEYS  = ['done','doing','pending','fail'];
+/* สถานะที่ควรมีเหตุผลกำกับ — เลือกแล้วเปิดช่องหมายเหตุให้เลย */
+const ST_WHY   = { pending:'ติดอะไรอยู่?', fail:'ไม่สำเร็จเพราะอะไร?' };
 
 /* ===================== DATA LAYER ===================== */
 const DEMO = !SUPABASE_ANON_KEY || !window.supabase;
@@ -399,6 +417,7 @@ function demoSeed(){
   add(d1,0,'อนุมัติ PR ประจำวัน'); add(d1,0,'ตรวจสอบรายงานค่าใช้จ่ายสินค้าตัวอย่าง','doing');
   add(d1,1,'ติดตาม PO สินค้าจากจีน ล็อต 09/2026','doing','รอ supplier ส่ง packing list');
   add(d1,1,'ตรวจค่าขนส่ง freight ตู้ที่เข้าคลัง'); add(d1,1,'ขอใบเสนอราคาแท่นชาร์จรุ่นใหม่','pending','supplier ยังไม่ตอบ');
+  add(d1,0,'ต่อรองราคาดอกสว่านล็อตใหม่','fail','โรงงานยืนราคาเดิม ขอปิดเรื่องไว้ก่อน');
   add(d1,2,'อัปเดตราคาทุนใน sku_master'); add(d1,2,'ประสานคลังเรื่องรับสินค้าเข้า');
   return { members:m, tasks:t };
 }
@@ -520,7 +539,7 @@ function taskRow(t, i, ed){
   const note = t.note || '';
   return `<li class="task" data-id="${t.id}">
     <span class="num">${i+1}.</span>
-    <button class="st ${t.status}" data-act="status" ${ed?'title="กดเพื่อเปลี่ยนสถานะ"':'disabled'}>${STATUS[t.status]||t.status}</button>
+    <button class="st ${t.status}"${ed?' data-act="status" title="กดเพื่อเลือกสถานะ"':' disabled'}>${STATUS[t.status]||t.status}</button>
     <div class="tx">
       ${ed ? `<textarea class="ttext" rows="1">${esc(t.task)}</textarea>` : `<div class="ttext ro">${esc(t.task)}</div>`}
       ${ed ? `<input class="tnote${note?'':' hidden'}" value="${esc(note)}" placeholder="หมายเหตุ">` : (note ? `<div class="tnote ro">💬 ${esc(note)}</div>` : '')}
@@ -574,6 +593,7 @@ function renderStats(){
     <span class="chip">✅ เสร็จ <b>${c('done')}</b></span>
     <span class="chip">🔵 กำลังทำ <b>${c('doing')}</b></span>
     <span class="chip">🟠 รอ/ติดปัญหา <b>${c('pending')}</b></span>
+    ${c('fail') ? `<span class="chip">❌ ไม่สำเร็จ <b>${c('fail')}</b></span>` : ''}
     ${miss.length ? `<span class="chip miss">ยังไม่ส่ง: ${miss.map(m=>esc(m.nickname||m.name)).join(', ')}</span>` : ''}`;
   $('#meBox').classList.toggle('need', !me);
   $('#meEdit').textContent = me ? '✏️ แก้ชื่อ' : '➕ ตั้งชื่อของฉัน';
@@ -599,6 +619,47 @@ async function addFromBox(card){
   } catch(e){ fail(e); box.disabled = false; }
 }
 
+/* ── เมนูเลือกสถานะ ───────────────────────────────────────────── */
+let stMenu = null;
+function closeStMenu(){ if (stMenu){ stMenu.remove(); stMenu = null; } }
+function openStMenu(btn, t){
+  closeStMenu();
+  const m = document.createElement('div');
+  m.className = 'stmenu';
+  m.innerHTML = ST_KEYS.map(k => `<button type="button" data-st="${k}"${k===t.status?' class="on"':''}>
+    <span class="tick">${k===t.status?'✓':''}</span><span class="st ${k}">${ST_ICON[k]} ${STATUS[k]}</span></button>`).join('');
+  document.body.appendChild(m);
+  const r = btn.getBoundingClientRect();
+  const w = m.offsetWidth, h = m.offsetHeight;
+  const left = Math.max(8, Math.min(r.left + scrollX, innerWidth - w - 10));
+  const top  = (r.bottom + h + 10 > innerHeight ? r.top - h - 4 : r.bottom + 4) + scrollY;
+  m.style.left = left + 'px'; m.style.top = top + 'px';
+  m.addEventListener('click', async e => {
+    const b = e.target.closest('[data-st]'); if (!b) return;
+    closeStMenu();
+    await setStatus(t, btn, b.dataset.st);
+  });
+  stMenu = m;
+}
+async function setStatus(t, btn, ns){
+  if (!ns || ns === t.status) return;
+  const old = t.status;
+  try {
+    await API.updateTask(t.id, { status:ns });
+    t.status = ns;
+    btn.className = 'st ' + ns; btn.dataset.act = 'status'; btn.textContent = STATUS[ns];
+    renderStats();
+    /* งานที่ไม่สำเร็จ/ติดปัญหา — เปิดช่องหมายเหตุให้พิมพ์เหตุผลต่อได้เลย */
+    const li = btn.closest('.task'), n = li && $('.tnote', li);
+    if (ST_WHY[ns] && n){ n.classList.remove('hidden'); n.placeholder = ST_WHY[ns]; if (!n.value) n.focus(); }
+  } catch(e){ t.status = old; fail(e); }
+}
+document.addEventListener('click', e => {
+  if (stMenu && !e.target.closest('.stmenu') && !e.target.closest('[data-act="status"]')) closeStMenu();
+});
+document.addEventListener('keydown', e => { if (e.key==='Escape') closeStMenu(); });
+addEventListener('scroll', closeStMenu, true);
+
 function bindCards(){
   const wrap = $('#cards');
   wrap.addEventListener('click', async e => {
@@ -608,11 +669,7 @@ function bindCards(){
     const act = b.dataset.act;
     try {
       if (act==='add') addFromBox(card);
-      else if (act==='status' && t){
-        const ns = NEXT_ST[t.status] || 'done';
-        await API.updateTask(t.id, { status:ns }); t.status = ns;
-        b.className = 'st '+ns; b.textContent = STATUS[ns]; renderStats();
-      }
+      else if (act==='status' && t){ openStMenu(b, t); }
       else if (act==='note'){ const n = $('.tnote', li); n.classList.remove('hidden'); n.focus(); }
       else if (act==='del' && t){
         if (!confirm('ลบงานนี้?\n\n'+t.task)) return;
@@ -648,7 +705,9 @@ function bindCards(){
       }
       if (el.classList.contains('tnote')){
         const v = el.value.trim();
-        if (!v) el.classList.add('hidden');
+        /* งานที่ "ไม่สำเร็จ / รอ-ติดปัญหา" — คาช่องเหตุผลไว้ ไม่ยุบหนี
+           (ทั้งเตือนให้กรอก และกันปุ่มข้าง ๆ เลื่อนตำแหน่งตอนกำลังจะกด) */
+        if (!v && !ST_WHY[t.status]) el.classList.add('hidden');
         if (v === (t.note||'')) return;
         await API.updateTask(t.id, { note:v }); t.note = v; toast('บันทึกหมายเหตุแล้ว');
       }
@@ -673,7 +732,7 @@ async function openCopy(mid, srcDate, tgtDate){
       <button class="btn sm" data-cp="undone">เฉพาะที่ยังไม่เสร็จ</button>
       <button class="btn sm" data-cp="none">ไม่เลือก</button>
       <label class="fld" style="margin-left:auto;flex-direction:row;align-items:center;gap:6px">สถานะใหม่
-        <select id="cpSt"><option value="">คงเดิม</option><option value="doing">กำลังทำ</option><option value="done">เสร็จแล้ว</option><option value="pending">รอ/ติดปัญหา</option></select>
+        <select id="cpSt"><option value="">คงเดิม</option><option value="doing">กำลังทำ</option><option value="done">เสร็จแล้ว</option><option value="pending">รอ/ติดปัญหา</option><option value="fail">ไม่สำเร็จ</option></select>
       </label>
     </div>
     <div id="cpList"></div>`;
@@ -748,24 +807,26 @@ function hl(text, q){
   return s.replace(new RegExp(qq,'gi'), x => `<mark>${x}</mark>`);
 }
 async function runHistory(){
-  const from = $('#hFrom').value, to = $('#hTo').value, mid = $('#hMem').value, q = $('#hSearch').value.trim();
+  const from = $('#hFrom').value, to = $('#hTo').value, mid = $('#hMem').value, q = $('#hSearch').value.trim(),
+        st = $('#hSt').value;
   if (!from || !to || from > to) return toast('เลือกช่วงวันที่ให้ถูกต้อง', true);
   const box = $('#histList'); box.innerHTML = '<div class="muted">กำลังโหลด…</div>';
   try {
     let rows = await API.listTasks(from, to, mid || null);
     if (q){ const ql = q.toLowerCase(); rows = rows.filter(t => (t.task+' '+(t.note||'')+' '+taskMemberName(t)).toLowerCase().includes(ql)); }
+    if (st) rows = rows.filter(t => st==='open' ? t.status!=='done' : t.status===st);
     const dates = [...new Set(rows.map(t=>t.work_date))].sort().reverse();
     if (!dates.length){ box.innerHTML = '<div class="panel muted">ไม่พบข้อมูลในช่วงนี้</div>'; return; }
     const tdy = today();
     box.innerHTML = `<div class="muted" style="margin-bottom:8px;font-size:14px">พบ ${rows.length} งาน ใน ${dates.length} วัน</div>` + dates.map(d => {
       const dr = rows.filter(t=>t.work_date===d), groups = groupByMember(dr);
-      const miss = (!mid && !q) ? activeMembers().filter(m => !groups.some(g=>g.mid===m.id)) : [];
+      const miss = (!mid && !q && !st) ? activeMembers().filter(m => !groups.some(g=>g.mid===m.id)) : [];
       return `<div class="hday">
         <div class="hday-h"><b>${esc(thDate(d))}</b><span>${groups.length} คน · ${dr.length} งาน</span><span class="spacer"></span>
           <button class="btn sm" data-open="${d}">เปิดวันนั้น</button></div>
         ${groups.map(g => `<div class="hmem">
           <div class="hn">${esc(g.m ? (g.m.nickname || g.m.name) : g.name)}<small>${esc(g.m ? g.m.position||'' : '')}</small></div>
-          <ol>${g.items.map(t => `<li><span class="st ${t.status}" style="font-size:11px">${STATUS[t.status]}</span> ${hl(t.task,q)}${t.note?` <span class="note">💬 ${hl(t.note,q)}</span>`:''}</li>`).join('')}</ol>
+          <ol>${g.items.map(t => `<li><span class="st ${t.status}" style="font-size:11px">${ST_ICON[t.status]||''} ${STATUS[t.status]}</span> ${hl(t.task,q)}${t.note?` <span class="note">💬 ${hl(t.note,q)}</span>`:''}</li>`).join('')}</ol>
           ${g.mid && g.m && g.m.active && d !== tdy ? `<div class="ha"><button class="btn sm" data-reuse="${g.mid}" data-d="${d}">↺ ใช้ซ้ำวันนี้</button></div>` : ''}
         </div>`).join('')}
         ${miss.length ? `<div class="hmiss">ยังไม่ส่ง: ${miss.map(m=>esc(m.nickname||m.name)).join(', ')}</div>` : ''}
@@ -775,6 +836,7 @@ async function runHistory(){
 }
 function bindHistory(){
   $('#hGo').onclick = runHistory;
+  $('#hSt').onchange = runHistory;
   $('#hSearch').addEventListener('keydown', e => { if (e.key==='Enter') runHistory(); });
   $('#histList').addEventListener('click', e => {
     const o = e.target.closest('[data-open]');
@@ -833,15 +895,15 @@ function exportXlsx(rows, from, to, mid){
   // ชีต 2: สรุปรายคน
   const dates = [...new Set(rows.map(t=>t.work_date))].sort();
   const groups = groupByMember(rows);
-  const a2 = [['ชื่อ-นามสกุล','ชื่อเล่น','ตำแหน่ง','จำนวนวันที่ส่ง','งานทั้งหมด','เสร็จแล้ว','กำลังทำ','รอ/ติดปัญหา']];
+  const a2 = [['ชื่อ-นามสกุล','ชื่อเล่น','ตำแหน่ง','จำนวนวันที่ส่ง','งานทั้งหมด','เสร็จแล้ว','กำลังทำ','รอ/ติดปัญหา','ไม่สำเร็จ']];
   groups.forEach(g => {
     const c = s => g.items.filter(t=>t.status===s).length;
-    a2.push([g.name, g.m ? g.m.nickname||'' : '', g.m ? g.m.position||'' : '', new Set(g.items.map(t=>t.work_date)).size, g.items.length, c('done'), c('doing'), c('pending')]);
+    a2.push([g.name, g.m ? g.m.nickname||'' : '', g.m ? g.m.position||'' : '', new Set(g.items.map(t=>t.work_date)).size, g.items.length, c('done'), c('doing'), c('pending'), c('fail')]);
   });
   const c = s => rows.filter(t=>t.status===s).length;
-  a2.push(['รวม','','','', rows.length, c('done'), c('doing'), c('pending')]);
+  a2.push(['รวม','','','', rows.length, c('done'), c('doing'), c('pending'), c('fail')]);
   const ws2 = XLSX.utils.aoa_to_sheet(a2);
-  ws2['!cols'] = [{wch:24},{wch:10},{wch:24},{wch:14},{wch:11},{wch:10},{wch:10},{wch:12}];
+  ws2['!cols'] = [{wch:24},{wch:10},{wch:24},{wch:14},{wch:11},{wch:10},{wch:10},{wch:12},{wch:10}];
   XLSX.utils.book_append_sheet(wb, ws2, 'สรุปรายคน');
 
   // ชีต 3: การส่งรายงาน (วัน × คน)
