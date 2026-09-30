@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>บันทึกงานรายวัน · จัดซื้อ</title>
+<title>พื้นที่ทำงาน · MASARU</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -203,6 +203,37 @@ table.mem .act{white-space:nowrap;text-align:right}
   .pr-sign{display:flex;justify-content:flex-end;margin-top:30px;page-break-inside:avoid}
   .pr-sign div{text-align:center;line-height:2}
 }
+/* MASARU workspace — a quiet place to plan and get things done. */
+:root{--navy:#343530;--blue:#373831;--gold:#d5dfca;--bg:#fff;--card:#fff;--line:#e9e8e4;--text:#353630;--muted:#8a8b83;--done:#4d775b;--done-bg:#edf3ea;--doing:#5a7190;--doing-bg:#edf2f8;--pend:#9b7641;--pend-bg:#faf1df}
+body{font-size:14px;line-height:1.6;background:#fff}
+button,input,select,textarea{font-size:14px}button,a,input,select,textarea{touch-action:manipulation}
+button:focus-visible,a:focus-visible{outline:2px solid #7b9c72;outline-offset:3px}
+.top{position:relative;margin-left:222px;min-height:68px;background:#fff;color:var(--text);padding:12px 38px;border-bottom:1px solid var(--line);gap:12px}
+.top .brand{color:#797b70;font-size:10px;letter-spacing:1.7px}.top h1{font-size:14px;font-weight:500}.top a{color:#6d6f65;font-size:12px}.top .pill-top{border:0;background:#f6f6f3;color:#73756b;font-size:11px;border-radius:5px}.top #dlVer{display:none}.conn{background:none;font-size:11px;padding:0 6px}.conn i{width:6px;height:6px}
+.tabs{position:fixed;inset:0 auto 0 0;width:222px;z-index:20;background:#f7f7f3;border-right:1px solid var(--line);border-bottom:0;display:flex;flex-direction:column;overflow-y:auto;padding:132px 14px 120px;gap:5px}
+.tabs:before{content:'M.  MASARU\A WORKSPACE';white-space:pre;position:absolute;top:29px;left:26px;font-size:18px;font-weight:700;letter-spacing:1.5px;line-height:1.9;color:#474a3f}
+.tabs:after{content:'ทีละงาน ทีละก้าว\A Make room for good work. ✧';white-space:pre;position:absolute;bottom:30px;left:26px;font-size:11px;line-height:2;color:#8b8d81}
+.tabs button{text-align:left;border:0;border-radius:6px;padding:10px 13px;font-size:13px;font-weight:500;color:#7d7e74;transition:background .15s,color .15s}.tabs button:hover{background:#edeee7}.tabs button.on{background:#e7eadd;color:#353e2c;font-weight:700}
+.tabs .nav-count{float:right;border-radius:4px;background:#dce2cf;padding:0 6px;font-size:11px}
+.banner{margin-left:222px;font-size:12px;padding:7px 38px;background:#fff8e9}
+main{max-width:1440px;margin-left:222px;padding:0 48px 70px}
+.workspace-cover{height:158px;position:relative;margin:0 -48px 0;background:#f2f2eb;overflow:hidden;background-image:linear-gradient(110deg,#f1f1e9,#f7f4ee 65%,#ecefdf)}
+.cover-copy{position:absolute;left:48px;top:30px;font-size:10px;letter-spacing:2px;color:#8c8f7e}.cover-copy strong{display:block;font-family:Georgia,serif;font-size:31px;font-weight:400;letter-spacing:-.7px;color:#60684f;margin-top:9px;line-height:1.15}.workspace-cover svg{position:absolute;right:40px;bottom:-12px;width:270px;height:180px}
+.workspace-heading{position:relative;padding:0 0 27px}.page-icon{width:56px;height:56px;background:#fff;border:1px solid #e8e8df;border-radius:12px;display:grid;place-items:center;font-size:28px;margin-top:-24px;position:relative;box-shadow:0 3px 9px #3d473509}.workspace-heading .eyebrow{font-size:10px;letter-spacing:2px;color:#919487;margin:16px 0 3px}.workspace-heading h2{font-size:30px;letter-spacing:-.7px;margin:0 0 5px;font-weight:700}.workspace-heading p{color:#93948a;margin:0;font-size:13px}.workspace-heading .today-note{position:absolute;right:0;bottom:32px;font-size:11px;color:#97998f}
+.toolbar{gap:8px}.btn{border-radius:6px;font-size:12px;padding:7px 12px;font-weight:500;min-height:34px}.btn:hover{background:#f4f5ef;border-color:#cbcfc1}.btn.pri:hover,.btn.navy:hover{background:#535746;color:#fff}.btn.pri{background:#393d32;border-color:#393d32}.btn.navy{background:#5d6f4b;border-color:#5d6f4b}.datenav{border-radius:6px;padding:1px}.datenav input,.datenav button{font-size:12px}.mebox{font-size:12px;border:0;background:#f6f7f2;padding:5px 10px;border-radius:6px}.mebox .btn{border:0;background:transparent;font-size:11px}.daytitle{font-size:19px;margin:24px 0 12px}.daytitle small{font-size:12px}.stats{gap:6px}.chip{border:0;border-radius:4px;background:#f4f5f0;font-size:11px;padding:5px 10px}.chip.miss{background:#fcf4ef;color:#a3785c}.card{border-radius:8px;box-shadow:0 2px 3px #22220003}.card.me{border-color:#c2cdb3;box-shadow:none}.ch{padding:14px;background:#fcfcfa}.card.me .ch{background:#f6f8f0}.av{width:32px;height:32px;border-radius:7px;background:#f0eee7;color:#747061;font-size:13px}.card.me .av{background:#dde6d0;color:#5b6c47}.who b{font-size:13px}.who small{font-size:11px}.tag{font-size:10px;border-radius:4px}.tag.metag{background:#e5ebdd;color:#5b6c47}.st{font-size:10px}.grid{grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}.tools{padding:10px 14px 0}.tasks{padding:9px 8px}.task:hover{background:#f7f8f3}.ttext{font-size:13px}.tnote{font-size:11px}.add textarea{font-size:12px;border-radius:5px}.panel,.hday{border-radius:8px}.panel h3{font-size:17px}.hday-h{background:#f8f9f4}.mbox{border-radius:10px}.mem{display:block;overflow:auto}.mem th,.mem td{min-width:80px}.fld input,.fld select{border-radius:5px}.tag.no{background:#efefec}.emptytxt{font-size:12px;color:#a1a397;padding:20px 16px}.stmenu button:hover{background:#f5f6ef}
+/* Planner */
+.plan-heading{display:flex;align-items:center;gap:12px;margin-bottom:18px}.plan-heading h3{font-size:20px;margin:0}.plan-heading p{font-size:12px;color:var(--muted);margin:2px 0 0}.plan-heading>.btn{margin-left:auto}.planner-note{background:#f7f8f3;border:1px solid #edf0e5;border-radius:6px;padding:10px 13px;font-size:11px;color:#7e8573;margin-bottom:18px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}.planner-note .backup-tools{margin-left:auto;display:flex;gap:12px}.text-button{border:0;background:none;text-decoration:underline;text-underline-offset:3px;color:inherit;font-size:11px;padding:0;cursor:pointer}.planner-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 23px}.planner-metric{border:1px solid var(--line);border-radius:8px;padding:14px 17px;background:#fff}.planner-metric small{color:#92958a;font-size:11px}.planner-metric strong{display:block;font-family:Georgia,serif;font-weight:400;font-size:28px;line-height:1.3;margin-top:4px}.planner-metric em{font-style:normal;font-size:10px;color:#9b9e90}.planner-metric:nth-child(2){background:#faf7f0}.planner-metric:nth-child(3){background:#f7f8fc}.planner-metric:nth-child(4){background:#f3f7ee}
+.planner-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px}.plan-views{display:flex;gap:2px}.plan-views button{border:0;background:none;border-radius:5px;padding:7px 12px;font-size:12px;color:#8a8c80}.plan-views button.active{background:#f0f2e9;color:#4d5940;font-weight:700}.plan-search{margin-left:auto;max-width:210px;width:100%;background:#fafbf8;border:1px solid var(--line);padding:7px 10px;border-radius:5px;font-size:12px}.plan-filters{display:flex;flex-wrap:wrap;gap:8px;padding:13px 0;align-items:center}.plan-filters select{font-size:11px;border:1px solid var(--line);border-radius:5px;background:#fff;padding:6px 9px;max-width:180px}.plan-filters>span{margin-left:auto;color:#9da091;font-size:11px}.quick-plan{display:flex;gap:10px;padding:12px;border:1px solid var(--line);background:#fcfcfa;border-radius:7px;margin-bottom:17px}.quick-plan input{min-width:0;flex:1;border:0;background:none;font-size:13px;outline:none;padding:4px}.quick-plan:focus-within{border-color:#a1b38f}.quick-plan>span{padding:3px 4px;color:#a3af97;font-size:20px}
+.plan-table-scroll{overflow:auto;border:1px solid var(--line);border-radius:8px}.plan-table{border-collapse:collapse;width:100%;min-width:680px;text-align:left;font-size:12px}.plan-table th{font-size:10px;color:#96978e;font-weight:500;background:#fafbf8;padding:10px 12px;border-bottom:1px solid var(--line)}.plan-table td{border-bottom:1px solid #efefeb;padding:12px;vertical-align:middle}.plan-table tr:last-child td{border-bottom:0}.plan-table tr:hover td{background:#fcfcf9}.plan-task-title{border:0;background:transparent;padding:0;text-align:left;word-break:break-word;font-weight:600;font-size:13px}.plan-task-title:hover{color:#748d57}.plan-task-sub{display:block;color:#a0a293;font-size:10px;max-width:280px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.plan-done .plan-task-title{text-decoration:line-through;color:#aaa}.plan-checkbox{accent-color:#768b60;width:16px;height:16px;cursor:pointer}.p-badge{font-size:10px;white-space:nowrap;border-radius:4px;padding:3px 7px;display:inline-flex;gap:4px;align-items:center}.p-todo{background:#f0efed;color:#838178}.p-doing{background:#edf2f8;color:#5e799e}.p-waiting{background:#faf1e1;color:#a2804c}.p-done{background:#eaf1e3;color:#65844f}.p-high{background:#fbede9;color:#b6755f}.p-medium{background:#f7f0df;color:#a58d53}.p-low{background:#f1f3ed;color:#87977b}.p-project{background:#f0edf7;color:#8b7aa5}.p-date{color:#969989;font-size:11px}.p-date.late{color:#bf7864}.p-status-select{border:0;max-width:115px;cursor:pointer}.plan-empty{text-align:center;padding:48px 20px;border:1px dashed #dfe4d5;border-radius:8px;background:#fdfdfa}.plan-empty .empty-symbol{font-size:32px;color:#a9b795}.plan-empty h4{font-size:16px;margin:12px 0 6px}.plan-empty p{font-size:12px;color:#96998b;margin:0 0 17px}.plan-board{display:grid;grid-template-columns:repeat(4,minmax(200px,1fr));gap:14px;overflow:auto;padding-bottom:8px}.plan-column{background:#f7f7f3;border-radius:8px;padding:12px;min-height:230px}.plan-column h4{margin:0 0 14px;display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:500;color:#939589}.plan-board-card{background:white;border:1px solid #e8eae1;border-radius:6px;margin:0 0 9px;padding:13px;box-shadow:0 2px 2px #323a2203}.plan-board-card .plan-task-title{display:block;width:100%;margin:7px 0 12px}.plan-board-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.plan-board-footer{display:flex;align-items:center;justify-content:space-between;margin-top:11px}.plan-column .column-add{border:0;background:none;font-size:11px;color:#989c8d;padding:7px 0}.plan-calendar-toolbar{display:flex;align-items:center;gap:7px;margin:2px 0 15px}.plan-calendar-toolbar strong{font-size:15px;margin-right:auto}.calendar-scroll{overflow:auto}.plan-calendar{display:grid;grid-template-columns:repeat(7,minmax(95px,1fr));min-width:665px;border-top:1px solid var(--line);border-left:1px solid var(--line);border-radius:6px;overflow:hidden}.calendar-weekday{font-size:10px;color:#9da18f;background:#f9faf6;text-align:center;padding:9px;border-right:1px solid var(--line)}.calendar-cell{min-height:116px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:7px;background:#fff}.calendar-cell.outside{background:#fbfcf9;color:#c8ccbd}.calendar-cell.is-today{background:#f8fbf3}.calendar-day{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;font-size:11px}.calendar-cell.is-today .day-number{background:#7f9268;color:white;border-radius:50%;width:23px;height:23px;text-align:center;padding-top:2px}.calendar-add{border:0;background:none;color:#aab19b;font-size:16px;padding:0 4px}.calendar-event{border:0;width:100%;display:block;text-align:left;font-size:10px;padding:4px 5px;margin-top:4px;border-radius:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer}.unscheduled{margin-top:20px}.unscheduled h4{font-size:12px;color:#8f9581}.schedule-legend{font-size:11px;color:#a1a68f;margin:10px 0}
+#planDialog{border:1px solid var(--line);padding:0;border-radius:12px;width:560px;max-width:calc(100% - 28px);max-height:90vh;box-shadow:0 24px 100px #252c2326;color:var(--text)}#planDialog::backdrop{background:#252e264d;backdrop-filter:blur(3px)}.plan-dialog-header{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}.plan-dialog-header h3{font-size:17px;margin:0}.plan-dialog-header button{margin-left:auto;background:none;border:0;font-size:22px;color:#999}.plan-form-body{padding:22px 24px;display:grid;grid-template-columns:1fr 1fr;gap:16px}.plan-field{display:flex;flex-direction:column;gap:6px;font-size:11px;color:#8c9181;min-width:0}.plan-field.full{grid-column:1/-1}.plan-field input,.plan-field select,.plan-field textarea{width:100%;border:1px solid #e2e5d9;border-radius:6px;background:#fdfefa;padding:9px 10px;font-size:13px;color:#444b38}.plan-field textarea{resize:vertical;min-height:95px}.plan-field input:focus,.plan-field select:focus,.plan-field textarea:focus{outline:2px solid #b6c5a5;outline-offset:1px}.plan-dialog-footer{padding:16px 24px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center}.plan-dialog-footer .spacer{flex:1}.plan-dialog-error{padding:0 24px 12px;margin:0;color:#b9674f;font-size:12px}
+@media(min-width:1700px){main{margin-right:auto;max-width:1500px}}
+@media(max-width:1100px){.tabs{width:190px;padding-left:10px;padding-right:10px}.top,.banner,main{margin-left:190px}.top{padding-left:25px;padding-right:25px}main{padding-left:28px;padding-right:28px}.workspace-cover{margin-left:-28px;margin-right:-28px}.cover-copy{left:28px}.top .pill-top{display:none}.workspace-heading .today-note{display:none}.planner-metric{padding:12px}.plan-search{max-width:180px}}
+@media(max-width:760px){.top,.banner,main{margin-left:0}.top{padding:12px 18px;gap:8px}.top h1{font-size:12px}.top a{font-size:10px}.top .brand{font-size:9px}.conn{display:none}.tabs{position:sticky;inset:0 0 auto;width:auto;height:auto;padding:7px 10px;flex-direction:row;overflow-x:auto;background:#f8f9f3;border-right:0;border-bottom:1px solid var(--line);gap:4px}.tabs:before,.tabs:after{display:none}.tabs button{font-size:12px;padding:8px 12px}.tabs .nav-count{margin-left:8px}main{padding:0 18px 45px}.workspace-cover{margin:0 -18px;height:133px}.cover-copy{left:20px;top:24px}.cover-copy strong{font-size:26px}.workspace-cover svg{width:170px;right:0;bottom:-32px}.workspace-heading h2{font-size:25px}.workspace-heading{padding-bottom:22px}.workspace-heading p{font-size:11px}.page-icon{width:48px;height:48px;font-size:23px}.planner-metrics{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:18px}.planner-metric strong{font-size:24px}.planner-metric{padding:10px 13px}.plan-heading h3{font-size:18px}.plan-heading p{font-size:11px}.plan-search{max-width:none;margin:0;width:100%}.planner-tools{gap:12px}.plan-filters{gap:5px}.plan-filters select{max-width:140px}.plan-filters>span{width:100%;margin:0}.plan-board{grid-template-columns:repeat(4,240px)}.planner-note .backup-tools{margin-left:0;width:100%}.grid{grid-template-columns:minmax(0,1fr)}.ch{gap:7px;padding:12px 10px}.tag{font-size:9px}.toolbar .spacer{display:none}.mebox{flex:1;white-space:nowrap}.daytitle small{display:block;margin:0}.daytitle{font-size:17px}.banner{padding:8px 18px}.quick-plan{gap:4px;padding:8px}.quick-plan .btn{white-space:nowrap}.plan-form-body{padding:18px;gap:12px}.plan-dialog-header,.plan-dialog-footer{padding:14px 18px}.hmem{flex-direction:column}.hmem .hn{width:auto}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+@media(max-width:760px){.tabs button{flex:0 0 auto}.tabs .nav-count{float:none;display:inline-block}.plan-table-scroll:before{content:'เลื่อนซ้าย–ขวาเพื่อดูรายละเอียดงาน ↔';display:block;padding:8px 12px;background:#fafbf8;font-size:10px;color:#8c927f;border-bottom:1px solid var(--line)}}
+@media(max-width:420px){.cover-copy strong{font-size:23px}.workspace-cover svg{width:110px;right:-5px;bottom:-26px}}
+@media print{#planDialog{display:none!important}}
+
 </style>
 </head>
 <body>
@@ -229,12 +260,17 @@ table.mem .act{white-space:nowrap;text-align:right}
   </div>
   <nav class="tabs" id="tabs">
     <button data-tab="log" class="on">📝 บันทึกงาน</button>
+    <button data-tab="planner">☑ To-do & แผนงาน <span class="nav-count" id="planNavCount">0</span></button>
     <button data-tab="history">🕘 ประวัติ</button>
     <button data-tab="export">📤 Export</button>
     <button data-tab="members">👥 สมาชิก</button>
   </nav>
 
   <main>
+    <div class="workspace-cover" aria-hidden="true"><div class="cover-copy">A LITTLE PLAN. A BETTER DAY.<strong>Good work,<br>at your own pace.</strong></div>
+    <svg viewBox="0 0 280 190" fill="none"><ellipse cx="144" cy="168" rx="113" ry="10" fill="#dce2ce"/><path d="M42 157L60 54L165 67L146 171Z" fill="#fdfcf8" stroke="#8c967a" stroke-width="1.6"/><path d="M61 55L68 47L175 60L164 167L147 171" fill="#e3e8d6" stroke="#8c967a" stroke-width="1.6"/><path d="M78 83L127 89M74 106L140 114M71 129L119 135" stroke="#b6bda9" stroke-width="2" stroke-linecap="round"/><path d="M77 81L80 85L88 78M73 104L76 108L84 101" stroke="#899976" stroke-width="2" stroke-linecap="round"/><path d="M158 143L199 77L207 82L166 148L156 153Z" fill="#c7d1b5" stroke="#879574" stroke-width="1.4"/><path d="M205 80L210 71L203 67L198 76" stroke="#879574" stroke-width="1.5"/><path d="M210 162L204 130L247 130L241 162Z" fill="#eee0cb" stroke="#a59a7e" stroke-width="1.6"/><path d="M225 130Q225 85 239 63M225 115Q201 112 204 91Q225 93 225 115ZM229 96Q252 92 249 74Q231 74 229 96ZM237 71Q226 61 233 47Q245 55 237 71Z" fill="#c5d2b7" stroke="#94a382" stroke-width="1.5"/><path d="M37 48L37 36M31 42L43 42M186 35L186 25M181 30L191 30" stroke="#b1b99f" stroke-width="1.5" stroke-linecap="round"/><circle cx="26" cy="120" r="3" fill="#ccd3bd"/></svg></div>
+    <div class="workspace-heading"><div class="page-icon" aria-hidden="true">🗒️</div><div class="eyebrow">MY EVERYDAY WORKSPACE</div><h2>พื้นที่ทำงานของเรา</h2><p>บันทึกวันนี้ วางแผนวันข้างหน้า และทำให้งานเป็นระเบียบขึ้นอีกนิด</p><span class="today-note" id="workspaceToday"></span></div>
+
     <!-- ============ บันทึกงาน ============ -->
     <section id="tab-log">
       <div class="toolbar">
@@ -255,6 +291,29 @@ table.mem .act{white-space:nowrap;text-align:right}
       <div class="stats" id="dayStats"></div>
       <div class="grid" id="cards"></div>
     </section>
+
+<section id="tab-planner" class="hidden">
+  <div class="plan-heading"><div><h3>To-do & แผนงานของฉัน</h3><p>รวมสิ่งที่ต้องทำ แล้วค่อย ๆ ทำให้สำเร็จในแบบของคุณ</p></div><button class="btn pri" id="planNew">＋ เพิ่มงาน</button></div>
+  <div class="planner-note"><span>◌ พื้นที่ส่วนตัว · บันทึกในเบราว์เซอร์นี้ แยกตามบัญชี · ยังไม่ซิงก์ข้ามอุปกรณ์</span><div class="backup-tools"><button class="text-button" id="planBackup">สำรองข้อมูล</button><button class="text-button" id="planRestore">นำเข้าข้อมูล</button><input type="file" id="planFile" accept="application/json,.json" hidden></div></div>
+  <div class="planner-metrics" id="planMetrics" aria-live="polite"></div>
+  <div class="planner-tools"><div class="plan-views" role="group" aria-label="มุมมองงาน"><button data-view="list" class="active" aria-pressed="true">☷ รายการ</button><button data-view="board" aria-pressed="false">▥ บอร์ด</button><button data-view="calendar" aria-pressed="false">▦ ตารางงาน</button></div><input type="search" id="planSearch" class="plan-search" placeholder="⌕ ค้นหางานหรือโน้ต…" aria-label="ค้นหางาน"><button class="btn sm" id="planPull" title="คัดลอกงานของฉันจากวันที่เลือกในแท็บบันทึกงาน">↙ ดึงบันทึกรายวัน</button></div>
+  <div class="plan-filters"><select id="planStatus" aria-label="กรองสถานะ"><option value="">ทุกสถานะ</option><option value="open">ยังไม่เสร็จ</option><option value="todo">ยังไม่เริ่ม</option><option value="doing">กำลังทำ</option><option value="waiting">รอติดตาม</option><option value="done">เสร็จแล้ว</option></select><select id="planProject" aria-label="กรองหมวดงาน"><option value="">ทุกหมวดงาน</option></select><select id="planDue" aria-label="กรองกำหนดวัน"><option value="">ทุกช่วงเวลา</option><option value="today">วันนี้</option><option value="week">7 วันข้างหน้า</option><option value="late">เลยกำหนด</option><option value="none">ยังไม่กำหนดวัน</option></select><select id="planSort" aria-label="เรียงงาน"><option value="date">เรียงตามกำหนดวัน</option><option value="priority">ความสำคัญสูงก่อน</option><option value="newest">เพิ่มล่าสุด</option></select><span id="planCount"></span></div>
+  <form class="quick-plan" id="planQuick"><span aria-hidden="true">＋</span><input id="planQuickTitle" maxlength="300" required placeholder="จดสิ่งที่ต้องทำ แล้วกด Enter…" aria-label="ชื่อสิ่งที่ต้องทำ"><button class="btn" type="submit">เพิ่มในรายการ</button></form>
+  <div id="planContent"></div>
+</section>
+<dialog id="planDialog" aria-labelledby="planDialogTitle">
+ <form id="planForm"><div class="plan-dialog-header"><span aria-hidden="true">☑</span><h3 id="planDialogTitle">เพิ่มงานใหม่</h3><button type="button" id="planClose" aria-label="ปิด">×</button></div>
+ <div class="plan-form-body">
+ <label class="plan-field full">สิ่งที่ต้องทำ *<input id="pTitle" required maxlength="300" placeholder="เช่น ติดตามใบเสนอราคาจาก Supplier"></label>
+ <label class="plan-field">หมวดงาน / โปรเจกต์<input id="pProject" list="planProjects" maxlength="80" placeholder="เช่น จัดซื้อ, ประชุม, ส่วนตัว"><datalist id="planProjects"></datalist></label>
+ <label class="plan-field">ความสำคัญ<select id="pPriority"><option value="medium">ปานกลาง</option><option value="high">สูง</option><option value="low">ต่ำ</option></select></label>
+ <label class="plan-field">วันที่ทำ / กำหนดส่ง<input type="date" id="pDate" min="1900-01-01" max="9999-12-31"></label>
+ <label class="plan-field">สถานะ<select id="pStatus"><option value="todo">ยังไม่เริ่ม</option><option value="doing">กำลังทำ</option><option value="waiting">รอติดตาม</option><option value="done">เสร็จแล้ว</option></select></label>
+ <label class="plan-field">เวลาเริ่ม (ไม่บังคับ)<input type="time" id="pStart"></label><label class="plan-field">เวลาสิ้นสุด (ไม่บังคับ)<input type="time" id="pEnd"></label>
+ <label class="plan-field full">รายละเอียด / โน้ต<textarea id="pNote" maxlength="10000" placeholder="รายละเอียด ลิงก์ หรือสิ่งที่ต้องเตรียม…"></textarea></label>
+ </div><p class="plan-dialog-error hidden" id="planError" role="alert"></p>
+ <div class="plan-dialog-footer"><button type="button" class="btn danger hidden" id="planDelete">ลบงาน</button><span class="spacer"></span><button type="button" class="btn" id="planCancel">ยกเลิก</button><button type="submit" class="btn pri">บันทึกงาน</button></div></form>
+</dialog>
 
     <!-- ============ ประวัติ ============ -->
     <section id="tab-history" class="hidden">
@@ -349,7 +408,7 @@ table.mem .act{white-space:nowrap;text-align:right}
 
 <script>
 /* ===================== CONFIG ===================== */
-const DAILY_VERSION = 'v01-01';
+const DAILY_VERSION = 'v02-00';
 try { const _v=document.getElementById('dlVer'); if(_v)_v.textContent=DAILY_VERSION; } catch(e){}
 
 const SUPABASE_URL = 'https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -1053,8 +1112,10 @@ function bindMembers(){
 /* ===================== TABS / BOOT ===================== */
 function showTab(name){
   $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab===name));
-  ['log','history','export','members'].forEach(t => $('#tab-'+t).classList.toggle('hidden', t!==name));
+  ['log','planner','history','export','members'].forEach(t => $('#tab-'+t).classList.toggle('hidden', t!==name));
   lsSet('daily_tab', name);
+  if (name==='planner') Planner.refresh();
+  $$('#tabs button').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===name?'page':'false'));
   if (name==='log') $$('#cards textarea').forEach(autosize);
   if (name==='members') renderMembers();
   if (name==='export') updExportInfo();
@@ -1124,6 +1185,8 @@ async function init(){
   document.addEventListener('keydown', e => { if (e.key==='Escape' && !$('#modal').classList.contains('hidden')) closeModal(); });
 
   bindCards(); bindHistory(); bindExport(); bindMembers();
+  Planner.init();
+  $('#workspaceToday').textContent = thDate(today());
   applyPreset('7', $('#hFrom'), $('#hTo'));
   applyPreset('today', $('#eFrom'), $('#eTo'));
 
@@ -1141,6 +1204,118 @@ async function init(){
     setTimeout(()=>{ const el=$('#mName'); if (el) el.focus(); }, 300);
   }
 }
+/* Personal planner: versioned, account-scoped local data. Daily API is unchanged. */
+const Planner = (() => {
+  const labels={todo:'ยังไม่เริ่ม',doing:'กำลังทำ',waiting:'รอติดตาม',done:'เสร็จแล้ว'};
+  const priorities={high:'สูง',medium:'ปานกลาง',low:'ต่ำ'};
+  const rank={high:0,medium:1,low:2};
+  let items=[],view='list',month=today().slice(0,7),editing=null,editStamp=null,ready=false;
+  const key=()=> 'masaru_planner_v1:'+MY_UID;
+  const validDate=s=>s==='' || (/^\d{4}-\d{2}-\d{2}$/.test(s)&&s>='1900-01-01'&&s<='9999-12-31'&&ymd(parseYmd(s))===s);
+  const validTime=s=>s==='' || /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
+  function validItem(t){
+    return t&&typeof t.id==='string'&&/^[a-zA-Z0-9_-]{1,100}$/.test(t.id)&&typeof t.title==='string'&&t.title.trim()&&t.title.length<=300&&
+      Object.hasOwn(labels,t.status)&&Object.hasOwn(priorities,t.priority)&&typeof t.project==='string'&&t.project.length<=80&&typeof t.note==='string'&&t.note.length<=10000&&
+      typeof t.date==='string'&&validDate(t.date)&&typeof t.start==='string'&&validTime(t.start)&&typeof t.end==='string'&&validTime(t.end)&&
+      (!(t.start||t.end)||t.date)&&(!t.end||(t.start&&t.end>t.start))&&typeof t.created==='string'&&typeof t.updated==='string';
+  }
+  function read(){
+    if(!MY_UID) throw Error('กรุณาเข้าสู่ระบบก่อนใช้แผนงาน');
+    const raw=localStorage.getItem(key());
+    if(!raw)return [];
+    const data=JSON.parse(raw);
+    if(data.version!==1||!Array.isArray(data.items)||!data.items.every(validItem)||new Set(data.items.map(t=>t.id)).size!==data.items.length)throw Error('อ่านข้อมูลแผนงานไม่ได้ จึงยังไม่เขียนทับข้อมูลเดิม');
+    return data.items;
+  }
+  function commit(transform){
+    const next=transform(read());
+    localStorage.setItem(key(),JSON.stringify({version:1,items:next}));
+    items=next;render();
+  }
+  function report(e){toast('บันทึกแผนงานไม่ได้: '+e.message,true);}
+  function make(fields={}){const stamp=nowIso();return {id:uid(),title:'',status:'todo',priority:'medium',project:'',date:'',start:'',end:'',note:'',created:stamp,updated:stamp,...fields};}
+  function late(t){return t.date&&t.date<today()&&t.status!=='done';}
+  function sort(a,b){const s=$('#planSort').value;return (s==='priority'?rank[a.priority]-rank[b.priority]:s==='newest'?b.created.localeCompare(a.created):0)||((a.date||'9999').localeCompare(b.date||'9999'))||a.start.localeCompare(b.start)||rank[a.priority]-rank[b.priority]||a.created.localeCompare(b.created);}
+  function filtered(){const query=$('#planSearch').value.trim().toLocaleLowerCase(),status=$('#planStatus').value,project=$('#planProject').value,due=$('#planDue').value;return items.filter(t=>
+    (!query||[t.title,t.project,t.note].some(s=>s.toLocaleLowerCase().includes(query)))&&(!status||(status==='open'?t.status!=='done':t.status===status))&&(!project||t.project===project)&&
+    (!due||(due==='today'?t.date===today():due==='week'?t.date>=today()&&t.date<=addDays(today(),6):due==='late'?late(t):!t.date))).sort(sort);}
+  function badge(t){return `<span class="p-badge p-${t.status}">● ${labels[t.status]}</span>`;}
+  function priority(t){return `<span class="p-badge p-${t.priority}">${t.priority==='high'?'↑':t.priority==='low'?'↓':'−'} ${priorities[t.priority]}</span>`;}
+  function dateText(t){return `<span class="p-date${late(t)?' late':''}">${t.date?esc(thShort(t.date)):'ยังไม่กำหนดวัน'}${t.start?' · '+esc(t.start)+(t.end?'–'+esc(t.end):''):''}${late(t)?' · เลยกำหนด':''}</span>`;}
+  function statusSelect(t){return `<select class="p-badge p-status-select p-${t.status}" data-status="${t.id}" aria-label="สถานะ ${esc(t.title)}">${Object.entries(labels).map(([k,v])=>`<option value="${k}"${k===t.status?' selected':''}>${v}</option>`).join('')}</select>`;}
+  function check(t){return `<input type="checkbox" class="plan-checkbox" data-check="${t.id}" ${t.status==='done'?'checked':''} aria-label="ทำเสร็จแล้ว: ${esc(t.title)}">`;}
+  function empty(){return `<div class="plan-empty"><div class="empty-symbol">☑</div><h4>${items.length?'ยังไม่พบงานที่ตรงกับตัวกรอง':'เริ่มต้นวันดี ๆ ด้วยแผนเล็ก ๆ'}</h4><p>${items.length?'ลองเปลี่ยนคำค้นหาหรือตัวกรอง เพื่อดูงานอื่นของคุณ':'จดงานแรก กำหนดวัน แล้วค่อย ๆ ติ๊กให้ครบทีละข้อ'}</p><button class="btn" data-new="">＋ เพิ่มสิ่งที่ต้องทำ</button></div>`;}
+  function table(list){return !list.length?empty():`<div class="plan-table-scroll"><table class="plan-table"><thead><tr><th style="width:38px">✓</th><th>สิ่งที่ต้องทำ</th><th>หมวดงาน</th><th>สถานะ</th><th>กำหนดวัน / เวลา</th><th>ความสำคัญ</th></tr></thead><tbody>${list.map(t=>`<tr class="${t.status==='done'?'plan-done':''}"><td>${check(t)}</td><td><button class="plan-task-title" data-edit="${t.id}">${esc(t.title)}</button>${t.note?`<span class="plan-task-sub">${esc(t.note)}</span>`:''}</td><td>${t.project?`<span class="p-badge p-project">${esc(t.project)}</span>`:'<span class="muted">—</span>'}</td><td>${statusSelect(t)}</td><td>${dateText(t)}</td><td>${priority(t)}</td></tr>`).join('')}</tbody></table></div>`;}
+  function board(list){return `<div class="plan-board">${Object.keys(labels).map(s=>{const group=list.filter(t=>t.status===s);return `<div class="plan-column"><h4><span class="p-badge p-${s}">● ${labels[s]}</span><span>${group.length}</span></h4>${group.map(t=>`<article class="plan-board-card ${t.status==='done'?'plan-done':''}"><div class="plan-board-meta">${priority(t)}${t.project?`<span class="p-badge p-project">${esc(t.project)}</span>`:''}</div><button class="plan-task-title" data-edit="${t.id}">${esc(t.title)}</button>${dateText(t)}<div class="plan-board-footer">${statusSelect(t)}${check(t)}</div></article>`).join('')}<button class="column-add" data-new="${s}">＋ เพิ่มงาน</button></div>`;}).join('')}</div>`;}
+  function calendar(list){
+    const first=month+'-01',offset=(parseYmd(first).getDay()+6)%7,start=addDays(first,-offset);
+    const nextMonth=parseYmd(first);nextMonth.setMonth(nextMonth.getMonth()+1);nextMonth.setDate(0);
+    const cells=Math.ceil((offset+nextMonth.getDate())/7)*7;
+    return `<div class="plan-calendar-toolbar"><strong>${parseYmd(first).toLocaleDateString('th-TH',{month:'long',year:'numeric'})}</strong><button class="btn sm" data-month="-1" aria-label="เดือนก่อน">‹</button><button class="btn sm" data-month="today">เดือนนี้</button><button class="btn sm" data-month="1" aria-label="เดือนถัดไป">›</button></div><div class="calendar-scroll"><div class="plan-calendar">${['จ.','อ.','พ.','พฤ.','ศ.','ส.','อา.'].map(s=>`<div class="calendar-weekday">${s}</div>`).join('')}${Array.from({length:cells},(_,i)=>{const date=addDays(start,i),day=list.filter(t=>t.date===date).sort((a,b)=>a.start.localeCompare(b.start));return `<div class="calendar-cell${date.slice(0,7)!==month?' outside':''}${date===today()?' is-today':''}"><div class="calendar-day"><span class="day-number">${parseYmd(date).getDate()}</span><button class="calendar-add" data-date="${date}" aria-label="เพิ่มงาน ${date}">+</button></div>${day.map(t=>`<button class="calendar-event p-${t.status}" data-edit="${t.id}" title="${esc(t.title)}${t.start?' '+esc(t.start):''}">${t.status==='done'?'✓ ':''}${t.start?esc(t.start)+' ':''}${esc(t.title)}</button>`).join('')}</div>`;}).join('')}</div></div><p class="schedule-legend">กด ＋ ที่วันที่เพื่อวางแผนงาน · กดชื่องานเพื่อแก้ไขวันและเวลา</p>${list.some(t=>!t.date)?`<div class="unscheduled"><h4>◌ ยังไม่กำหนดวัน (${list.filter(t=>!t.date).length})</h4>${table(list.filter(t=>!t.date))}</div>`:''}`;
+  }
+  function render(){
+    if(!ready)return;
+    const currentProject=$('#planProject').value,projects=[...new Set(items.map(t=>t.project).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'th'));
+    $('#planProject').innerHTML='<option value="">ทุกหมวดงาน</option>'+projects.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
+    $('#planProject').value=projects.includes(currentProject)?currentProject:'';
+    $('#planProjects').innerHTML=projects.map(p=>`<option value="${esc(p)}"></option>`).join('');
+    const done=items.filter(t=>t.status==='done').length;
+    $('#planMetrics').innerHTML=[['งานทั้งหมด',items.length,'รวมทุกหมวดงาน'],['ต้องทำวันนี้',items.filter(t=>t.date===today()&&t.status!=='done').length,items.filter(late).length+' งานเลยกำหนด'],['กำลังทำ',items.filter(t=>t.status==='doing').length,'ทีละอย่างก็ไปถึงเป้าหมาย'],['เสร็จแล้ว',done,items.length?Math.round(done/items.length*100)+'% ของงานทั้งหมด':'เริ่มจากงานแรกของคุณ']].map(([label,n,sub])=>`<div class="planner-metric"><small>${label}</small><strong>${n}</strong><em>${sub}</em></div>`).join('');
+    $('#planNavCount').textContent=items.length-done;
+    const list=filtered();$('#planCount').textContent=`แสดง ${list.length} / ${items.length} งาน`;
+    $$('.plan-views button').forEach(b=>{b.classList.toggle('active',b.dataset.view===view);b.setAttribute('aria-pressed',String(b.dataset.view===view));});
+    $('#planContent').innerHTML=view==='board'?board(list):view==='calendar'?calendar(list):table(list);
+  }
+  function open(id=null,fields={}){
+    try{items=read();}catch(e){report(e);return;}
+    const t=id?items.find(x=>x.id===id):make(fields);if(!t){render();return toast('งานนี้ถูกลบแล้ว',true);}
+    editing=id;editStamp=t.updated;
+    $('#planDialogTitle').textContent=id?'รายละเอียดงาน':'เพิ่มงานใหม่';
+    const map={Title:'title',Project:'project',Priority:'priority',Date:'date',Status:'status',Start:'start',End:'end',Note:'note'};
+    Object.entries(map).forEach(([field,prop])=>$('#p'+field).value=t[prop]);
+    $('#planDelete').classList.toggle('hidden',!id);$('#planError').classList.add('hidden');
+    $('#planDialog').showModal();$('#pTitle').focus();
+  }
+  function patch(id,fields){try{commit(all=>all.map(t=>t.id===id?{...t,...fields,updated:nowIso()}:t));}catch(e){report(e);render();}}
+  function save(e){e.preventDefault();try{
+    const fields={title:$('#pTitle').value.trim(),project:$('#pProject').value.trim(),priority:$('#pPriority').value,date:$('#pDate').value,status:$('#pStatus').value,start:$('#pStart').value,end:$('#pEnd').value,note:$('#pNote').value.trim()};
+    if(!fields.title)throw Error('กรอกสิ่งที่ต้องทำก่อนบันทึก');
+    if((fields.start||fields.end)&&!fields.date)throw Error('เลือกวันที่ก่อนระบุเวลา');
+    if(fields.end&&(!fields.start||fields.end<=fields.start))throw Error('เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่มในวันเดียวกัน');
+    const task=make(fields);if(!validItem(task))throw Error('กรุณาตรวจสอบวัน เวลา และรายละเอียดงาน');
+    commit(all=>{if(!editing)return [...all,task];const old=all.find(t=>t.id===editing);if(!old)throw Error('งานนี้ถูกลบจากอีกแท็บแล้ว');if(old.updated!==editStamp)throw Error('งานนี้เปลี่ยนจากอีกแท็บแล้ว กรุณาปิดแล้วเปิดงานใหม่');return all.map(t=>t.id===editing?{...t,...fields,updated:nowIso()}:t);});
+    $('#planDialog').close();toast('บันทึกงานแล้ว');
+  }catch(err){$('#planError').textContent=err.message;$('#planError').classList.remove('hidden');}}
+  async function pull(){
+    if(!me)return toast('ตั้งชื่อในแท็บสมาชิกก่อนนะ',true);
+    const button=$('#planPull');button.disabled=true;
+    try{const rows=await API.listTasks(curDate,curDate,me);if(!rows.length)return toast('ไม่มีบันทึกของฉันในวันที่ '+thShort(curDate));
+      if(!confirm(`นำเข้างานของฉัน ${rows.length} รายการ จาก ${thShort(curDate)}?\nเป็นสำเนาส่วนตัว การแก้ไขจะไม่เปลี่ยนบันทึกรายวัน`))return;
+      let added=0;commit(all=>{const existing=new Set(all.map(t=>t.sourceId).filter(Boolean));const fresh=rows.filter(t=>!existing.has(t.id)).map(t=>make({title:t.task.slice(0,300),note:(t.note||'').slice(0,10000),status:({done:'done',doing:'doing',pending:'waiting',fail:'waiting'})[t.status]||'todo',date:t.work_date,project:'บันทึกรายวัน',sourceId:t.id}));added=fresh.length;return [...all,...fresh];});toast(added?`นำเข้า ${added} งานแล้ว`:'นำเข้างานชุดนี้ไว้แล้ว');
+    }catch(e){report(e);}finally{button.disabled=false;}
+  }
+  function backup(){try{const all=read(),blob=new Blob([JSON.stringify({app:'masaru-planner',version:1,exportedAt:nowIso(),items:all},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='masaru-todo-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('ดาวน์โหลดข้อมูลสำรองแล้ว');}catch(e){report(e);}}
+  async function restore(e){const file=e.target.files[0];e.target.value='';if(!file)return;try{
+    if(file.size>8*1024*1024)throw Error('ไฟล์มีขนาดเกิน 8 MB');const data=JSON.parse(await file.text());
+    if(data.app!=='masaru-planner'||data.version!==1||!Array.isArray(data.items)||data.items.length>10000||!data.items.every(validItem)||new Set(data.items.map(t=>t.id)).size!==data.items.length)throw Error('ไฟล์สำรองไม่ถูกต้องหรือไม่ใช่ข้อมูลแผนงานนี้');
+    if(!confirm(`รวมข้อมูลสำรอง ${data.items.length} งานเข้าบัญชีนี้?\nงานที่มีรหัสซ้ำจะเก็บข้อมูลปัจจุบันไว้`))return;
+    let added=0;commit(all=>{const ids=new Set(all.map(t=>t.id));const fresh=data.items.filter(t=>!ids.has(t.id));added=fresh.length;return [...all,...fresh];});toast(`นำเข้าเพิ่ม ${added} งานแล้ว`);
+  }catch(e){report(e);}}
+  function init(){if(ready)return;ready=true;try{items=read();}catch(e){report(e);}
+    $('#planNew').onclick=()=>open();$('#planQuick').onsubmit=e=>{e.preventDefault();const input=$('#planQuickTitle'),title=input.value.trim();if(!title)return;try{commit(all=>[...all,make({title})]);input.value='';input.focus();toast('เพิ่มงานแล้ว');}catch(err){report(err);}};
+    $('#planForm').onsubmit=save;$('#planClose').onclick=$('#planCancel').onclick=()=>$('#planDialog').close();
+    $('#planDialog').addEventListener('click',e=>{if(e.target===$('#planDialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
+    $('#planDelete').onclick=()=>{if(!editing||!confirm('ลบงานนี้จากแผนงาน?'))return;try{commit(all=>all.filter(t=>t.id!==editing));$('#planDialog').close();toast('ลบงานแล้ว');}catch(e){report(e);}};
+    $$('.plan-views button').forEach(b=>b.onclick=()=>{view=b.dataset.view;render();});
+    ['planStatus','planProject','planDue','planSort'].forEach(id=>$('#'+id).onchange=render);$('#planSearch').oninput=render;
+    $('#planContent').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-edit'))open(b.dataset.edit);else if(b.hasAttribute('data-new'))open(null,{status:b.dataset.new||'todo'});else if(b.hasAttribute('data-date'))open(null,{date:b.dataset.date});else if(b.hasAttribute('data-month')){if(b.dataset.month==='today')month=today().slice(0,7);else{const d=parseYmd(month+'-01');d.setMonth(d.getMonth()+Number(b.dataset.month));if(d.getFullYear()<1900||d.getFullYear()>9999)return;month=ymd(d).slice(0,7);}render();}};
+    $('#planContent').onchange=e=>{if(e.target.dataset.check)patch(e.target.dataset.check,{status:e.target.checked?'done':'todo'});else if(e.target.dataset.status)patch(e.target.dataset.status,{status:e.target.value});};
+    $('#planPull').onclick=pull;$('#planBackup').onclick=backup;$('#planRestore').onclick=()=>$('#planFile').click();$('#planFile').onchange=restore;
+    addEventListener('storage',e=>{if(e.key===key()||e.key===null){try{items=read();render();}catch(err){report(err);}}});render();
+  }
+  return {init,refresh(){if(!ready)return;try{items=read();render();}catch(e){report(e);}}};
+})();
+
 init();
 </script>
 </body>
