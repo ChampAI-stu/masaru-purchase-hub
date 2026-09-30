@@ -144,9 +144,17 @@ tbody tr:hover{background:#F8FAFC}
 .li-row .sum{text-align:right;font-weight:700;font-size:13px;padding:8px 2px}
 /* รูปของสินค้าแต่ละตัว — อยู่ใต้บรรทัดนั้น กินความกว้างเต็มแถว */
 /* โลเคชั่น + ผลการทดสอบ ของสินค้าแต่ละตัว */
+/* หมวดหมู่ของสินค้าแต่ละตัว — ไม่ใช่ของทั้งล็อต */
+.li-cats{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:3px 0 0}
+.li-cats select{font-size:12.5px}
 .li-extra{grid-column:1/-1;display:grid;grid-template-columns:1fr 1.4fr;gap:7px;margin:2px 0}
 .li-extra input{font-size:12.5px}
-@media(max-width:720px){.li-extra{grid-template-columns:1fr}}
+.li-got{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:1px 0 2px}
+.li-got .gt{border:1px solid #E7C98A;background:#FFF7E3;color:#8A5A0B;border-radius:9px;
+  padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;min-height:32px}
+.li-got .gt.on{border-color:#A7D7B8;background:#E9F7EE;color:#14663B}
+.li-got .gd{font-size:12.5px;max-width:160px;min-height:32px}
+@media(max-width:720px){.li-extra,.li-cats{grid-template-columns:1fr}}
 .lot-x{font-size:11px;color:var(--muted);margin:2px 0 1px;line-height:1.6}
 .lot-x b{color:var(--ink);font-weight:600}
 .li-pics{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;
@@ -189,8 +197,35 @@ tbody tr:hover{background:#F8FAFC}
   color:#fff;font-weight:800;font-size:18px;text-shadow:0 1px 3px #0008}
 .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#1A2942;color:#fff;
   padding:11px 20px;border-radius:11px;font-size:13px;z-index:200;display:none;box-shadow:0 10px 30px #0004}
-#lightBg{position:fixed;inset:0;background:#000000e0;display:none;align-items:center;justify-content:center;z-index:120;padding:20px}
-#lightBg img{max-width:94vw;max-height:88vh;border-radius:10px}
+/* ═══ เครื่องดูรูป — ซูมได้จริง ลากดูได้ นิ้วถ่างได้ ═══ */
+#lightBg{position:fixed;inset:0;background:#0A0F1AF7;display:none;z-index:220;flex-direction:column;
+  overscroll-behavior:contain}
+#lightBg.on{display:flex}
+.lv-top{display:flex;align-items:center;gap:7px;padding:9px 12px;color:#fff;font-size:12.5px;flex-wrap:wrap;
+  background:#0A0F1A;border-bottom:1px solid #ffffff1f;flex:0 0 auto}
+.lv-top .nm{font-weight:700;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lv-top .sp{flex:1}
+.lv-top .pct{min-width:58px;text-align:center;font-variant-numeric:tabular-nums;color:#CBD5E1}
+.lv-btn{background:#FFFFFF1A;border:1px solid #FFFFFF2E;color:#fff;border-radius:10px;min-width:42px;height:42px;
+  padding:0 12px;cursor:pointer;font-size:14px;line-height:1}
+.lv-btn:hover{background:#FFFFFF33}
+.lv-btn:disabled{opacity:.3;cursor:default}
+.lv-btn.gold{background:#C9A84C;border-color:#C9A84C;color:#1A2942;font-weight:800}
+.lv-stage{flex:1;position:relative;overflow:hidden;touch-action:none;cursor:grab;min-height:0}
+.lv-stage.grabbing{cursor:grabbing}
+.lv-stage img{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;
+  -webkit-user-drag:none;user-select:none;will-change:transform}
+.lv-load{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94A3B8;font-size:13px}
+.lv-nav{position:absolute;top:50%;transform:translateY(-50%);width:50px;height:84px;border-radius:12px;
+  background:#0A0F1AA8;border:1px solid #FFFFFF26;color:#fff;font-size:22px;cursor:pointer;z-index:2}
+.lv-nav:hover{background:#0A0F1ADD}
+.lv-nav.l{left:12px}.lv-nav.r{right:12px}
+.lv-film{display:flex;gap:7px;overflow-x:auto;padding:9px 12px;background:#0A0F1A;border-top:1px solid #ffffff1f;flex:0 0 auto}
+.lv-film img{width:58px;height:58px;flex:0 0 58px;object-fit:cover;border-radius:9px;border:2px solid transparent;
+  cursor:pointer;opacity:.55;background:#1E293B}
+.lv-film img.on{border-color:#C9A84C;opacity:1}
+.lv-tip{color:#94A3B8;font-size:11.5px}
+@media(max-width:720px){.lv-top .nm{max-width:40vw}.lv-tip{display:none}.lv-nav{width:42px;height:66px}}
 .login{max-width:420px;margin:70px auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px;text-align:center}
 .hint{background:#FFF9E8;border:1px solid #F0D9A8;border-radius:10px;padding:9px 12px;font-size:12px;line-height:1.7}
 .warn{background:#FDECEC;border:1px solid #F0B6B6;border-radius:10px;padding:9px 12px;font-size:12px;line-height:1.7}
@@ -305,6 +340,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
         <select id="fFac" style="flex:0 1 160px" onchange="render()"><option value="">— ทุกโรงงาน —</option></select>
         <select id="fResp" style="flex:0 1 160px" onchange="render()"><option value="">— ทุกผู้รับผิดชอบ —</option></select>
         <select id="fFree" style="flex:0 1 165px" onchange="render()"><option value="">— ฟรี/จ่ายเงิน ทั้งหมด —</option><option value="paid">💰 เฉพาะที่จ่ายเงิน</option><option value="free">🎁 เฉพาะที่ได้ฟรี</option></select>
+        <select id="fGot" style="flex:0 1 175px" onchange="render()"><option value="">— สถานะรับของ ทั้งหมด —</option><option value="no">⏳ ยังไม่ได้รับ</option><option value="part">📦 ได้รับบางส่วน</option><option value="open">⏳📦 ยังไม่ครบ (ค้างรับ)</option><option value="all">✅ ได้รับครบแล้ว</option></select>
       </div>
       <div class="row" style="margin-bottom:12px">
         <button class="btn mini ghost" id="segM" onclick="setMode('month')">📅 รายเดือน</button>
@@ -399,21 +435,15 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
     <input type="hidden" id="f_id">
     <div class="g2">
       <div class="fld"><label>วัน/เดือน/ปี ★</label><input type="date" id="f_date"></div>
-      <div class="fld"><label>หมวดหลัก ★</label>
-        <select id="f_cat" onchange="onCatPick()"></select></div>
-      <div class="fld"><label>หมวดย่อย</label>
-        <select id="f_sub"></select>
-        <div class="muted" id="f_subHint" style="font-size:11.5px;margin-top:3px"></div></div>
-    </div>
-    <div class="g2">
       <div class="fld"><label>โรงงาน</label>
         <input id="f_fac" list="facList" placeholder="เช่น GREENER / JUZOR"><datalist id="facList"></datalist></div>
-      <div class="fld"></div>
     </div>
     <div class="fld">
       <div class="row" style="margin-bottom:5px">
         <label style="margin:0">รายการสินค้า ★ <span class="muted" style="font-weight:400" id="f_liCount"></span></label>
         <div style="flex:1"></div>
+        <button type="button" class="btn mini ghost" id="gotAll" onclick="gotAllLines()"
+          title="ติ๊กว่าได้รับแล้วทุกตัว พร้อมใส่วันที่วันนี้">✅ รับครบทุกตัว</button>
         <button type="button" class="btn mini ghost" onclick="addLine()">➕ เพิ่มสินค้า</button>
       </div>
       <div class="li-head"><div>ชื่อสินค้า <span style="font-weight:400">(ใส่รูปแยกได้ทีละตัว)</span></div>
@@ -503,7 +533,30 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
   </div>
 </div>
 
-<div class="modal-bg" id="lightBg" onclick="this.style.display='none'"><img id="lightImg" alt=""></div>
+<div id="lightBg" role="dialog" aria-modal="true" aria-label="ดูรูปขนาดใหญ่">
+  <div class="lv-top">
+    <span class="nm" id="lvName">รูปสินค้า</span>
+    <span class="muted" id="lvPos" style="color:#94A3B8"></span>
+    <span class="sp"></span>
+    <button class="lv-btn" id="lvOut"  title="ย่อ (ลูกกลิ้งเมาส์ลง)">➖</button>
+    <span class="pct" id="lvPct">100%</span>
+    <button class="lv-btn" id="lvIn"   title="ขยาย (ลูกกลิ้งเมาส์ขึ้น)">➕</button>
+    <button class="lv-btn" id="lvFit"  title="พอดีจอ">⤢ พอดีจอ</button>
+    <button class="lv-btn" id="lvOne"  title="ขนาดจริง 100%">1:1</button>
+    <button class="lv-btn" id="lvRot"  title="หมุน 90°">↻</button>
+    <a class="lv-btn" id="lvOpen" target="_blank" rel="noopener" title="เปิดไฟล์ต้นฉบับใน Google Drive"
+       style="display:flex;align-items:center">⬇️</a>
+    <span class="lv-tip">ลูกกลิ้ง = ซูม · ลาก = เลื่อน · ดับเบิลคลิก = ขยายจุดนั้น · ← → เปลี่ยนรูป</span>
+    <button class="lv-btn gold" id="lvClose" title="ปิด (Esc)">✕ ปิด</button>
+  </div>
+  <div class="lv-stage" id="lvStage">
+    <div class="lv-load" id="lvLoad">กำลังโหลดรูป…</div>
+    <img id="lightImg" alt="" draggable="false">
+    <button class="lv-nav l" id="lvPrev" title="รูปก่อนหน้า (←)">‹</button>
+    <button class="lv-nav r" id="lvNext" title="รูปถัดไป (→)">›</button>
+  </div>
+  <div class="lv-film" id="lvFilm"></div>
+</div>
 <dialog id="pgDialog" aria-labelledby="pgDetailTitle">
   <div class="pg-dialoghead"><span id="pgPosition"></span><button class="pg-icon" id="pgClose" type="button" aria-label="ปิดรายละเอียด">×</button></div>
   <div class="pg-detail">
@@ -532,7 +585,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-17-gallery';
+const SM_VERSION='v01-19-gallery';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -809,24 +862,21 @@ function subColor(main,sub){
 function fillCatSelects(){
   const on=c=>c.active!==false;
   /* ── ตัวกรองหมวดหลัก — รวมหมวดที่ปิดแล้วแต่ยังมีรายการเก่าอยู่ ไม่งั้นกรองหาไม่เจอ ── */
-  const usedMain=[...new Set(ROWS.map(r=>r.cat).filter(Boolean))];
+  const usedMain=[...new Set(ROWS.flatMap(r=>catPairs(r)).map(x=>x[0]).filter(Boolean))];
   const allMain=[...new Set(mains().filter(on).map(c=>c.name).concat(usedMain))];
   const kf=$('fCat').value;
   $('fCat').innerHTML='<option value="">— ทุกหมวดหลัก —</option>'
     +allMain.map(n=>'<option'+(n===kf?' selected':'')+'>'+esc(n)+'</option>').join('');
   fillSubFilter();
-  /* ── ฟอร์ม ── */
-  const kc=$('f_cat').value;
-  $('f_cat').innerHTML='<option value="">— เลือกหมวดหลัก —</option>'
-    +mains().filter(on).map(c=>'<option'+(c.name===kc?' selected':'')+'>'+esc(c.name)+'</option>').join('')
-    +(kc&&!mains().some(c=>c.name===kc)?'<option selected>'+esc(kc)+'</option>':'');
-  fillSubForm();
+  /* ── ฟอร์ม: หมวดอยู่ที่ "รายการสินค้าแต่ละตัว" แล้ว ไม่ได้อยู่หัวล็อต ── */
+  if($('f_lines')&&$('formBg').style.display==='flex')SM_LINES.forEach((l,i)=>drawLineCats(i));
 }
 /* หมวดย่อยในตัวกรอง — แคบตามหมวดหลักที่เลือก ถ้าไม่เลือกก็โชว์ทุกย่อยที่ใช้อยู่ */
 function fillSubFilter(){
   if(!$('fSub'))return;
   const m=$('fCat').value, keep=$('fSub').value;
-  const usedSub=[...new Set(ROWS.filter(r=>!m||r.cat===m).map(r=>r.subcat).filter(Boolean))];
+  const usedSub=[...new Set(ROWS.flatMap(r=>catPairs(r))
+    .filter(x=>(!m||x[0]===m)&&x[1]).map(x=>x[1]))];
   const list=[...new Set((m?subsOf(m):CATS.filter(c=>c.parent))
     .filter(c=>c.active!==false).map(c=>c.name).concat(usedSub))];
   $('fSub').innerHTML='<option value="">— ทุกหมวดย่อย —</option>'
@@ -834,22 +884,48 @@ function fillSubFilter(){
   if(keep&&!list.includes(keep))$('fSub').value='';
   $('fSub').style.display=list.length?'':'none';
 }
-/* หมวดย่อยในฟอร์ม — ขึ้นเฉพาะเมื่อหมวดหลักนั้นมีหมวดย่อย */
-function fillSubForm(){
-  if(!$('f_sub'))return;
-  const m=$('f_cat').value, keep=$('f_sub').value;
-  const list=subsOf(m).filter(c=>c.active!==false).map(c=>c.name);
-  const legacy=(keep&&!list.includes(keep))?keep:'';     // ค่าเดิมของรายการเก่า ห้ามหาย
-  $('f_sub').innerHTML='<option value="">— ไม่ระบุหมวดย่อย —</option>'
-    +list.map(n=>'<option'+(n===keep?' selected':'')+'>'+esc(n)+'</option>').join('')
+/* ── หมวดหมู่ของ "สินค้าแต่ละตัว" ────────────────────────────────────
+   เดิมหมวดผูกกับทั้งล็อต — แต่ 1 ล็อตสั่งของคนละหมวดมาพร้อมกันได้
+   (เช่น ปืนยิงตะปู + ดอกสว่าน มาใบเดียวกัน) จึงย้ายมาอยู่ที่ตัวสินค้า
+   ★ คอลัมน์ cat/subcat ของล็อตยังเขียนอยู่ = หมวดของสินค้าตัวแรก
+     ตัวกรอง/โฟลเดอร์ Drive/Excel ของเดิมจึงไม่พัง                        */
+function catOptsHtml(sel){
+  const on=c=>c.active!==false;
+  const list=mains().filter(on).map(c=>c.name);
+  const legacy=(sel&&!list.includes(sel))?sel:'';
+  return '<option value="">— เลือกหมวดหลัก ★ —</option>'
+    +list.map(n=>'<option'+(n===sel?' selected':'')+'>'+esc(n)+'</option>').join('')
     +(legacy?'<option selected>'+esc(legacy)+' (ค่าเดิม)</option>':'');
-  if(legacy)$('f_sub').value=legacy;
-  const hint=$('f_subHint');
-  if(hint)hint.textContent = !m ? 'เลือกหมวดหลักก่อน'
-    : (list.length?'':'หมวดนี้ยังไม่มีหมวดย่อย — เพิ่มได้ที่แท็บ 🏷️ หมวดหมู่');
-  $('f_sub').disabled=!m||(!list.length&&!legacy);
 }
-function onCatPick(){ $('f_sub').value=''; fillSubForm(); }
+function subOptsHtml(main,sel){
+  const list=subsOf(main).filter(c=>c.active!==false).map(c=>c.name);
+  const legacy=(sel&&!list.includes(sel))?sel:'';
+  return '<option value="">'+(main?(list.length?'— ไม่ระบุหมวดย่อย —':'— หมวดนี้ไม่มีหมวดย่อย —')
+                                  :'— เลือกหมวดหลักก่อน —')+'</option>'
+    +list.map(n=>'<option'+(n===sel?' selected':'')+'>'+esc(n)+'</option>').join('')
+    +(legacy?'<option selected>'+esc(legacy)+' (ค่าเดิม)</option>':'');
+}
+function lineCatsHtml(i){
+  const l=SM_LINES[i]||{};
+  const hasSub=subsOf(l.cat).filter(c=>c.active!==false).length||l.subcat;
+  return '<select title="หมวดหลักของสินค้าตัวนี้" onchange="setLineCat('+i+',this.value)">'
+      +catOptsHtml(l.cat||'')+'</select>'
+    +'<select title="หมวดย่อยของสินค้าตัวนี้"'+(hasSub?'':' disabled')
+      +' onchange="setLine('+i+',&quot;subcat&quot;,this.value)">'
+      +subOptsHtml(l.cat||'',l.subcat||'')+'</select>';
+}
+function drawLineCats(i){
+  const row=$('f_lines')&&$('f_lines').children[i]; if(!row)return;
+  const box=row.querySelector('.li-cats'); if(box)box.innerHTML=lineCatsHtml(i);
+}
+function setLineCat(i,v){
+  if(!SM_LINES[i])return;
+  SM_LINES[i].cat=v; SM_LINES[i].subcat='';      /* เปลี่ยนหมวดหลัก = ล้างหมวดย่อยเดิม */
+  drawLineCats(i);
+}
+/* หมวดของล็อต = หมวดของสินค้าตัวแรกที่กรอกชื่อไว้ (ใช้กับโฟลเดอร์ Drive และคอลัมน์เดิม) */
+function lotCat(){ const l=SM_LINES.find(x=>String(x.name||'').trim()&&x.cat); return l?l.cat:''; }
+function lotSub(){ const l=SM_LINES.find(x=>String(x.name||'').trim()&&x.cat); return (l&&l.subcat)||''; }
 function onFiltCat(){ fillSubFilter(); render(); }
 function fillFilters(){
   const opts=(id,vals,label)=>{
@@ -870,14 +946,20 @@ function fillFilters(){
 function filtered(){
   const q=($('q').value||'').toLowerCase().trim();
   const c=$('fCat').value, f=$('fFac').value, rp=$('fResp').value, fr=$('fFree').value,
-        sc=$('fSub').value;
+        sc=$('fSub').value, gs=($('fGot')?$('fGot').value:'');
   return ROWS.filter(r=>{
-    if(c&&(r.cat||'')!==c)return false;
-    if(sc&&(r.subcat||'')!==sc)return false;
+    /* ★ หมวดอยู่ที่ตัวสินค้า → ล็อตเข้าเงื่อนไขถ้ามีสินค้าตัวไหนตรงก็พอ */
+    if(c||sc){
+      if(!catPairs(r).some(x=>(!c||x[0]===c)&&(!sc||x[1]===sc)))return false;
+    }
     if(f&&(r.factory||'')!==f)return false;
     if(rp&&(r.responsible||'')!==rp)return false;
     if(fr==='free'&&!r.is_free)return false;
     if(fr==='paid'&&r.is_free)return false;
+    if(gs){                       /* สถานะรับของ — คิดจากสินค้าทุกตัวในล็อต */
+      const st=gotOf(r).state;
+      if(gs==='open'?(st==='all'):(st!==gs))return false;
+    }
     if(!q)return true;
     const lx=arr(r.lines).map(l=>String((l&&l.loc)||'')+' '+String((l&&l.test)||'')).join(' ');
     return ((r.items||'')+' '+(r.factory||'')+' '+(r.responsible||'')+' '+(r.note||'')
@@ -904,19 +986,195 @@ function allPics(r){
 function picCell(list){
   const a=arr(list);
   if(!a.length)return '<span class="muted">—</span>';
-  return '<div class="pics">'+a.slice(0,4).map((p,i)=>{
+  /* รูปทั้งชุดเข้าเครื่องดูรูปพร้อมกัน → เปิดใบเดียวแล้วกด ← → ดูใบอื่นต่อได้เลย */
+  const g=picGroup(a); let k=-1;
+  return '<div class="pics">'+a.slice(0,4).map(p=>{
     const t=thumbUrl(p,400);
     const isPdf=/\.pdf($|\?)/i.test(p.name||p.url||'')||/pdf/i.test(p.mime||'');
     if(isPdf)return '<a href="'+esc(p.url||'')+'" target="_blank" rel="noopener" class="btn mini ghost" title="'+esc(p.name||'')+'">📄 PDF</a>';
-    return '<img src="'+esc(t)+'" alt="" loading="lazy" title="'+esc(p.name||'กดเพื่อดูใหญ่')
-      +'" onclick="light(\''+esc(String(t).replace(/'/g,'%27')).replace(/sz=w400/,'sz=w1600')+'\')"'
+    k++;
+    return '<img src="'+esc(t)+'" alt="" loading="lazy" title="'+esc(p.name||'กดเพื่อดูใหญ่ · ซูมได้')
+      +'" onclick="light(\''+g+'\','+k+')"'
       +' onerror="this.style.opacity=.3;this.title=\'เปิดรูปจาก Drive ไม่ได้ — ตรวจสิทธิ์ให้เป็น ผู้ที่มีลิงก์ดูได้\'">';
-  }).join('')+(a.length>4?('<span class="muted" style="font-size:11px;align-self:center">+'+(a.length-4)+'</span>'):'')+'</div>';
+  }).join('')+(a.length>4?('<button class="btn mini ghost" style="align-self:center;font-size:11px" '
+      +'onclick="light(\''+g+'\',4)">+'+(a.length-4)+'</button>'):'')+'</div>';
 }
-function light(u){ $('lightImg').src=u; $('lightBg').style.display='flex'; }
+/* ═══════════ เครื่องดูรูป — ซูมได้จริง ลากดูได้ นิ้วถ่างได้ ═══════════
+   ของเดิมคือรูปนิ่ง ๆ ใบเดียว ขยายไม่ได้ เลื่อนดูไม่ได้ ต้องปิดแล้วกดใหม่ทีละรูป
+   ของใหม่: ลูกกลิ้ง/นิ้วถ่าง = ซูมตรงจุดที่ชี้ · ลาก = เลื่อน · ← → = เปลี่ยนรูป
+            พอซูมเกิน 1 เท่า ดึงไฟล์ความละเอียดสูงจาก Drive มาแทนให้เอง จะได้ไม่แตก */
+let LV_G={}, LV_GN=0;
+function picGroup(list){
+  const a=arr(list).filter(p=>p&&(p.id||p.url)
+    &&!/pdf/i.test(p.mime||'')&&!/\.pdf($|\?)/i.test(p.name||p.url||''));
+  if(!a.length)return '';
+  const k='g'+(++LV_GN); LV_G[k]=a; return k;
+}
+const LV={list:[],i:0,s:1,fit:1,x:0,y:0,w:0,h:0,rot:0,hi:false,open:false,scroll:''};
+const lvDrive=p=>!!(p&&(p.id||/\/d\/[A-Za-z0-9_-]{10,}/.test(String(p.url||''))));
+function lvBox(){ const t=LV.rot%180!==0; return {w:(t?LV.h:LV.w)*LV.s, h:(t?LV.w:LV.h)*LV.s}; }
+function lvRect(){ const r=$('lvStage').getBoundingClientRect();
+  return {l:r.left,t:r.top,w:r.width||window.innerWidth,h:r.height||(window.innerHeight-140)}; }
+function lvApply(){
+  const img=$('lightImg'), s=LV.s, d=LV.rot;
+  const ox=(d===90?LV.h*s:d===180?LV.w*s:0), oy=(d===180?LV.h*s:d===270?LV.w*s:0);
+  img.style.transform='translate('+(LV.x+ox)+'px,'+(LV.y+oy)+'px) rotate('+d+'deg) scale('+s+')';
+  $('lvPct').textContent=Math.round(s*100)+'%';
+}
+function lvClamp(){
+  const st=lvRect(), b=lvBox();
+  LV.x = b.w<=st.w ? (st.w-b.w)/2 : Math.min(0,Math.max(st.w-b.w,LV.x));
+  LV.y = b.h<=st.h ? (st.h-b.h)/2 : Math.min(0,Math.max(st.h-b.h,LV.y));
+}
+function lvFitScale(){
+  const st=lvRect(), t=LV.rot%180!==0, w=t?LV.h:LV.w, h=t?LV.w:LV.h;
+  if(!w||!h)return 1;
+  return Math.max(.05,Math.min((st.w-20)/w,(st.h-20)/h,4));
+}
+function lvToFit(){ LV.fit=lvFitScale(); LV.s=LV.fit; lvClamp(); lvApply(); }
+function lvZoomAt(ns,cx,cy){
+  const st=lvRect();
+  const lo=Math.min(LV.fit,1)*.5, hi=Math.max(LV.fit*10,10);
+  ns=Math.max(lo,Math.min(ns,hi));
+  const px=(cx==null?st.l+st.w/2:cx)-st.l, py=(cy==null?st.t+st.h/2:cy)-st.t;
+  const k=ns/LV.s;
+  LV.x=px-(px-LV.x)*k; LV.y=py-(py-LV.y)*k; LV.s=ns;
+  lvClamp(); lvApply(); lvHiRes();
+}
+/* ซูมแล้วภาพแตก = ไฟล์ที่โหลดมามันเล็ก → ขอไฟล์ใหญ่จาก Drive มาทับ
+   กล่องรูปถูกตรึงขนาดไว้แล้ว เปลี่ยนไฟล์จึงไม่กระตุก ไม่เด้ง */
+function lvHiRes(){
+  const p=LV.list[LV.i];
+  if(LV.hi||!p||!lvDrive(p))return;
+  if(LV.s<LV.fit*1.2&&LV.s<1)return;
+  LV.hi=true;
+  const im=new Image(); im.referrerPolicy='no-referrer';
+  /* สลับไฟล์เงียบ ๆ — ปิด onload ไว้ก่อน ไม่งั้นจะไปคิดขนาดใหม่แล้วเด้งกลับเป็นพอดีจอ
+     (กล่องรูปถูกตรึงขนาดไว้แล้ว เปลี่ยนไฟล์จึงแค่คมขึ้น ไม่ขยับ ไม่รีเซ็ตการซูม) */
+  im.onload=()=>{
+    if(LV.list[LV.i]!==p||!LV.open)return;
+    const el=$('lightImg'); el.onload=null; el.src=im.src;
+  };
+  im.src=thumbUrl(p,2560);
+}
+function lvFilm(){
+  const box=$('lvFilm'); box.style.display=LV.list.length>1?'':'none';
+  if(LV.list.length<2){ box.innerHTML=''; return; }
+  box.innerHTML=LV.list.map((p,j)=>'<img src="'+esc(thumbUrl(p,150))+'" alt="รูปที่ '+(j+1)+'"'
+    +(j===LV.i?' class="on"':'')+' loading="lazy" referrerpolicy="no-referrer" onclick="lvGo('+j+')">').join('');
+  const on=box.querySelector('.on'); if(on)box.scrollLeft=on.offsetLeft-box.offsetLeft-90;
+}
+function lvShow(i){
+  const p=LV.list[i]; if(!p)return;
+  LV.i=i; LV.hi=false; LV.rot=0; LV.s=1; LV.x=LV.y=0;
+  const img=$('lightImg');
+  img.style.visibility='hidden';
+  $('lvLoad').textContent='กำลังโหลดรูป…'; $('lvLoad').style.display='flex';
+  $('lvName').textContent=p.name||'รูปสินค้า';
+  $('lvPos').textContent=LV.list.length>1?('รูป '+(i+1)+' / '+LV.list.length):'';
+  $('lvOpen').href=p.url||thumbUrl(p,2560)||'#';
+  $('lvPrev').style.display=$('lvNext').style.display=(LV.list.length>1?'':'none');
+  img.onload=()=>{
+    LV.w=img.naturalWidth||1200; LV.h=img.naturalHeight||900;
+    img.style.width=LV.w+'px'; img.style.height=LV.h+'px';
+    img.style.visibility='visible'; $('lvLoad').style.display='none';
+    lvToFit(); lvHiRes();
+  };
+  img.onerror=()=>{ img.style.visibility='hidden'; $('lvLoad').style.display='flex';
+    $('lvLoad').textContent='เปิดรูปไม่ได้ — ตั้งสิทธิ์ไฟล์ใน Google Drive เป็น "ผู้ที่มีลิงก์ดูได้"'; };
+  img.src=lvDrive(p)?thumbUrl(p,1600):(p.url||'');
+}
+function lvGo(j){ if(j<0||j>=LV.list.length)return; lvShow(j); lvFilm(); }
+function lvStep(d){ if(LV.list.length<2)return; lvGo((LV.i+d+LV.list.length)%LV.list.length); }
+function lvRotate(){ LV.rot=(LV.rot+90)%360; lvToFit(); }
+function lightPics(list,i){
+  const a=arr(list).filter(p=>p&&(p.id||p.url));
+  if(!a.length)return;
+  LV.list=a; LV.open=true;
+  LV.scroll=document.body.style.overflow; document.body.style.overflow='hidden';
+  $('lightBg').classList.add('on');
+  lvGo(Math.max(0,Math.min(num(i)||0,a.length-1)));
+}
+/* เรียกจากตาราง: light('<กลุ่มรูป>', ลำดับ) · ยังรับลิงก์ตรงแบบเดิมได้ */
+function light(k,i){
+  if(typeof k==='string'&&/^https?:/i.test(k))return lightPics([{url:k,name:''}],0);
+  return lightPics(LV_G[k]||[],i);
+}
+function lightClose(){
+  if(!LV.open)return;
+  LV.open=false; $('lightBg').classList.remove('on');
+  document.body.style.overflow=LV.scroll||''; $('lightImg').removeAttribute('src');
+}
+(function lvWire(){
+  const st=$('lvStage'); if(!st)return;
+  $('lvClose').onclick=lightClose;
+  $('lvPrev').onclick=()=>lvStep(-1); $('lvNext').onclick=()=>lvStep(1);
+  $('lvIn').onclick =()=>lvZoomAt(LV.s*1.4);
+  $('lvOut').onclick=()=>lvZoomAt(LV.s/1.4);
+  $('lvFit').onclick=()=>lvToFit();
+  $('lvOne').onclick=()=>lvZoomAt(1);
+  $('lvRot').onclick=lvRotate;
+  st.addEventListener('wheel',e=>{
+    if(!LV.open)return; e.preventDefault();
+    lvZoomAt(LV.s*Math.exp(-e.deltaY*(e.deltaMode===1?.03:.0016)),e.clientX,e.clientY);
+  },{passive:false});
+  st.addEventListener('dblclick',e=>{
+    if(!LV.open)return;
+    const big=Math.max(LV.fit*2.5,1);
+    lvZoomAt(LV.s>LV.fit*1.05?LV.fit:big,e.clientX,e.clientY);
+  });
+  /* ลาก 1 นิ้ว = เลื่อนรูป · ถ่าง 2 นิ้ว = ซูม (ใช้ pointer จึงได้ทั้งเมาส์และจอสัมผัส) */
+  const PT=new Map(); let moved=0, base=0, baseS=1, onStage=false;
+  const mid=()=>{const a=[...PT.values()];
+    return {x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2,
+            d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)};};
+  st.addEventListener('pointerdown',e=>{
+    if(!LV.open)return;
+    /* ปุ่มลูกศรซ้าย/ขวาอยู่ในกรอบรูป — ถ้าจับ pointer ไว้ ปุ่มจะกลายเป็นการแตะพื้นหลังแล้วปิดหน้าต่าง */
+    if(e.target&&e.target.closest&&e.target.closest('button'))return;
+    onStage=(e.target===st);
+    PT.set(e.pointerId,{x:e.clientX,y:e.clientY}); moved=0;
+    if(PT.size===2){ const m=mid(); base=m.d; baseS=LV.s; }
+    st.classList.add('grabbing');
+    try{st.setPointerCapture(e.pointerId);}catch(_){}
+  });
+  st.addEventListener('pointermove',e=>{
+    if(!LV.open||!PT.has(e.pointerId))return;
+    const old=PT.get(e.pointerId);
+    PT.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(PT.size>=2){ const m=mid(); if(base>8){ moved=99; lvZoomAt(baseS*(m.d/base),m.x,m.y); } return; }
+    const dx=e.clientX-old.x, dy=e.clientY-old.y;
+    moved+=Math.abs(dx)+Math.abs(dy);
+    LV.x+=dx; LV.y+=dy; lvClamp(); lvApply();
+  });
+  const up=e=>{
+    if(!PT.has(e.pointerId))return;
+    PT.delete(e.pointerId);
+    if(!PT.size){
+      st.classList.remove('grabbing');
+      /* แตะพื้นที่ว่างข้าง ๆ รูป (ไม่ได้ลาก) = ปิด — เหมือนของเดิมที่คลิกตรงไหนก็ปิด */
+      if(moved<6&&onStage)lightClose();
+      onStage=false;
+    } else if(PT.size===1){ const a=[...PT.values()][0]; base=0; baseS=LV.s; void a; }
+  };
+  st.addEventListener('pointerup',up); st.addEventListener('pointercancel',up);
+  window.addEventListener('resize',()=>{ if(LV.open&&LV.w){ const atFit=LV.s<=LV.fit*1.02; if(atFit)lvToFit(); else {lvClamp();lvApply();} } });
+  document.addEventListener('keydown',e=>{
+    if(!LV.open)return;
+    const k=String(e.key||''), act={
+      'Escape':lightClose, 'ArrowLeft':()=>lvStep(-1), 'ArrowRight':()=>lvStep(1),
+      '+':()=>lvZoomAt(LV.s*1.4), '=':()=>lvZoomAt(LV.s*1.4),
+      '-':()=>lvZoomAt(LV.s/1.4), '_':()=>lvZoomAt(LV.s/1.4),
+      '0':lvToFit, '1':()=>lvZoomAt(1), 'r':lvRotate, 'R':lvRotate }[k];
+    if(!act)return;
+    /* กันคีย์ทะลุไปหน้าแกลเลอรีที่เปิดค้างอยู่ข้างหลัง */
+    e.preventDefault(); e.stopPropagation(); act();
+  },true);
+})();
 
 function render(){
   if($('tab-gallery').style.display!=='none')renderGallery();
+  LV_G={};                       /* ล้างกลุ่มรูปของตารางรอบก่อน — ตารางวาดใหม่แล้ว */
   const rows=filtered();
   /* ── KPI ── */
   const byCur={};
@@ -946,14 +1204,26 @@ function render(){
     +'<div class="kpi green"><div class="lbl">🎁 ได้ฟรี (ไม่มีค่าใช้จ่าย)</div>'
        +'<div class="val">'+free.length+' <span style="font-size:13px;font-weight:600">รายการ</span></div>'
        +'<div class="sub2">'+(freeTxt?('มูลค่าอ้างอิง '+esc(freeTxt)):'—')+'</div></div>'
-    +'<div class="kpi red"><div class="lbl">🏭 โรงงาน / 🏷️ หมวด</div><div class="val">'+nFac+' / '+nCat+'</div></div>';
+    +'<div class="kpi red"><div class="lbl">🏭 โรงงาน / 🏷️ หมวด</div><div class="val">'+nFac+' / '+nCat+'</div></div>'
+    +(function(){   /* ★ ของถึงมือหรือยัง — ดูจบในบรรทัดเดียว */
+        let done=0,part=0,wait=0,items=0,gitems=0;
+        rows.forEach(r=>{ const g=gotOf(r); items+=g.n; gitems+=g.got;
+          if(g.state==='all')done++; else if(g.state==='part')part++; else wait++; });
+        const open=part+wait;
+        return '<div class="kpi" style="border-left-color:'+(open?GOT_COL.no:GOT_COL.all)+'">'
+          +'<div class="lbl">📥 การรับของ</div>'
+          +'<div class="val" style="font-size:19px">'+(open?('⏳ ค้างรับ '+money(open)+' ล็อต'):'✅ รับครบทุกล็อต')+'</div>'
+          +'<div class="sub2">'+(items?('สินค้า '+money(gitems)+'/'+money(items)+' รายการ · '):'')
+          +'รับครบ '+done+' · บางส่วน '+part+' · ยังไม่ได้รับ '+wait+'</div></div>';
+      })();
 
   if(!rows.length){
     $('tb').innerHTML='<tbody><tr><td class="empty">ยังไม่มีรายการในช่วงนี้'
       +(canEdit?' — กด <b>➕ เพิ่มรายการ</b>':'')+'</td></tr></tbody>';
     return;
   }
-  let h='<thead><tr><th style="width:92px">วัน/เดือน/ปี</th><th style="width:150px">ประเภท</th>'
+  let h='<thead><tr><th style="width:92px">วัน/เดือน/ปี</th><th style="width:132px">สถานะรับของ</th>'
+    +'<th style="width:150px">ประเภท</th>'
     +'<th>รายการ</th><th style="width:118px">รูปสินค้า</th><th style="width:110px">โรงงาน</th>'
     +'<th class="num" style="width:62px">จำนวน</th><th class="num" style="width:96px">ราคา/ชิ้น</th>'
     +'<th class="num" style="width:120px">ยอดชำระ</th><th style="width:110px">ผู้รับผิดชอบ</th>'
@@ -961,10 +1231,8 @@ function render(){
   rows.forEach(r=>{
     h+='<tr>'
       +'<td><b>'+thDate(r.req_date)+'</b></td>'
-      +'<td>'+(r.cat?'<span class="cat-chip" style="background:'+esc(catColor(r.cat))+'">'+esc(r.cat)+'</span>'
-                    :'<span class="muted">—</span>')
-        +(r.subcat?('<div style="margin-top:3px"><span class="cat-chip" style="font-size:10.5px;opacity:.9;background:'
-          +esc(subColor(r.cat,r.subcat))+'">▸ '+esc(r.subcat)+'</span></div>'):'')+'</td>'
+      +'<td>'+gotCell(r)+'</td>'
+      +'<td>'+catCell(r)+'</td>'
       +'<td><div class="itemtxt">'+itemsHtml(r)+'</div>'
         +(r.note?'<div class="muted" style="font-size:11px;margin-top:3px">📝 '+esc(r.note)+'</div>':'')+'</td>'
       +'<td>'+picCell(allPics(r))+'</td>'
@@ -992,13 +1260,47 @@ function render(){
   });
   /* แถวรวมท้ายตาราง — แยกสกุลเงิน */
   const nFree=rows.filter(r=>r.is_free).length;
-  h+='<tr style="background:#FFF7DF;font-weight:800"><td colspan="7">รวม '+rows.length+' รายการ'
+  h+='<tr style="background:#FFF7DF;font-weight:800"><td colspan="8">รวม '+rows.length+' รายการ'
     +(nFree?(' <span class="cat-chip" style="background:#0E7C86">🎁 ได้ฟรี '+nFree+'</span>'):'')+'</td>'
     +'<td class="num" colspan="'+(canEdit?4:3)+'">'+esc(curTxt)+'</td></tr>';
   $('tb').innerHTML=h+'</tbody>';
 }
 
 /* ═════════════════ สรุปค่าใช้จ่าย ═════════════════ */
+/* ── คู่ (หมวดหลัก, หมวดย่อย) ของล็อตนี้ — รายการเก่าที่หมวดอยู่ที่ล็อต ก็ยังใช้ได้ ── */
+function catPairs(r){
+  const L=arr(r&&r.lines).filter(l=>l&&String(l.name||'').trim());
+  if(!L.length)return [[String((r&&r.cat)||''),String((r&&r.subcat)||'')]];
+  return L.map(l=>[String(l.cat||(r&&r.cat)||''),String(l.subcat||'')]);
+}
+/* ── แบ่งยอดของล็อตลงไปที่สินค้าแต่ละตัว ──────────────────────────────
+   ยอดชำระจริงพิมพ์ทับได้ (มีส่วนลด/ค่าส่ง) จึงเกลี่ยตามสัดส่วน จำนวน×ราคา
+   ผลรวมของทุกบรรทัดจึงเท่ากับยอดที่จ่ายจริงเสมอ ตัวเลขในรายงานไม่บวม  */
+function lineShares(r){
+  const L=arr(r&&r.lines).filter(l=>l&&String(l.name||'').trim());
+  const amt=num(r&&r.amount), ref=num(r&&r.qty)*num(r&&r.unit_price);
+  if(!L.length)return [{cat:String((r&&r.cat)||''),subcat:String((r&&r.subcat)||''),amount:amt,fval:ref}];
+  const base=L.map(l=>num(l.qty)*num(l.price));
+  const tot=base.reduce((a,b)=>a+b,0);
+  return L.map((l,i)=>({cat:String(l.cat||(r&&r.cat)||''), subcat:String(l.subcat||''),
+    amount:amt*(tot?base[i]/tot:1/L.length), fval:(tot?base[i]:ref/L.length)}));
+}
+/* จัดกลุ่มตามหมวด "รายตัวสินค้า" — ใช้กับมุมหมวดหลัก/หมวดย่อยในรายงาน */
+function sumByLine(rows,key){
+  const g={};
+  rows.forEach(r=>{
+    const c=String(r.currency||'CNY').toUpperCase();
+    lineShares(r).forEach(x=>{
+      const k=(key==='path')?((x.cat||'(ไม่ระบุ)')+' › '+(x.subcat||'(ไม่ระบุหมวดย่อย)'))
+                            :(x.cat||'(ไม่ระบุ)');
+      if(!g[k])g[k]={n:0,cur:{},free:0,fval:{}};
+      g[k].n++;
+      if(r.is_free){ g[k].free++; g[k].fval[c]=(g[k].fval[c]||0)+x.fval; }
+      else g[k].cur[c]=(g[k].cur[c]||0)+x.amount;
+    });
+  });
+  return g;
+}
 function sumBy(rows,key){
   const g={};
   rows.forEach(r=>{
@@ -1164,6 +1466,45 @@ function rpBlock(title,note,g,sortKey,cur){
     +'</div>';
 }
 
+/* ── รายงานของค้างรับ — จัดซื้อใช้ตามงานได้ทันที ไม่ต้องไล่ดูทีละแถว ── */
+const daysAgo=d=>{const t=Date.parse(String(d||'').slice(0,10)); if(isNaN(t))return null;
+  return Math.max(0,Math.floor((Date.now()-t)/86400000));};
+function rpGotBlock(rows){
+  const open=rows.filter(r=>gotOf(r).state!=='all')
+    .sort((a,b)=>String(a.req_date||'').localeCompare(String(b.req_date||'')));
+  const done=rows.length-open.length;
+  if(!rows.length)return '';
+  if(!open.length)
+    return '<div class="rp-sec"><div class="rp-h"><span class="t">📥 สถานะการรับของ</span>'
+      +'<span class="s">ของมาครบทุกล็อตในช่วงนี้</span></div>'
+      +'<div class="rp-tot"><div>✅ <b>ได้รับครบแล้วทั้ง '+done+' ล็อต</b></div></div></div>';
+  let tb='<table><thead><tr><th style="width:96px">วันที่สั่ง</th>'
+    +'<th class="num" style="width:74px">ค้างมา</th><th style="width:132px">สถานะ</th>'
+    +'<th>สินค้าที่ยังไม่ได้รับ</th><th style="width:120px">โรงงาน</th>'
+    +'<th style="width:110px">ผู้รับผิดชอบ</th><th class="num" style="width:120px">ยอดชำระ</th>'
+    +'</tr></thead><tbody>';
+  open.forEach(r=>{
+    const g=gotOf(r), d=daysAgo(r.req_date);
+    const miss=arr(r.lines).filter(l=>l&&String(l.name||'').trim()&&!l.got)
+      .map(l=>String(l.name)+(num(l.qty)?(' ('+money(l.qty)+' ชิ้น)'):''));
+    tb+='<tr><td><b>'+thDate(r.req_date)+'</b></td>'
+      +'<td class="num"'+(d>=30?' style="color:#C0392B;font-weight:800"':'')+'>'
+        +(d==null?'—':(money(d)+' วัน'))+'</td>'
+      +'<td>'+gotChip(r,1)+'</td>'
+      +'<td>'+(miss.length?esc(miss.join(' · ')):esc(String(r.items||'—').slice(0,120)))+'</td>'
+      +'<td>'+esc(r.factory||'—')+'</td><td>'+esc(r.responsible||'—')+'</td>'
+      +'<td class="num">'+(r.is_free?'🎁 ฟรี':(money2(r.amount)+' '+esc(curSym(r.currency))))+'</td></tr>';
+  });
+  tb+='</tbody></table>';
+  const old=open.filter(r=>(daysAgo(r.req_date)||0)>=30).length;
+  return '<div class="rp-sec"><div class="rp-h"><span class="t">📥 ของที่ยังไม่ได้รับ</span>'
+    +'<span class="s">เรียงจากที่สั่งไว้นานสุด · ตามของกับโรงงานได้เลย</span></div>'
+    +'<div class="scroll">'+tb+'</div>'
+    +'<div class="rp-tot"><div>ค้างรับ <b>'+open.length+' ล็อต</b></div>'
+      +'<div>✅ รับครบแล้ว '+done+' ล็อต</div>'
+      +(old?('<div class="rp-free" style="background:#FDECEC;color:#C0392B">⚠️ เกิน 30 วัน '
+        +old+' ล็อต</div>'):'')+'</div></div>';
+}
 function renderSum(){
   const rows=filtered(), P=period();
   $('sumHead').textContent='📊 รายงานค่าใช้จ่ายสินค้าตัวอย่าง — '+P.head;
@@ -1203,6 +1544,9 @@ function renderSum(){
       +'<div class="n">'+(topFac?(money2(topFac[1].cur[cur]||0)+' '+esc(curSym(cur))):'')+'</div></div>'
     +'</div>';
 
+  /* ★ ของค้างรับขึ้นก่อน — เป็นงานที่ต้องตามต่อ ไม่ใช่แค่ตัวเลขไว้อ่าน */
+  h+=rpGotBlock(rows);
+
   /* ★ ตารางสรุปทุกสกุลเงิน — วางไว้บนสุด เพราะเป็นตัวเลขที่ต้องเอาไปใช้ต่อบ่อยสุด */
   h+=rpSumTable('📋 สรุปรายเดือน — ทุกสกุลเงิน',
       'ยอดทุกสกุลอยู่ในตารางเดียว ไม่ต้องกดสลับ · แถวล่างสุดคือรวมทั้งหมด',
@@ -1211,9 +1555,10 @@ function renderSum(){
       'รวมทั้งปี · ใช้เทียบปีต่อปี และเป็นยอดรวมของช่วงที่ดูอยู่',
       sumBy(rows,'year'),'ปี',thYearLabel);
 
-  h+=rpBlock('🏷️ ตามหมวดหลัก','หมวดใหญ่',sumBy(rows,'cat'),null,cur);
-  if(rows.some(r=>r.subcat))
-    h+=rpBlock('🔖 ตามหมวดย่อย','หมวดย่อยในแต่ละหมวดหลัก',sumBy(rows,'path'),null,cur);
+  /* ★ นับ "รายตัวสินค้า" ไม่ใช่รายล็อต — 1 ล็อตมีของคนละหมวดได้ */
+  h+=rpBlock('🏷️ ตามหมวดหลัก','นับรายตัวสินค้า',sumByLine(rows,'cat'),null,cur);
+  if(rows.some(r=>catPairs(r).some(x=>x[1])))
+    h+=rpBlock('🔖 ตามหมวดย่อย','หมวดย่อยในแต่ละหมวดหลัก · รายตัวสินค้า',sumByLine(rows,'path'),null,cur);
   h+=rpBlock('🏭 ตามโรงงาน','จ่ายให้โรงงานไหนมากสุด',sumBy(rows,'factory'),null,cur);
   h+=rpBlock('👤 ตามผู้รับผิดชอบ','ใครเป็นคนดูแลรายการ',sumBy(rows,'responsible'),null,cur);
   h+=rpBlock('📅 ตามเดือน','เรียงตามเวลา',sumBy(rows,'month'),'key',cur);
@@ -1229,10 +1574,10 @@ function renderCats(){
   if(!CATS.length){ $('catBody').innerHTML='<div class="empty">ยังไม่มีหมวดหมู่ — รัน <b>sample_orders.sql</b> หรือกดเพิ่มเอง</div>'; return; }
   /* นับการใช้งานจากรายการในช่วงที่กำลังดู — หมวดหลักนับรวมย่อยทั้งหมด */
   const useM={}, useS={};
-  ROWS.forEach(r=>{
-    if(r.cat)useM[r.cat]=(useM[r.cat]||0)+1;
-    if(r.cat&&r.subcat)useS[r.cat+' › '+r.subcat]=(useS[r.cat+' › '+r.subcat]||0)+1;
-  });
+  ROWS.forEach(r=>catPairs(r).forEach(x=>{
+    if(x[0])useM[x[0]]=(useM[x[0]]||0)+1;
+    if(x[0]&&x[1])useS[x[0]+' › '+x[1]]=(useS[x[0]+' › '+x[1]]||0)+1;
+  }));
   const btns=c=>!canEdit?'':'<td style="white-space:nowrap">'
     +'<button class="btn mini ghost" onclick="renCat('+c.id+')">✏️ ชื่อ</button> '
     +'<button class="btn mini ghost" onclick="colCat('+c.id+')">🎨</button> '
@@ -1449,6 +1794,50 @@ function safeName(x){
   return (base.slice(0,80)+ext)||'ไฟล์แนบ';
 }
 
+/* ช่อง "ประเภท" ในตาราง — ล็อตหนึ่งมีของคนละหมวดได้ จึงโชว์ทุกหมวดที่มีในล็อต */
+function catCell(r){
+  const seen=new Set(), out=[];
+  catPairs(r).forEach(x=>{
+    const key=x[0]+'|'+x[1]; if(!x[0]||seen.has(key))return; seen.add(key);
+    out.push('<div style="margin-bottom:3px">'
+      +'<span class="cat-chip" style="background:'+esc(catColor(x[0]))+'">'+esc(x[0])+'</span>'
+      +(x[1]?('<div style="margin-top:3px"><span class="cat-chip" style="font-size:10.5px;opacity:.9;background:'
+        +esc(subColor(x[0],x[1]))+'">▸ '+esc(x[1])+'</span></div>'):'')
+      +'</div>');
+  });
+  return out.length?out.join(''):'<span class="muted">—</span>';
+}
+
+/* ── ช่องสถานะรับของในตาราง + ปุ่มกดเดียวจบ ไม่ต้องเปิดฟอร์ม ── */
+function gotCell(r){
+  const g=gotOf(r);
+  let h=gotChip(r);
+  const d=arr(r.lines).map(l=>(l&&l.got&&l.gotd)||'').filter(Boolean).sort();
+  if(d.length)h+='<div class="muted" style="font-size:10.5px;margin-top:3px">รับเมื่อ '
+    +thDate(d[d.length-1])+'</div>';
+  if(canEdit)h+='<div style="margin-top:4px"><button class="btn mini ghost" '
+    +'onclick="markGot('+r.id+','+(g.state==='all'?'false':'true')+')" title="'
+    +(g.state==='all'?'เปลี่ยนกลับเป็นยังไม่ได้รับ':'บันทึกว่าของมาถึงแล้ววันนี้')+'">'
+    +(g.state==='all'?'↩︎ ยังไม่ได้รับ':'✅ รับของแล้ว')+'</button></div>';
+  return h;
+}
+async function markGot(id,on){
+  if(!canEdit)return;
+  const r=ROWS.find(x=>String(x.id)===String(id)); if(!r)return;
+  /* รายการเก่าที่ยังไม่มี lines → ถอดออกมาให้ก่อน จะได้ติ๊กสถานะได้เหมือนกัน */
+  const base=arr(r.lines).length?arr(r.lines)
+    :linesFrom(r).map(l=>({name:l.name,qty:(l.qty===''?null:num(l.qty)),
+        price:(l.price===''?null:num(l.price)),cat:l.cat||null,subcat:l.subcat||null,
+        loc:l.loc||null,test:l.test||null,pics:[]}));
+  const lines=base.map(l=>Object.assign({},l,
+    {got:!!on, gotd:on?(String(l.gotd||'').slice(0,10)||todayStr()):null}));
+  selfWriting();
+  const {error}=await sb.from('sample_orders').update({lines,updated_by:ME}).eq('id',id);
+  if(error)return toast('บันทึกสถานะไม่สำเร็จ: '+error.message);
+  r.lines=lines; render();
+  toast(on?'บันทึกว่าได้รับของแล้ว ✅':'เปลี่ยนเป็น ยังไม่ได้รับ');
+}
+
 /* ชื่อสินค้าในตาราง — มี จำนวน × ราคา ต่อบรรทัด ก็โชว์ให้ด้วย */
 /* ดูเป็น "ล็อต" — หัวบอกว่าล็อตนี้มีกี่รายการ กี่ชิ้น แล้วไล่ทีละรายการว่าตัวละกี่ชิ้น */
 function itemsHtml(r){
@@ -1460,19 +1849,28 @@ function itemsHtml(r){
     : '';
   /* ถ้าคนพิมพ์เลขข้อมาเองแล้ว (1. 2.) ไม่ต้องใส่เลขซ้ำให้ */
   const selfNum=L.some(l=>/^\s*\d+\s*[.)]/.test(String(l.name||'')));
+  /* ล็อตนี้มีของหลายหมวดไหม — ถ้ามี ต้องบอกใต้ชื่อสินค้าว่าตัวไหนหมวดอะไร */
+  const multiCat=new Set(L.map(l=>String(l.cat||'')+'|'+String(l.subcat||''))).size>1;
+  /* ของมาไม่พร้อมกัน → ต้องบอกเป็นรายตัวว่าตัวไหนมาแล้ว ตัวไหนยัง */
+  const mixGot=L.length>1&&new Set(L.map(l=>!!(l&&l.got))).size>1;
   const body=L.map((l,i)=>{
     const q=num(l.qty), p=num(l.price);
     const qs=(q||p)?('<span class="q">'+(q?('<b>'+money(q)+'</b> ชิ้น'):'—')
         +(p?(' × '+sym+' '+money2(p)):'')+'</span>'):'<span class="q">—</span>';
     const ps=arr(l.pics).filter(x=>x&&(x.id||x.url));
-    const th=ps.length?('<div class="lot-th">'+ps.slice(0,4).map(x=>{
+    const gl=ps.length?picGroup(ps):'';
+    const th=ps.length?('<div class="lot-th">'+ps.slice(0,4).map((x,k)=>{
         const t=thumbUrl(x,400);
-        return '<img src="'+esc(t)+'" alt="" loading="lazy" title="'+esc(x.name||'กดเพื่อดูใหญ่')
-          +'" onclick="light(\''+esc(String(t).replace(/'/g,'%27')).replace(/sz=w400/,'sz=w1600')+'\')"'
-          +' onerror="this.style.opacity=.3">';
-      }).join('')+(ps.length>4?('<span class="muted" style="font-size:10.5px;align-self:center">+'+(ps.length-4)+'</span>'):'')
+        return '<img src="'+esc(t)+'" alt="" loading="lazy" title="'+esc(x.name||'กดเพื่อดูใหญ่ · ซูมได้')
+          +'" onclick="light(\''+gl+'\','+k+')" onerror="this.style.opacity=.3">';
+      }).join('')+(ps.length>4?('<button class="btn mini ghost" style="align-self:center;font-size:10.5px" '
+        +'onclick="light(\''+gl+'\',4)">+'+(ps.length-4)+'</button>'):'')
       +'</div>'):'';
     const x=[];
+    if(multiCat&&String(l.cat||'').trim())
+      x.push('<span class="cat-chip" style="font-size:10px;background:'+esc(catColor(l.cat))+'">'
+        +esc(String(l.cat).trim())+(l.subcat?(' ▸ '+esc(String(l.subcat).trim())):'')+'</span>');
+    if(mixGot) x.push(gotLineChip(l));
     if(String(l.loc||'').trim()) x.push('📍 <b>'+esc(String(l.loc).trim())+'</b>');
     if(String(l.test||'').trim())x.push('🧪 '+esc(String(l.test).trim()));
     const xh=x.length?('<div class="lot-x">'+x.join(' · ')+'</div>'):'';
@@ -1496,18 +1894,49 @@ let SM_LINES=[];
 const smLine=o=>({name:String((o&&o.name)||''),
                   qty:(o&&o.qty!=null&&o.qty!=='')?num(o.qty):'',
                   price:(o&&o.price!=null&&o.price!=='')?num(o.price):'',
+                  cat:String((o&&o.cat)||''), subcat:String((o&&o.subcat)||''),
                   loc:String((o&&o.loc)||''), test:String((o&&o.test)||''),
+                  got:!!(o&&o.got), gotd:String((o&&o.gotd)||''),
                   pics:arr(o&&o.pics).slice()});
 function linesFrom(r){
   const L=arr(r&&r.lines);
-  if(L.length)return L.map(smLine);
+  /* รายการเก่า: หมวดอยู่ที่ล็อต → ยกมาใส่ทุกบรรทัดให้เอง จะได้แก้ต่อได้ทันที */
+  if(L.length)return L.map(l=>smLine(Object.assign({cat:(r&&r.cat)||'',subcat:(r&&r.subcat)||''},l)));
   const nm=String((r&&r.items)||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
   if(!r)return [smLine({})];
   if(nm.length<=1)
-    return [smLine({name:nm[0]||String(r.items||''),qty:r.qty,price:r.unit_price})];
+    return [smLine({name:nm[0]||String(r.items||''),qty:r.qty,price:r.unit_price,
+                    cat:r.cat||'',subcat:r.subcat||''})];
   /* ของเก่าที่พิมพ์หลายบรรทัดไว้ในช่องเดียว → แตกเป็นหลายแถว
      จำนวน/ราคา ใส่ไว้แถวแรกแถวเดียว ยอดรวมจึงยังเท่าเดิม */
-  return nm.map((n,i)=>smLine(i?{name:n}:{name:n,qty:r.qty,price:r.unit_price}));
+  return nm.map((n,i)=>smLine(Object.assign({name:n,cat:r.cat||'',subcat:r.subcat||''},
+    i?{}:{qty:r.qty,price:r.unit_price})));
+}
+/* ── สถานะการรับของ ────────────────────────────────────────────────
+   เก็บที่ "สินค้าแต่ละตัว" (lines[i].got / gotd) — ของมาไม่พร้อมกันได้
+   ระดับล็อตคิดให้เอง: ยังไม่ได้รับ · ได้รับบางส่วน · ได้รับครบ
+   ★ ไม่ต้องแก้ฐานข้อมูล lines เป็น jsonb อยู่แล้ว                     */
+const GOT_LBL={no:'ยังไม่ได้รับ',part:'ได้รับบางส่วน',all:'ได้รับครบแล้ว'};
+const GOT_ICO={no:'⏳',part:'📦',all:'✅'};
+const GOT_COL={no:'#B45309',part:'#2563EB',all:'#1E7145'};
+function gotOf(r){
+  const L=arr(r&&r.lines).filter(l=>l&&String(l.name||'').trim());
+  if(!L.length)return {state:'no',n:0,got:0};
+  const g=L.filter(l=>l&&l.got).length;
+  return {state:(g===0?'no':(g===L.length?'all':'part')),n:L.length,got:g};
+}
+function gotChip(r,small){
+  const g=gotOf(r), sz=small?'10px':'11px';
+  return '<span class="cat-chip" style="font-size:'+sz+';background:'+GOT_COL[g.state]+'" title="'
+    +esc(GOT_LBL[g.state]+(g.n>1?(' — '+g.got+'/'+g.n+' รายการ'):''))+'">'
+    +GOT_ICO[g.state]+' '+esc(GOT_LBL[g.state])
+    +(g.state==='part'?(' '+g.got+'/'+g.n):'')+'</span>';
+}
+function gotLineChip(l){
+  if(!l)return '';
+  return '<span class="cat-chip" style="font-size:10px;background:'+(l.got?GOT_COL.all:GOT_COL.no)+'">'
+    +(l.got?'✅ ได้รับแล้ว':'⏳ ยังไม่ได้รับ')
+    +(l.got&&l.gotd?(' '+esc(thDate(l.gotd))):'')+'</span>';
 }
 const lineSum=l=>num(l.qty)*num(l.price);
 const linesTotal=()=>SM_LINES.reduce((a,l)=>a+lineSum(l),0);
@@ -1542,6 +1971,7 @@ function drawLines(){
       +'<div class="sum">'+(sum?money2(sum):'—')+'</div>'
       +'<button type="button" class="btn mini ghost" title="ลบสินค้าตัวนี้" '
         +'onclick="delLine('+i+')"'+(SM_LINES.length<2?' disabled':'')+'>✕</button>'
+      +'<div class="li-cats">'+lineCatsHtml(i)+'</div>'
       +'<div class="li-extra">'
         +'<input list="locList" value="'+esc(l.loc||'')+'" '
           +'placeholder="\ud83d\udccd โลเคชั่น เช่น ชั้น A-2 / ห้องตัวอย่าง" '
@@ -1550,12 +1980,49 @@ function drawLines(){
           +'placeholder="\ud83e\uddea ผลการทดสอบ เช่น ใช้งานปกติ · แรงดันตก 5%" '
           +'oninput="setLine('+i+',&quot;test&quot;,this.value)">'
       +'</div>'
+      +'<div class="li-got">'+lineGotHtml(i)+'</div>'
       +'<div class="li-pics">'+linePicsHtml(i)+'</div>'
       +'</div>';
   }).join('');
   const n=linesNames().length, t=linesTotal();
   $('f_liCount').textContent=n>1?('— '+n+' รายการ · รวม '+money2(t)+' '+curSym($('f_cur').value))
                                 :'— ใส่ได้มากกว่า 1 รายการ';
+  paintGotAll();
+}
+/* ── ช่องสถานะ "ได้รับแล้ว / ยังไม่ได้รับ" ของสินค้าแต่ละตัว ──────── */
+function lineGotHtml(i){
+  const l=SM_LINES[i]; if(!l)return '';
+  return '<button type="button" class="gt'+(l.got?' on':'')+'" onclick="toggleGot('+i+')" '
+      +'title="กดสลับ ได้รับแล้ว / ยังไม่ได้รับ">'
+      +(l.got?'✅ ได้รับแล้ว':'⏳ ยังไม่ได้รับ')+'</button>'
+    +(l.got
+      ?'<span class="muted" style="font-size:11.5px">รับเมื่อ</span>'
+       +'<input type="date" class="gd" value="'+esc(l.gotd||'')+'" '
+       +'onchange="setLine('+i+',&quot;gotd&quot;,this.value)">'
+      :'<span class="muted" style="font-size:11.5px">ของยังไม่เข้า — กดปุ่มซ้ายเมื่อของมาถึง</span>');
+}
+function drawLineGot(i){
+  const row=$('f_lines').children[i]; if(!row)return;
+  const box=row.querySelector('.li-got'); if(box)box.innerHTML=lineGotHtml(i);
+  paintGotAll();
+}
+function toggleGot(i){
+  const l=SM_LINES[i]; if(!l)return;
+  l.got=!l.got;
+  if(l.got&&!l.gotd)l.gotd=todayStr();
+  drawLineGot(i);
+}
+function gotAllLines(){
+  const named=SM_LINES.filter(l=>String(l.name||'').trim());
+  const on=!(named.length&&named.every(l=>l.got));      /* ครบอยู่แล้ว → กดอีกทีคือยกเลิกทั้งหมด */
+  SM_LINES.forEach(l=>{ l.got=on; if(on&&!l.gotd)l.gotd=todayStr(); });
+  drawLines();
+}
+function paintGotAll(){
+  const b=$('gotAll'); if(!b)return;
+  const named=SM_LINES.filter(l=>String(l.name||'').trim());
+  const all=named.length&&named.every(l=>l.got);
+  b.textContent=all?'↩︎ ยังไม่ได้รับทุกตัว':'✅ รับครบทุกตัว';
 }
 /* ── รูปของสินค้าแต่ละตัว ───────────────────────────────────────────
    เก็บใน lines[i].pics — ไฟล์ขึ้น Google Drive ตอนกด 💾 บันทึก เหมือนรูปรวม
@@ -1612,14 +2079,13 @@ function lineDrag(e,i,on,leave){
   const box=row.querySelector('.li-pics'); if(box)box.classList.toggle('drag',!!on);
   if(on||leave)return;
   armLine(i);
-  const fs=[...((e.dataTransfer&&e.dataTransfer.files)||[])].filter(f=>/^image\//.test(f.type||''));
-  if(fs.length)pickLinePics(i,fs);
-  else toast('วางได้เฉพาะไฟล์รูป');
+  dropFiles('pics',e,i);
 }
 
-const LINE_TEXT={name:1,loc:1,test:1};
+const LINE_TEXT={name:1,loc:1,test:1,cat:1,subcat:1,gotd:1};
 function setLine(i,k,v){ if(!SM_LINES[i])return;
   SM_LINES[i][k]= LINE_TEXT[k]?v : (v===''?'':num(v));
+  if(k==='name')paintGotAll();
   if(!LINE_TEXT[k]){ const el=$('f_lines').children[i]; if(el){const c=el.querySelector('.sum');
     if(c)c.textContent=lineSum(SM_LINES[i])?money2(lineSum(SM_LINES[i])):'—';} 
     const n=linesNames().length;
@@ -1689,8 +2155,7 @@ function openForm(id){
   $('f_resp').value=(r&&r.responsible)||'';
   $('f_note').value=(r&&r.note)||'';
   PICS=arr(r&&r.pics).slice(); PROOFS=arr(r&&r.proofs).slice();
-  fillCatSelects(); $('f_cat').value=(r&&r.cat)||'';
-  $('f_sub').value=(r&&r.subcat)||''; fillSubForm(); $('f_sub').value=(r&&r.subcat)||'';
+  fillCatSelects();
   $('upStat').textContent=''; $('lnkPic').value=''; $('lnkPrf').value='';
   drawLines();
   freeToggle();
@@ -1747,23 +2212,71 @@ document.addEventListener('paste',e=>{
     toast('วางรูปที่ "รูปรวมของล็อต" — อยากใส่รายตัว กดที่แถวสินค้าก่อนแล้วค่อยวาง');
   }
 });
-/* ลากไฟล์มาวาง */
+/* ── ลากไฟล์มาวาง ─────────────────────────────────────────────────────
+   ⚠️ ที่เจอว่า "ลากแล้วไม่ติด" ส่วนใหญ่ไม่ใช่กล่องพัง แต่เป็นเพราะ
+      ลากรูป "จากหน้าเว็บอื่น" มาโดยตรง — แบบนั้น dataTransfer.files ว่างเปล่า
+      (ได้มาเป็น "ลิงก์รูป" ไม่ใช่ไฟล์) โค้ดเดิมจึงเงียบไปเฉย ๆ ไม่บอกอะไรเลย
+   ✅ ใหม่: ไม่มีไฟล์ → ลองอ่านเป็นลิงก์รูปแล้วแนบให้ · ถ้าไม่ได้จริง ๆ ก็บอกวิธีที่ถูก */
+function dropUrl(dt){
+  if(!dt)return '';
+  const cand=[dt.getData&&dt.getData('text/uri-list'),dt.getData&&dt.getData('text/plain')]
+    .map(x=>String(x||'').trim()).filter(Boolean);
+  const html=dt.getData&&dt.getData('text/html');
+  if(html){ const m=String(html).match(/<img[^>]+src="([^"]+)"/i); if(m)cand.push(m[1]); }
+  return cand.find(u=>/^https?:\/\//i.test(u))||'';
+}
+function dropFiles(kind,e,lineIdx){
+  const dt=e.dataTransfer;
+  const fs=[...((dt&&dt.files)||[])].filter(f=>/^image\//.test(f.type||'')||kind==='proofs');
+  if(fs.length){
+    if(lineIdx!=null)pickLinePics(lineIdx,fs); else pickFiles(kind,fs);
+    return true;
+  }
+  const u=dropUrl(dt);
+  if(u){
+    const m=u.match(/\/d\/([A-Za-z0-9_-]{10,})/);
+    const rec={url:u,id:m?m[1]:'',name:'ลิงก์แนบ',mime:''};
+    if(lineIdx!=null&&SM_LINES[lineIdx]){ SM_LINES[lineIdx].pics.push(rec); drawLinePics(lineIdx); }
+    else { bucket(kind).push(rec); drawThumbs(); }
+    toast('แนบมาเป็นลิงก์รูปให้แล้ว — ถ้าอยากเก็บไฟล์จริง ให้เซฟรูปลงเครื่องก่อนแล้วลากมาวาง');
+    return true;
+  }
+  toast('ลากรูปจากหน้าเว็บอื่นมาตรง ๆ ไม่ได้ — เซฟรูปลงเครื่องก่อน แล้วลากมาวาง หรือกด Ctrl+V');
+  return false;
+}
 ['dropPic','dropPrf'].forEach(id=>{
   const el=$(id), k=id==='dropPic'?'pics':'proofs';
-  el.addEventListener('dragover',e=>{e.preventDefault();el.style.borderColor='#C9A84C';});
-  el.addEventListener('dragleave',()=>{el.style.borderColor='#CBD5E1';});
-  el.addEventListener('drop',e=>{e.preventDefault();el.style.borderColor='#CBD5E1';
-    pickFiles(k,e.dataTransfer&&e.dataTransfer.files);});
+  const stop=e=>{e.preventDefault();e.stopPropagation();};
+  el.addEventListener('dragenter',e=>{stop(e);el.style.borderColor='#C9A84C';});
+  el.addEventListener('dragover', e=>{stop(e);el.style.borderColor='#C9A84C';});
+  el.addEventListener('dragleave',e=>{ if(e.relatedTarget&&el.contains(e.relatedTarget))return;
+                                       el.style.borderColor='#CBD5E1';});
+  el.addEventListener('drop',e=>{stop(e);el.style.borderColor='#CBD5E1';dropFiles(k,e);});
+});
+/* กันไฟล์หลุดออกนอกกล่อง — ลากมาวางตรงไหนของฟอร์มก็รับไว้ ไม่ให้เบราว์เซอร์เปิดไฟล์ทิ้งงานที่กรอกไว้ */
+$('formBg').addEventListener('dragover',e=>{e.preventDefault();});
+$('formBg').addEventListener('drop',e=>{
+  if(e.target.closest&&e.target.closest('.drop,.li-row'))return;   /* มีเจ้าของอยู่แล้ว */
+  e.preventDefault();
+  const fs=[...((e.dataTransfer&&e.dataTransfer.files)||[])].filter(f=>/^image\//.test(f.type||''));
+  if(!fs.length){ dropFiles('pics',e,(SM_ACTIVE>=0&&SM_LINES[SM_ACTIVE])?SM_ACTIVE:null); return; }
+  if(SM_ACTIVE>=0&&SM_LINES[SM_ACTIVE]){
+    pickLinePics(SM_ACTIVE,fs);
+    toast('ใส่รูปที่ "'+(SM_LINES[SM_ACTIVE].name||('สินค้าตัวที่ '+(SM_ACTIVE+1)))+'" ให้แล้ว');
+  } else {
+    pickFiles('pics',fs);
+    toast('ใส่ไว้ที่ "รูปรวมของล็อต" — อยากใส่รายตัว กดที่แถวสินค้าก่อนแล้วค่อยลากมาวาง');
+  }
 });
 
 async function uploadPending(catName){
-  const sub=($('f_sub').value||'').trim();
   const clean2=x=>String(x||'').replace(/[\\/:*?"<>|]/g,'-');
-  const folder='สินค้าตัวอย่าง/'+clean2(catName||'ไม่ระบุหมวด')+(sub?('/'+clean2(sub)):'');
-  /* คิวอัป = รูปของสินค้าแต่ละตัว + รูปรวมล็อต + หลักฐานการชำระ */
-  const queues=SM_LINES.map(l=>l.pics).concat([PICS,PROOFS]);
+  /* ★ โฟลเดอร์ Drive ตาม "หมวดของสินค้าตัวนั้น" — รูปรวม/หลักฐาน ใช้หมวดของล็อต */
+  const fold=(c,sc)=>'สินค้าตัวอย่าง/'+clean2(c||catName||'ไม่ระบุหมวด')+(sc?('/'+clean2(sc)):'');
+  const lotFolder=fold(lotCat(),lotSub());
   const jobs=[];
-  queues.forEach(a=>arr(a).forEach(p=>{ if(p._file)jobs.push(p); }));
+  SM_LINES.forEach(l=>arr(l.pics).forEach(p=>{ if(p._file)jobs.push({p,folder:fold(l.cat,l.subcat)}); }));
+  [PICS,PROOFS].forEach(a=>arr(a).forEach(p=>{ if(p._file)jobs.push({p,folder:lotFolder}); }));
   const n=jobs.length;
   if(!n)return true;
   if(!GAS_URL){ alert('อัปโหลดไฟล์ไม่ได้ — ยังไม่ได้ตั้ง GAS_URL\n\nเอาไฟล์ออกก่อน หรือใส่เป็นลิงก์แทน'); return false; }
@@ -1774,7 +2287,7 @@ async function uploadPending(catName){
                         +(extra?(' — '+extra):'') };
   tick();
 
-  async function one(p){
+  async function one(p,folder){
     const small=await shrink(p._file,UP_MAXPX);
     const data=small||await fileToB64(p._file);
     /* ไฟล์ที่ไม่ใช่รูป (เช่น PDF) ย่อไม่ได้ — ใหญ่เกินไปต้องบอกตรง ๆ ก่อนยิง */
@@ -1802,8 +2315,8 @@ async function uploadPending(catName){
   const queue=jobs.slice();
   async function worker(){
     while(queue.length&&!bad){
-      const p=queue.shift();
-      try{ await one(p); }catch(e){ if(!bad)bad={p,e}; break; }
+      const it=queue.shift(), p=it.p;
+      try{ await one(p,it.folder); }catch(e){ if(!bad)bad={p,e}; break; }
       done++; tick();
     }
   }
@@ -1823,18 +2336,25 @@ const clean=a=>arr(a).filter(p=>p.url).map(p=>({url:p.url,id:p.id||'',name:p.nam
 
 async function save(){
   if(!canEdit)return;
-  const d=$('f_date').value, cat=$('f_cat').value;
+  const d=$('f_date').value, cat=lotCat();
   /* ตัดบรรทัดที่ไม่ได้ใส่ชื่อทิ้ง — แถวว่างที่กดเพิ่มไว้แล้วไม่ได้กรอกจะไม่ถูกบันทึก */
   /* เก็บ "ตัวจริง" ไว้ก่อน — ลิงก์รูปเพิ่งได้หลังอัป Drive จึงต้องอ่านค่าตอนท้ายอีกรอบ */
   const KEEP=SM_LINES.filter(l=>l.name.trim());
   const LN=KEEP.map(l=>({name:l.name.trim(),
               qty:(l.qty===''?null:num(l.qty)), price:(l.price===''?null:num(l.price)),
-              loc:(String(l.loc||'').trim()||null), test:(String(l.test||'').trim()||null)}));
+              cat:(String(l.cat||'').trim()||null), subcat:(String(l.subcat||'').trim()||null),
+              loc:(String(l.loc||'').trim()||null), test:(String(l.test||'').trim()||null),
+              got:!!l.got, gotd:(l.got?(String(l.gotd||'').slice(0,10)||todayStr()):null)}));
   const items=LN.map(l=>l.name).join('\n');
   /* หมวดย่อยไม่บังคับ — บางรายการไม่มีหมวดย่อยจริง ๆ */
   if(!d)return alert('ใส่วันที่ก่อน');
-  if(!cat)return alert('เลือกหมวดหลักก่อน');
   if(!LN.length)return alert('ใส่ชื่อสินค้าอย่างน้อย 1 รายการก่อน');
+  /* ★ หมวดอยู่ที่ตัวสินค้าแล้ว — ต้องเลือกให้ครบทุกบรรทัดที่กรอกชื่อไว้ */
+  {
+    const miss=LN.findIndex(l=>!l.cat);
+    if(miss>=0)return alert('เลือกหมวดหลักของ "'+LN[miss].name+'" ก่อน\n\n'
+      +'หมวดหมู่อยู่ที่สินค้าแต่ละตัวแล้ว (ไม่ใช่ของทั้งล็อต)');
+  }
   const free=$('f_free').checked;
   /* ได้ฟรี = ไม่ต้องกรอกยอด (ระบบใส่ 0 ให้) · ไม่ได้ฟรีต้องกรอก */
   if(!free&&($('f_amt').value===''||isNaN(parseFloat($('f_amt').value))))
@@ -1844,7 +2364,7 @@ async function save(){
   try{
     /* อัปไฟล์ให้ครบก่อน — ถ้าอัปไม่ผ่าน จะไม่เขียนฐานข้อมูลเลย ไม่ให้มีแถวที่รูปหาย */
     if(!await uploadPending(cat))return;
-    const rec={req_date:d, cat, subcat:($('f_sub').value||'')||null,
+    const rec={req_date:d, cat, subcat:lotSub()||null,
       items,
       /* อ่าน pics หลังอัปเสร็จ — ตอนนี้แต่ละรูปมีลิงก์ Drive แล้ว */
       lines:LN.map((l,i)=>Object.assign({},l,{pics:clean(KEEP[i]&&KEEP[i].pics)})),
@@ -1893,18 +2413,26 @@ function exportXls(){
   const rows=filtered(); if(!rows.length)return toast('ไม่มีรายการให้ export');
   const P=period();
   const aoa=[['วัน/เดือน/ปี','หมวดหลัก','หมวดย่อย','รายการ','รายละเอียดสินค้า (ชื่อ × จำนวน × ราคา)',
-              '📍 โลเคชั่น','🧪 ผลการทดสอบ',
+              '📍 โลเคชั่น','🧪 ผลการทดสอบ','สถานะรับของ','วันที่รับของ',
               'โรงงาน','จำนวน','ราคาต่อชิ้น','ได้ฟรี',
               'ยอดชำระ','มูลค่าอ้างอิง (ของฟรี)','สกุลเงิน','ผู้รับผิดชอบ',
               'หมายเหตุ','จำนวนรูปสินค้า','จำนวนหลักฐาน','ลิงก์รูปสินค้า','ลิงก์หลักฐาน','บันทึกโดย']];
-  rows.forEach(r=>aoa.push([String(r.req_date||'').slice(0,10), r.cat||'', r.subcat||'',
+  const uniq=a=>[...new Set(a.filter(Boolean))].join(' | ');
+  rows.forEach(r=>aoa.push([String(r.req_date||'').slice(0,10),
+    uniq(catPairs(r).map(x=>x[0])), uniq(catPairs(r).map(x=>x[1])),
     r.items||'',
-    arr(r.lines).map(l=>String(l.name||'')+' × '+(l.qty==null?'?':num(l.qty))
+    arr(r.lines).map(l=>String(l.name||'')
+      +(l.cat?(' ['+String(l.cat)+(l.subcat?(' › '+String(l.subcat)):'')+']'):'')
+      +' × '+(l.qty==null?'?':num(l.qty))
       +' × '+(l.price==null?'?':num(l.price))
+      +(l.got?(' [รับแล้ว'+(l.gotd?(' '+String(l.gotd).slice(0,10)):'')+']'):' [ยังไม่ได้รับ]')
       +(arr(l.pics).length?(' [รูป '+arr(l.pics).length+']'):'')).join(' | '),
     arr(r.lines).map(l=>String(l.loc||'').trim()).filter(Boolean).join(' | '),
     arr(r.lines).map(l=>(String(l.name||'')+': '+String(l.test||'').trim()))
       .filter(x=>!/: $/.test(x)).join(' | '),
+    GOT_LBL[gotOf(r).state]+(gotOf(r).state==='part'
+      ?(' ('+gotOf(r).got+'/'+gotOf(r).n+')'):''),
+    arr(r.lines).map(l=>(l&&l.got&&l.gotd)||'').filter(Boolean).sort().slice(-1)[0]||'',
     r.factory||'',
     (r.qty==null?'':num(r.qty)), (r.unit_price==null?'':num(r.unit_price)),
     r.is_free?'ฟรี':'',
@@ -1932,7 +2460,7 @@ function exportXls(){
       sumRow('มูลค่าอ้างอิงของฟรี '+c,[['มูลค่าอ้างอิง (ของฟรี)',fv[c]],['สกุลเงิน',c]]));
   }
   const ws=XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols']=[{wch:12},{wch:22},{wch:18},{wch:52},{wch:46},{wch:22},{wch:40},{wch:14},{wch:9},{wch:12},{wch:8},
+  ws['!cols']=[{wch:12},{wch:22},{wch:18},{wch:52},{wch:46},{wch:22},{wch:40},{wch:17},{wch:13},{wch:14},{wch:9},{wch:12},{wch:8},
                {wch:13},{wch:19},{wch:9},{wch:14},{wch:24},
                {wch:12},{wch:12},{wch:40},{wch:40},{wch:22}];
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'สินค้าตัวอย่าง');
@@ -1963,11 +2491,15 @@ function pgUnits(r){
   const lotPics=arr(r.pics).filter(pgOk);
   if(!L.length)                                     /* รายการเก่า ยังไม่มีรายการสินค้าแยก */
     return [{lot:r,idx:-1,n:1,name:r.items||'สินค้าตัวอย่าง',loc:'',test:'',
+             got:false,gotd:'',
+             cat:String(r.cat||''),subcat:String(r.subcat||''),
              qty:r.qty,price:r.unit_price,pics:allPics(r).filter(pgOk),borrowed:false}];
   return L.map((l,i)=>{
     const own=arr(l.pics).filter(pgOk);
     return {lot:r,idx:i,n:L.length,name:l.name,qty:l.qty,price:l.price,
+            cat:String(l.cat||r.cat||''), subcat:String(l.subcat||''),
             loc:String(l.loc||''), test:String(l.test||''),
+            got:!!l.got, gotd:String(l.gotd||''),
             pics:own.length?own:lotPics.slice(), borrowed:!own.length&&lotPics.length>0};
   });
 }
@@ -1983,17 +2515,18 @@ function pgImageError(img){img.replaceWith(Object.assign(document.createElement(
 function pgState(status,message){PG_STATUS=status;PG_ERROR=message||'';if($('tab-gallery').style.display!=='none')renderGallery();}
 function renderGallery(){
   $('pgPeriod').textContent=period().head+' · ใช้ช่วงวันที่เดียวกับรายการ';
-  const categories=[...new Set(ROWS.map(r=>r.cat).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'th'));
+  const categories=[...new Set(ROWS.flatMap(r=>catPairs(r)).map(x=>x[0]).filter(Boolean))]
+    .sort((a,b)=>a.localeCompare(b,'th'));
   if(PG_CATEGORY&&!categories.includes(PG_CATEGORY))PG_CATEGORY='';
   $('pgCats').innerHTML=[''].concat(categories).map((cat,i)=>'<button type="button" class="pg-chip" data-category="'+i+'" aria-pressed="'+(cat===PG_CATEGORY)+'">'+esc(cat||'ทุกหมวด')+'</button>').join('');
   $('pgCats').querySelectorAll('button').forEach((b,i)=>b.onclick=()=>{PG_CATEGORY=[''].concat(categories)[i];PG_LIMIT=40;renderGallery();});
   const query=$('pgQuery').value.trim().toLocaleLowerCase('th'), photo=$('pgPhotoFilter').value;
   PG_ROWS=ROWS.flatMap(pgUnits).filter(u=>{
     const r=u.lot;
-    if(PG_CATEGORY&&r.cat!==PG_CATEGORY)return false;
+    if(PG_CATEGORY&&u.cat!==PG_CATEGORY)return false;
     /* ★ ค้นด้วยชื่อ "สินค้าตัวนี้" ไม่เอา r.items (ที่รวมชื่อทุกตัวในล็อต)
           ไม่งั้นค้นชื่อตัวหนึ่ง แล้วเพื่อนร่วมล็อตจะโผล่มาด้วยทั้งหมด */
-    if(query&&![u.name,u.loc,u.test,r.cat,r.subcat,r.factory,r.responsible,r.note]
+    if(query&&![u.name,u.loc,u.test,u.cat,u.subcat,r.factory,r.responsible,r.note]
       .join(' ').toLocaleLowerCase('th').includes(query))return false;
     if(photo==='photos')return u.pics.length>0;
     if(photo==='none')  return u.pics.length===0;
@@ -2021,9 +2554,11 @@ function renderGallery(){
             :('ยอดล็อต <b>'+esc(curSym(r.currency))+' '+money2(r.amount)+'</b>'));
     return '<button type="button" class="pg-card" data-item="'+i+'" aria-label="'+esc('ดูสินค้า '+title)+'">'
       +'<span class="pg-visual">'+(pics.length?pgImg(pics[0],600,title):pgPlaceholder())
-      +'<span class="pg-count">'+(pics.length?((u.borrowed?'▧ รูปรวมล็อต ':'▧ ')+pics.length+' รูป'):'รอเพิ่มรูป')+'</span></span>'
+      +'<span class="pg-count">'+(pics.length?((u.borrowed?'▧ รูปรวมล็อต ':'▧ ')+pics.length+' รูป'):'รอเพิ่มรูป')+'</span>'
+      +'<span class="pg-count" style="left:12px;right:auto;background:'+(u.got?GOT_COL.all:GOT_COL.no)
+        +';color:#fff;border-color:transparent">'+(u.got?'✅ ได้รับแล้ว':'⏳ ยังไม่ได้รับ')+'</span></span>'
       +'<span class="pg-cardbody">'
-      +'<span class="pg-category">'+esc([r.cat||'ไม่ระบุหมวด',r.subcat].filter(Boolean).join(' / '))
+      +'<span class="pg-category">'+esc([u.cat||'ไม่ระบุหมวด',u.subcat].filter(Boolean).join(' / '))
         +(u.n>1?(' · ล็อต '+u.n+' รายการ'):'')+'</span>'
       +'<span class="pg-title">'+esc(title)+'</span>'
       +'<span class="pg-meta">'+esc(r.factory||'ไม่ระบุโรงงาน')+' · '+esc(thDate(r.req_date))
@@ -2045,7 +2580,7 @@ function pgDetail(){
   const mates=arr(r.lines).filter(l=>l&&String(l.name||'').trim())
     .map((l,i)=>({l,i})).filter(x=>x.i!==u.idx);
   $('pgInfo').innerHTML=
-     '<div class="pg-category">'+esc([r.cat||'ไม่ระบุหมวด',r.subcat].filter(Boolean).join(' / '))+'</div>'
+     '<div class="pg-category">'+esc([u.cat||'ไม่ระบุหมวด',u.subcat].filter(Boolean).join(' / '))+'</div>'
     +'<h3 id="pgDetailTitle">'+esc(u.name||'สินค้าตัวอย่าง')+'</h3>'
     +'<div class="pg-price"><small>'+(r.is_free?'ไม่มีค่าใช้จ่าย'
         :(line?'ยอดของสินค้าตัวนี้':'ยอดชำระทั้งล็อต'))+'</small>'
@@ -2056,7 +2591,9 @@ function pgDetail(){
         ['จำนวน',num(u.qty)?money(u.qty)+' ชิ้น':'—'],
         ['ราคาต่อชิ้น',num(u.price)?sym+' '+money2(u.price):'—'],
         ['สกุลเงิน',r.currency||'CNY'],
-        ['📍 โลเคชั่น',String(u.loc||'').trim()||'—']
+        ['📍 โลเคชั่น',String(u.loc||'').trim()||'—'],
+        ['📥 สถานะรับของ',(u.got?'✅ ได้รับแล้ว':'⏳ ยังไม่ได้รับ')
+          +(u.got&&u.gotd?(' · '+thDate(u.gotd)):'')]
       ].map(([k,v])=>'<div><dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd></div>').join('')+'</dl>'
     +(String(u.test||'').trim()
         ?'<div class="pg-note"><b>🧪 ผลการทดสอบ</b><br>'+esc(String(u.test).trim())+'</div>':'')
@@ -2075,7 +2612,7 @@ function pgDetail(){
 }
 function pgPhoto(){
   const u=PG_VIEW[PG_ITEM], r=u&&u.lot, pics=pgPics(u);
-  $('pgStage').classList.remove('pg-zoom');$('pgZoom').setAttribute('aria-pressed','false');$('pgZoom').textContent='ขยายรูป';
+  $('pgStage').classList.remove('pg-zoom');$('pgZoom').setAttribute('aria-pressed','false');$('pgZoom').textContent='🔍 ขยายเต็มจอ';
   $('pgStage').innerHTML=pics.length?pgImg(pics[PG_PIC],1600,u.name||'รูปสินค้า')
     :pgPlaceholder('ยังไม่มีรูปของสินค้าตัวนี้');
   const image=$('pgStage').querySelector('img');if(image){image.loading='eager';image.onclick=pgZoom;}
@@ -2085,7 +2622,11 @@ function pgPhoto(){
   $('pgThumbs').querySelectorAll('button').forEach(b=>b.onclick=()=>{PG_PIC=Number(b.dataset.pic);pgPhoto();});
   const selected=$('pgThumbs').querySelector('[aria-pressed=true]');if(selected)$('pgThumbs').scrollLeft=selected.offsetLeft-$('pgThumbs').offsetLeft-80;
 }
-function pgZoom(){if(!$('pgStage').querySelector('img'))return;const on=$('pgStage').classList.toggle('pg-zoom');$('pgZoom').textContent=on?'ย่อรูป':'ขยายรูป';$('pgZoom').setAttribute('aria-pressed',String(on));}
+/* ขยายรูป = เปิดเครื่องดูรูปเต็มจอ (ซูม/ลาก/นิ้วถ่างได้) แทนการดันรูปให้ล้นกรอบแบบเดิม */
+function pgZoom(){
+  const pics=pgPics(PG_VIEW[PG_ITEM]); if(!pics.length)return;
+  lightPics(pics,PG_PIC);
+}
 function pgStepPic(step){const count=pgPics(PG_VIEW[PG_ITEM]).length;if(count<2)return;PG_PIC=(PG_PIC+step+count)%count;pgPhoto();}
 function pgStepItem(step){PG_ITEM=(PG_ITEM+step+PG_VIEW.length)%PG_VIEW.length;PG_PIC=0;pgDetail();$('pgDialog').scrollTop=0;}
 ['pgQuery','pgPhotoFilter','pgSort'].forEach(id=>$(id).addEventListener(id==='pgQuery'?'input':'change',()=>{PG_LIMIT=40;renderGallery();}));
