@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-69</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-70</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -1906,6 +1906,20 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
           <br>· ตารางติดป้าย <b>🧩 ชุด n</b> + ไล่รายการลูกให้เห็น · มี<b>ตัวกรองเฉพาะรหัสชุด</b>
           <br>· <b>Excel</b> เพิ่ม 2 คอลัมน์ — รหัสชุด · รายการในชุด
         </div>
+        <div style="background:#fff;border:1px solid #D9BEEE;border-radius:8px;padding:7px 9px;margin-top:7px">
+          ✏️ <b>ข้อความรายบรรทัด</b> <span class="muted">(ของใหม่ v01-06)</span>
+          <br>ชุด 1 รหัสมักต้องออก INVOICE <b>หลายบรรทัด</b> เพราะของในชุดคนละอย่างกัน
+          — แต่ละบรรทัดจึงตั้งข้อความของตัวเองได้ในกล่องแก้ไข (1 การ์ด = 1 บรรทัดบนใบ)
+          <table class="kv" style="margin-top:6px"><thead><tr><th>ช่อง</th><th>ไปโผล่ที่ไหนบนใบ</th></tr></thead><tbody>
+            <tr><td><b>DESCRIPTION (EN)</b></td><td>คอลัมน์แรกของ INVOICE (บรรทัดบน) + ท้ายช่อง Remark</td></tr>
+            <tr><td><b>ชื่อไทย</b></td><td>บรรทัดสุดท้ายของช่อง Remark</td></tr>
+            <tr><td><b>COMPONENT</b></td><td>คอลัมน์ COMPONENT — พิมพ์บรรทัดละ 1 อย่าง</td></tr>
+            <tr><td><b>Specification</b></td><td>คอลัมน์ Specification</td></tr>
+            <tr><td><b>รหัสลูก</b></td><td><b>เว้นว่างได้</b> — ของบางชิ้นขายเฉพาะเป็นชุด ไม่มีรหัสใน JST<br>
+                ถ้าใส่รหัส ระบบดึงชื่อ/COMPONENT ของรหัสนั้นมาตั้งต้นให้ แก้ทับได้</td></tr>
+          </tbody></table>
+          <div class="muted" style="margin-top:5px">★ รหัส/MODEL บนทุกบรรทัดยังเป็น<b>รหัสชุด</b>เหมือนกันหมด</div>
+        </div>
         <div class="muted" style="margin-top:5px">★ กันชุดซ้อนชุด และกันใส่รหัสตัวเองเข้าไปในชุดให้แล้ว
           · ใส่รหัสซ้ำ = บวกจำนวน ไม่เพิ่มแถวใหม่
           <br>★ ต้องรัน <code>sku_combo.sql</code> ก่อนใช้ (เพิ่มคอลัมน์ <code>combo_items</code>)</div>
@@ -1923,6 +1937,28 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
           <br>· <b>กล่อง/CBM/น้ำหนัก</b> ใช้ของรหัสชุด · <b>จำนวนลังต้องกรอกเอง</b>
           <br>· ถามยืนยันพร้อมบอกรายละเอียดก่อนทุกครั้ง · ของที่ไม่อยู่ในชุดไม่ถูกแตะ
           <br>· ลูกไม่ครบในใบ = ยุบไม่ได้ ระบบบอกเหตุผลให้</div>
+        <div style="background:#fff;border:1px solid #D9BEEE;border-radius:8px;padding:7px 9px;margin-top:7px">
+          🔺 <b>ปุ่ม "🧩 แตกรายการชุด"</b> <span class="muted">(ของใหม่ v01-06)</span>
+          — แตกบรรทัดรหัสชุด ออกเป็น<b>หลายบรรทัดบน INVOICE</b> ตามที่ผูกไว้ในทะเบียน
+          <table class="kv" style="margin-top:6px"><thead><tr><th>เอกสาร</th><th>ผลที่ได้</th></tr></thead><tbody>
+            <tr><td><b>INVOICE</b></td><td><b>หลายบรรทัด</b> — DESCRIPTION / COMPONENT / ชื่อไทย แยกกัน
+              <br>รหัสและ MODEL เป็นรหัสชุดเหมือนกันทุกบรรทัด · <b>GW รวมเป็นช่องเดียว</b> (merge)</td></tr>
+            <tr><td><b>PACKING LIST</b></td><td><b>บรรทัดเดียว</b> ใช้ชื่อ/กล่อง/CBM/น้ำหนัก ของชุด
+              <br>Dimension นับเป็น <b>ชุด</b> ไม่ใช่ชิ้น เช่น <code>250 Cartons*4= 1,000 SET</code></td></tr>
+          </tbody></table>
+          <div style="margin-top:5px">· <b>จำนวน/บรรทัด</b> = จำนวนชุด × จำนวนต่อชุด
+            <br>· <b>ราคา/หน่วย</b> = ราคาชุด ÷ จำนวนชิ้นรวมต่อชุด → <b>ยอดรวมเท่าเดิมเป๊ะ</b>
+            <br>&nbsp;&nbsp;&nbsp;<span class="muted">ตัวอย่าง: ชุดละ 236.50 มีของ 2 ชิ้น → บรรทัดละ 118.25</span>
+            <br>· <b>กดปุ่มซ้ำ = รวมกลับ</b>เป็นบรรทัดเดียว (ระบบดูให้เองว่าตอนนี้ควรแตกหรือรวม)
+            <br>· ถามยืนยันพร้อมบอกรายละเอียดก่อนทุกครั้ง</div>
+        </div>
+        <div style="background:#fff;border:1px solid #D9BEEE;border-radius:8px;padding:7px 9px;margin-top:7px">
+          ✏️ <b>ปุ่ม "✏️ ข้อความ" ในทุกบรรทัด</b> <span class="muted">(ของใหม่ v01-06)</span>
+          — แก้ DESCRIPTION / COMPONENT / ชื่อไทย / Specification <b>เฉพาะบรรทัดนั้น เฉพาะใบนี้</b>
+          <br>· เว้นว่าง = ใช้ข้อมูลจากทะเบียน SKU ตามเดิม (ข้อความจาง ๆ ในช่องคือค่าที่จะถูกใช้)
+          <br>· บรรทัดที่ตั้งข้อความเองไว้ ปุ่มจะติด <b>●</b> ให้เห็น · กด <b>ล้างทั้งหมด</b> เพื่อกลับไปใช้ทะเบียน
+          <div class="muted" style="margin-top:4px">★ ใบที่ไม่ได้ตั้งอะไรเพิ่ม ออกมาเหมือนเดิมทุกตัวอักษร</div>
+        </div>
       </div></td></tr>
     <tr><td><b>💰 VAT / หัก ณ ที่จ่าย — คิดแบบเดียวกับใบของขนส่ง</b>
         <div class="muted" style="font-size:11px">แก้แล้ว</div></td>
