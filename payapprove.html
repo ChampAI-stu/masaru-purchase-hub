@@ -3844,7 +3844,9 @@ async function pfTestGas(){
   try{
     const j=await gasCall({action:'ping'});
     $('pfg_stat').innerHTML='<b style="color:#1E7145">✅ '+esc(j.msg||'เชื่อมต่อสำเร็จ')+'</b>'
-      +(j.folder?'<br><span class="muted">โฟลเดอร์ปลายทาง: '+esc(j.folder)+'</span>':'');
+      +(j.folder?'<br><span class="muted">โฟลเดอร์ปลายทาง: '+esc(j.folder)+'</span>':'')
+      +(j.auth?('<br><span class="muted">ตรวจสิทธิ์: '+esc(j.auth)+'</span>'):'')
+      +(j.legacyGate?('<br><span class="muted">รหัสลับเดิม: '+esc(j.legacyGate)+'</span>'):'');
   }catch(e){ $('pfg_stat').innerHTML='<b style="color:#D0212B">❌ '+esc(e.message)+'</b>'; }
 }
 
