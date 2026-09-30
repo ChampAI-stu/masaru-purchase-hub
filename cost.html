@@ -86,7 +86,14 @@
   dialog::backdrop{background:rgba(0,0,0,.4)}
   .dlg-head{background:var(--navy);color:#fff;padding:14px 18px;font-weight:700;display:flex;align-items:center}
   .dlg-body{padding:18px;max-height:70vh;overflow:auto}
-  .dlg-foot{padding:12px 18px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end}
+  .cb-row{display:grid;grid-template-columns:1fr 92px 34px;gap:6px;align-items:center;margin-bottom:5px}
+.cb-row input{font-size:12.5px}
+.cb-x{border:0;background:#FDECEC;color:#C0392B;border-radius:7px;height:30px;cursor:pointer;font-weight:700}
+.cb-box{background:#F7F9FC;border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin-top:4px}
+.cb-tag{display:inline-block;background:#8E44AD;color:#fff;border-radius:9px;
+  padding:1px 7px;font-size:10px;font-weight:700;white-space:nowrap}
+.cb-kid{font-size:11px;color:var(--muted);line-height:1.6}
+.dlg-foot{padding:12px 18px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end}
   .x{margin-left:auto;background:transparent;border:0;color:#fff;font-size:20px;cursor:pointer}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
@@ -241,6 +248,11 @@
             <option value="done">✔ เคยออกแล้ว</option>
             <option value="never">— ยังไม่เคย</option>
           </select>
+          <select id="skuComboFilter" onchange="renderSkuTable()" style="max-width:150px" title="กรองเฉพาะรหัสชุด">
+            <option value="">🧩 Combo: ทั้งหมด</option>
+            <option value="yes">🧩 เฉพาะ Combo</option>
+            <option value="no">SKU ปกติ (ไม่ใช่ชุด)</option>
+          </select>
           <select id="skuPicFilter" onchange="renderSkuTable()" style="max-width:165px">
             <option value="">รูปสินค้า: ทั้งหมด</option>
             <option value="no">📷 ยังไม่มีรูป</option>
@@ -337,6 +349,8 @@
             <input id="addSkuInput" list="skuList" placeholder="พิมพ์ SKU แล้ว Enter — ข้อมูล+ราคา+รูป เด้งอัตโนมัติ" style="flex:1" onkeydown="if(event.key==='Enter'){addLineBySku();event.preventDefault();}">
             <datalist id="skuList"></datalist>
             <button class="btn gold" onclick="addLineBySku()">+ เพิ่มรายการ</button>
+            <button class="btn ghost edit-only" onclick="kitCollapse()"
+              title="รวมบรรทัดของสินค้าที่อยู่ในชุด ให้เหลือบรรทัดเดียวด้วยรหัสชุด">🧩 ยุบเป็นชุด</button>
           </div>
           <div id="lineItems" style="overflow-x:auto"></div>
           <input type="file" id="lineImgFile" accept="image/*" style="display:none" onchange="onLineImg(this)">
@@ -546,6 +560,28 @@
       <div><label>CBM/กล่อง (คำนวณอัตโนมัติ)</label><input id="e_cbm" type="number" step="0.000001" readonly style="background:#f1f5f9"></div>
     </div>
     <input type="hidden" id="e_box">
+
+    <h3>🧩 รหัส Combo — รวมหลาย SKU เป็นรหัสนี้</h3>
+    <div class="cb-box">
+      <div class="muted" style="font-size:11.5px;line-height:1.7;margin-bottom:8px">
+        ใช้ตอนของหลายตัวถูกแพ็กขายเป็น <b>ชุด</b> แล้วออกใบขนสินค้าเป็น <b>1 รหัส</b>
+        <br>· ใบ INV + PL จะออกเป็น <b>1 บรรทัด</b> ใช้ชื่อ/HS/ขนาดกล่อง/CBM/น้ำหนัก ของรหัสนี้
+        <br>· <b>ขนาดกล่อง/CBM/น้ำหนัก กรอกที่ด้านบน</b> (ชุดมีกล่องของตัวเอง) ไม่ได้บวกจากลูก
+        <br>· เว้นว่างไว้ = เป็น SKU ปกติ
+      </div>
+      <div class="cb-row" style="font-size:11px;color:var(--muted);font-weight:600">
+        <div>SKU ที่อยู่ในชุด</div><div>จำนวน/ชุด</div><div></div>
+      </div>
+      <div id="e_combo"></div>
+      <div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap">
+        <input id="e_cbAdd" list="skuList" placeholder="พิมพ์ SKU แล้วกด Enter" style="flex:1;min-width:160px"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();kitAdd();}">
+        <input id="e_cbQty" type="number" min="1" step="1" value="1" style="width:92px" placeholder="จำนวน">
+        <button type="button" class="btn ghost edit-only" onclick="kitAdd();return false">+ เพิ่มเข้าชุด</button>
+      </div>
+      <div class="muted" id="e_cbSum" style="font-size:11.5px;margin-top:8px"></div>
+    </div>
+
     <div class="muted" style="margin-top:8px">📷 รูปสินค้า: ไปแนบตอนออกใบ INV (แท็บ “ออก INV + PL”) แนบเฉพาะบิลนั้น ล้างได้ ไม่เก็บถาวร</div>
   </div>
   <div class="dlg-foot"><button class="btn ghost" onclick="expDlg.close()">ยกเลิก</button><button class="btn green edit-only" onclick="saveExport();return false">บันทึก</button></div>
@@ -686,7 +722,7 @@ function comboSet(id,val){
 }
 function comboVal(id){const inp=$(id);return inp?(inp.dataset.val||''):'';}
 
-const COST_VERSION='v01-04';
+const COST_VERSION='v01-05';
 try{ const _v=document.getElementById('cstVer'); if(_v)_v.textContent=COST_VERSION; }catch(e){}
 let db={master:[],hist:[],expMap:{},shipcosts:[],shipments:[],products:[],tracking:[],parties:[],budget:[],po:[],taxsum:[]};
 let currentRole='view', canEdit=false;
@@ -957,7 +993,8 @@ function buildProducts(){
       current_stock: best?best.current_stock:null,
       name_en:e.name_en||'', name_th:e.name_th||'', brand:e.brand||'', model:e.model||'', hs:e.hs||'',
       component:e.component||'', spec:e.spec||'', unit:e.unit||'', per_ctn:e.per_ctn||null,
-      w_ctn:e.w_ctn||null, box_size:e.box_size||'', cbm_ctn:e.cbm_ctn||null, mark:e.mark||''};
+      w_ctn:e.w_ctn||null, box_size:e.box_size||'', cbm_ctn:e.cbm_ctn||null, mark:e.mark||'',
+      combo_items:Array.isArray(e.combo_items)?e.combo_items:null};
   }).sort((a,b)=>a.sku.localeCompare(b.sku));
 }
 async function reloadExport(){ const exp=await fetchTable('sku_export_info','sku'); db.expMap={}; exp.forEach(e=>db.expMap[e.sku]=e); buildProducts(); }
@@ -1001,13 +1038,18 @@ function renderSkuTable(){
     const pf=($('skuPicFilter')&&$('skuPicFilter').value)||'';
     if(pf==='no'  &&  skuPic(p.sku)) return false;
     if(pf==='yes' && !skuPic(p.sku)) return false;
+    const bf=($('skuComboFilter')&&$('skuComboFilter').value)||'';
+    if(bf==='yes' && !isKit(p.sku)) return false;
+    if(bf==='no'  &&  isKit(p.sku)) return false;
     return true;
   });
   if(!list.length){$('skuTable').innerHTML='<div class="empty">ไม่พบสินค้า (ดึงจาก sku_master + sku_export_info)</div>';return;}
   const noPic=db.products.filter(x=>!skuPic(x.sku)).length;
-  if($('skuPicStat'))$('skuPicStat').innerHTML=noPic
-    ? `เหลืออีก <b style="color:#B45309">${noPic}</b> SKU ที่ยังไม่มีรูป`
-    : '<b style="color:#1E7145">✅ ใส่รูปครบทุก SKU แล้ว</b>';
+  const nCombo=db.products.filter(x=>isKit(x.sku)).length;
+  if($('skuPicStat'))$('skuPicStat').innerHTML=(noPic
+      ? `เหลืออีก <b style="color:#B45309">${noPic}</b> SKU ที่ยังไม่มีรูป`
+      : '<b style="color:#1E7145">✅ ใส่รูปครบทุก SKU แล้ว</b>')
+    + (nCombo?` · <span class="cb-tag">🧩 รหัสชุด ${nCombo}</span>`:'');
   let h='<table><thead><tr><th style="width:92px">รูป</th><th>SKU</th><th>Supplier</th><th>ต้นทุน (CNY)</th><th>ชื่อ (กลาง / EN / ไทย)</th><th>Brand·Model</th><th>ขนาดกล่อง·CBM·Kg</th><th>ดำเนินการตามกรมศุลกากร</th><th class="no-print">จัดการ</th></tr></thead><tbody>';
   list.forEach(p=>{
     const packed=(p.box_size||p.cbm_ctn||p.w_ctn)?`${esc(p.box_size||'')} · ${p.cbm_ctn||'-'} · ${p.w_ctn||'-'}`:'<span class="muted">ยังไม่กรอก</span>';
@@ -1019,7 +1061,13 @@ function renderSkuTable(){
       const nameMid=sup.product_name||p.product_name||'';
       h+=`<tr>
         ${first?`<td rowspan="${sups.length}" style="text-align:center;vertical-align:middle;border-top:2px solid var(--line)">${skuPicCell(p.sku)}</td>`:''}
-        <td${bt}><b>${esc(p.sku)}</b></td>
+        <td${bt}><b>${esc(p.sku)}</b>${(function(){
+          const a=kitOf(p.sku); if(!a.length)return '';
+          return ' <span class="cb-tag" title="รหัสชุด — ออกใบเป็น 1 บรรทัด">🧩 ชุด '+a.length+'</span>'
+            +'<div class="cb-kid">'+a.map(x=>'· '+esc(x.sku)+' ×'+(+x.qty||1)
+              +(kitName(x.sku)?' <span style="opacity:.8">'+esc(kitName(x.sku).slice(0,26))+'</span>':'')
+              +(prod(x.sku)?'':' <span style="color:#B45309">(ไม่พบรหัส)</span>')).join('<br>')+'</div>';
+        })()}</td>
         <td${bt}>${esc(sup.supplier||'')||'<span class="muted">—</span>'}</td>
         <td${bt}>${priceTxt}</td>
         <td${bt}>${esc(nameMid)}<br><span class="muted">${esc(p.name_en||'')} / ${esc(p.name_th||'')}</span></td>
@@ -1038,15 +1086,16 @@ function renderSkuTable(){
 function exportSkuExcel(){
   const billMap={};
   db.shipments.forEach(s=>{(s.items||[]).forEach(it=>{if(it.sku){(billMap[it.sku]=billMap[it.sku]||new Set()).add(s.invno||s.id);}});});
-  const head=['SKU','Supplier','ต้นทุน (CNY)','ชื่อ (กลาง)','ชื่อ EN','ชื่อไทย','Brand','Model','HS Code','Component','Specification','หน่วย','จำนวน/กล่อง','น้ำหนัก/กล่อง (Kg)','ขนาดกล่อง','CBM/กล่อง','ดำเนินการตามกรมศุลกากร','เลขที่บิลที่เคยออก'];
+  const head=['SKU','Supplier','ต้นทุน (CNY)','ชื่อ (กลาง)','ชื่อ EN','ชื่อไทย','Brand','Model','HS Code','Component','Specification','หน่วย','จำนวน/กล่อง','น้ำหนัก/กล่อง (Kg)','ขนาดกล่อง','CBM/กล่อง','🧩 รหัสชุด','🧩 รายการในชุด','ดำเนินการตามกรมศุลกากร','เลขที่บิลที่เคยออก'];
   const rows=[head];
   db.products.forEach(p=>{
     const cs=p.customs_status; const b=billMap[p.sku]; const n=b?b.size:0;
     const st= cs==='done' ? '✔ เคยออกแล้ว' : cs==='never' ? 'ยังไม่เคย' : (n?('✔ ออกแล้ว '+n+' ใบ'):'ยังไม่เคย');
     (p.suppliers&&p.suppliers.length?p.suppliers:[{supplier:'',price:null,product_name:p.product_name}]).forEach(sup=>{
-      rows.push([p.sku,sup.supplier||'',sup.price!=null?+sup.price:'',sup.product_name||p.product_name||'',p.name_en||'',p.name_th||'',p.brand||'',p.model||'',p.hs||'',p.component||'',p.spec||'',p.unit||'',p.per_ctn||'',p.w_ctn||'',p.box_size||'',p.cbm_ctn||'',st,b?[...b].join(', '):'']);});
+      rows.push([p.sku,sup.supplier||'',sup.price!=null?+sup.price:'',sup.product_name||p.product_name||'',p.name_en||'',p.name_th||'',p.brand||'',p.model||'',p.hs||'',p.component||'',p.spec||'',p.unit||'',p.per_ctn||'',p.w_ctn||'',p.box_size||'',p.cbm_ctn||'',
+        isKit(p.sku)?'ใช่':'', kitTxt(p.sku,' + '), st,b?[...b].join(', '):'']);});
   });
-  const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=head.map((h,i)=>({wch:i===0?16:(i>=9&&i<=10?26:14)}));
+  const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=head.map((h,i)=>({wch:i===0?16:(i>=9&&i<=10?26:(i===17?34:14))}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'สินค้า-ข้อมูลส่งออก');
   XLSX.writeFile(wb,'สินค้า_ข้อมูลส่งออก_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
@@ -1062,8 +1111,78 @@ function openExport(sku){
   $('e_box').value=e.box_size||'';
   $('e_cbm').value=e.cbm_ctn||'';
   $('e_customs').value=e.customs_status||'';
+  CB_ITEMS=kitOf(sku).map(x=>({sku:String(x.sku||''),qty:Math.max(1,+x.qty||1)}));
+  if($('e_cbAdd'))$('e_cbAdd').value=''; if($('e_cbQty'))$('e_cbQty').value=1;
+  kitDraw();
   $('expDlg').showModal();
 }
+/* ══════════════════════════════════════════════════════════════════
+   🧩 รหัส Combo — 1 SKU รวมหลายรายการสินค้า
+   ──────────────────────────────────────────────────────────────────
+   เก็บที่ sku_export_info.combo_items (jsonb) = [{sku, qty}, ...]
+   · รหัสชุดใช้รหัสที่มีใน JST (sku_master) อยู่แล้ว ไม่สร้างรหัสใหม่
+   · ขนาดกล่อง/CBM/น้ำหนัก กรอกที่ตัวชุดเอง (ชุดมีกล่องของตัวเอง)
+   · ใบ INV + PL ออกเป็น 1 บรรทัด ใช้ข้อมูลของชุด
+   ══════════════════════════════════════════════════════════════════ */
+const kitOf   = sku => { const e=db.expMap[String(sku||'').trim()]||{};
+  const a=e.combo_items; return Array.isArray(a)?a.filter(x=>x&&x.sku):[]; };
+const isKit   = sku => kitOf(sku).length>0;
+/* ชื่อสั้นของ SKU ลูก — ใช้โชว์ในตาราง/ทูลทิป */
+const kitName = sku => { const p=prod(sku);
+  return p?(p.name_en||p.product_name||p.name_th||''):''; };
+/* ข้อความสรุปรายการในชุด */
+function kitTxt(sku,sep){
+  const a=kitOf(sku); if(!a.length)return '';
+  return a.map(x=>x.sku+' ×'+(+x.qty||1)).join(sep||' + ');
+}
+/* ── กล่องแก้ไข: รายการลูกของชุด ── */
+let CB_ITEMS=[];
+function kitDraw(){
+  const box=$('e_combo'); if(!box)return;
+  box.innerHTML = CB_ITEMS.length ? CB_ITEMS.map((x,i)=>
+      '<div class="cb-row">'
+      +'<input list="skuList" value="'+esc(x.sku||'')+'" onchange="kitSet('+i+',\'sku\',this.value)">'
+      +'<input type="number" min="1" step="1" value="'+(+x.qty||1)+'" onchange="kitSet('+i+',\'qty\',this.value)">'
+      +'<button type="button" class="cb-x edit-only" title="เอาออกจากชุด" onclick="kitDel('+i+');return false">✕</button>'
+      +'</div>').join('')
+    : '<div class="muted" style="font-size:11.5px">— ยังไม่มีรายการ · เว้นว่าง = SKU ปกติ ไม่ใช่ชุด —</div>';
+  kitSum();
+}
+function kitSum(){
+  const el=$('e_cbSum'); if(!el)return;
+  if(!CB_ITEMS.length){ el.innerHTML=''; return; }
+  /* บอกยอดรวมจากลูกไว้ "อ้างอิง" เท่านั้น — ไม่เขียนทับช่องด้านบน
+     เพราะกล่องของชุดเล็กกว่าผลบวกของลูกเกือบทุกครั้ง (แพ็กรวมกล่องเดียว) */
+  let cbm=0, kg=0, miss=[];
+  CB_ITEMS.forEach(x=>{
+    const p=prod(x.sku), q=+x.qty||1;
+    if(!p){ if(x.sku)miss.push(x.sku); return; }
+    cbm += (+p.cbm_ctn||0)*q; kg += (+p.w_ctn||0)*q;
+  });
+  el.innerHTML = '🧩 ในชุดมี <b>'+CB_ITEMS.filter(x=>x.sku).length+'</b> รายการ'
+    + (cbm||kg ? ' · <span title="ผลบวกของลูก ใช้อ้างอิงเท่านั้น ระบบไม่เอาไปใส่ให้">อ้างอิงถ้าแยกกล่อง: '
+        + (cbm?cbm.toFixed(4)+' CBM':'') + (cbm&&kg?' · ':'') + (kg?kg.toFixed(2)+' Kg':'') + '</span>' : '')
+    + (miss.length ? '<br><span style="color:#B45309">⚠️ ไม่พบรหัสนี้ในระบบ: '+esc(miss.join(', '))+'</span>' : '');
+}
+function kitSet(i,k,v){
+  if(!CB_ITEMS[i])return;
+  CB_ITEMS[i][k] = (k==='qty') ? (Math.max(1,parseInt(v,10)||1)) : String(v||'').trim();
+  kitSum();
+}
+function kitDel(i){ CB_ITEMS.splice(i,1); kitDraw(); }
+function kitAdd(){
+  const el=$('e_cbAdd'), sku=(el.value||'').trim();
+  if(!sku)return;
+  const me=($('e_sku').value||'').trim();
+  if(sku.toUpperCase()===me.toUpperCase())return alert('ใส่รหัสตัวเองเข้าไปในชุดไม่ได้');
+  if(isKit(sku))return alert('รหัส '+sku+' เป็นรหัสชุดอยู่แล้ว — ใส่ชุดซ้อนชุดไม่ได้\n\nให้ใส่เป็นรายการสินค้าเดี่ยวแทน');
+  const hit=CB_ITEMS.findIndex(x=>String(x.sku).toUpperCase()===sku.toUpperCase());
+  const q=Math.max(1,parseInt($('e_cbQty').value,10)||1);
+  if(hit>=0) CB_ITEMS[hit].qty=(+CB_ITEMS[hit].qty||1)+q;   /* ใส่ซ้ำ = บวกจำนวน */
+  else       CB_ITEMS.push({sku,qty:q});
+  el.value=''; $('e_cbQty').value=1; kitDraw(); el.focus();
+}
+
 function parseBox(s){const m=String(s||'').match(/([\d.]+)\s*[x×X]\s*([\d.]+)\s*[x×X]\s*([\d.]+)/);return m?{w:+m[1],l:+m[2],h:+m[3]}:{w:0,l:0,h:0};}
 function lineCbmCtn(it){const w=+it.w||0,l=+it.l||0,h=+it.h||0;return (w&&l&&h)?(w*l*h)/1e6:0;}
 function calcCbm(){
@@ -1078,7 +1197,12 @@ async function saveExport(){
   const rec={sku,brand:$('e_brand').value.trim(),name_en:$('e_en').value.trim(),name_th:$('e_th').value.trim(),
     model:$('e_model').value.trim(),hs:$('e_hs').value.trim(),component:$('e_comp').value,spec:$('e_spec').value,
     unit:$('e_unit').value.trim(),per_ctn:+$('e_perctn').value||null,w_ctn:+$('e_wctn').value||null,
-    box_size:$('e_box').value.trim(),cbm_ctn:+$('e_cbm').value||null,customs_status:$('e_customs').value||null};
+    box_size:$('e_box').value.trim(),cbm_ctn:+$('e_cbm').value||null,customs_status:$('e_customs').value||null,
+    /* 🧩 รายการในชุด — ว่าง = SKU ปกติ */
+    combo_items:(function(){
+      const a=CB_ITEMS.filter(x=>String(x.sku||'').trim())
+        .map(x=>({sku:String(x.sku).trim(),qty:Math.max(1,+x.qty||1)}));
+      return a.length?a:null; })()};
   const ok=await dbWrite(()=>sb.from('sku_export_info').upsert(rec,{onConflict:'sku'}));
   if(ok){await reloadExport();$('expDlg').close();renderSkuTable();}
 }
@@ -2386,6 +2510,69 @@ function addLineBySku(){
     pic:pp.pic||'',pic_url:pp.pic_url||'',pic_id:pp.pic_id||'',w:bx.w||0,l:bx.l||0,h:bx.h||0,gid:null});
   $('addSkuInput').value='';renderLines();renderDoc();
 }
+/* ── 🧩 ยุบหลายบรรทัดให้เป็น "รหัสชุด" 1 บรรทัด ──────────────────
+   เคสจริง: ดึงรายการจาก PO มาแล้วได้ของแยกทีละตัว
+            แต่ตอนออกใบขนสินค้าต้องยื่นเป็นชุด 1 รหัส
+   ★ คิดจำนวนชุดจาก "ลูกที่มีน้อยสุด" (จำนวนลูก ÷ จำนวนต่อชุด)
+   ★ ราคา/ชุด = ผลรวมราคาลูก × จำนวนต่อชุด
+   ★ กล่อง/CBM/น้ำหนัก เอาของรหัสชุด (ชุดมีกล่องของตัวเอง)                */
+function kitCollapse(){
+  if(!canEdit)return;
+  if(!curItems.length)return alert('ยังไม่มีรายการในใบนี้');
+  const up=x=>String(x||'').trim().toUpperCase();
+
+  /* หาชุดที่ประกอบได้จากบรรทัดที่มีอยู่ */
+  const cands=[];
+  db.products.forEach(P=>{
+    const need=kitOf(P.sku); if(!need.length)return;
+    if(curItems.some(it=>up(it.sku)===up(P.sku)))return;      /* มีบรรทัดชุดนี้อยู่แล้ว */
+    const rows=need.map(n=>({n, idx:curItems.findIndex(it=>up(it.sku)===up(n.sku))}));
+    if(rows.some(r=>r.idx<0))return;                          /* ลูกไม่ครบ */
+    const sets=Math.min.apply(null, rows.map(r=>
+      Math.floor((+curItems[r.idx].qty||0)/Math.max(1,+r.n.qty||1))));
+    cands.push({sku:P.sku, rows, sets:Math.max(0,sets)});
+  });
+  if(!cands.length)
+    return alert('ยังยุบไม่ได้ — ไม่มีชุดไหนที่รายการลูกอยู่ในใบนี้ครบทุกตัว\n\n'
+      +'ตั้งรหัสชุดได้ที่แท็บ 📦 สินค้า + ข้อมูลส่งออก → ปุ่ม "แก้ข้อมูลส่งออก" → หัวข้อ 🧩 รหัส Combo');
+
+  let pick=cands[0];
+  if(cands.length>1){
+    const msg=cands.map((c,i)=>(i+1)+'. '+c.sku+'  ('+kitTxt(c.sku,' + ')+')  → ทำได้ '+c.sets+' ชุด').join('\n');
+    const ans=prompt('ยุบเป็นชุดไหน? พิมพ์เลขข้อ\n\n'+msg, '1');
+    const k=parseInt(ans,10); if(!k||!cands[k-1])return;
+    pick=cands[k-1];
+  }
+
+  const P=prod(pick.sku)||{}, bx=parseBox(P.box_size);
+  const perSet=pick.rows.reduce((a,r)=>a+(+curItems[r.idx].price||0)*Math.max(1,+r.n.qty||1),0);
+  const detail=pick.rows.map(r=>'· '+curItems[r.idx].sku+'  '+(+curItems[r.idx].qty||0)+' ชิ้น'
+    +'  (ใช้ '+Math.max(1,+r.n.qty||1)+'/ชุด)').join('\n');
+  if(!confirm('ยุบ '+pick.rows.length+' บรรทัดนี้ให้เป็นรหัสชุด "'+pick.sku+'"\n\n'+detail
+    +'\n\nได้ '+pick.sets+' ชุด · ราคา/ชุด '+money(perSet)
+    +'\n\nกล่อง/CBM/น้ำหนัก จะใช้ค่าของรหัสชุด'
+    +(P.box_size?(' ('+P.box_size+')'):' (ยังไม่ได้กรอก — ต้องไปกรอกที่แท็บสินค้า)')
+    +'\nจำนวนลังต้องกรอกเอง'))return;
+
+  /* แทนที่บรรทัดลูกด้วยบรรทัดชุด 1 บรรทัด (วางที่ตำแหน่งลูกตัวแรก) */
+  const at=Math.min.apply(null, pick.rows.map(r=>r.idx));
+  const kill=new Set(pick.rows.map(r=>r.idx));
+  const pp=skuPic(pick.sku)||{};
+  const line={sku:pick.sku, price:Math.round(perSet*1e4)/1e4, qty:pick.sets, ctn:0,
+    perctn:P.per_ctn||'', nw:0, gw:+P.w_ctn||0, mark:P.mark||'',
+    pic:pp.pic||'', pic_url:pp.pic_url||'', pic_id:pp.pic_id||'',
+    w:bx.w||0, l:bx.l||0, h:bx.h||0, gid:null};
+  const kept=curItems.filter((x,i)=>!kill.has(i));
+  const before=curItems.slice(0,at).filter((x,i)=>!kill.has(i)).length;
+  kept.splice(before,0,line);
+  curItems=kept;
+  /* กลุ่มที่เหลือสมาชิกเดียว → เลิกจับกลุ่มให้เอง */
+  const cnt={}; curItems.forEach(x=>{ if(x.gid)cnt[x.gid]=(cnt[x.gid]||0)+1; });
+  curItems.forEach(x=>{ if(x.gid&&cnt[x.gid]===1)x.gid=null; });
+  renderLines();renderDoc();markInvplDirty();
+  asStat('ยุบเป็นรหัสชุด '+pick.sku+' แล้ว · ตรวจจำนวนลังกับน้ำหนักอีกครั้ง');
+}
+
 function setLineSku(i,val){
   const sku=(val||'').trim(); curItems[i].sku=sku;
   if(!curItems[i].pic){                          // แถวยังไม่มีรูป → ดึงรูปเดิมของ SKU นี้
@@ -2434,7 +2621,12 @@ function renderLines(){
        +(skuPic(it.sku)?'<div style="font-size:9.5px;color:#1E7145">🔗 จำไว้กับ SKU</div>':'')
        +`<br><button class="mini btn red" onclick="clearLineImage(${i})">ลบรูป</button>`
       :`<input style="width:130px;font-size:11px" placeholder="วางลิงก์รูป (URL)" onchange="setLineImageUrl(${i},this.value)"><br><button class="mini btn ghost" style="margin-top:3px" onclick="attachLineImage(${i})">📷 อัปโหลดแทน</button>`;
-    h+=`<tr><td${bt}>${grpTag}<input list="skuList" value="${esc(it.sku||'')}" onchange="setLineSku(${i},this.value)" style="width:110px;font-weight:700" placeholder="รหัส SKU">${p?'':(it.sku?' <span class="pill up">ไม่พบ</span>':'')}<br><span class="muted">${p?esc(p.name_en||p.product_name||''):''}</span></td>
+    h+=`<tr><td${bt}>${grpTag}<input list="skuList" value="${esc(it.sku||'')}" onchange="setLineSku(${i},this.value)" style="width:110px;font-weight:700" placeholder="รหัส SKU">${p?'':(it.sku?' <span class="pill up">ไม่พบ</span>':'')}<br><span class="muted">${p?esc(p.name_en||p.product_name||''):''}</span>${(function(){
+        const a=kitOf(it.sku); if(!a.length)return '';
+        return '<br><span class="cb-tag" title="รหัสชุด — ออกใบเป็น 1 บรรทัด\nข้างในมี: '
+          +esc(kitTxt(it.sku,' + '))+'">🧩 ชุด '+a.length+' รายการ</span>'
+          +'<div class="cb-kid">'+a.map(x=>'· '+esc(x.sku)+' ×'+(+x.qty||1)).join('<br>')+'</div>';
+      })()}</td>
       <td style="text-align:center"${bt}>${picCell}</td>
       <td${bt}><input style="width:80px" type="number" step="0.01" value="${it.price}" onchange="updItem(${i},'price',this.value)"></td>
       <td${bt}><input style="width:90px" type="number" value="${it.qty}" onchange="updItem(${i},'qty',this.value)"></td>
