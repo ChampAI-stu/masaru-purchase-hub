@@ -686,7 +686,7 @@ function comboSet(id,val){
 }
 function comboVal(id){const inp=$(id);return inp?(inp.dataset.val||''):'';}
 
-const COST_VERSION='v01-03';
+const COST_VERSION='v01-04';
 try{ const _v=document.getElementById('cstVer'); if(_v)_v.textContent=COST_VERSION; }catch(e){}
 let db={master:[],hist:[],expMap:{},shipcosts:[],shipments:[],products:[],tracking:[],parties:[],budget:[],po:[],taxsum:[]};
 let currentRole='view', canEdit=false;
@@ -1091,10 +1091,18 @@ async function saveExport(){
    ================================================================== */
 const GAS_URL    = 'https://script.google.com/macros/s/AKfycbwjp--1ScpX43QdarB4JLnlQJSZoAuqsQ8edrIP2vSYUjq7QwbWU0jlWk6lGo5zQ26Hdg/exec';
 const GAS_SECRET = 'masaru-slip-2026';
+/* ★ ส่ง "ตั๋วของคนที่ล็อกอิน" ไปให้ Apps Script ตรวจ แทนรหัสลับคงที่
+   รหัสลับฝังในไฟล์เว็บ = ใครกด View Source ก็ได้ไป · ตั๋วมีอายุสั้นและเพิกถอนได้
+   (ยังส่ง secret ไปด้วยช่วงเปลี่ยนผ่าน เผื่อ Apps Script ยังไม่ได้อัป) */
+async function gasToken(){
+  try{ const {data}=await sb.auth.getSession();
+       return (data&&data.session&&data.session.access_token)||''; }
+  catch(e){ return ''; }
+}
 async function gasCall(payload){
   const r=await fetch(GAS_URL,{method:'POST',
     headers:{'Content-Type':'text/plain;charset=utf-8'},          // เลี่ยง CORS preflight
-    body:JSON.stringify(Object.assign({secret:GAS_SECRET},payload))});
+    body:JSON.stringify(Object.assign({secret:GAS_SECRET,token:await gasToken()},payload))});
   const t=await r.text(); let j;
   try{j=JSON.parse(t);}catch(e){
     throw new Error('Apps Script ตอบกลับไม่ใช่ JSON — เช็ค Deploy: type=Web app, Who has access=Anyone, URL ลงท้าย /exec');
