@@ -198,8 +198,14 @@ tbody tr:hover{background:#F8FAFC}
 .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#1A2942;color:#fff;
   padding:11px 20px;border-radius:11px;font-size:13px;z-index:200;display:none;box-shadow:0 10px 30px #0004}
 /* ═══ เครื่องดูรูป — ซูมได้จริง ลากดูได้ นิ้วถ่างได้ ═══ */
-#lightBg{position:fixed;inset:0;background:#0A0F1AF7;display:none;z-index:220;overscroll-behavior:contain}
-#lightBg.on{display:block}
+/* ★ ต้องเป็น <dialog> + showModal() ไม่ใช่ div ธรรมดา
+      เพราะหน้ารายละเอียดในแกลเลอรี (#pgDialog) เป็น dialog ที่อยู่ "top layer"
+      ซึ่งลอยเหนือทุก z-index — div ธรรมดาจะไปอยู่ข้างหลังเสมอ (เคสที่เจอ: กดขยายเต็มจอแล้วซ้อนกัน) */
+#lightBg{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;
+  border:0;padding:0;margin:0;color:inherit;background:#0A0F1AF7;display:none;z-index:220;
+  overscroll-behavior:contain}
+#lightBg[open],#lightBg.on{display:block}
+#lightBg::backdrop{background:#0A0F1AF7}
 /* ★ แถบบน/แถบฟิล์ม "ลอยทับ" รูป ไม่กินพื้นที่ — รูปจึงใหญ่เต็มจอจริง ๆ */
 .lv-top{position:absolute;top:0;left:0;right:0;z-index:3;
   display:flex;align-items:center;gap:7px;padding:9px 12px;color:#fff;font-size:12.5px;flex-wrap:wrap;
@@ -540,7 +546,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
   </div>
 </div>
 
-<div id="lightBg" role="dialog" aria-modal="true" aria-label="ดูรูปขนาดใหญ่">
+<dialog id="lightBg" aria-label="ดูรูปขนาดใหญ่">
   <div class="lv-top">
     <span class="nm" id="lvName">รูปสินค้า</span>
     <span class="muted" id="lvPos" style="color:#94A3B8"></span>
@@ -563,7 +569,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
     <button class="lv-nav r" id="lvNext" title="รูปถัดไป (→)">›</button>
   </div>
   <div class="lv-film" id="lvFilm"></div>
-</div>
+</dialog>
 <dialog id="pgDialog" aria-labelledby="pgDetailTitle">
   <div class="pg-dialoghead"><span id="pgPosition"></span><button class="pg-icon" id="pgClose" type="button" aria-label="ปิดรายละเอียด">×</button></div>
   <div class="pg-detail">
@@ -592,7 +598,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-20-gallery';
+const SM_VERSION='v01-21-gallery';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -1113,7 +1119,10 @@ function lightPics(list,i){
   if(!a.length)return;
   LV.list=a; LV.open=true;
   LV.scroll=document.body.style.overflow; document.body.style.overflow='hidden';
-  $('lightBg').classList.add('on');
+  const bg=$('lightBg');
+  bg.classList.add('on');
+  /* showModal = เข้า top layer → อยู่เหนือหน้ารายละเอียดแกลเลอรีที่เปิดค้างอยู่ */
+  try{ if(!bg.open && bg.showModal) bg.showModal(); }catch(e){}
   lvGo(Math.max(0,Math.min(num(i)||0,a.length-1)));
 }
 /* เรียกจากตาราง: light('<กลุ่มรูป>', ลำดับ) · ยังรับลิงก์ตรงแบบเดิมได้ */
@@ -1123,11 +1132,17 @@ function light(k,i){
 }
 function lightClose(){
   if(!LV.open)return;
-  LV.open=false; $('lightBg').classList.remove('on');
+  LV.open=false;
+  const bg=$('lightBg');
+  bg.classList.remove('on');
+  try{ if(bg.open && bg.close) bg.close(); }catch(e){}
   document.body.style.overflow=LV.scroll||''; $('lightImg').removeAttribute('src');
 }
 (function lvWire(){
   const st=$('lvStage'); if(!st)return;
+  /* เบราว์เซอร์ปิด dialog เองได้ (Esc) — ล้างสถานะให้ตรงกัน ไม่ให้ค้างว่า "ยังเปิดอยู่" */
+  $('lightBg').addEventListener('close',()=>{ if(LV.open)lightClose(); });
+  $('lightBg').addEventListener('cancel',e=>{ e.preventDefault(); lightClose(); });
   $('lvClose').onclick=lightClose;
   $('lvPrev').onclick=()=>lvStep(-1); $('lvNext').onclick=()=>lvStep(1);
   $('lvIn').onclick =()=>lvZoomAt(LV.s*1.4);
