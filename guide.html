@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-68</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-69</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -1893,10 +1893,37 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <h3 class="hh">9 แท็บ</h3>
   <table class="kv"><thead><tr><th>แท็บ</th><th>ทำอะไร</th></tr></thead><tbody>
     <tr><td><b>📊 Dashboard</b></td><td>สรุปจำนวน Shipment แต่ละสถานะ + <b>⚠️ ภาษีใกล้ครบ 14 วัน</b> + <b>⏳ DEM ใกล้ครบ 7 วัน</b></td></tr>
-    <tr><td><b>📦 สินค้า + ข้อมูลส่งออก</b></td><td>ข้อมูลใบขนต่อ SKU (ชื่อ EN/TH, Brand, HS Code, Spec, ขนาดกล่อง) + คลังรูปสินค้า</td></tr>
+    <tr><td><b>📦 สินค้า + ข้อมูลส่งออก</b></td><td>ข้อมูลใบขนต่อ SKU (ชื่อ EN/TH, Brand, HS Code, Spec, ขนาดกล่อง) + คลังรูปสินค้า
+      <div style="background:#F3EAFB;border:1px solid #D9BEEE;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
+        🧩 <b>รหัส Combo — 1 SKU รวมหลายรายการสินค้า</b> <span class="muted">(ของใหม่)</span>
+        <br>ใช้ตอนของหลายตัวถูกแพ็กขายเป็น <b>ชุด</b> แล้วออกใบขนสินค้าเป็น <b>1 รหัส</b>
+        <br><code>KIT-DR30 = DR30 ×1 + PTB4-1620 ×2 + BAG-01 ×1</code>
+        <div style="margin-top:5px">
+          · ตั้งที่ปุ่ม <b>แก้ข้อมูลส่งออก</b> → หัวข้อ <b>🧩 รหัส Combo</b> — พิมพ์ SKU กด Enter ใส่จำนวนต่อชุด
+          <br>· <b>รหัสชุดใช้รหัสที่มีใน JST อยู่แล้ว</b> ไม่ได้สร้างรหัสใหม่
+          <br>· <b>ขนาดกล่อง / CBM / น้ำหนัก กรอกที่ตัวชุดเอง</b> (ชุดมีกล่องของตัวเอง ไม่ได้บวกจากลูก)
+             — ระบบบอกยอดรวมของลูกไว้ <b>อ้างอิง</b> เผื่อเทียบ แต่ไม่เอาไปใส่ให้
+          <br>· ตารางติดป้าย <b>🧩 ชุด n</b> + ไล่รายการลูกให้เห็น · มี<b>ตัวกรองเฉพาะรหัสชุด</b>
+          <br>· <b>Excel</b> เพิ่ม 2 คอลัมน์ — รหัสชุด · รายการในชุด
+        </div>
+        <div class="muted" style="margin-top:5px">★ กันชุดซ้อนชุด และกันใส่รหัสตัวเองเข้าไปในชุดให้แล้ว
+          · ใส่รหัสซ้ำ = บวกจำนวน ไม่เพิ่มแถวใหม่
+          <br>★ ต้องรัน <code>sku_combo.sql</code> ก่อนใช้ (เพิ่มคอลัมน์ <code>combo_items</code>)</div>
+      </div></td></tr>
     <tr><td><b>📋 ตาราง Shipment</b></td><td>ติดตามทุกชิปเมนต์ — ยื่นสมอ., CLS/ETD/ETA, B/L, ตู้, เลขใบขน, ภาษี, DEM, ค่าขนส่ง</td></tr>
     <tr><td><b>🏢 ผู้ขาย/ผู้ซื้อ</b></td><td>ทะเบียน Vender / Consignee ไว้เลือกตอนออกบิล (กรอกครั้งเดียวใช้ตลอด)</td></tr>
-    <tr><td><b>📄 ออก INV + PL</b></td><td>ออก Invoice + Packing List พร้อมตัวอย่างสด → PDF / Excel</td></tr>
+    <tr><td><b>📄 ออก INV + PL</b></td><td>ออก Invoice + Packing List พร้อมตัวอย่างสด → PDF / Excel
+      <div style="background:#F3EAFB;border:1px solid #D9BEEE;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
+        🧩 <b>ใช้รหัสชุดในใบ</b> — พิมพ์รหัสชุดตามปกติ ได้ <b>1 บรรทัด</b> ใช้ชื่อ/ขนาดกล่อง/CBM/น้ำหนัก ของชุด
+        · บรรทัดนั้นติดป้าย <b>🧩</b> บอกว่าข้างในมีอะไร
+        <div style="margin-top:5px">🔻 <b>ปุ่ม "🧩 ยุบเป็นชุด"</b> — ดึงรายการจาก PO มาแล้วได้ของแยกทีละตัว
+          กดปุ่มนี้จะ<b>รวมบรรทัดลูกให้เหลือบรรทัดเดียว</b>ด้วยรหัสชุด
+          <br>· <b>จำนวนชุด</b> คิดจากลูกที่มีน้อยสุด (จำนวนลูก ÷ จำนวนต่อชุด)
+          <br>· <b>ราคา/ชุด</b> = ผลรวมราคาลูก × จำนวนต่อชุด
+          <br>· <b>กล่อง/CBM/น้ำหนัก</b> ใช้ของรหัสชุด · <b>จำนวนลังต้องกรอกเอง</b>
+          <br>· ถามยืนยันพร้อมบอกรายละเอียดก่อนทุกครั้ง · ของที่ไม่อยู่ในชุดไม่ถูกแตะ
+          <br>· ลูกไม่ครบในใบ = ยุบไม่ได้ ระบบบอกเหตุผลให้</div>
+      </div></td></tr>
     <tr><td><b>💰 VAT / หัก ณ ที่จ่าย — คิดแบบเดียวกับใบของขนส่ง</b>
         <div class="muted" style="font-size:11px">แก้แล้ว</div></td>
       <td>ยอดรวมคิดจาก <b>ฐานรวม แล้วปัดเศษครั้งเดียว</b> — ตรงกับใบของบริษัทขนส่งและใบกำกับภาษีตามมาตรฐาน
