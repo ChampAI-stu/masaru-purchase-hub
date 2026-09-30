@@ -1402,7 +1402,7 @@ let currentRole = null; let ROLE_LABEL = '';
      แล้วใช้ธง MKT_LEAD เปิดเฉพาะแท็บ 📦 + กระดิ่งเพิ่มให้ทีหลัง
    ⚠️ อย่าเผลอไปแตะ canSeePrice / canSeeResp ให้ true — ตกลงกันว่าไม่ให้เห็นต้นทุน */
 let MKT_LEAD = false;
-const BOARD_VERSION='v05-17';
+const BOARD_VERSION='v05-18';
 try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
 console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
@@ -4229,9 +4229,32 @@ function arrCalcStatus(n, items){
   if(n.status==='cancel') return 'cancel';
   const t = arrTotals(items);
   if(t.boxIn<=0) return 'waiting';
-  return t.boxWait>0.0001 ? 'partial' : 'done';
+  return arrHasWait(t) ? 'partial' : 'done';
 }
 const arrDaysWait = d => Math.floor((new Date(arrToday()) - new Date(d))/86400000);
+
+/* ══════════════════════════════════════════════════════════════════
+   ⚖️ "ยังค้างจริงไหม" — กติกาเดียว ใช้ร่วมกันทุกที่
+   ──────────────────────────────────────────────────────────────────
+   ปัญหาที่เจอจริง: ใบที่โชว์ "ค้าง 0.00 คิว · 0 ลัง · 0 ชิ้น" แต่ยังขึ้นค้าง 12 วัน
+   ต้นเหตุ: 🚚 ตัดเข้าคลัง กรอกเป็น "ชิ้น" แล้วระบบหารกลับเป็น "ลัง" เพื่อเก็บลง DB
+            (3,702 ชิ้น ÷ 5.99 ชิ้น/ลัง = 617.7 ลัง ทั้งที่แจ้งมา 618 ลัง)
+            เหลือเศษ 0.3 ลัง ซึ่งมากกว่า 0.0001 → ระบบถือว่า "ยังค้าง" ตลอดกาล
+            แล้วกดตัดเข้าคลังอีกก็ไม่ได้ เพราะ "ชิ้น" ครบแล้ว = ทางตัน
+   ⇒ เศษต่ำกว่าครึ่งลัง / ต่ำกว่า 1 ชิ้น ไม่มีใครขนได้จริง ถือว่าครบ
+   ⇒ ทุกที่ที่ถามว่า "ค้างไหม" ต้องเรียกผ่านฟังก์ชันนี้ จะได้พูดตรงกันหมด
+   ══════════════════════════════════════════════════════════════════ */
+const ARR_EPS_BOX = 0.5, ARR_EPS_PCS = 1;
+const arrHasWait = t => !!t && (t.boxWait>=ARR_EPS_BOX || t.pcsWait>=ARR_EPS_PCS);
+/* เศษจากการปัดเลข = ชิ้นครบแล้ว แต่ลังไม่ลงตัว (ปิดให้ครบได้เลย) */
+const arrIsCrumb = t => !!t && t.pcsWait<ARR_EPS_PCS && t.boxWait>0.0001;
+/* คิวที่ค้าง — ใบที่ยังไม่ได้กรอกคิวจะได้ 0.00 ซึ่งอ่านแล้วเข้าใจผิดว่า "ไม่มีของค้าง" */
+/* ลัง — โชว์ทศนิยมเฉพาะตอนมีเศษ (เศษคือสาเหตุที่ใบไม่ยอมจบ ต้องเห็น) */
+const arrBox = n => { const v=Number(n||0);
+  return Math.abs(v-Math.round(v))<0.005 ? arrInt(v) : arrMoney(v); };
+const arrCbmTxt = t => (t && t.cbm>0.0001)
+  ? ('<b>'+arrMoney(t.cbmWait)+'</b> คิว')
+  : '<b style="color:#8A4B00">ยังไม่ได้กรอกคิว</b>';
 
 /* ══════════════════════════════════════════════════════════════════
    🚚 เชื่อม "แผนรับสินค้า" ↔ "แจ้งสินค้าขาเข้า"
@@ -4496,7 +4519,7 @@ const arrHotDays = () => ARR_DUE + 3;
    ⇒ ตัวเลขบนการ์ด · ตัวกรองในตาราง · กล่องเตือน จะพูดตรงกันเสมอ
    ══════════════════════════════════════════════════════════════════ */
 function arrNeedTrip(g){
-  return g.st!=='cancel' && g.st!=='done' && g.t.boxWait>0.0001 && !(g.pl && g.pl.full);
+  return g.st!=='cancel' && g.st!=='done' && arrHasWait(g.t) && !(g.pl && g.pl.full);
 }
 /* กดตัวเลขบนการ์ด → กรองตารางให้ดูเฉพาะกลุ่มนั้น */
 function arrFilterTo(v){
@@ -4509,7 +4532,7 @@ function arrFilterTo(v){
 /* ใบที่ค้างเกินกำหนด เรียงค้างนานสุดก่อน */
 function arrOverdue(groups){
   /* ★ ใบที่จัดเที่ยวส่งไว้ครบแล้ว ไม่ต้องเตือนให้ตามของอีก — มีคิววันรับแล้ว */
-  return groups.filter(g => g.st!=='cancel' && g.st!=='done' && g.t.boxWait>0.0001
+  return groups.filter(g => g.st!=='cancel' && g.st!=='done' && arrHasWait(g.t)
                             && !(g.pl && g.pl.full)
                             && arrDaysWait(g.n.notice_date) >= ARR_DUE)
                .map(g => ({...g, days: arrDaysWait(g.n.notice_date)}))
@@ -4552,7 +4575,7 @@ function renderArrAlert(groups){
       box.innerHTML = `<div class="arr-alert amber"><h4>🟠 เดือนนี้ไม่มีของค้างเกิน ${ARR_DUE} วัน</h4>${otherLine}</div>`;
       return;
     }
-    box.innerHTML = groups.some(g=>g.t.boxWait>0)
+    box.innerHTML = groups.some(g=>arrHasWait(g.t))
       ? `<div class="arr-alert amber" style="background:var(--green-bg);border-color:#cfe3c2">
            <h4>✅ ไม่มีของค้างที่ขนส่งเกิน ${ARR_DUE} วัน</h4>
            <div style="font-size:12.5px;color:var(--muted)">ยังมีของค้างอยู่ แต่ยังไม่เกินกำหนดที่ตั้งไว้</div></div>`
@@ -4579,7 +4602,7 @@ function renderArrAlert(groups){
       <span class="arr-al-day ${g.days>=arrHotDays()?'r':'a'}">ค้าง ${g.days} วัน</span>
       <b>${esc(g.n.carrier||'-')}</b>
       <span style="color:var(--muted)">แจ้ง ${fmtDate(g.n.notice_date)}${g.n.notice_no?' · '+esc(g.n.notice_no):''}</span>
-      <span>ค้าง <b>${arrMoney(g.t.cbmWait)}</b> คิว · ${arrInt(g.t.boxWait)} ลัง ${arrPcsS(g.t.pcsWait)}</span>
+      <span>ค้าง ${arrCbmTxt(g.t)} · ${arrBox(g.t.boxWait)} ลัง ${arrPcsS(g.t.pcsWait)}</span>
       ${g.pl&&g.pl.pcs>0.0001?`<span class="arr-pl">🚚 จัดเที่ยวแล้ว ${arrMoney(g.pl.cbm||0)} คิว${
         g.pl.date?' · '+fmtDate(g.pl.date):''}</span>`:''}
       <div style="flex:1"></div>
@@ -4752,7 +4775,7 @@ function renderArrStrip(groups){
     p.n++; p.boxes+=g.t.boxes; p.boxWait+=g.t.boxWait; p.cbmWait+=g.t.cbmWait; p.kgWait+=g.t.kgWait;
     p.cbm+=g.t.cbm;
     p.pcs+=g.t.pcs; p.pcsWait+=g.t.pcsWait;
-    if(g.t.boxWait>0.0001 && arrDaysWait(g.n.notice_date)>=ARR_DUE) p.due++;
+    if(arrHasWait(g.t) && arrDaysWait(g.n.notice_date)>=ARR_DUE) p.due++;
   });
   const keys = Object.keys(by).sort((a,b)=>by[b].boxWait-by[a].boxWait || a.localeCompare(b));
   if(!keys.length){ el.innerHTML=''; return; }
@@ -4826,7 +4849,7 @@ function renderArr(){
     plan:a.plan+g.pl.pcs, planCbm:a.planCbm+(g.pl.cbm||0)
   }), {boxWait:0,cbmWait:0,kgWait:0,boxIn:0,boxes:0,cbm:0,pcsWait:0,pcsIn:0,pcs:0,plan:0,planCbm:0});
   const unfinished = all.filter(g => g.st!=='done');
-  const oldest = unfinished.filter(g=>g.t.boxWait>0)
+  const oldest = unfinished.filter(g=>arrHasWait(g.t))
     .sort((a,b)=>String(a.n.notice_date||'').localeCompare(String(b.n.notice_date||'')))[0];
 
   /* ⏰ แจ้งเตือน + ป้ายบนแท็บ — คิดจากทุกใบในเดือน ไม่ขึ้นกับตัวกรอง */
@@ -4897,7 +4920,7 @@ function renderArr(){
   $('arrOld').style.color    = (oldest && oldDays>=ARR_DUE) ? 'var(--red)' : '';
   $('arrOldSub').innerHTML = oldest
     ? (esc(oldest.n.carrier||'-') + ' · แจ้ง ' + fmtDate(oldest.n.notice_date)
-       + ' · ค้าง ' + arrMoney(oldest.t.cbmWait) + ' คิว (' + arrInt(oldest.t.boxWait) + ' ลัง) '
+       + ' · ค้าง ' + arrCbmTxt(oldest.t) + ' (' + arrBox(oldest.t.boxWait) + ' ลัง) '
        + arrPcsS(oldest.t.pcsWait))
     : 'ไม่มีของค้างที่ขนส่ง 🎉';
 
@@ -4927,7 +4950,7 @@ function renderArr(){
     const n=g.n, t=g.t, S=ARR_ST[g.st]||ARR_ST.waiting;
     const days = arrDaysWait(n.notice_date);
     /* ★ จัดเที่ยวส่งไว้ครบแล้ว = ไม่ต้องขึ้นแดง/ส้มเตือนตามของอีก (มีคิววันรับแล้ว) */
-    const dwarn = (g.st!=='done'&&g.st!=='cancel'&&t.boxWait>0&&days>=ARR_DUE&&!g.pl.full);
+    const dwarn = (g.st!=='done'&&g.st!=='cancel'&&arrHasWait(t)&&days>=ARR_DUE&&!g.pl.full);
     const col = arrColor(n.carrier);        // 🎨 สีประจำบริษัทขนส่ง
     /* ข้อมูลใบแจ้งอยู่บรรทัดเดียว + ปุ่มไอคอนต่อท้าย — แถวหัวใบเตี้ยลงเกินครึ่ง */
     h += `<tr class="arr-head${dwarn?' arr-hot':''}" data-nid="${n.id}"
@@ -4945,7 +4968,9 @@ function renderArr(){
           title="ส่งเข้าระบบตรวจสอบค่าขนส่งแล้ว${n.freight_sent_by?(' โดย '+esc(String(n.freight_sent_by).split('@')[0])):''}">📤 ส่งตรวจค่าขนส่งแล้ว ${
           fmtDate(String(n.freight_sent_at).slice(0,10))}</span>`:''}
         ${canEdit?`<span class="arr-act">
-          ${!n.freight_sent_at&&g.st!=='cancel'&&t.boxWait>0?`<button class="arr-mini go" onclick="openArrIn('${n.id}')" title="ตัดเข้าคลัง — บันทึกว่าของเข้าคลังแล้วกี่ลัง">🚚</button>`:''}
+          ${!n.freight_sent_at&&g.st!=='cancel'&&(arrHasWait(t)||arrIsCrumb(t))?`<button class="arr-mini go" onclick="openArrIn('${n.id}')" title="${
+            arrIsCrumb(t)?'ชิ้นเข้าครบแล้ว เหลือเศษลังจากการปัดเลข '+arrBox(t.boxWait)+' ลัง — เปิดเพื่อปิดเศษให้ครบ'
+                         :'ตัดเข้าคลัง — บันทึกว่าของเข้าคลังแล้วกี่ลัง'}">🚚</button>`:''}
           <button class="arr-mini" onclick="openArr('${n.id}')" title="แก้ไขใบแจ้ง">✏️</button>
           ${n.freight_sent_at?`<button class="arr-mini" onclick="arrUnsend('${n.id}')"
             title="เอาใบนี้กลับมาแสดงในตาราง (กรณีกดส่งผิดใบ)">↩</button>`:
@@ -5236,7 +5261,48 @@ function openArrIn(id){
     background:#F8FAFC;border:1px dashed var(--line);border-radius:9px;font-size:11.5px;color:var(--muted)">
     ▸ บรรทัดพ่วง ${extras.length} รายการ (${extras.map(x=>esc(x.sku||'-')).join(', ')})
     — <b>ไม่ต้องกรอก</b> ระบบตัดเข้าคลังตามบรรทัดแม่ให้เอง</div>`;
+  /* ★ ใบที่ "ชิ้นครบแล้ว แต่ลังไม่ลงตัว" — เดิมกรอกอะไรไม่ได้เลย ใบค้างตลอดกาล
+        ใส่ปุ่มปิดเศษให้กดจบในคลิกเดียว */
+  {
+    const t = arrTotals(all);
+    if(arrIsCrumb(t)) $('arrInBody').innerHTML += `<div style="margin-top:8px;padding:10px 12px;
+      background:var(--amber-bg,#FEF6E7);border:1px solid #EBCF97;border-radius:9px;font-size:12px;line-height:1.65">
+      ⚠️ <b>ใบนี้ของเข้าครบแล้ว</b> — ชิ้นครบ ${arrInt(t.pcs)} ชิ้น
+      แต่ยอด "ลัง" เหลือเศษ <b>${arrBox(t.boxWait)} ลัง</b> จากการปัดเลขตอนแปลงชิ้น → ลัง
+      <br><span style="color:var(--muted)">กรอกเพิ่มไม่ได้แล้วเพราะชิ้นครบ — กดปุ่มนี้เพื่อปิดเศษให้ลงตัว
+      แล้วใบนี้จะเลิกขึ้น "ค้างที่ขนส่ง"</span>
+      <div style="margin-top:7px"><button class="btn sm" style="background:#B4690E;color:#fff;border:0"
+        onclick="arrCloseCrumb()">✅ ปิดเศษลังให้ครบ</button></div></div>`;
+  }
   $('arrInBg').style.display='flex';
+}
+/* ปิดเศษลังของใบที่เปิดอยู่ — ตั้ง boxes_in = boxes เฉพาะบรรทัดที่ชิ้นครบแล้ว */
+async function arrCloseCrumb(){
+  if(!ARR_IN_ID || currentRole!=='purchase') return;
+  const all = arrItemsOf(ARR_IN_ID), M = arrCalc(all);
+  const d = $('ar_indate').value || arrToday();
+  const ups = [];
+  all.forEach(x => {
+    if(x.is_extra) return;
+    const m = M[x.id]||arrPcsOf(x,null), bx = +x.boxes||0;
+    if(bx>0 && m.leftBox>0.0001 && m.leftPcs<ARR_EPS_PCS)
+      ups.push({id:x.id, boxes_in:bx, in_date:x.in_date||d});
+  });
+  if(!ups.length) return toast('ใบนี้ไม่มีเศษลังให้ปิด');
+  try{
+    window.SELF_WRITING = true;
+    for(const u of ups){
+      const r = await sb.from('arrival_items')
+        .update({boxes_in:u.boxes_in, in_date:u.in_date}).eq('id',u.id).select().single();
+      if(r.error) throw r.error;
+      const i = ARR_IT.findIndex(x=>String(x.id)===String(u.id));
+      if(i>=0) ARR_IT[i] = Object.assign({}, ARR_IT[i], {boxes_in:u.boxes_in, in_date:u.in_date});
+    }
+  }catch(e){ return toast('ปิดเศษไม่สำเร็จ: '+(e.message||e)); }
+  finally{ window.SELF_WRITING = false; }
+  $('arrInBg').style.display='none'; ARR_IN_ID=null;
+  renderArr();
+  toast('ปิดเศษลังแล้ว — ใบนี้เข้าครบ ✅');
 }
 function arrInAll(){
   $('arrInBody').querySelectorAll('.ai-in').forEach(el => { el.value = el.dataset.left; });
@@ -5338,7 +5404,11 @@ async function saveArrIn(){
     else if(Math.abs(add-left)<0.51)     addBox = +el.dataset.leftbox||0;
     else if(+el.dataset.ppb>0)           addBox = Math.round(add/(+el.dataset.ppb)*1000)/1000;
     else                                 addBox = Math.round(add/left*(+el.dataset.leftbox||0)*1000)/1000;
-    ups.push({ id:l.dataset.id, boxes_in:Math.round(((+it.boxes_in||0)+addBox)*1000)/1000, in_date:d });
+    let nb = Math.round(((+it.boxes_in||0)+addBox)*1000)/1000;
+    /* ★ เหลือเศษต่ำกว่าครึ่งลัง = ปิดให้ครบเลย ไม่ทิ้งเศษค้างไว้ให้ใบนี้ค้างตลอดกาล */
+    const bxAll = +it.boxes||0;
+    if(bxAll>0 && bxAll-nb < ARR_EPS_BOX) nb = bxAll;
+    ups.push({ id:l.dataset.id, boxes_in:nb, in_date:d });
   });
   if(bad) return toast(bad);
   if(!ups.length) return toast('ยังไม่ได้ใส่จำนวนที่เข้าคลัง');
