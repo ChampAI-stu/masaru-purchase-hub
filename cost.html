@@ -363,7 +363,7 @@
             <button class="btn ghost edit-only" onclick="kitCollapse()"
               title="รวมบรรทัดของสินค้าที่อยู่ในชุด ให้เหลือบรรทัดเดียวด้วยรหัสชุด">🧩 ยุบเป็นชุด</button>
             <button class="btn ghost edit-only" onclick="kitExpand()"
-              title="แตกบรรทัดรหัสชุด ออกเป็นหลายบรรทัดบน INVOICE (Packing List ยังเป็นบรรทัดเดียว) · กดซ้ำเพื่อรวมกลับ">🧩 แตกรายการชุด</button>
+              title="ใบ INVOICE แยกบรรทัดให้อัตโนมัติอยู่แล้ว — ปุ่มนี้ใช้ตอนอยากแก้ข้อความ/ราคา/จำนวน ของแต่ละบรรทัดเป็นรายใบ · กดซ้ำเพื่อรวมกลับ">🧩 แตกให้แก้รายบรรทัด</button>
           </div>
           <div id="lineItems" style="overflow-x:auto"></div>
           <input type="file" id="lineImgFile" accept="image/*" style="display:none" onchange="onLineImg(this)">
@@ -750,7 +750,7 @@ function comboSet(id,val){
 }
 function comboVal(id){const inp=$(id);return inp?(inp.dataset.val||''):'';}
 
-const COST_VERSION='v01-06';
+const COST_VERSION='v01-07';
 try{ const _v=document.getElementById('cstVer'); if(_v)_v.textContent=COST_VERSION; }catch(e){}
 let db={master:[],hist:[],expMap:{},shipcosts:[],shipments:[],products:[],tracking:[],parties:[],budget:[],po:[],taxsum:[]};
 let currentRole='view', canEdit=false;
@@ -1172,6 +1172,37 @@ const txCmp = (o,p)=>String((o&&o.comp)||'')       ||String((p&&p.component)||''
 const txSpc = (o,p)=>String((o&&o.spec)||'').trim()||String((p&&p.spec)||'');
 const txKey = o => (o&&(o.dsc||o.comp||o.nth||o.spec))
   ? ('|t'+(o.dsc||'')+'\u0001'+(o.comp||'')+'\u0001'+(o.nth||'')+'\u0001'+(o.spec||'')) : '';
+/* ═══ 🧩 รหัสชุด → แยกบรรทัดบน INVOICE "อัตโนมัติ" ═══════════════════
+   ในตารางรายการยังเป็น 1 บรรทัด (1 รหัส = 1 บรรทัด อ่านง่าย จำนวน = จำนวนชุด)
+   แต่เวลาออกใบ INVOICE ต้องแยกตามของในชุด เพราะชื่อ/อุปกรณ์คนละอย่างกัน
+   ★ ไม่ต้องกดปุ่มอะไร — ใส่รหัสชุดแล้วใบแยกให้เลย
+   ★ PACKING LIST ยังเป็นบรรทัดเดียว (ชุดมีกล่องเดียว)
+   ★ จำนวน/บรรทัด  = จำนวนชุด × จำนวนต่อชุด
+     ราคา/หน่วย    = ราคาชุด ÷ จำนวนชิ้นรวมต่อชุด  → ยอดรวมเท่าเดิมเป๊ะ
+     GW            = โชว์ครั้งเดียวรวมทั้งชุด (merge เหมือนใบตัวอย่าง)
+   ★ บรรทัดที่ "แตกไว้แล้ว" (kit) หรือ "ตั้งข้อความเองไว้" จะไม่ถูกแตะ
+     — ถือว่าคนตั้งใจคุมเอง                                                */
+function invSplitKit(list){
+  const out=[];
+  list.forEach(function(g,gi){
+    const a=(!g.kit && !g.dsc && !g.comp && !g.nth) ? kitOf(g.sku) : [];
+    if(a.length<2){ out.push(g); return; }
+    const per=a.reduce((t,x)=>t+Math.max(1,+x.qty||1),0)||1;
+    const unit=(+g.price||0)/per;
+    const gid=g.gid||('kit'+gi);
+    a.forEach(function(x,mi){
+      const p=x.sku?(prod(x.sku)||{}):{};
+      const q=(+g.qty||0)*Math.max(1,+x.qty||1);
+      out.push({sku:g.sku, price:unit, qty:q, total:unit*q,
+        gw:(mi===0?(+g.gw||0):0), pic:g.pic, mixed:false, gid:gid, foc:!!g.foc,
+        dsc :String(x.name_en||p.name_en||p.product_name||x.sku||'').trim(),
+        nth :String(x.name_th||p.name_th||'').trim(),
+        comp:String(x.comp||p.component||''),
+        spec:String(x.spec||p.spec||'')});
+    });
+  });
+  return out;
+}
 const isKit   = sku => kitOf(sku).length>0;
 /* ชื่อสั้นของ SKU ลูก — ใช้โชว์ในตาราง/ทูลทิป */
 const kitName = sku => { const p=prod(sku);
@@ -3053,9 +3084,11 @@ function renderDoc(){
     g.qty+=+it.qty||0; g.gw+=+it.gw||0; g.total+=(+it.price||0)*(+it.qty||0);
     if(!g.pic)g.pic=picOf(it);
   });
+  const invRows=invSplitKit(invGroups);            /* ★ แตกรหัสชุดให้อัตโนมัติ */
+  const invQty=invRows.reduce((s,g)=>s+(+g.qty||0),0);
   const rowInv=(()=>{let out='';let k=0;
-    while(k<invGroups.length){const gid=invGroups[k].gid; let run=[invGroups[k]];
-      if(gid){let m=k+1;while(m<invGroups.length&&invGroups[m].gid===gid){run.push(invGroups[m]);m++;}}
+    while(k<invRows.length){const gid=invRows[k].gid; let run=[invRows[k]];
+      if(gid){let m=k+1;while(m<invRows.length&&invRows[m].gid===gid){run.push(invRows[m]);m++;}}
       const span=run.length; const grpGw=+run[0].gw||0;   // GW ใช้ร่วมทั้งกลุ่ม → โชว์ครั้งเดียว (rowspan)
       run.forEach((g,ri)=>{const p=prod(g.sku)||{};
         const _dsc=txDsc(g,p), _nth=txNth(g,p), _cmp=txCmp(g,p), _spc=txSpc(g,p);
@@ -3116,7 +3149,7 @@ function renderDoc(){
   $('docPreview').innerHTML=`<div class="doc"><section class="inv-page"><h2 class="title">INVOICE</h2><div class="goldline"></div>${hdr('Invoice No')}
     <table class="items"><colgroup><col style="width:13%"><col style="width:13%"><col style="width:12%"><col style="width:10%"><col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:7%"><col style="width:20%"></colgroup><thead><tr><th>DESCRIPTION</th><th>Picture</th><th>COMPONENT</th><th>Specification</th><th>Unit Price</th><th>Qty (PCS)</th><th>Total/${esc(d.cur)}</th><th>GW (Kg)</th><th>Remark</th></tr></thead><tbody>${rowInv}
       <tr><td colspan="4" style="text-align:right"><b>Logistics costs</b></td><td></td><td></td><td style="text-align:right">${money2(d.logi)}</td><td></td><td></td></tr>
-      <tr><td colspan="5" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(totalQty)}</b></td><td style="text-align:right"><b>${money2(totalPrice+d.logi)}</b></td><td style="text-align:right"><b>${money2(totalGW)}</b></td><td></td></tr></tbody></table>
+      <tr><td colspan="5" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(invQty)}</b></td><td style="text-align:right"><b>${money2(totalPrice+d.logi)}</b></td><td style="text-align:right"><b>${money2(totalGW)}</b></td><td></td></tr></tbody></table>
     <div class="sig">Signature and Company Stamp<br><br>________________________</div></section>
     <section class="pl-page"><h2 class="title">PACKING LIST</h2><div class="goldline"></div>${hdr('Reference Invoice No')}
     <table class="items"><colgroup><col style="width:7%"><col style="width:33%"><col style="width:30%"><col style="width:10%"><col style="width:20%"></colgroup><thead><tr><th>ITEM</th><th>DESCRIPTION OF GOODS</th><th>Dimension</th><th>GW (Kg)</th><th>Shipping Mark</th></tr></thead><tbody>${rowPl}<tr><td colspan="2" style="text-align:right"><b>Total</b></td><td style="text-align:right"><b>${money(totalCtn)} Cartons · ${money2(totalCBM)} CBM</b></td><td style="text-align:right"><b>${money2(totalGW)}</b></td><td></td></tr></tbody></table>
@@ -3129,7 +3162,8 @@ function exportInvPlExcel(){
   rows.push(['Company',d.scomp,'','Invoice No',d.invno]);rows.push(['Address',d.saddr,'','Gross Weight',d.items.reduce((s,i)=>s+ +i.gw,0)]);
   rows.push(['Consignee',d.cname,'','Total Package',d.items.reduce((s,i)=>s+ +i.ctn,0)]);rows.push(['Address',d.caddr,'','TERM',d.term]);rows.push([]);
   rows.push(['DESCRIPTION','COMPONENT','Specification','Unit Price','Qty (PCS)','Total Price/'+d.cur,'GW (Kg)','Remark','(รูปอยู่ในไฟล์ PDF)']);
-  d.items.forEach(it=>{const p=prod(it.sku)||{};rows.push([txDsc(it,p),txCmp(it,p),txSpc(it,p),it.price,it.qty,it.price*it.qty,it.gw,`BRAND：${p.brand||''} MODEL：${p.model||it.sku} ${txNth(it,p)}`]);});
+  invSplitKit(d.items.map(it=>({...it,total:(+it.price||0)*(+it.qty||0),mixed:false})))
+    .forEach(it=>{const p=prod(it.sku)||{};rows.push([txDsc(it,p),txCmp(it,p),txSpc(it,p),it.price,it.qty,(+it.price||0)*(+it.qty||0),it.gw,`BRAND：${p.brand||''} MODEL：${p.model||it.sku} ${txNth(it,p)}`]);});
   rows.push(['','','Logistics costs','','','',d.logi]);rows.push(['','','','','Total',d.items.reduce((s,i)=>s+i.price*i.qty,0)+d.logi]);rows.push([]);rows.push([]);
   rows.push(['PACKING LIST']);rows.push(['ITEM No.','DESCRIPTION OF GOODS','Dimension','GW (Kg)','Shipping Mark']);
   d.items.forEach((it,i)=>{const p=prod(it.sku)||{};rows.push([i+1,`${p.name_en||it.sku} / ${p.name_th||''} / ${p.brand||''} ${p.model||it.sku}`,`${it.ctn} Ctn*${p.per_ctn||''}=${it.qty} ${p.unit||''}; Box ${p.box_size||''}; ${((it.ctn||0)*(p.cbm_ctn||0)).toFixed(2)} CBM; ${p.w_ctn||''}Kg/Ctn`,it.gw,it.mark||'']);});
@@ -3546,9 +3580,11 @@ function exportInvoiceExcel(ev){
   const heads=['DESCRIPTION','Picture','COMPONENT','Specification','Unit Price','Qty(PCS)','Total/'+d.cur,'GW(Kg)','Remark'];
   const hr=wsI.getRow(top); heads.forEach((h,i)=>{const c=hr.getCell(i+1);c.value=h;c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:navy}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border=border;}); hr.height=22;
   let r=top+1; let k=0;
-  while(k<groups.length){
-    const gid=groups[k].gid; let run=[groups[k]];
-    if(gid){let m=k+1;while(m<groups.length&&groups[m].gid===gid){run.push(groups[m]);m++;}}
+  const xRows=invSplitKit(groups);                 /* ★ แตกรหัสชุดให้อัตโนมัติ */
+  const xQty=xRows.reduce((t,g)=>t+(+g.qty||0),0);
+  while(k<xRows.length){
+    const gid=xRows[k].gid; let run=[xRows[k]];
+    if(gid){let m=k+1;while(m<xRows.length&&xRows[m].gid===gid){run.push(xRows[m]);m++;}}
     const span=run.length; const grpGw=+run[0].gw||0; const startR=r;
     run.forEach((g,ri)=>{const p=prod(g.sku)||{}; const up=(g.mixed&&g.qty)?(g.total/g.qty):g.price;
       const _dsc=txDsc(g,p), _nth=txNth(g,p), _cmp=txCmp(g,p), _spc=txSpc(g,p);
@@ -3563,7 +3599,7 @@ function exportInvoiceExcel(ev){
     k+=span;
   }
   const lr=wsI.getRow(r); wsI.mergeCells(r,1,r,6); lr.getCell(1).value='Logistics costs'; lr.getCell(1).alignment={horizontal:'right'}; lr.getCell(1).font={bold:true}; lr.getCell(7).value=d.logi; lr.getCell(7).numFmt='#,##0.00'; lr.getCell(7).alignment={horizontal:'right'}; for(let i=1;i<=9;i++)lr.getCell(i).border=border; r++;
-  const tr=wsI.getRow(r); wsI.mergeCells(r,1,r,5); tr.getCell(1).value='Total'; tr.getCell(1).alignment={horizontal:'right'}; tr.getCell(1).font={bold:true}; tr.getCell(6).value=totalQty; tr.getCell(6).numFmt='#,##0'; tr.getCell(6).font={bold:true}; tr.getCell(6).alignment={horizontal:'right'}; tr.getCell(7).value=totalPrice+d.logi; tr.getCell(7).numFmt='#,##0.00'; tr.getCell(7).font={bold:true}; tr.getCell(7).alignment={horizontal:'right'}; tr.getCell(8).value=totalGW; tr.getCell(8).numFmt='#,##0.00'; tr.getCell(8).font={bold:true}; tr.getCell(8).alignment={horizontal:'right'}; for(let i=1;i<=9;i++)tr.getCell(i).border=border; r+=3;
+  const tr=wsI.getRow(r); wsI.mergeCells(r,1,r,5); tr.getCell(1).value='Total'; tr.getCell(1).alignment={horizontal:'right'}; tr.getCell(1).font={bold:true}; tr.getCell(6).value=xQty; tr.getCell(6).numFmt='#,##0'; tr.getCell(6).font={bold:true}; tr.getCell(6).alignment={horizontal:'right'}; tr.getCell(7).value=totalPrice+d.logi; tr.getCell(7).numFmt='#,##0.00'; tr.getCell(7).font={bold:true}; tr.getCell(7).alignment={horizontal:'right'}; tr.getCell(8).value=totalGW; tr.getCell(8).numFmt='#,##0.00'; tr.getCell(8).font={bold:true}; tr.getCell(8).alignment={horizontal:'right'}; for(let i=1;i<=9;i++)tr.getCell(i).border=border; r+=3;
   wsI.mergeCells(r,6,r,9); wsI.getCell(r,6).value='Signature and Company Stamp'; wsI.getCell(r,6).alignment={horizontal:'center'};
   wsI.mergeCells(r+2,6,r+2,9); wsI.getCell(r+2,6).value='__________________________'; wsI.getCell(r+2,6).alignment={horizontal:'center'};
   // ===== PACKING LIST =====
