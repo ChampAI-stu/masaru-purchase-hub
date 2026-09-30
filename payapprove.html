@@ -174,7 +174,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-64</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-65</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -266,15 +266,19 @@ tr:nth-child(even) td{background:#F8FAFD}
         <div class="fld"><label>วันที่ยื่น</label><input type="date" id="r_date"></div>
         <div class="fld"><label>กำหนดชำระ ★ <span class="muted" style="font-weight:400">— วันและเวลา</span></label>
           <div style="display:flex;gap:6px">
+            <!-- 🐞 เดิมเรียกแค่ calHint() → ข้อความใต้ปุ่มอัปเดต แต่ "ปุ่มช่วงเวลาเตือน" ไม่ถูกวาดใหม่
+                 ปุ่มจะเทา/ขีดฆ่าค้างตามกำหนดชำระ "ค่าเก่า" ตลอด แม้เลื่อนกำหนดไปอีกเป็นสัปดาห์
+                 และเพราะปุ่มถูก disabled อยู่ จึงกดไม่ได้เลย = ตันสนิท ไม่มีทางออกนอกจากติ๊ก 🔕
+                 → ต้องเรียก remDraw() ซึ่งคิดเงื่อนไขใหม่ทุกปุ่ม แล้วเรียก calHint() ต่อท้ายให้เอง -->
             <input type="date" id="r_due" style="flex:1 1 auto;min-width:0"
-                   onchange="calHint(curReq())">
+                   onchange="remDraw()">
             <!-- 🕐 เดิมเป็น <input type="time"> — ตัวควบคุมของเบราว์เซอร์แสดงตาม "ภาษาของเบราว์เซอร์"
                  ไม่ใช่ภาษาของหน้าเว็บ เครื่องที่ตั้ง Chrome เป็นอังกฤษจึงขึ้น 02:30 PM ทำให้อ่านสับสน
                  → เปลี่ยนเป็นดรอปดาวน์ที่เราคุมเอง แสดง 24 ชม. แบบไทยเสมอทุกเครื่อง
                  ★ ค่าที่เก็บยังเป็น "HH:MM" เหมือนเดิมเป๊ะ — โค้ดส่วนอื่น ปฏิทิน และข้อมูลเก่าไม่กระทบ -->
             <select id="r_dueT" style="flex:0 0 132px;width:132px"
                    title="เวลาที่ต้องโอน — ใช้ตั้งเตือนบนปฏิทิน (เวลาไทย 24 ชม.)"
-                   onchange="calHint(curReq())"></select>
+                   onchange="remDraw()"></select>
           </div>
           <div style="margin:8px 0 0">
             <label class="norem" id="r_noRemBox"
@@ -3094,6 +3098,14 @@ function remWhyNot(m){
     return 'เหลือเวลาไม่ถึง '+REM_SYNC_MIN+' นาที — มือถืออาจซิงก์ไม่ทัน ตั้งไม่ได้';
   return '';
 }
+/* เวลากำหนดชำระที่เร็วที่สุด ที่ยังตั้งเตือนได้อย่างน้อย 1 ช่วง */
+function remMinDue(){
+  const lead=Math.min.apply(null,REM_OPTS)+REM_SYNC_MIN;
+  const t=new Date(Date.now()+lead*60000+60000);
+  const p=n=>String(n).padStart(2,'0');
+  return p(t.getDate())+'/'+p(t.getMonth()+1)+'/'+String(t.getFullYear()+543).slice(2)
+    +' '+p(t.getHours())+':'+p(t.getMinutes())+' น.';
+}
 function remDraw(){
   const box=$('r_remChips'); if(!box)return;
   REM_LIST.sort((a,b)=>b-a);
@@ -3112,7 +3124,13 @@ function remDraw(){
   }).join('')
   +(REM_LIST.length?'':'<span class="muted" style="font-size:11.5px;padding:6px 4px">'
       +(noRemOn()?'🔕 ปิดการเตือนไว้ — ถอนติ๊กด้านบนเพื่อเปิด'
-                 :'← ยังไม่เลือก = ไม่เตือน')+'</span>');
+        /* ★ ทุกปุ่มเทาหมด = กำหนดชำระใกล้เกินไป ไม่ใช่ระบบพัง — บอกเวลาที่ตั้งได้ไปเลย
+             ไม่ให้ต้องเดาว่าต้องเลื่อนไปเท่าไหร่ถึงจะกดได้ */
+        :(REM_OPTS.every(m=>remWhyNot(m))
+          ? '<span style="color:#B45309">⚠️ <b>กำหนดชำระใกล้เกินไป</b> — ทุกช่วงเวลาเลยไปแล้ว'
+            +'<br>ตั้งเตือนได้ถ้าเลื่อนกำหนดชำระไปตั้งแต่ <b>'+esc(remMinDue())+'</b> ขึ้นไป'
+            +'<br>หรือติ๊ก 🔕 ไม่ต้องแจ้งเตือน ให้ชัดเจน</span>'
+          : '← ยังไม่เลือก = ไม่เตือน'))+'</span>');
   calHint(curReq());
 }
 /* ═══════════════════════════════════════════════════════════════════
