@@ -258,7 +258,9 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
 .pg-surprise{position:relative;z-index:1;white-space:nowrap;background:#e4c875;color:#26334a;border:0;border-radius:14px;padding:13px 20px;font-weight:800;cursor:pointer;transition:transform .2s}
 .pg-surprise:hover{transform:rotate(-3deg) scale(1.04)}
 .pg-tools{padding:18px;background:#fff;border:1px solid var(--line);border-radius:16px;margin-bottom:20px}
-.pg-controls{display:grid;grid-template-columns:minmax(180px,1fr) 190px 170px auto;gap:10px;align-items:end}
+.pg-controls{display:grid;grid-template-columns:minmax(170px,1fr) 165px 150px 160px auto;gap:10px;align-items:end}
+@media(max-width:1280px){.pg-controls{grid-template-columns:minmax(160px,1fr) 1fr 1fr 1fr}
+  .pg-controls>button{grid-column:1/-1}}
 .pg-controls label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}
 .pg-controls input,.pg-controls select{min-height:44px}
 .pg-cats{display:flex;gap:8px;overflow-x:auto;padding:14px 0 4px}
@@ -391,6 +393,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
       <div class="pg-controls">
         <div class="pg-search"><label for="pgQuery">ค้นหาสินค้า</label><input type="search" id="pgQuery" placeholder="ชื่อสินค้า โรงงาน ผู้รับผิดชอบ…"></div>
         <div><label for="pgPhotoFilter">รูปสินค้า</label><select id="pgPhotoFilter"><option value="all">สินค้าทั้งหมด</option><option value="photos">เฉพาะที่มีรูป</option><option value="none">ยังไม่มีรูป</option></select></div>
+        <div><label for="pgGot">📥 สถานะรับของ</label><select id="pgGot"><option value="">ทั้งหมด</option><option value="no">⏳ ยังไม่ได้รับ</option><option value="yes">✅ ได้รับแล้ว</option></select></div>
         <div><label for="pgSort">เรียงสินค้า</label><select id="pgSort"><option value="new">ใหม่ล่าสุด</option><option value="old">เก่าที่สุด</option><option value="name">ชื่อสินค้า ก–ฮ</option><option value="photos">รูปเยอะที่สุด</option></select></div>
         <button class="btn ghost" id="pgReset" type="button">ล้างตัวกรอง</button>
       </div>
@@ -598,7 +601,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-21-gallery';
+const SM_VERSION='v01-22-gallery';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -2557,6 +2560,7 @@ function renderGallery(){
   $('pgCats').innerHTML=[''].concat(categories).map((cat,i)=>'<button type="button" class="pg-chip" data-category="'+i+'" aria-pressed="'+(cat===PG_CATEGORY)+'">'+esc(cat||'ทุกหมวด')+'</button>').join('');
   $('pgCats').querySelectorAll('button').forEach((b,i)=>b.onclick=()=>{PG_CATEGORY=[''].concat(categories)[i];PG_LIMIT=40;renderGallery();});
   const query=$('pgQuery').value.trim().toLocaleLowerCase('th'), photo=$('pgPhotoFilter').value;
+  const got=($('pgGot')?$('pgGot').value:'');
   PG_ROWS=ROWS.flatMap(pgUnits).filter(u=>{
     const r=u.lot;
     if(PG_CATEGORY&&u.cat!==PG_CATEGORY)return false;
@@ -2564,6 +2568,9 @@ function renderGallery(){
           ไม่งั้นค้นชื่อตัวหนึ่ง แล้วเพื่อนร่วมล็อตจะโผล่มาด้วยทั้งหมด */
     if(query&&![u.name,u.loc,u.test,u.cat,u.subcat,r.factory,r.responsible,r.note]
       .join(' ').toLocaleLowerCase('th').includes(query))return false;
+    /* ★ สถานะรับของ — ดูรายตัวสินค้า (ล็อตเดียวกันของมาไม่พร้อมกันได้) */
+    if(got==='yes' && !u.got)return false;
+    if(got==='no'  &&  u.got)return false;
     if(photo==='photos')return u.pics.length>0;
     if(photo==='none')  return u.pics.length===0;
     return true;
@@ -2575,7 +2582,9 @@ function renderGallery(){
     :String(b.lot.req_date||'').localeCompare(String(a.lot.req_date||'')));
   $('pgResult').textContent=PG_STATUS==='loading'?'กำลังโหลดสินค้า…':PG_STATUS==='error'?'โหลดสินค้าไม่สำเร็จ'
     :PG_ROWS.length+' ตัวสินค้า · '+PG_ROWS.reduce((n,u)=>n+u.pics.length,0)+' รูป'
-     +' · จาก '+new Set(PG_ROWS.map(u=>u.lot.id)).size+' ล็อต';
+     +' · จาก '+new Set(PG_ROWS.map(u=>u.lot.id)).size+' ล็อต'
+     +(function(){ const w=PG_ROWS.filter(u=>!u.got).length;
+        return w?(' · ⏳ ยังไม่ได้รับ '+w):(PG_ROWS.length?' · ✅ ได้รับครบ':''); })();
   $('pgRandom').disabled=PG_STATUS!=='ready'||!PG_ROWS.length;
   $('pgMore').hidden=PG_STATUS!=='ready'||PG_ROWS.length<=PG_LIMIT;
   if(PG_STATUS!=='ready'){
@@ -2665,8 +2674,8 @@ function pgZoom(){
 }
 function pgStepPic(step){const count=pgPics(PG_VIEW[PG_ITEM]).length;if(count<2)return;PG_PIC=(PG_PIC+step+count)%count;pgPhoto();}
 function pgStepItem(step){PG_ITEM=(PG_ITEM+step+PG_VIEW.length)%PG_VIEW.length;PG_PIC=0;pgDetail();$('pgDialog').scrollTop=0;}
-['pgQuery','pgPhotoFilter','pgSort'].forEach(id=>$(id).addEventListener(id==='pgQuery'?'input':'change',()=>{PG_LIMIT=40;renderGallery();}));
-$('pgReset').onclick=()=>{PG_CATEGORY='';PG_LIMIT=40;$('pgQuery').value='';$('pgPhotoFilter').value='all';$('pgSort').value='new';renderGallery();};
+['pgQuery','pgPhotoFilter','pgGot','pgSort'].forEach(id=>$(id).addEventListener(id==='pgQuery'?'input':'change',()=>{PG_LIMIT=40;renderGallery();}));
+$('pgReset').onclick=()=>{PG_CATEGORY='';PG_LIMIT=40;$('pgQuery').value='';$('pgPhotoFilter').value='all';$('pgGot').value='';$('pgSort').value='new';renderGallery();};
 $('pgRandom').onclick=()=>pgOpen(Math.floor(Math.random()*PG_ROWS.length));
 $('pgMore').onclick=()=>{const next=PG_LIMIT;PG_LIMIT+=40;renderGallery();const b=$('pgGrid').querySelector('[data-item="'+next+'"]');if(b)b.focus();};
 $('pgClose').onclick=()=>$('pgDialog').close();
