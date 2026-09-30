@@ -174,7 +174,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-65</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-66</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -1882,7 +1882,50 @@ function setItem(i,k,v){
   if(k==='amount'&&!num(it.fx))it.src_amount=num(it.amount);   // ไม่ได้แปลง = สองค่าเท่ากัน
   if(k==='rate'){ const fx=num(it.fx); it.src_rate = fx>0 ? +(num(it.rate)*fx).toFixed(6) : num(it.rate); }
   it.thb=+(num(it.amount)*num(it.rate)).toFixed(2);
-  drawItems();
+  paintItemRow(i);        /* ★ ไม่ drawItems() แล้ว — ดูคำอธิบายที่ paintItemRow */
+}
+/* ═══════════════════════════════════════════════════════════════════
+   🐞 พิมพ์ได้ทีละตัวแล้วโฟกัสหลุด — ต้องคลิกช่องใหม่ทุกครั้ง
+   ──────────────────────────────────────────────────────────────────
+   เดิม setItem() เรียก drawItems() ทุกครั้งที่กดคีย์ (oninput)
+   → $('r_items').innerHTML ถูกเขียนทับทั้งก้อน ช่องที่กำลังพิมพ์อยู่ถูกลบทิ้ง
+     เบราว์เซอร์จึงไม่มีอะไรให้โฟกัส = พิมพ์ต่อไม่ได้ ต้องคลิกเข้าไปใหม่ทุกตัวอักษร
+   ⇒ ระหว่างพิมพ์ โครงตารางไม่เปลี่ยนเลย (จำนวนแถว/คอลัมน์/ล็อก เท่าเดิม)
+     จึงแตะเฉพาะ "ช่องผลลัพธ์" พอ — บาท · ยอดโอน · แถวรวม · สรุปท้ายตาราง
+   ★ ช่องที่กำลังพิมพ์อยู่ (document.activeElement) จะไม่ถูกเขียนทับ
+     ไม่งั้นเคอร์เซอร์เด้งไปท้ายช่อง แก้กลางคำไม่ได้
+   ═══════════════════════════════════════════════════════════════════ */
+function itemSums(){
+  return {src:ITEMS.reduce((s,x)=>s+num(x.src_amount),0),
+          amt:ITEMS.reduce((s,x)=>s+num(x.amount),0),
+          thb:ITEMS.reduce((s,x)=>s+num(x.thb)+num(x.fee),0),
+          fee:ITEMS.reduce((s,x)=>s+num(x.fee),0)};
+}
+function paintItemSums(){
+  const dst=$('r_cur').value, cs=curSym(dst), t=itemSums();
+  const put=(id,v)=>{const el=$(id); if(el)el.textContent=v;};
+  put('it_tot_src',money2(t.src)); put('it_tot_amt',money2(t.amt));
+  put('it_tot_thb',money2(t.thb-t.fee)); put('it_tot_fee',money2(t.fee));
+  drawRateBar();
+  /* ยังไม่ใส่เรท → บาทเป็น 0 ซึ่งไม่ใช่ยอดจริง ต้องบอกให้ชัด ไม่โชว์ 0.00 เฉย ๆ */
+  const noRate = cs!=='฿' && t.amt>0 && t.thb<=0;
+  $('r_sum').innerHTML=`${ITEMS.length} รายการ · รวม <b>${money2(t.amt)} ${cs}</b> ${curPill(dst)} `
+    +(noRate ? '<span style="color:var(--red)">· ⚠️ ยังไม่ใส่เรท จึงยังคิดเป็นบาทไม่ได้</span>'
+             : `≈ <b>${money2(t.thb)} ฿</b>`);
+  drawCurBar(t.amt,t.src);
+  curWarn();
+}
+function paintItemRow(i){
+  const it=ITEMS[i];
+  if(!it){ drawItems(); return; }
+  const g=id=>document.getElementById(id);
+  const b=g('it_thb_'+i); if(b)b.textContent=money2(it.thb);
+  const a=g('it_amt_'+i); if(a)a.textContent=money2(it.amount);
+  ['amount','src_amount'].forEach(k=>{
+    const f=g('itf_'+i+'_'+k);
+    if(f && document.activeElement!==f) f.value=it[k]||'';
+  });
+  paintItemSums();
 }
 function drawItems(){
   if(!ITEMS.length){
@@ -1901,7 +1944,7 @@ function drawItems(){
   ITEMS.forEach((it,i)=>{
     /* ดึงมาจากระบบ = ล็อกไว้กันพิมพ์ผิด แต่กด 🔓 ปลดล็อกแก้เองได้ (ติดป้าย "แก้มือ") */
     const lock=!!it.pay_id && !it.manual;
-    const N=(k,step)=>`<input type="number" step="${step}" style="text-align:right" value="${it[k]||''}" oninput="setItem(${i},'${k}',this.value)">`;
+    const N=(k,step)=>`<input id="itf_${i}_${k}" type="number" step="${step}" style="text-align:right" value="${it[k]||''}" oninput="setItem(${i},'${k}',this.value)">`;
     h+=`<tr${it.manual?' style="background:#FFFBEB"':''}><td style="text-align:center">${i+1}</td>
       <td>${lock?`<b>${esc(it.po||'-')}</b>`:`<input value="${esc(it.po||'')}" oninput="setItem(${i},'po',this.value)">`}</td>
       <td style="font-size:11.5px">${lock?esc(it.sku||'-'):`<input value="${esc(it.sku||'')}" oninput="setItem(${i},'sku',this.value)">`}</td>
@@ -1911,9 +1954,9 @@ function drawItems(){
                   (xfFit(it,dst)&&num(it.xf_cross))
                     ? ('÷ '+money2(it.xf_cross)+' <span style="font-size:10px">'+ssym+'/'+dst+'</span>')
                     : (it.fx?('× '+num(it.fx).toFixed(6)):'-')}</td>`:''}
-      <td class="num">${lock&&!fxOn?money2(it.amount):(fxOn&&lock?`<b>${money2(it.amount)}</b>`:N('amount','0.01'))}</td>
+      <td class="num">${lock&&!fxOn?`<span id="it_amt_${i}">${money2(it.amount)}</span>`:(fxOn&&lock?`<b id="it_amt_${i}">${money2(it.amount)}</b>`:N('amount','0.01'))}</td>
       <td class="num">${N('rate','0.0001')}</td>
-      <td class="num"><b>${money2(it.thb)}</b></td>
+      <td class="num"><b id="it_thb_${i}">${money2(it.thb)}</b></td>
       <td class="num">${N('fee','0.01')}</td>
       <td style="white-space:nowrap">
         ${it.pay_id?`<button class="btn mini ghost" title="${it.manual?'กลับไปใช้ยอดจากระบบ':'ปลดล็อกแก้ตัวเลขเอง'}"
@@ -1924,18 +1967,11 @@ function drawItems(){
   const tThb=ITEMS.reduce((s,x)=>s+num(x.thb)+num(x.fee),0);
   const tFee=ITEMS.reduce((s,x)=>s+num(x.fee),0);
   h+=`<tr style="background:#EFEFEF;font-weight:800"><td colspan="4" style="text-align:center">รวม</td>
-    ${fxOn?`<td class="num">${money2(tSrc)}</td><td class="num">-</td>`:''}
-    <td class="num">${money2(tAmt)}</td><td class="num">-</td>
-    <td class="num">${money2(tThb-tFee)}</td><td class="num">${money2(tFee)}</td><td></td></tr>`;
+    ${fxOn?`<td class="num" id="it_tot_src">${money2(tSrc)}</td><td class="num">-</td>`:''}
+    <td class="num" id="it_tot_amt">${money2(tAmt)}</td><td class="num">-</td>
+    <td class="num" id="it_tot_thb">${money2(tThb-tFee)}</td><td class="num" id="it_tot_fee">${money2(tFee)}</td><td></td></tr>`;
   $('r_items').innerHTML=h+'</tbody></table>';
-  /* ยังไม่ใส่เรท → บาทเป็น 0 ซึ่งไม่ใช่ยอดจริง ต้องบอกให้ชัด ไม่โชว์ 0.00 เฉย ๆ */
-  drawRateBar();
-  const noRate = cs!=='฿' && tAmt>0 && tThb<=0;
-  $('r_sum').innerHTML=`${ITEMS.length} รายการ · รวม <b>${money2(tAmt)} ${cs}</b> ${curPill(dst)} `
-    +(noRate ? '<span style="color:var(--red)">· ⚠️ ยังไม่ใส่เรท จึงยังคิดเป็นบาทไม่ได้</span>'
-             : `≈ <b>${money2(tThb)} ฿</b>`);
-  drawCurBar(tAmt,tSrc);
-  curWarn();
+  paintItemSums();
 }
 
 /* ---------- เลือกงวดจ่ายจากระบบวางแผน ---------- */
@@ -2802,7 +2838,10 @@ function xfIn(k,label,opt){
     ${opt.type==='date'?'type="date"':''} value="${esc(v)}" placeholder="${esc(opt.ph||'')}"
     oninput="xfSet('${k}',this.value)"></div>`;
 }
-function xfSet(k,v){ XF[k]=v; xfRender(); }
+/* 🐞 บั๊กเดียวกับตารางรายการ — เดิมพิมพ์ 1 ตัวแล้ว xfRender() วาด $('xfForm') ใหม่ทั้งก้อน
+      ช่องที่พิมพ์อยู่หายไป โฟกัสหลุดทุกตัวอักษร
+   ⇒ ตอนพิมพ์วาดใหม่เฉพาะ "ผลลัพธ์" (ข้อความ + การ์ด) ฟอร์มไม่ต้องแตะ */
+function xfSet(k,v){ XF[k]=v; xfRenderOut(); }
 function xfSec(t){ return `<div style="font-weight:800;font-size:12.5px;color:var(--navy);margin:14px 0 7px;
   border-bottom:1px solid var(--line);padding-bottom:4px">${esc(t)}</div>`; }
 
@@ -2850,7 +2889,11 @@ function xfRender(){
       +xfIn('sw_cur','สกุลเงิน')+xfIn('sw_amt','จำนวนเงิน',{type:'num'});
   }
   $('xfForm').innerHTML=h;
-
+  xfRenderOut();
+}
+/* วาดเฉพาะผลลัพธ์ — ข้อความที่จะก๊อป + การ์ดรูป (ไม่แตะฟอร์ม) */
+function xfRenderOut(){
+  const r=XF_REQ, f=XF;
   const txt=xferText(r,f);
   $('xfText').textContent=txt;
   $('xfHint').textContent=txt.length+' ตัวอักษร';
