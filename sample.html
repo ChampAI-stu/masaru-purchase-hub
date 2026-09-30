@@ -611,7 +611,11 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* Apps Script → Google Drive (ตัวเดียวกับสลิปของ pay.html)
    โฟลเดอร์ปลายทางของระบบนี้: "สินค้าตัวอย่าง/<ประเภท>" */
 const GAS_URL    = 'https://script.google.com/macros/s/AKfycbwjp--1ScpX43QdarB4JLnlQJSZoAuqsQ8edrIP2vSYUjq7QwbWU0jlWk6lGo5zQ26Hdg/exec';
-const GAS_SECRET = 'masaru-slip-2026';
+/* 🔒 ไม่ต้องมีรหัสลับในไฟล์เว็บแล้ว — ใช้ "ตั๋วของคนที่ล็อกอิน" แทน
+   ของเดิมเป็นรหัสคงที่ฝังในไฟล์ ซึ่งใครก็ View Source อ่านได้
+   Apps Script ฝั่งนั้นจะปิดทางรหัสลับเดิมถาวรทันทีที่ตรวจตั๋วผ่านครั้งแรก
+   (เว้นว่างไว้เฉย ๆ เผื่อช่วงเปลี่ยนผ่านที่ยังไม่ได้ Deploy Code.gs ใหม่) */
+const GAS_SECRET = '';
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
