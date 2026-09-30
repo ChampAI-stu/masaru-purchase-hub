@@ -198,11 +198,12 @@ tbody tr:hover{background:#F8FAFC}
 .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#1A2942;color:#fff;
   padding:11px 20px;border-radius:11px;font-size:13px;z-index:200;display:none;box-shadow:0 10px 30px #0004}
 /* ═══ เครื่องดูรูป — ซูมได้จริง ลากดูได้ นิ้วถ่างได้ ═══ */
-#lightBg{position:fixed;inset:0;background:#0A0F1AF7;display:none;z-index:220;flex-direction:column;
-  overscroll-behavior:contain}
-#lightBg.on{display:flex}
-.lv-top{display:flex;align-items:center;gap:7px;padding:9px 12px;color:#fff;font-size:12.5px;flex-wrap:wrap;
-  background:#0A0F1A;border-bottom:1px solid #ffffff1f;flex:0 0 auto}
+#lightBg{position:fixed;inset:0;background:#0A0F1AF7;display:none;z-index:220;overscroll-behavior:contain}
+#lightBg.on{display:block}
+/* ★ แถบบน/แถบฟิล์ม "ลอยทับ" รูป ไม่กินพื้นที่ — รูปจึงใหญ่เต็มจอจริง ๆ */
+.lv-top{position:absolute;top:0;left:0;right:0;z-index:3;
+  display:flex;align-items:center;gap:7px;padding:9px 12px;color:#fff;font-size:12.5px;flex-wrap:wrap;
+  background:linear-gradient(#0A0F1AF2,#0A0F1AC2 62%,#0A0F1A00)}
 .lv-top .nm{font-weight:700;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lv-top .sp{flex:1}
 .lv-top .pct{min-width:58px;text-align:center;font-variant-numeric:tabular-nums;color:#CBD5E1}
@@ -211,7 +212,7 @@ tbody tr:hover{background:#F8FAFC}
 .lv-btn:hover{background:#FFFFFF33}
 .lv-btn:disabled{opacity:.3;cursor:default}
 .lv-btn.gold{background:#C9A84C;border-color:#C9A84C;color:#1A2942;font-weight:800}
-.lv-stage{flex:1;position:relative;overflow:hidden;touch-action:none;cursor:grab;min-height:0}
+.lv-stage{position:absolute;inset:0;overflow:hidden;touch-action:none;cursor:grab}
 .lv-stage.grabbing{cursor:grabbing}
 .lv-stage img{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;
   -webkit-user-drag:none;user-select:none;will-change:transform}
@@ -220,12 +221,18 @@ tbody tr:hover{background:#F8FAFC}
   background:#0A0F1AA8;border:1px solid #FFFFFF26;color:#fff;font-size:22px;cursor:pointer;z-index:2}
 .lv-nav:hover{background:#0A0F1ADD}
 .lv-nav.l{left:12px}.lv-nav.r{right:12px}
-.lv-film{display:flex;gap:7px;overflow-x:auto;padding:9px 12px;background:#0A0F1A;border-top:1px solid #ffffff1f;flex:0 0 auto}
+.lv-film{position:absolute;bottom:0;left:0;right:0;z-index:3;
+  display:flex;gap:7px;overflow-x:auto;padding:10px 12px;
+  background:linear-gradient(#0A0F1A00,#0A0F1AE6 45%);opacity:.62;transition:opacity .18s}
+.lv-film:hover{opacity:1}
+@media(hover:none){.lv-film{opacity:1}}
 .lv-film img{width:58px;height:58px;flex:0 0 58px;object-fit:cover;border-radius:9px;border:2px solid transparent;
   cursor:pointer;opacity:.55;background:#1E293B}
 .lv-film img.on{border-color:#C9A84C;opacity:1}
 .lv-tip{color:#94A3B8;font-size:11.5px}
-@media(max-width:720px){.lv-top .nm{max-width:40vw}.lv-tip{display:none}.lv-nav{width:42px;height:66px}}
+@media(max-width:1180px){.lv-tip{display:none}}
+@media(max-width:720px){.lv-top .nm{max-width:40vw}.lv-btn{min-width:38px;height:38px;padding:0 9px}
+  .lv-nav{width:42px;height:66px}.lv-film img{width:48px;height:48px;flex:0 0 48px}}
 .login{max-width:420px;margin:70px auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px;text-align:center}
 .hint{background:#FFF9E8;border:1px solid #F0D9A8;border-radius:10px;padding:9px 12px;font-size:12px;line-height:1.7}
 .warn{background:#FDECEC;border:1px solid #F0B6B6;border-radius:10px;padding:9px 12px;font-size:12px;line-height:1.7}
@@ -277,8 +284,8 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
 .pg-icon{border:1px solid #dce3ed;background:white;color:var(--navy);border-radius:50%;width:42px;height:42px;cursor:pointer;font-size:20px;flex-shrink:0}
 .pg-detail{display:grid;grid-template-columns:1.2fr 1fr}
 .pg-media{padding:18px;min-width:0;background:#f4f6f9}
-.pg-stage{position:relative;display:flex;align-items:center;justify-content:center;height:400px;overflow:auto;border-radius:14px;background:#fff;touch-action:pan-y}
-.pg-stage img{width:100%;height:100%;object-fit:contain;padding:14px;cursor:zoom-in}
+.pg-stage{position:relative;display:flex;align-items:center;justify-content:center;height:clamp(340px,56vh,620px);overflow:auto;border-radius:14px;background:#fff;touch-action:pan-y}
+.pg-stage img{width:100%;height:100%;object-fit:contain;padding:10px;cursor:zoom-in}
 .pg-stage.pg-zoom{display:block}.pg-stage.pg-zoom img{width:180%;height:180%;max-width:none;object-fit:contain;cursor:zoom-out}
 .pg-imagebar{display:flex;gap:12px;align-items:center;justify-content:center;margin:12px 0;font-size:12px}
 .pg-thumbs{display:flex;gap:8px;overflow-x:auto;padding:5px 3px}
@@ -585,7 +592,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-19-gallery';
+const SM_VERSION='v01-20-gallery';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -1011,6 +1018,12 @@ function picGroup(list){
   const k='g'+(++LV_GN); LV_G[k]=a; return k;
 }
 const LV={list:[],i:0,s:1,fit:1,x:0,y:0,w:0,h:0,rot:0,hi:false,open:false,scroll:''};
+/* ขนาดไฟล์ที่ขอจาก Drive — อิงจอจริง ไม่ใช่ตัวเลขตายตัว
+   จอใหญ่ / จอ Retina ได้ไฟล์ใหญ่ขึ้นตั้งแต่เปิด ไม่ต้องรอสลับ */
+function lvBaseW(){
+  const px=Math.round(Math.max(innerWidth,innerHeight)*Math.min(devicePixelRatio||1,2));
+  return Math.max(1600,Math.min(2560,Math.ceil(px/320)*320));
+}
 const lvDrive=p=>!!(p&&(p.id||/\/d\/[A-Za-z0-9_-]{10,}/.test(String(p.url||''))));
 function lvBox(){ const t=LV.rot%180!==0; return {w:(t?LV.h:LV.w)*LV.s, h:(t?LV.w:LV.h)*LV.s}; }
 function lvRect(){ const r=$('lvStage').getBoundingClientRect();
@@ -1026,10 +1039,12 @@ function lvClamp(){
   LV.x = b.w<=st.w ? (st.w-b.w)/2 : Math.min(0,Math.max(st.w-b.w,LV.x));
   LV.y = b.h<=st.h ? (st.h-b.h)/2 : Math.min(0,Math.max(st.h-b.h,LV.y));
 }
+/* ขอบรอบรูปเหลือน้อยที่สุด — รูปจะได้เต็มจอที่สุด (เพดานขยาย 8 เท่า เผื่อรูปเล็ก) */
 function lvFitScale(){
   const st=lvRect(), t=LV.rot%180!==0, w=t?LV.h:LV.w, h=t?LV.w:LV.h;
   if(!w||!h)return 1;
-  return Math.max(.05,Math.min((st.w-20)/w,(st.h-20)/h,4));
+  const pad=st.w<720?8:14;
+  return Math.max(.05,Math.min((st.w-pad*2)/w,(st.h-pad*2)/h,8));
 }
 function lvToFit(){ LV.fit=lvFitScale(); LV.s=LV.fit; lvClamp(); lvApply(); }
 function lvZoomAt(ns,cx,cy){
@@ -1055,7 +1070,13 @@ function lvHiRes(){
     if(LV.list[LV.i]!==p||!LV.open)return;
     const el=$('lightImg'); el.onload=null; el.src=im.src;
   };
-  im.src=thumbUrl(p,2560);
+  /* ขอไฟล์ใหญ่สุดก่อน — ถ้า Drive ไม่ให้ ถอยมาขนาดรองให้เอง */
+  im.onerror=()=>{
+    const im2=new Image(); im2.referrerPolicy='no-referrer';
+    im2.onload=()=>{ if(LV.list[LV.i]===p&&LV.open){ const el=$('lightImg'); el.onload=null; el.src=im2.src; } };
+    im2.src=thumbUrl(p,2560);
+  };
+  im.src=thumbUrl(p,4096);
 }
 function lvFilm(){
   const box=$('lvFilm'); box.style.display=LV.list.length>1?'':'none';
@@ -1082,7 +1103,7 @@ function lvShow(i){
   };
   img.onerror=()=>{ img.style.visibility='hidden'; $('lvLoad').style.display='flex';
     $('lvLoad').textContent='เปิดรูปไม่ได้ — ตั้งสิทธิ์ไฟล์ใน Google Drive เป็น "ผู้ที่มีลิงก์ดูได้"'; };
-  img.src=lvDrive(p)?thumbUrl(p,1600):(p.url||'');
+  img.src=lvDrive(p)?thumbUrl(p,lvBaseW()):(p.url||'');
 }
 function lvGo(j){ if(j<0||j>=LV.list.length)return; lvShow(j); lvFilm(); }
 function lvStep(d){ if(LV.list.length<2)return; lvGo((LV.i+d+LV.list.length)%LV.list.length); }
