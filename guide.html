@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-61</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-67</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -512,6 +512,49 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
           ย้ายขึ้นมาเป็น<b>ลิงก์เล็ก ๆ ด้านบน</b> ให้การ์ดข้างล่างเหลือแต่<b>ระบบที่ใช้ทำงานจริง</b>
           <br>· ตัวเลข <b>SYSTEMS</b> กลางวงจึงนับเฉพาะระบบงาน ไม่นับคู่มือ
           · สิทธิ์เข้าดูยังเหมือนเดิมทุกบทบาท · <b>ไม่ต้องรัน SQL</b> (แถว <code>portal_apps</code> ของคู่มือปล่อยไว้ได้เลย)</div></td></tr>
+    <tr><td><b>🔑 รหัสเชิญ (สมัครสมาชิก)</b>
+        <div class="muted" style="font-size:11px">ย้ายที่แล้ว</div></td>
+      <td>รหัสเชิญ<b>ไม่อยู่ในไฟล์โค้ดแล้ว</b> — ย้ายไปเก็บในตาราง <code>invite_codes</code> บน Supabase
+        <div style="background:#EAF6EC;border:1px solid #BEE0C4;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
+          🔒 ตารางนี้<b>ล็อก RLS ไว้และไม่มี policy</b> = หน้าเว็บอ่านไม่ได้เลยแม้จะมีคีย์
+          · ตัวตรวจตอนสมัครเป็นฟังก์ชัน <b>SECURITY DEFINER</b> จึงอ่านได้ฝ่ายเดียว
+          <br>· <b>บทบาทยึดจากรหัส</b> ไม่ใช่ช่องที่ผู้ใช้เลือก — เลือกบทบาทสูงแต่ใช้รหัสต่ำ = สมัครไม่ผ่าน
+          · รหัส<b>ใช้ได้ตลอด ไม่จำกัดครั้ง ไม่มีวันหมดอายุ</b> (เหมือนเดิม)
+          · เก็บด้วยว่าใครใช้รหัสไหนไป · <b>ปิดรหัสได้ทันที</b>เมื่อรู้ว่าหลุด
+        </div>
+        <div class="muted" style="font-size:11.5px">
+          ดูรหัสที่ใช้ได้: <code>select role, code from public.invite_codes where active order by role;</code>
+          <br>เปลี่ยนรหัสเฉพาะบทบาทเดียว:
+          <code>update public.invite_codes set active=false where role='brand_lead';</code>
+          แล้ว <code>select public.new_invite_code('brand_lead','หัวหน้าแบรนดิ้ง');</code>
+          <br>ปิดรหัสที่หลุด: <code>update public.invite_codes set active=false where code='...';</code>
+        </div>
+        <div style="background:#EEF3FF;border:1px solid #C9D8F5;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
+          📦 <b>2 ไฟล์ · รันตามลำดับ</b>
+          <br>① <code>invite_codes.sql</code> — โครงสร้าง (ตาราง + ตัวตรวจ + ตัวออกรหัส)
+             · <b>ไม่มีรหัสอยู่ในไฟล์เลย commit เข้า repo ได้</b> · รันซ้ำได้ไม่กระทบอะไร
+          <br>② <code>invite_codes_new.sql</code> — <b>ออกรหัสชุดใหม่ครบ 7 บทบาท</b>
+             (สุ่มตอนรัน · รูปแบบ <code>MASARU-BUY-XXXXXX</code> · ใช้ได้ตลอด ไม่หมดอายุ)
+          <div class="muted" style="margin-top:4px">🔴 ไฟล์ ② <b>ปิดรหัสเก่าทั้งหมดทันทีที่รัน</b> —
+            รันครั้งเดียวพอ · รหัสจริงอ่านจากตาราง Results แล้วก๊อปเก็บ
+            <b>อย่าวางกลับลงไฟล์โค้ด</b></div>
+        </div></td></tr>
+    <tr><td><b>🔐 อัปไฟล์ขึ้น Google Drive</b>
+        <div class="muted" style="font-size:11px">ปลอดภัยขึ้น</div></td>
+      <td>เดิมใช้ <b>รหัสลับคงที่</b> ฝังอยู่ในไฟล์ <code>.html</code> — ใครกด View Source ก็ได้ไป
+        แล้วยิงอัปไฟล์เข้า Drive เราได้เลย
+        <div style="background:#EAF6EC;border:1px solid #BEE0C4;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
+          ✅ ของใหม่: หน้าเว็บส่ง <b>ตั๋วของคนที่ล็อกอิน</b> (access token) ไปแทน
+          Apps Script เอาไปถาม Supabase ว่า <i>"ตั๋วนี้ของใคร ยังไม่หมดอายุใช่ไหม"</i>
+          <br>· ตั๋ว<b>มีอายุสั้น</b> · <b>ผูกกับบัญชีจริง</b> · ไล่ออกจากระบบแล้ว<b>ใช้ต่อไม่ได้</b>
+          <br>· เช็ก<b>บทบาท</b>ได้ด้วย — คนนอกที่ไม่มีบัญชีทำอะไรไม่ได้เลย
+          <br>· จำผลตรวจไว้ 5 นาที อัปหลายไฟล์พร้อมกันจึงไม่ช้าลง
+        </div>
+        <div class="muted" style="font-size:11.5px">ช่วงเปลี่ยนผ่านยังรับรหัสเดิมได้
+          (<code>AUTH.ALLOW_LEGACY_SECRET = true</code> ใน <code>Code.gs</code>)
+          <br>★ <b>อัปหน้าเว็บครบทั้ง 4 หน้าแล้ว ให้เปลี่ยนเป็น <code>false</code></b> —
+          รหัสที่หลุดไปจะใช้ไม่ได้ทันที · เช็กว่าย้ายครบหรือยังได้จากปุ่มทดสอบเชื่อมต่อ
+          (ขึ้น <b>🔐 ตั๋วผู้ใช้</b> = ครบแล้ว · <b>⚠️ ยังใช้รหัสเดิม</b> = ยังมีหน้าที่ไม่ได้อัป)</div></td></tr>
     <tr><td><b>ออกจากระบบ</b></td><td>กดที่ระบบไหนก็ออกทุกแท็บ (session ร่วมกัน)</td></tr>
     <tr><td><b>เห็นระบบไม่ครบ</b></td>
       <td>การ์ดในหน้ารวมขึ้นตามบทบาท — ถ้าควรเห็นแต่ไม่เห็น แจ้งผู้ดูแลตรวจตาราง <code>portal_apps</code></td></tr>
@@ -541,7 +584,14 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
         <div class="muted" style="font-size:11px">แก้แล้ว</div></td>
       <td>อาการ: แก้จำนวนที่ PO ให้ตรงแล้ว ก็ยังเด้ง <b>เกิน 2 ชิ้น</b> ซ้ำ ๆ
         <div style="background:#FDECEC;border:1px solid #F3B6B6;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
-          🔍 <b>ต้นเหตุ</b> — ใบแจ้งใบเดียวมี <b>SKU เดียวกัน 2 บรรทัด คนละ PO</b>
+          🔍 <b>ต้นเหตุที่ 1 — ลังสุดท้ายไม่เต็ม</b> (เจอบ่อยสุด)
+          <br>แจ้งมา <code>3,700 ชิ้น · 6 ชิ้น/ลัง · 617 ลัง</code> →
+          ระบบคิดยอดเข้าคลังจาก <b>ลัง × ชิ้น/ลัง</b> = 617 × 6 = <b>3,702</b>
+          <br>แต่ลังสุดท้ายมีของแค่ 4 ชิ้น ไม่เต็ม 6 → เกินมา 2 ชิ้นจาก<b>การคูณ</b> ไม่ใช่ของมาเกินจริง
+          <br>✅ แก้แล้ว: ยอดเข้าคลัง<b>ไม่เกินจำนวนที่แจ้งมาในบรรทัดนั้น</b>เด็ดขาด (รับบางส่วนยังคิดตามปกติ)
+        </div>
+        <div style="background:#FDECEC;border:1px solid #F3B6B6;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
+          🔍 <b>ต้นเหตุที่ 2</b> — ใบแจ้งใบเดียวมี <b>SKU เดียวกัน 2 บรรทัด คนละ PO</b>
           <br><code>SCS-435N · PO 19596 → 3,700 ชิ้น</code> และ <code>SCS-435N · PO 19650 → 2 ชิ้น</code>
           <br>แต่บนบอร์ด<b>ยังไม่มีแถว PO 19650</b> → โค้ดเดิม "ถอยไปหาด้วย SKU อย่างเดียว"
           แล้วเอา 2 ชิ้นของ 19650 <b>ไปบวกที่ PO 19596</b> → 3,702 &gt; 3,700
@@ -2400,7 +2450,11 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
             <br>★ กดรูปที่ผูกกับ<b>สินค้าตัวเดียว</b> = ได้เฉพาะรูปของตัวนั้น ·
             กดที่ช่อง <b>รูปสินค้า</b> = ได้<b>ทั้งล็อต</b>
             <br>★ หน้า <b>แกลเลอรี</b> ปุ่มขยายเปลี่ยนเป็น <b>🔍 ขยายเต็มจอ</b> ใช้เครื่องดูรูปตัวเดียวกัน
-            · กรอบรูปในหน้ารายละเอียด<b>สูงขึ้นตามจอ</b> (สูงสุด 620px จากเดิมล็อกไว้ 400px)</div>
+            · กรอบรูปในหน้ารายละเอียด<b>สูงขึ้นตามจอ</b> (สูงสุด 620px จากเดิมล็อกไว้ 400px)
+            <br>★ <b>แก้อาการหน้าต่างซ้อนกัน</b> — กด 🔍 ขยายเต็มจอ จากหน้ารายละเอียดแกลเลอรี
+            แล้วเครื่องดูรูปไปโผล่<b>ข้างหลัง</b> (หน้ารายละเอียดเป็นหน้าต่างชนิดที่ลอยเหนือทุกอย่าง)
+            ตอนนี้เครื่องดูรูปใช้หน้าต่างชนิดเดียวกันแล้ว <b>ลอยขึ้นมาบนสุดเสมอ</b>
+            · กด <code>Esc</code> ปิดทีละชั้น (ปิดรูป → กลับมาหน้ารายละเอียด)</div>
         </div></td></tr>
     <tr><td><b>📦 1 ล็อต = 1 ครั้งที่สั่ง</b>
         <div class="muted" style="font-size:11px">ของใหม่</div></td>
@@ -2497,6 +2551,13 @@ VAT            = (ต้นทุนบาท + ค่าส่งที่ใ�
           · ถ้ารับครบทุกล็อตจะขึ้นว่า ✅ ได้รับครบแล้ว</div></td></tr>
     <tr><td><b>ที่อื่น ๆ</b></td>
       <td><b>แกลเลอรี</b> ติดป้ายสถานะบนการ์ดสินค้า + บรรทัด <b>📥 สถานะรับของ</b> ในหน้ารายละเอียด
+        <div style="background:#EAF6EC;border:1px solid #BEE0C4;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
+          🔎 <b>แกลเลอรีมีตัวกรอง 📥 สถานะรับของ</b> ด้วย — <b>⏳ ยังไม่ได้รับ</b> / <b>✅ ได้รับแล้ว</b>
+          <br>· กรอง<b>รายตัวสินค้า</b> ไม่ใช่ทั้งล็อต — ล็อตเดียวกันของมาไม่พร้อมกันก็แยกดูได้
+          <br>· ใช้ร่วมกับตัวกรองอื่นได้ทั้งหมด (หมวด · ค้นหา · รูปสินค้า · การเรียง)
+          <br>· บรรทัดสรุปด้านบนบอก <b>⏳ ยังไม่ได้รับ n</b> ให้เห็นทันทีโดยไม่ต้องกรอง
+          · กด <b>ล้างตัวกรอง</b> รีเซ็ตช่องนี้ด้วย
+        </div>
         <div class="muted" style="font-size:11.5px"><b>Excel</b> เพิ่ม 2 คอลัมน์ <b>สถานะรับของ</b> · <b>วันที่รับของ</b>
           และเขียนกำกับรายตัวในช่องรายละเอียดสินค้า <code>[รับแล้ว 2569-09-05]</code> / <code>[ยังไม่ได้รับ]</code>
           <br>★ <b>รายการเก่าก็ติ๊กได้</b> ไม่ต้องแก้ฐานข้อมูล ไม่ต้องรัน SQL เพิ่ม</div></td></tr>
