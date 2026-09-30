@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-67</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-68</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -550,11 +550,18 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
           <br>· เช็ก<b>บทบาท</b>ได้ด้วย — คนนอกที่ไม่มีบัญชีทำอะไรไม่ได้เลย
           <br>· จำผลตรวจไว้ 5 นาที อัปหลายไฟล์พร้อมกันจึงไม่ช้าลง
         </div>
-        <div class="muted" style="font-size:11.5px">ช่วงเปลี่ยนผ่านยังรับรหัสเดิมได้
-          (<code>AUTH.ALLOW_LEGACY_SECRET = true</code> ใน <code>Code.gs</code>)
-          <br>★ <b>อัปหน้าเว็บครบทั้ง 4 หน้าแล้ว ให้เปลี่ยนเป็น <code>false</code></b> —
-          รหัสที่หลุดไปจะใช้ไม่ได้ทันที · เช็กว่าย้ายครบหรือยังได้จากปุ่มทดสอบเชื่อมต่อ
-          (ขึ้น <b>🔐 ตั๋วผู้ใช้</b> = ครบแล้ว · <b>⚠️ ยังใช้รหัสเดิม</b> = ยังมีหน้าที่ไม่ได้อัป)</div></td></tr>
+        <div style="background:#EAF6EC;border:1px solid #BEE0C4;border-radius:8px;padding:7px 10px;margin:5px 0;font-size:11.5px">
+          🚪 <b>ประตูปิดเองอัตโนมัติ</b> — ไม่ต้อง Deploy รอบสอง
+          <br>พอมีคำขอแรกที่ <b>ตรวจตั๋วผู้ใช้ผ่าน</b> สำเร็จ (= หน้าเว็บใหม่ใช้งานได้แล้ว)
+          ระบบจะ<b>ปิดทางรหัสลับเดิมถาวร</b>ให้เอง จำไว้ใน Script Properties
+          <br>⇒ รหัสที่หลุดอยู่ใน repo ใช้ไม่ได้อีกเลยตั้งแต่นาทีนั้น
+        </div>
+        <div class="muted" style="font-size:11.5px">เช็กสถานะได้ 2 ทาง
+          <br>· ปุ่ม <b>ทดสอบการเชื่อมต่อ</b> ในกล่องตั้งค่า — ต้องขึ้น
+             <b>🔐 ตั๋วผู้ใช้ · &lt;อีเมล&gt;</b> และ <b>🔒 ปิดรหัสลับเดิมแล้ว</b>
+          <br>· Apps Script → รันฟังก์ชัน <code>legacyGateStatus()</code>
+          <br>★ ต้องย้อนหน้าเว็บกลับเวอร์ชันเก่า → รัน <code>resetLegacyGate()</code> เปิดประตูกลับ
+          <br>★ ช่อง <b>รหัสผ่าน</b> ในกล่องตั้งค่าไม่ได้ใช้แล้ว — เว้นว่างไว้ได้เลย</div></td></tr>
     <tr><td><b>ออกจากระบบ</b></td><td>กดที่ระบบไหนก็ออกทุกแท็บ (session ร่วมกัน)</td></tr>
     <tr><td><b>เห็นระบบไม่ครบ</b></td>
       <td>การ์ดในหน้ารวมขึ้นตามบทบาท — ถ้าควรเห็นแต่ไม่เห็น แจ้งผู้ดูแลตรวจตาราง <code>portal_apps</code></td></tr>
