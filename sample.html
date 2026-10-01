@@ -358,9 +358,11 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
         <select id="fGot" style="flex:0 1 175px" onchange="render()"><option value="">— สถานะรับของ ทั้งหมด —</option><option value="no">⏳ ยังไม่ได้รับ</option><option value="part">📦 ได้รับบางส่วน</option><option value="open">⏳📦 ยังไม่ครบ (ค้างรับ)</option><option value="all">✅ ได้รับครบแล้ว</option></select>
       </div>
       <div class="row" style="margin-bottom:12px">
-        <button class="btn mini ghost" id="segM" onclick="setMode('month')">📅 รายเดือน</button>
+        <button class="btn mini ghost gold" id="segM" onclick="setMode('month')">📅 รายเดือน</button>
         <button class="btn mini ghost" id="segY" onclick="setMode('year')">📆 รายปี</button>
         <button class="btn mini ghost" id="segR" onclick="setMode('range')">🗓️ ช่วงวันที่</button>
+        <button class="btn mini ghost" id="segA" onclick="setMode('all')"
+          title="ดูทุกรายการที่มีในระบบ — ไม่จำกัดช่วงวันที่&#10;ตัวกรองอื่น (หมวด · โรงงาน · สถานะรับของ · คำค้น) ยังใช้ได้ตามปกติ">📜 ทั้งหมด</button>
         <span id="ctlM"><input type="month" id="mo" style="width:170px" onchange="load()"></span>
         <span id="ctlY" style="display:none"><select id="yr" style="width:170px" onchange="load()"></select></span>
         <span id="ctlR" style="display:none" class="row">
@@ -370,7 +372,8 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
           <input type="date" id="to" style="width:160px" onchange="load()">
           <button class="btn mini ghost" onclick="quick(90)">90 วัน</button>
           <button class="btn mini ghost" onclick="quick('y')">ปีนี้</button>
-          <button class="btn mini ghost" onclick="quick('all')">ทั้งหมด</button>
+          <button class="btn mini ghost" onclick="setMode('all')"
+            title="เลิกจำกัดช่วงวันที่ — ไปโหมด 📜 ทั้งหมด">ทั้งหมด</button>
         </span>
         <div style="flex:1"></div>
         <button class="btn mini ghost" onclick="load()" title="โหลดใหม่">🔄</button>
@@ -601,7 +604,7 @@ body.pg-gallery-active .tabs{top:var(--pg-header-height,48px)}
      ในฐานข้อมูลเก็บแค่ลิงก์ → egress ของ Supabase เกือบเป็นศูนย์
    ★ ดึงข้อมูล "ตามช่วงวันที่ที่เลือก" เท่านั้น ไม่ดึงทั้งตาราง
    ══════════════════════════════════════════════════════════════════ */
-const SM_VERSION='v01-23-gallery';
+const SM_VERSION='v01-24-all';
 try{ const _v=document.getElementById('smVer'); if(_v)_v.textContent=SM_VERSION; }catch(e){}
 
 const SUPABASE_URL='https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -789,6 +792,10 @@ function goTab(t){
 }
 
 /* ═════════════════ ช่วงวันที่ ═════════════════ */
+/* โหมดดูข้อมูล: month · year · range · all
+   ★ 'all' = ไม่กรองวันที่เลย (ดึงทุกรายการที่มี)
+     เดิมทำได้เหมือนกัน แต่ต้องกด "ช่วงวันที่" ก่อน แล้วกด "ทั้งหมด" ข้างใน — หาไม่เจอ
+     ⇒ ยกขึ้นมาเป็นปุ่มแถวหน้า กดทีเดียวถึง                                   */
 function setMode(m){
   MODE=m;
   $('ctlM').style.display=m==='month'?'':'none';
@@ -797,6 +804,7 @@ function setMode(m){
   $('segM').classList.toggle('gold',m==='month');
   $('segY').classList.toggle('gold',m==='year');
   $('segR').classList.toggle('gold',m==='range');
+  if($('segA'))$('segA').classList.toggle('gold',m==='all');
   load();
 }
 /* รายชื่อปีในดรอปดาวน์ — ย้อนหลัง 5 ปี (แสดงเป็น พ.ศ. ให้ตรงกับที่ทุกคนใช้พูดกัน) */
@@ -816,6 +824,9 @@ function quick(n){
   load();
 }
 function period(){
+  /* ไม่ใส่ from/to = load() ไม่ใส่เงื่อนไข .gte/.lte → ได้ทุกรายการ
+     และ rtApplySample ก็ถือว่าทุกแถว "อยู่ในช่วงที่ดู" (เช็ค !P.from อยู่แล้ว) */
+  if(MODE==='all') return {from:'', to:'', head:'📜 ทุกรายการที่มีในระบบ'};
   if(MODE==='year'){
     const y=$('yr').value||String(new Date().getFullYear());
     return {from:y+'-01-01', to:y+'-12-31', head:'ปี พ.ศ. '+(+y+543)};
