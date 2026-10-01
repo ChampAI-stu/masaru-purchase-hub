@@ -529,6 +529,13 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
           <option value="intl">ต่างประเทศ (หยวน/USD)</option>
           <option value="dom">ภายในประเทศ (บาท)</option>
         </select>
+        <select id="dcVat" onchange="buildDoc()" style="max-width:185px"
+          title="ใช้กับใบปะหน้า &quot;ค่าใช้จ่ายภายในประเทศ&quot; เท่านั้น&#10;ยอดที่กรอกในงวดจ่าย = ยอดก่อน VAT → ใบปะหน้าบวก VAT ให้">
+          <option value="7">VAT 7% (ในประเทศ)</option>
+          <option value="0">ไม่มี VAT (0%)</option>
+          <option value="3">VAT 3%</option>
+          <option value="5">VAT 5%</option>
+        </select>
         <input id="dcMaker" placeholder="ชื่อผู้จัดทำ" style="max-width:170px" oninput="buildDoc()">
         <input id="dcNote" placeholder="หมายเหตุเพิ่มเติม (พิมพ์ลงบนใบปะหน้า)" style="min-width:280px;flex:1" oninput="buildDoc()">
         <label style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;margin:0;cursor:pointer"
@@ -1328,7 +1335,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v10-16';
+const PAY_VERSION='v10-17';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -4455,6 +4462,24 @@ function docLook(b, sk, nSkus){
   }
   return {quantity:qty, received:got, price:price};
 }
+/* ═══ VAT ของใบปะหน้า "ค่าใช้จ่ายภายในประเทศ" ═══════════════════════
+   ★ ยอดที่กรอกในงวดจ่าย = "ยอดก่อน VAT" → ใบปะหน้าบวก VAT ให้
+   ★ คิดจาก "ฐานรวมทั้งใบ" แล้วปัดเศษครั้งเดียว — กฎเดียวกับใบของบริษัทขนส่ง
+     (คิดทีละบรรทัดแล้วปัด เศษจะทบกันจนเกินจริง 1–2 สตางค์)
+   ★ ใช้อัตราเดียวกันทั้งใบ ตามที่เลือกบนแถบเครื่องมือ                      */
+function docVatRate(){ const v=$('dcVat'); return v?(num(v.value)||0):0; }
+/* ฟอร์มที่จะใช้ตอนนี้เป็น "ในประเทศ" ไหม — ตรรกะเดียวกับ buildDocInner */
+function docUseDom(rows){
+  const fm=($('dcForm')&&$('dcForm').value)||'auto';
+  const allTHB=rows.every(p=>(billOf(p.bill_id).currency||'CNY')==='THB');
+  return fm==='dom'||(fm==='auto'&&allTHB);
+}
+function docDomTotals(rows){
+  const base=rows.reduce((s,p)=>s+(+p.amount||0)+(+p.ship_fee||0),0);
+  const vr=docVatRate();
+  const vat=vr?Math.round(base*vr)/100:0;         /* base×vr/100 ปัด 2 ตำแหน่ง */
+  return {base:+base.toFixed(2), vr, vat, grand:+(base+vat).toFixed(2)};
+}
 function buildDocDomestic(rows,coName,thDate){
   const detail=$('dcDetail')&&$('dcDetail').checked;
   const lines=[];
@@ -4481,6 +4506,7 @@ function buildDocDomestic(rows,coName,thDate){
     }
   });
   const T=k=>lines.reduce((s,l)=>s+(+l[k]||0),0);
+  const V=docDomTotals(rows);                 /* ฐาน · VAT · รวมทั้งสิ้น — สูตรเดียวกับตอนบันทึก */
   const maker=($('dcMaker')&&$('dcMaker').value.trim())||'';
 
   let body='';
@@ -4518,11 +4544,19 @@ function buildDocDomestic(rows,coName,thDate){
           <td style="text-align:center">รวม</td><td></td><td></td>
           <td class="num"></td><td class="num"></td>
           <td class="num">${T('ship')?money2(T('ship')):''}</td>
-          <td class="num">${money2(T('amt'))}</td><td></td></tr>
+          <td class="num">${money2(V.base)}</td><td></td></tr>
+        ${V.vr?`<tr style="font-weight:700">
+          <td colspan="6" style="text-align:right">ภาษีมูลค่าเพิ่ม ${esc(String(V.vr))}%</td>
+          <td class="num">${money2(V.vat)}</td><td></td></tr>
+        <tr style="background:#FFF7DF;font-weight:800">
+          <td colspan="6" style="text-align:right">รวมทั้งสิ้น</td>
+          <td class="num">${money2(V.grand)}</td><td></td></tr>`:''}
       </tbody></table>
     <div style="margin-top:18px;line-height:2">
       <div style="font-weight:700">สรุป</div>
-      <div>ยอดเงินบาททั้งหมด : ${money2(T('amt'))} บาท</div>
+      ${V.vr?`<div>ยอดก่อนภาษีมูลค่าเพิ่ม : ${money2(V.base)} บาท</div>
+      <div>ภาษีมูลค่าเพิ่ม ${esc(String(V.vr))}% : ${money2(V.vat)} บาท</div>`:''}
+      <div style="${V.vr?'font-weight:700':''}">ยอดเงินบาททั้งหมด : ${money2(V.grand)} บาท</div>
     </div>
     ${docNoteBlock()}
     <div class="sign-row">
@@ -4632,9 +4666,7 @@ function buildDocInner(show){
     DAIKI:'บริษัท ไดกิ เทรดดิ้ง จำกัด','นามบุคคล':'นามบุคคล'}[cos[0]]||cos.join(', ');
 
   // เลือกฟอร์ม: อัตโนมัติ = ถ้าทุกงวดเป็นเงินบาท ใช้ฟอร์มในประเทศ
-  const fm=($('dcForm')&&$('dcForm').value)||'auto';
-  const allTHB=rows.every(p=>(billOf(p.bill_id).currency||'CNY')==='THB');
-  if(fm==='dom'||(fm==='auto'&&allTHB)){ buildDocDomestic(rows,coName,thDate); return; }
+  if(docUseDom(rows)){ buildDocDomestic(rows,coName,thDate); return; }
   const showDetail=$('dcDetail')&&$('dcDetail').checked;
 
   // 1 งวด = 1 กลุ่ม (SKU หลายแถว) — ช่องยอด/บาท/หมายเหตุ ผสานเซลล์ตามงวด
@@ -4765,7 +4797,16 @@ async function saveDoc(){
     note:($('dcNote')&&$('dcNote').value.trim())||null,
     maker:($('dcMaker')&&$('dcMaker').value.trim())||null,
     payment_ids:rows.map(p=>String(p.id)),
-    note:'ยอดรวม '+money(rows.reduce((s,p)=>s+thbOf(p),0)+rows.reduce((s,p)=>s+num(p.fee),0))+' บาท',created_by:ME};
+    /* ★ ใบในประเทศที่มี VAT → ยอดในบันทึกต้องตรงกับ "รวมทั้งสิ้น" บนใบที่พิมพ์
+         ไม่งั้นเปิดย้อนหลังแล้วตัวเลขไม่ตรงกับเอกสารจริง */
+    note:(function(){
+      if(docUseDom(rows)){
+        const V=docDomTotals(rows);
+        return 'ยอดรวม '+money(V.grand)+' บาท'
+          +(V.vr?(' (ก่อน VAT '+money(V.base)+' + VAT '+V.vr+'% '+money(V.vat)+')'):'');
+      }
+      return 'ยอดรวม '+money(rows.reduce((s,p)=>s+thbOf(p),0)+rows.reduce((s,p)=>s+num(p.fee),0))+' บาท';
+    })(),created_by:ME};
   const key=JSON.stringify(row.payment_ids.slice().sort());
   const dup=DOCS.find(x=>x.doc_date===row.doc_date&&(x.payee||'')===(row.payee||'')
     &&(x.company||'')===(row.company||'')
