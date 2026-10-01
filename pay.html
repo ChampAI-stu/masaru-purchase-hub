@@ -685,14 +685,17 @@ table.qt-tb td.b{font-weight:800;background:#F7F7F7!important}
     <div class="kpis" id="lgKpi"></div>
     <div class="card">
       <h2>📒 ตารางสรุปบันทึก</h2>
-      <div class="sub-note">รายการงวดจ่ายทั้งหมด — วันที่ · PO · จ่ายในนาม · ยอด</div>
+      <div class="sub-note">รายการงวดจ่ายทั้งหมด — วันที่ · PO · จ่ายในนาม · ยอด
+        <span id="lgScope" style="margin-left:6px"></span></div>
       <div class="row" style="flex-wrap:wrap">
         <input id="lgSearch" placeholder="ค้นหา PO / Vendor / ผู้รับเงิน" style="max-width:230px" oninput="LG_PAGE=1;renderLedger()">
         <span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap">
           <label style="margin:0">ตั้งแต่</label><input type="date" id="lgFrom" onchange="LG_PAGE=1;renderLedger()" style="width:158px"
             title="เลือกช่องเดียว = ดูเฉพาะวันนั้น">
           <label style="margin:0">ถึง</label><input type="date" id="lgTo" onchange="LG_PAGE=1;renderLedger()" style="width:158px" title="เว้นว่างได้ — จะดูเฉพาะวันในช่องแรก">
-          <button class="btn mini ghost" onclick="lgThisMonth()">เดือนนี้</button>
+          <button class="btn mini ghost" id="lgMonthBtn" onclick="lgThisMonth()">เดือนนี้</button>
+          <button class="btn mini ghost" id="lgAllBtn" onclick="lgToggleAll()"
+            title="ดูทุกรายการที่มีในระบบ ไม่จำกัดช่วงวันที่ — ตัวกรองอื่น (จ่ายในนาม · สถานะ · สกุลเงิน · ช่องทาง · คำค้น) ยังใช้ได้ตามปกติ">📜 ทั้งหมด</button>
         </span>
         <select id="lgPt" onchange="LG_PAGE=1;renderLedger()" style="max-width:175px">
           <option value="">— จ่ายในนาม: ทั้งหมด —</option>
@@ -1325,7 +1328,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v10-15';
+const PAY_VERSION='v10-16';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -2582,6 +2585,25 @@ function pagerBar(total,page,fn,per){
   </div>`;
 }
 let LG_PAGE=1, RM_PAGE=1;
+/* ═══ โหมด "ดูทั้งหมด" ของตารางสรุปบันทึก ═══════════════════════════
+   เดิม ledgerRows() เห็นช่องวันที่ว่างทั้งคู่ แล้ว "เติมเดือนนี้ให้เอง"
+   → ล้างช่องวันที่เพื่อหวังดูทั้งหมด ก็เด้งกลับเป็นเดือนนี้ทุกครั้ง = ดูทั้งหมดไม่ได้
+   ⇒ แยกเป็นโหมดชัดเจน · จำไว้ในเครื่อง เปิดหน้าใหม่ยังอยู่โหมดเดิม
+   ★ ไม่มีการโหลดข้อมูลเพิ่ม — PAYS โหลดมาครบอยู่แล้ว จึงไม่กิน egress เพิ่ม  */
+let LG_ALL=(()=>{ try{ return localStorage.getItem('lgAll')==='1'; }catch(e){ return false; } })();
+function lgToggleAll(){
+  LG_ALL=!LG_ALL; LG_PAGE=1;
+  try{ localStorage.setItem('lgAll', LG_ALL?'1':'0'); }catch(e){}
+  lgPaintAll(); renderLedger();
+}
+function lgPaintAll(){
+  const b=$('lgAllBtn'); if(b){ b.className='btn mini'+(LG_ALL?'':' ghost');
+    b.textContent=(LG_ALL?'✓ ทั้งหมด':'📜 ทั้งหมด'); }
+  /* ล็อกช่องวันที่ไว้ให้เห็นว่าตอนนี้ไม่ได้ใช้ — ไม่ซ่อนทิ้ง จะได้รู้ว่าค่าเดิมคืออะไร
+     ★ ปุ่ม "เดือนนี้" ต้องกดได้เสมอ — เป็นทางออกจากโหมดทั้งหมดแบบกดทีเดียวจบ */
+  ['lgFrom','lgTo'].forEach(id=>{ const e=$(id); if(e){ e.disabled=LG_ALL;
+    e.style.opacity=LG_ALL?'.45':''; } });
+}
 let WL_PAGE=1; const WL_PER=25;          // Ksher Wallet — หน้าละ 25 รายการ
 /* ═══ ช่วงเวลาของ Ksher Wallet — ดูได้ทั้งรายวันและรายเดือน ═══
    ยอด "คงเหลือ" คิดจาก walletRun() ทั้งชุดเสมอ ไม่ได้คิดจากแถวที่กรองไว้
@@ -6473,13 +6495,16 @@ function exportWallet(){
    ================================================================== */
 function lgThisMonth(){
   const m=monthStr(), d=new Date(+m.slice(0,4), +m.slice(5,7), 0);
+  if(LG_ALL){ LG_ALL=false; try{ localStorage.setItem('lgAll','0'); }catch(e){} lgPaintAll(); }
+  LG_PAGE=1;
   $('lgFrom').value=m+'-01'; $('lgTo').value=ymdLocal(d); renderLedger();
 }
 function ledgerRows(){
-  if(!$('lgFrom').value&&!$('lgTo').value){const m=monthStr();
+  /* โหมดทั้งหมด = ไม่ยุ่งกับช่องวันที่ และไม่กรองวันที่เลย */
+  if(!LG_ALL && !$('lgFrom').value && !$('lgTo').value){const m=monthStr();
     $('lgFrom').value=m+'-01'; $('lgTo').value=ymdLocal(new Date(+m.slice(0,4),+m.slice(5,7),0));}
   const q=($('lgSearch').value||'').toLowerCase();
-  const f=$('lgFrom').value, t=$('lgTo').value;
+  const f=LG_ALL?'':$('lgFrom').value, t=LG_ALL?'':$('lgTo').value;
   // เลือกช่องเดียว = ดูเฉพาะวันนั้นวันเดียว
   const from=f||t, to=t||f;
   const pt=$('lgPt').value, st=$('lgSt').value||'sp', cu=$('lgCur').value;
@@ -6513,7 +6538,18 @@ function fillLedgerCh(){
 function renderLedger(){
   if(!$('lgBody'))return;
   fillLedgerCh();
+  lgPaintAll();
   const rows=ledgerRows();
+  /* บอกให้ชัดว่ากำลังดูช่วงไหน — กันสับสนว่า "ยอดนี้ของเดือนนี้ หรือของทั้งหมด" */
+  const sc=$('lgScope');
+  if(sc){
+    const f=$('lgFrom').value, t=$('lgTo').value;
+    sc.innerHTML = LG_ALL
+      ? '<span class="pill" style="background:#EDE7F6;color:#5E35B1">📜 กำลังดู: ทุกรายการในระบบ ('
+        +rows.length+' รายการ)</span>'
+      : '<span class="pill" style="background:#EEF2F7;color:#1F3864">📅 กำลังดู: '
+        +esc((f||t)||'-')+(t&&t!==f?(' – '+esc(t)):'')+' ('+rows.length+' รายการ)</span>';
+  }
   // แยกยอดตามสกุลเงิน — ห้ามบวกข้ามสกุล
   const by={}; rows.forEach(p=>{const c=billOf(p.bill_id).currency||'CNY';by[c]=(by[c]||0)+(+p.amount||0);});
   const chips=Object.keys(by).map(c=>`<div style="line-height:1.25">${money(by[c])} <span style="font-size:.62em;opacity:.85">${curSym(c)}</span></div>`).join('')||'0';
@@ -6567,7 +6603,8 @@ function exportLedger(){
   const ws=XLSX.utils.aoa_to_sheet(rows), wb=XLSX.utils.book_new();
   ws['!cols']=[{wch:11},{wch:11},{wch:22},{wch:20},{wch:14},{wch:12},{wch:28},{wch:12},{wch:8},{wch:8},{wch:13},{wch:10},{wch:20},{wch:8},{wch:34},{wch:10},{wch:14},{wch:22}];
   XLSX.utils.book_append_sheet(wb,ws,'สรุปบันทึก');
-  XLSX.writeFile(wb,`สรุปบันทึก_${$('lgFrom').value||''}_ถึง_${$('lgTo').value||''}.xlsx`);
+  XLSX.writeFile(wb, LG_ALL ? 'สรุปบันทึก_ทั้งหมด.xlsx'
+    : `สรุปบันทึก_${$('lgFrom').value||''}_ถึง_${$('lgTo').value||''}.xlsx`);
 }
 
 /* ==================================================================
