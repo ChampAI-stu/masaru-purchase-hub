@@ -364,7 +364,7 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
   <span class="t2">| คู่มือระบบฝ่ายจัดซื้อ</span>
   <span style="flex:1"></span>
   <span class="pill-top" id="whoami"></span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v02-75</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v02-76</span>
   <button class="tbtn" id="allBtn" onclick="toggleAll()"
     title="สลับระหว่างอ่านทีละบท กับกางทั้งเล่มในหน้าเดียว"><span>📖</span><span class="lbl">อ่านทั้งเล่ม</span></button>
   <button class="tbtn" onclick="printBook()" title="พิมพ์ทั้งเล่ม หรือบันทึกเป็น PDF"><span>🖨️</span></button>
@@ -1267,6 +1267,35 @@ code{background:#EFF3F9;border:1px solid #E1E8F2;padding:1px 6px;border-radius:5
     <div class="hp-node c5"><div class="ic">✅</div><div class="ti">5. ขออนุมัติ</div><div class="wh">จัดซื้อ</div>
       <div class="do">ไประบบ <a href="#s4" onclick="return goSec('s4')">ขออนุมัติชำระเงิน</a> → ดึงงวด หรือดึงจากใบปะหน้า</div></div>
   </div>
+
+  <h3 class="hh">🧾 ใบปะหน้า "ค่าใช้จ่ายภายในประเทศ" — มี VAT แล้ว</h3>
+  <p class="tx">ใบปะหน้ามี 2 รูปแบบ เลือกที่ดรอปดาวน์ <b>รูปแบบ</b> บนแถบเครื่องมือ —
+    <b>ต่างประเทศ (หยวน/USD)</b> · <b>ภายในประเทศ (บาท)</b> ·
+    <b>อัตโนมัติ</b> = ถ้าทุกงวดเป็นเงินบาท ใช้ฟอร์มในประเทศให้เอง</p>
+  <table class="kv"><tbody>
+    <tr><td><b>ดรอปดาวน์ VAT</b><div class="muted" style="font-size:11px">ของใหม่ v10-17</div></td>
+      <td>อยู่ข้างช่อง "ชื่อผู้จัดทำ" — <b>VAT 7% (ในประเทศ)</b> เป็นค่าตั้งต้น ·
+        เลือก <b>ไม่มี VAT (0%)</b> · <b>3%</b> · <b>5%</b> ได้
+        <div class="muted" style="font-size:11.5px">ใช้กับ<b>ใบในประเทศเท่านั้น</b> — ใบต่างประเทศไม่กระทบ</div></td></tr>
+    <tr><td><b>ยอดที่กรอกในงวดจ่าย</b></td>
+      <td>ถือเป็น <b>ยอดก่อน VAT</b> → ใบปะหน้าบวก VAT ให้</td></tr>
+    <tr><td><b>บนใบปะหน้า</b></td>
+      <td>ท้ายตารางเพิ่ม 2 แถว — <b>ภาษีมูลค่าเพิ่ม 7%</b> และ <b>รวมทั้งสิ้น</b>
+        <br>บล็อก "สรุป" แยกเป็น 3 บรรทัด:
+        <div style="background:#F7F9FC;border:1px solid #dfe4ee;border-radius:7px;padding:8px 11px;margin:5px 0;font-size:12px;line-height:1.9">
+          ยอดก่อนภาษีมูลค่าเพิ่ม : <b>1,600.00</b> บาท<br>
+          ภาษีมูลค่าเพิ่ม 7% : <b>112.00</b> บาท<br>
+          <b>ยอดเงินบาททั้งหมด : 1,712.00 บาท</b>
+        </div>
+        <div class="muted" style="font-size:11.5px">เลือก <b>ไม่มี VAT</b> → แถวพวกนี้หายไป ใบออกมาเหมือนเดิมทุกตัวอักษร</div></td></tr>
+    <tr><td><b>วิธีคิด</b></td>
+      <td>คิดจาก <b>ฐานรวมทั้งใบ แล้วปัดเศษครั้งเดียว</b> — กฎเดียวกับใบของบริษัทขนส่ง
+        <div class="muted" style="font-size:11.5px">คิดทีละบรรทัดแล้วปัด เศษจะทบกันจนเกินจริง
+          (เช่น 333.33 × 2 บรรทัด → ฐานรวม 666.66 × 7% = <b>46.67</b> ไม่ใช่ 46.66)</div></td></tr>
+    <tr><td><b>ประวัติเอกสาร</b></td>
+      <td>ยอดที่บันทึกไว้ใช้ <b>"รวมทั้งสิ้น"</b> ตรงกับใบที่พิมพ์ พร้อมวงเล็บบอกฐานและ VAT
+        <div class="muted" style="font-size:11.5px">เปิดย้อนหลังแล้วตัวเลขตรงกับเอกสารจริงเสมอ</div></td></tr>
+  </tbody></table>
 
   <h3 class="hh">เส้นทางเงิน — ตัวเลขแต่ละช่องมาจากไหน</h3>
   <p class="tx">บิลเป็นหยวน แต่บางงวดโอนจริงเป็นดอลลาร์ ระบบเก็บไว้ครบทุกทอด</p>
