@@ -817,13 +817,13 @@ body.mkt-lead .arr-kg{display:none !important}
       <div class="sum-card"><div class="sum-label">📦 ค้างที่ขนส่ง (ยังไม่เข้าคลัง)</div>
         <div class="sum-val" id="arrWaitBox">0</div>
         <div class="sum-sub" id="arrWaitSub">0 คิว · 0 กก.</div></div>
-      <div class="sum-card"><div class="sum-label">✅ เข้าคลังแล้ว (เดือนที่เลือก)</div>
+      <div class="sum-card"><div class="sum-label" id="arrInLbl">✅ เข้าคลังแล้ว (เดือนที่เลือก)</div>
         <div class="sum-val" id="arrInBox">0</div>
         <div class="sum-sub" id="arrInSub">จากที่แจ้งมา 0 ลัง</div></div>
       <div class="sum-card"><div class="sum-label">🚚 จัดเที่ยวส่งแล้ว</div>
         <div class="sum-val" id="arrPlanVal">0</div>
         <div class="sum-sub" id="arrPlanSub">—</div></div>
-      <div class="sum-card"><div class="sum-label">📋 ใบแจ้งในเดือน</div>
+      <div class="sum-card"><div class="sum-label" id="arrNoticeLbl">📋 ใบแจ้งในเดือน</div>
         <div class="sum-val" id="arrNotice">0</div>
         <div class="sum-sub" id="arrNoticeSub">ยังไม่ครบ 0 ใบ</div></div>
       <div class="sum-card"><div class="sum-label">⏳ ค้างนานสุด</div>
@@ -840,6 +840,9 @@ body.mkt-lead .arr-kg{display:none !important}
       </div>
       <input type="month" class="filter-sel" id="arrMonth" onchange="loadArr()" style="max-width:150px"
         title="ดึงเฉพาะเดือนที่เลือก — ประหยัดโควตาฐานข้อมูล">
+      <button class="wk-btn" id="arrAllBtn" onclick="arrToggleAll()"
+        title="ดูใบแจ้งทุกเดือนที่มีในระบบ — ไม่ต้องเลือกช่วง&#10;⚠️ ดึงข้อมูลทั้งหมด ใช้โควตาฐานข้อมูลมากกว่า จึงไม่ค้างโหมดไว้ (เปิดหน้าใหม่กลับเป็นเดือนนี้)">📜 ทั้งหมด</button>
+      <span id="arrScope" style="font-size:11.5px;color:var(--muted);white-space:nowrap"></span>
       <select class="filter-sel" id="arrDue" onchange="arrSetDue(this.value)" style="max-width:170px"
         title="ค้างที่ขนส่งเกินกี่วันถึงเตือน">
         <option value="3">เตือนเมื่อค้างเกิน 3 วัน</option>
@@ -1402,7 +1405,7 @@ let currentRole = null; let ROLE_LABEL = '';
      แล้วใช้ธง MKT_LEAD เปิดเฉพาะแท็บ 📦 + กระดิ่งเพิ่มให้ทีหลัง
    ⚠️ อย่าเผลอไปแตะ canSeePrice / canSeeResp ให้ true — ตกลงกันว่าไม่ให้เห็นต้นทุน */
 let MKT_LEAD = false;
-const BOARD_VERSION='v05-20';
+const BOARD_VERSION='v05-21';
 try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
 console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
@@ -4079,7 +4082,35 @@ sb.auth.onAuthStateChange((event, session) => {
    ประหยัดโควตา: ดึงเฉพาะเดือนที่เลือก · โหลดครั้งแรกตอนเปิดแท็บเท่านั้น
                  บันทึกแล้วอัปเดตในหน่วยความจำ ไม่โหลดทั้งเดือนใหม่
    ══════════════════════════════════════════════════════════════════ */
-let ARR = [];            // ใบแจ้งของเดือนที่เลือก
+/* ═══ โหมด "ดูทั้งหมด" ของแท็บแจ้งสินค้าขาเข้า ═══════════════════════
+   ต่างจากตารางสรุปบันทึกของระบบ pay — ที่นั่นข้อมูลโหลดมาครบแล้ว กรองในเครื่องเฉย ๆ
+   ที่นี่ "ตัวดึงข้อมูล" กรองเดือนอยู่ (.eq notice_month) เพื่อประหยัดโควตา
+   ⇒ เปิดโหมดนี้ = ดึงทุกเดือนจริง ๆ ใช้โควตามากกว่า
+   ★ จึงไม่ค้างโหมดไว้ในเครื่อง — เปิดหน้าใหม่กลับเป็น "เดือนนี้" เสมอ
+     กันการเผลอดึงทั้งระบบทุกครั้งที่เปิดบอร์ด                               */
+let ARR_ALL = false;
+function arrToggleAll(){
+  if(!ARR_ALL && !confirm('📜 ดูใบแจ้งสินค้าขาเข้า "ทุกเดือน"\n\n'
+    +'ระบบจะดึงใบแจ้งทั้งหมดที่มีในระบบ (ไม่จำกัดเดือน)\n'
+    +'ใช้โควตาฐานข้อมูลมากกว่าปกติ และอาจใช้เวลาโหลดนานขึ้น\n\n'
+    +'เปิดหน้าใหม่จะกลับเป็น "เดือนนี้" ให้เอง\n\nยืนยัน?')) return;
+  ARR_ALL = !ARR_ALL;
+  arrPaintAll();
+  loadArr();
+}
+function arrPaintAll(){
+  const b=$('arrAllBtn');
+  if(b){ b.textContent = ARR_ALL ? '✓ ทั้งหมด' : '📜 ทั้งหมด';
+    b.style.background = ARR_ALL ? '#5E35B1' : '';
+    b.style.color      = ARR_ALL ? '#fff'    : ''; }
+  /* ล็อกช่องเดือนไว้ให้เห็นว่าตอนนี้ไม่ได้ใช้ — ไม่ซ่อนทิ้ง ค่าเดิมยังอยู่ */
+  const m=$('arrMonth');
+  if(m){ m.disabled = ARR_ALL; m.style.opacity = ARR_ALL ? '.45' : ''; }
+  const i=$('arrInLbl'), n=$('arrNoticeLbl');
+  if(i) i.textContent = ARR_ALL ? '✅ เข้าคลังแล้ว (ทุกเดือน)'  : '✅ เข้าคลังแล้ว (เดือนที่เลือก)';
+  if(n) n.textContent = ARR_ALL ? '📋 ใบแจ้งทั้งหมด'            : '📋 ใบแจ้งในเดือน';
+}
+let ARR = [];            // ใบแจ้งของเดือนที่เลือก (หรือทุกเดือน ถ้า ARR_ALL)
 let ARR_IT = [];         // รายการของใบแจ้งเหล่านั้น
 let ARR_LOADED = false;  // โหลดแล้วหรือยัง (กันดึงซ้ำตอนสลับแท็บ)
 let ARR_VIEW = [];       // ใบแจ้งที่กำลังโชว์บนตาราง (ตามตัวกรอง) — ใช้ทำรายงาน PDF
@@ -4470,7 +4501,7 @@ function bellGo(i){
   $('bellPop').className='bell-pop';
   switchTab('arr');
   /* ถ้าอยู่คนละเดือน สลับตัวกรองเดือนให้ก่อน */
-  if(f.month && $('arrMonth').value!==f.month){
+  if(!ARR_ALL && f.month && $('arrMonth').value!==f.month){
     $('arrMonth').value = f.month;
     loadArr().then(()=>{ if(f.nid) arrJump(f.nid); });
     return;
@@ -4560,6 +4591,7 @@ function arrBootDue(){
 /* ใบค้างเกินกำหนดที่อยู่เดือนอื่น (ไม่ใช่เดือนที่กรองอยู่) */
 function arrOtherDue(){
   if(!ARR_BOOT) return [];
+  if(ARR_ALL) return [];          /* โหลดมาทุกเดือนแล้ว ไม่มีใบไหน "อยู่เดือนอื่น" */
   const mo = $('arrMonth').value || arrMonthNow();
   return arrBootDue().filter(p => p.month!==mo);
 }
@@ -4683,9 +4715,11 @@ function arrMsg(html){
 async function loadArr(){
   if(!$('arrMonth').value) $('arrMonth').value = arrMonthNow();
   const mo = $('arrMonth').value;
-  arrMsg('กำลังโหลด...');
-  const { data:ns, error:e1 } = await sb.from('arrival_notices').select('*')
-    .eq('notice_month', mo)
+  arrPaintAll();
+  arrMsg(ARR_ALL ? 'กำลังโหลดทุกเดือน...' : 'กำลังโหลด...');
+  let qy = sb.from('arrival_notices').select('*');
+  if(!ARR_ALL) qy = qy.eq('notice_month', mo);     /* ★ โหมดทั้งหมด = ไม่กรองเดือน */
+  const { data:ns, error:e1 } = await qy
     .order('notice_date',{ascending:true})      // ★ เก่าสุดอยู่บน — ของที่ค้างนานสุดเห็นก่อน
     .order('created_at',{ascending:true});
   if(e1){
@@ -4695,8 +4729,11 @@ async function loadArr(){
   }
   ARR = ns || [];
   if(ARR.length){
-    const ids = ARR.map(x=>x.id);
-    const { data:its, error:e2 } = await sb.from('arrival_items').select('*').in('notice_id', ids);
+    /* โหมดทั้งหมด: ดึงรายการทั้งตารางทีเดียว — ส่ง .in() ด้วย id เป็นพัน ๆ ตัว
+       URL จะยาวเกินที่เซิร์ฟเวอร์รับได้ แล้วพังทั้งคำขอ */
+    let iq = sb.from('arrival_items').select('*');
+    if(!ARR_ALL) iq = iq.in('notice_id', ARR.map(x=>x.id));
+    const { data:its, error:e2 } = await iq;
     if(e2){ toast('โหลดรายการไม่สำเร็จ: '+e2.message); ARR_IT=[]; } else ARR_IT = its || [];
     await arrPlanLoad();            // 🚚 ใบไหนถูกดึงไปตั้งเที่ยวส่งแล้ว
   } else { ARR_IT = []; ARR_PL = []; }
@@ -4819,6 +4856,16 @@ function renderArr(){
   const q  = ($('arrSearch').value||'').toLowerCase().trim();
   const st = $('arrStatus').value;
   const canEdit = currentRole==='purchase';
+  arrPaintAll();
+  /* บอกให้ชัดว่ากำลังดูช่วงไหน — กันสับสนว่ายอดสรุปนี้ของเดือนนี้ หรือของทุกเดือน */
+  const _sc=$('arrScope');
+  if(_sc){
+    const nMo = new Set(ARR.map(x=>String(x.notice_month||'').trim()).filter(Boolean)).size;
+    _sc.innerHTML = ARR_ALL
+      ? '<b style="color:#5E35B1">📜 ทุกเดือน</b> · '+ARR.length+' ใบ'
+        +(nMo?(' จาก '+nMo+' เดือน'):'')
+      : '📅 '+esc($('arrMonth').value||arrMonthNow())+' · '+ARR.length+' ใบ';
+  }
 
   const ALLG = ARR.map(arrGroup);          // คิดครั้งเดียว ใช้ทั้งตาราง/KPI/แจ้งเตือน
   /* ★ ใบที่ส่งเข้าระบบตรวจค่าขนส่งแล้ว = งานจบที่แท็บนี้ → ซ่อนออกจากตาราง
@@ -4931,12 +4978,14 @@ function renderArr(){
 
   if(!rows.length){
     const nSent = ARR.filter(x=>x.freight_sent_at).length;
+    const whereTxt = ARR_ALL ? 'ทั้งระบบ' : 'เดือนนี้';
     arrMsg(ARR.length
       ? ('ไม่มีใบแจ้งที่ตรงกับตัวกรอง'
          + (nSent&&st!=='sent' ? '<div style="color:var(--muted);font-size:12px;margin-top:6px">'
-            +'📤 เดือนนี้มี <b>'+nSent+'</b> ใบที่ส่งตรวจค่าขนส่งแล้ว (ถูกซ่อนไว้) — เลือกสถานะ '
+            +'📤 '+whereTxt+'มี <b>'+nSent+'</b> ใบที่ส่งตรวจค่าขนส่งแล้ว (ถูกซ่อนไว้) — เลือกสถานะ '
             +'<b>📤 ส่งตรวจค่าขนส่งแล้ว</b> เพื่อดู</div>' : ''))
-      : 'เดือนนี้ยังไม่มีใบแจ้งสินค้าขาเข้า'+(canEdit?' — กด <b>+ เพิ่มใบแจ้ง</b>':''));
+      : (ARR_ALL ? 'ยังไม่มีใบแจ้งสินค้าขาเข้าในระบบ' : 'เดือนนี้ยังไม่มีใบแจ้งสินค้าขาเข้า')
+        +(canEdit?' — กด <b>+ เพิ่มใบแจ้ง</b>':''));
     return;
   }
 
@@ -5190,7 +5239,7 @@ async function saveArr(){
   const mo = $('arrMonth').value;
   ARR_IT = ARR_IT.filter(x => String(x.notice_id)!==String(id));
   ARR    = ARR.filter(x => String(x.id)!==String(id));
-  if(saved && saved.notice_month===mo){ ARR.push(saved); ARR_IT = ARR_IT.concat(items); }
+  if(saved && (ARR_ALL || saved.notice_month===mo)){ ARR.push(saved); ARR_IT = ARR_IT.concat(items); }
   ARR.sort((a,b)=>String(a.notice_date||'').localeCompare(String(b.notice_date||''))    // เก่า → ใหม่
                   || String(a.created_at||'').localeCompare(String(b.created_at||'')));
   await arrSyncStatus(id, items);
@@ -5641,7 +5690,7 @@ function arrPdf(){
   const [yy,mm] = mo.split('-');
   const MTH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
                'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-  const moTxt = MTH[(+mm||1)-1] + ' ' + (String(+yy+543).slice(-2));
+  const moTxt = ARR_ALL ? 'ทุกเดือน' : (MTH[(+mm||1)-1] + ' ' + (String(+yy+543).slice(-2)));
   const live  = rows.filter(g => g.st!=='cancel');
   const S     = arrPdfSum(live);
   const due   = arrOverdue(ARR_ALLG.filter(g=>g.st!=='cancel'));
@@ -5794,9 +5843,9 @@ function arrPdf(){
 }
 
 function exportArr(){
-  const mo = $('arrMonth').value || arrMonthNow();
+  const mo = ARR_ALL ? 'ทั้งหมด' : ($('arrMonth').value || arrMonthNow());
   const groups = ARR.map(n=>({n, items:arrItemsOf(n.id)}));
-  if(!groups.length) return toast('เดือนนี้ไม่มีข้อมูล');
+  if(!groups.length) return toast(ARR_ALL?'ยังไม่มีข้อมูลในระบบ':'เดือนนี้ไม่มีข้อมูล');
   const aoa = [['วันแจ้งเข้า','เลขที่แจ้ง','ขนส่ง','รถนำส่ง','คาดเข้าคลัง','สถานะ',
     'เลขที่รายการ','PO','SKU','ชิ้น/ลัง','จำนวนลัง','จำนวนชิ้น','จำนวนคิว','น้ำหนัก (กก.)',
     'เข้าคลังแล้ว (ชิ้น)','ค้างที่ขนส่ง (ชิ้น)',
