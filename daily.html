@@ -683,7 +683,7 @@ html[data-daily-theme="redpanda"] .theme-friend{border-radius:19px 19px 4px 19px
 
 <script>
 /* ===================== CONFIG ===================== */
-const DAILY_VERSION = 'v02-03';
+const DAILY_VERSION = 'v02-04';
 try { const _v=document.getElementById('dlVer'); if(_v)_v.textContent=DAILY_VERSION; } catch(e){}
 
 const SUPABASE_URL = 'https://unlvcdgqqljuoyvionqx.supabase.co';
@@ -858,8 +858,12 @@ let dayTasks = [];         // งานของวันที่เลือ�
      ลืมส่ง หรือ ไม่ได้มา                                                */
 let dayLeaves = [];        // วันลาของวันที่เลือก
 let RANGE_LV  = [];        // วันลาของช่วงที่ดึงล่าสุด (ใช้ทำรายงาน/Excel)
-const LEAVE = { sick:{t:'ลาป่วย',ic:'🤒'}, personal:{t:'ลากิจ',ic:'📋'}, vacation:{t:'พักร้อน',ic:'🏖️'} };
-const LV_KEYS = ['sick','personal','vacation'];
+/* ประเภทการลา — เพิ่ม/แก้ที่นี่ที่เดียว แล้วทุกที่ตามหมด
+   (ปุ่มบนการ์ด · เมนูเลือก · แถบสรุป · Excel · รายงาน PDF)
+   ⚠️ เพิ่มประเภทใหม่ ต้องไปเพิ่มใน CHECK ของ daily_leave.sql ด้วย ไม่งั้นบันทึกไม่ผ่าน */
+const LEAVE = { sick:{t:'ลาป่วย',ic:'🤒'}, personal:{t:'ลากิจ',ic:'📋'},
+                vacation:{t:'พักร้อน',ic:'🏖️'}, birthday:{t:'ลาวันเกิด',ic:'🎂'} };
+const LV_KEYS = ['sick','personal','vacation','birthday'];
 const lvOf    = mid => dayLeaves.find(l => l.member_id === mid) || null;
 const lvTxt   = l => l ? ((LEAVE[l.kind]||{}).ic||'🏖️')+' '+((LEAVE[l.kind]||{}).t||l.kind) : '';
 const lvAt    = (mid, date, list) => (list||RANGE_LV).find(l => l.member_id===mid && l.work_date===date) || null;
