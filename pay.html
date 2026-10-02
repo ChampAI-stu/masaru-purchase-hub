@@ -1335,7 +1335,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v10-18';
+const PAY_VERSION='v10-19';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -6595,15 +6595,29 @@ function renderLedger(){
   const by={}; rows.forEach(p=>{const c=billOf(p.bill_id).currency||'CNY';by[c]=(by[c]||0)+(+p.amount||0);});
   const chips=Object.keys(by).map(c=>`<div style="line-height:1.25">${money(by[c])} <span style="font-size:.62em;opacity:.85">${curSym(c)}</span></div>`).join('')||'0';
   const paid=rows.filter(p=>p.status==='paid');
+  /* ★ ค่าธรรมเนียมโอน — แยกออกมาให้เห็นเป็นก้อน
+     ทำไมไม่บวกรวมใน "ยอดรวมเทียบบาท": ยอดโอนคือเงินที่ร้านได้รับ
+     ค่าธรรมเนียมคือเงินที่ธนาคาร/ตัวกลางกิน ถ้าบวกปนกันจะกระทบยอดเดิมที่เคยอ้างอิงไว้
+     จึงแยกเป็น 2 ช่องแล้วมีช่อง "รวมจ่ายจริง" ปิดท้าย = เงินที่ออกจากบัญชีจริง */
+  const lgThb=rows.reduce((t,p)=>t+thbOf(p),0);
+  const lgFee=rows.reduce((t,p)=>t+(+p.fee||0),0);
+  const nFee =rows.filter(p=>(+p.fee||0)>0).length;
   $('lgKpi').innerHTML=`
     <div class="kpi"><div class="lbl">จำนวนรายการ</div><div class="val">${rows.length}</div></div>
     <div class="kpi green"><div class="lbl">จ่ายแล้ว</div><div class="val">${paid.length}</div></div>
     <div class="kpi gold"><div class="lbl">ยอดรวม (แยกสกุล)</div><div class="val" style="font-size:${Object.keys(by).length>1?'20px':'26px'}">${chips}</div></div>
-    <div class="kpi"><div class="lbl">ยอดรวมเทียบบาท</div><div class="val">${money(rows.reduce((t,p)=>t+thbOf(p),0))}</div></div>`;
+    <div class="kpi"><div class="lbl">ยอดรวมเทียบบาท</div><div class="val">${money(lgThb)}</div></div>
+    <div class="kpi ${lgFee?'red':''}"><div class="lbl">💸 ค่าธรรมเนียมโอน (รวม)</div>
+      <div class="val">${money(lgFee)}</div>
+      <div class="muted" style="font-size:11.5px;margin-top:2px">${nFee?(nFee+' รายการที่มีค่าธรรมเนียม'):'ยังไม่มีรายการที่ใส่ค่าธรรมเนียม'}</div></div>
+    <div class="kpi green"><div class="lbl">รวมจ่ายจริง (บาท + ค่าธรรมเนียม)</div>
+      <div class="val">${money(lgThb+lgFee)}</div></div>`;
   if(!rows.length){$('lgBody').innerHTML='<div class="empty">ไม่มีรายการตามเงื่อนไขที่เลือก</div>';return;}
   let h=`<table><thead><tr><th style="width:98px">วันที่</th><th>PO</th><th>Vendor / SKU</th>
     <th>งวด</th><th style="width:120px">จ่ายในนาม</th><th>ข้อมูลผู้รับเงิน</th>
-    <th class="right">ยอด</th><th class="right">บาท</th><th>ช่องทางการโอน</th><th>สลิป</th><th>สถานะ</th></tr></thead><tbody>`;
+    <th class="right">ยอด</th><th class="right">บาท</th>
+    <th class="right" style="width:96px" title="ค่าธรรมเนียมโอน (บาท)">ค่าธรรมเนียม</th>
+    <th>ช่องทางการโอน</th><th>สลิป</th><th>สถานะ</th></tr></thead><tbody>`;
   const _lgTot=rows.length, _lgPages=Math.max(1,Math.ceil(_lgTot/PER));
   if(LG_PAGE>_lgPages)LG_PAGE=_lgPages; if(LG_PAGE<1)LG_PAGE=1;
   const _lgRows=rows.slice((LG_PAGE-1)*PER, LG_PAGE*PER);
@@ -6611,9 +6625,11 @@ function renderLedger(){
   _lgRows.forEach(p=>{const b=billOf(p.bill_id);
     if(p.pay_date!==day){day=p.pay_date;
       const dr=rows.filter(x=>x.pay_date===day);
+      const dFee=dr.reduce((t,x)=>t+(+x.fee||0),0);
       h+=`<tr style="background:#F4F6FA"><td colspan="6"><b>📅 ${esc(day||'-')}</b>
         <span class="muted"> · ${dr.length} รายการ</span></td>
         <td class="right"></td><td class="right"><b>${money(dr.reduce((t,x)=>t+thbOf(x),0))} ฿</b></td>
+        <td class="right">${dFee?`<b style="color:#B01722">${money(dFee)}</b>`:''}</td>
         <td colspan="3"></td></tr>`;}
     h+=`<tr>
       <td>${esc(p.pay_date||'-')}</td>
@@ -6624,25 +6640,37 @@ function renderLedger(){
       <td style="font-size:11.5px;white-space:pre-wrap;max-width:200px">${esc(p.payee||'')||'<span class="muted">-</span>'}</td>
       <td class="right"><b>${money(p.amount)} ${curSym(b.currency)}</b></td>
       <td class="right">${isEst(p)?'<span class="muted">~</span> ':''}${money(thbOf(p))}</td>
+      <td class="right">${(+p.fee||0)?money(p.fee):'<span class="muted">-</span>'}</td>
       <td style="font-size:11.5px">${esc(p.channel||'-')}</td>
       <td>${slipCount(p)?`<button class="btn mini ghost" onclick="viewSlip('${p.id}',0)">🧾 ${slipCount(p)}</button>`:'<span class="muted">-</span>'}</td>
       <td>${stPill(p.status)}</td></tr>`;});
   const tot={}; rows.forEach(p=>{const c=billOf(p.bill_id).currency||'CNY';tot[c]=(tot[c]||0)+(+p.amount||0);});
   h+=`<tr style="background:#FFF7DF;font-weight:800"><td colspan="6">รวมทั้งหมด ${rows.length} รายการ</td>
     <td class="right">${Object.keys(tot).map(c=>money(tot[c])+' '+curSym(c)).join('<br>')}</td>
-    <td class="right">${money(rows.reduce((t,p)=>t+thbOf(p),0))}</td><td colspan="3"></td></tr>`;
+    <td class="right">${money(lgThb)}</td>
+    <td class="right"${lgFee?' style="color:#B01722"':''}>${money(lgFee)}</td>
+    <td colspan="3" style="font-size:12.5px">รวมจ่ายจริง <b>${money(lgThb+lgFee)} ฿</b></td></tr>`;
   $('lgBody').innerHTML=h+'</tbody></table>'+pagerBar(_lgTot,LG_PAGE,'lgGo');
 }
 function exportLedger(){
-  const rows=[['วันที่','PO','Vendor','SKU','งวด','จ่ายในนาม','ข้อมูลผู้รับเงิน','ยอด','สกุลเงิน','เรท','ยอดบาท','ค่าธรรมเนียม','ช่องทางการโอน','จำนวนสลิป','ลิงก์สลิป','สถานะ','ผู้รับผิดชอบ','หมายเหตุ']];
+  const rows=[['วันที่','PO','Vendor','SKU','งวด','จ่ายในนาม','ข้อมูลผู้รับเงิน','ยอด','สกุลเงิน','เรท','ยอดบาท','ค่าธรรมเนียม','รวมจ่ายจริง','ช่องทางการโอน','จำนวนสลิป','ลิงก์สลิป','สถานะ','ผู้รับผิดชอบ','หมายเหตุ']];
   const ST={planned:'วางแผน',submitted:'ส่งยอด',paid:'จ่ายแล้ว',rejected:'ไม่อนุมัติ'};
-  ledgerRows().forEach(p=>{const b=billOf(p.bill_id);
+  const src=ledgerRows();
+  let xThb=0, xFee=0;
+  src.forEach(p=>{const b=billOf(p.bill_id);
+    const thb=+thbOf(p).toFixed(2), fee=+p.fee||0;
+    xThb+=thb; xFee+=fee;
     rows.push([p.pay_date||'',b.po_number||'',b.vendor||'',b.sku||'',p.installment||'',
       p.pay_type||'',p.payee||'',+p.amount||0,b.currency||'CNY',+p.rate||'',
-      +thbOf(p).toFixed(2),+p.fee||0,p.channel||'',slipCount(p),
+      thb,fee,+(thb+fee).toFixed(2),p.channel||'',slipCount(p),
       slipList(p).map(i=>i.url).join('\n'),ST[p.status]||p.status,p.responsible||'',p.note||'']);});
+  /* ★ แถวรวมปิดท้าย — เปิดไฟล์มาเห็นยอดรวมค่าธรรมเนียมทันที ไม่ต้องลากเลือกเอง
+       เว้น 1 บรรทัดก่อน เพื่อให้กรอง/Pivot ช่วงข้อมูลได้โดยแถวรวมไม่ปนเข้าไป */
+  rows.push([]);
+  rows.push(['รวมทั้งหมด',src.length+' รายการ','','','','','','','','',
+             +xThb.toFixed(2),+xFee.toFixed(2),+(xThb+xFee).toFixed(2),'','','','','','']);
   const ws=XLSX.utils.aoa_to_sheet(rows), wb=XLSX.utils.book_new();
-  ws['!cols']=[{wch:11},{wch:11},{wch:22},{wch:20},{wch:14},{wch:12},{wch:28},{wch:12},{wch:8},{wch:8},{wch:13},{wch:10},{wch:20},{wch:8},{wch:34},{wch:10},{wch:14},{wch:22}];
+  ws['!cols']=[{wch:11},{wch:11},{wch:22},{wch:20},{wch:14},{wch:12},{wch:28},{wch:12},{wch:8},{wch:8},{wch:13},{wch:12},{wch:13},{wch:20},{wch:8},{wch:34},{wch:10},{wch:14},{wch:22}];
   XLSX.utils.book_append_sheet(wb,ws,'สรุปบันทึก');
   XLSX.writeFile(wb, LG_ALL ? 'สรุปบันทึก_ทั้งหมด.xlsx'
     : `สรุปบันทึก_${$('lgFrom').value||''}_ถึง_${$('lgTo').value||''}.xlsx`);
