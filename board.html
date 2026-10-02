@@ -989,6 +989,12 @@ body.mkt-lead .arr-kg{display:none !important}
         <select id="tpArrPick" style="flex:1;min-width:240px;padding:10px 12px;border:1px solid var(--line);border-radius:9px"></select>
         <button type="button" class="btn-save" id="addArrLinesBtn" style="flex:0 0 auto;padding:0 18px">+ ดึงรายการ</button>
       </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <input id="tpArrNo" placeholder="⌨️ หรือพิมพ์ เลขที่แจ้ง / เลขที่รายการ / PO / SKU แล้วกด Enter"
+          style="flex:1;min-width:240px;padding:10px 12px;border:1px solid var(--line);border-radius:9px"
+          title="พิมพ์แล้วกด Enter = เลือกใบให้อัตโนมัติ แล้วดึงรายการเลย&#10;ไม่ต้องไล่หาในดรอปดาวน์">
+        <span id="tpArrNoMsg" style="flex:0 0 auto;align-self:center;font-size:11.5px;color:var(--muted)"></span>
+      </div>
       <div style="font-size:11.5px;color:var(--muted);margin-top:6px" id="tpArrHint">
         เลือกใบแจ้งที่ขนส่งจะส่งเข้าคลังรอบนี้ → ดึงรายการที่<b>ยังค้างที่ขนส่ง</b>มาให้ พร้อมเติม
         <b>ของเข้า (ชิ้น)</b> · ลัง · คิว ตาม<b>จำนวนคงเหลือ</b> (แก้ทับได้ · กรอกมือเพิ่มด้านล่างก็ได้)
@@ -1405,7 +1411,7 @@ let currentRole = null; let ROLE_LABEL = '';
      แล้วใช้ธง MKT_LEAD เปิดเฉพาะแท็บ 📦 + กระดิ่งเพิ่มให้ทีหลัง
    ⚠️ อย่าเผลอไปแตะ canSeePrice / canSeeResp ให้ true — ตกลงกันว่าไม่ให้เห็นต้นทุน */
 let MKT_LEAD = false;
-const BOARD_VERSION='v05-21';
+const BOARD_VERSION='v05-22';
 try{ const _v=document.getElementById('bdVer'); if(_v)_v.textContent=BOARD_VERSION; }catch(e){}
 console.log('%c board.html '+BOARD_VERSION+' ','background:#1A2942;color:#fff;padding:2px 6px;border-radius:4px');
 let allOrders = [];
@@ -3418,7 +3424,7 @@ function switchTab(t){
 // ---- โหลดข้อมูลแผน ----
 /* คอลัมน์ที่แท็บนี้ใช้จริง — ห้าม select('*') เพราะ Egress คิดตามไบต์ที่ส่งออก */
 const TRIP_COLS='id,plan_date,carrier,created_at,updated_at';
-const TITEM_COLS='id,trip_id,line_no,po_number,sku,pcs_per_carton,cartons,qty_in,cubic,clear_order,note';
+const TITEM_COLS='id,trip_id,line_no,po_number,sku,pcs_per_carton,cartons,qty_in,cubic,clear_order,note,sort';
 
 async function loadPlan(){
   let trips=null, items=null, e1=null, e2=null;
@@ -3426,7 +3432,13 @@ async function loadPlan(){
   try{
     [trips, items] = await Promise.all([
       fetchAll('receipt_trips', q=>q.order('plan_date',{ascending:false}).order('created_at',{ascending:true}), TRIP_COLS),
-      fetchAll('receipt_items', q=>q.order('created_at',{ascending:true}), TITEM_COLS)
+      /* 🐞 เดิมเรียงด้วย created_at อย่างเดียว — ทั้งเที่ยวถูกบันทึกพร้อมกัน
+            เวลาจึงเท่ากันหมด ฐานข้อมูลคืนค่ามาแบบลำดับไม่แน่นอน
+            → ของ PO เดียวกันกระจายคนละที่ ทั้งที่ในใบแจ้งเรียงติดกัน
+         ✅ เรียงด้วย sort (ลำดับตอนดึงมาจากใบแจ้ง) ก่อนเสมอ
+            ต้องรัน receipt_sort.sql ก่อน ไม่งั้นคอลัมน์นี้ยังไม่มี */
+      fetchAll('receipt_items', q=>q.order('sort',{ascending:true,nullsFirst:true})
+                                    .order('created_at',{ascending:true}), TITEM_COLS)
     ]);
   }catch(err){ e1=err; }
   if(e1 || e2){
@@ -3615,6 +3627,11 @@ $('tripCancel').addEventListener('click', closeTrip);
 $('tripBg').addEventListener('click', e => { if(e.target===$('tripBg')) closeTrip(); });
 $('addTripLineBtn').addEventListener('click', () => addTripLine());
 $('addArrLinesBtn').addEventListener('click', addArrLines);
+if($('tpArrNo')){
+  $('tpArrNo').addEventListener('keydown', function(e){
+    if(e.key==='Enter'){ e.preventDefault(); arrPickType(true); } });
+  $('tpArrNo').addEventListener('input', function(){ arrPickType(false); });
+}
 $('tripSave').addEventListener('click', saveTrip);
 
 /* ══════════════════════════════════════════════════════════════════
@@ -3728,8 +3745,12 @@ function arrPickFill(){
     + ' บรรทัดที่<b>จัดเที่ยวส่งอื่นไว้แล้ว 🚚</b> หรือ<b>เข้าคลังครบแล้ว</b> จะไม่ถูกนับและไม่ถูกดึงซ้ำ'
     + '<br>▸ บรรทัดพ่วงถูกดึงมาด้วยทุกครั้ง · บรรทัดที่ใบแจ้งให้มาแต่<b>จำนวนลัง ไม่มีจำนวนชิ้น</b>'
     + ' ก็ดึงได้ (ช่อง “ของเข้า” จะว่างไว้ให้กรอกเอง)'
-    + '<br>ใบที่อยู่ในกลุ่ม <b>“ดึงซ้ำไม่ได้”</b> คือจัดเที่ยวไว้ครบแล้ว — ถ้าจะย้ายมาเที่ยวนี้'
-    + ' ให้ไป<b>ลบบรรทัดออกจากเที่ยวเดิมก่อน</b> แล้วกลับมาดึงใหม่ (ระบบกันไม่ให้ของชุดเดียวอยู่ 2 เที่ยวพร้อมกัน)';
+    + '<br>▸ <b>ไม่อยากเลื่อนหาในดรอปดาวน์</b> — พิมพ์ <b>เลขที่แจ้ง / เลขที่รายการ / PO / SKU</b>'
+    + ' ในช่องด้านล่างแล้วกด <b>Enter</b> ระบบเลือกใบให้แล้วดึงรายการเลย'
+    + '<br>ใบที่อยู่ในกลุ่ม <b>“ดึงซ้ำไม่ได้”</b> คือ<b>จัดเที่ยวที่ยังไม่ถึงกำหนด</b>ไว้ครบแล้ว —'
+    + ' ถ้าจะย้ายมาเที่ยวนี้ ให้ไป<b>ลบบรรทัดออกจากเที่ยวเดิมก่อน</b> (กันของชุดเดียวอยู่ 2 เที่ยวพร้อมกัน)'
+    + '<br>▸ <b>เที่ยวที่เลยวันไปแล้ว ไม่ล็อกของไว้</b> — จองไว้ 3,000 แต่มาจริง 1,000'
+    + ' ส่วนที่เหลือ <b>ดึงมาจัดเที่ยวใหม่ได้เลย</b>';
 }
 
 /* หาจำนวนแจ้งมา/คงเหลือ ของบรรทัดที่กรอกไว้ (ใช้ตอนเปิดแก้เที่ยวเดิม) */
@@ -3784,10 +3805,49 @@ function tlLeftPaint(cell, m){
        + ' · เหลือรับ '+arrInt(m.leftPcs)+' ชิ้น ('+arrInt(m.leftBox)+' ลัง)'));
 }
 
+/* ⌨️ หาใบแจ้งจากข้อความที่พิมพ์ — เลขที่แจ้ง · เลขที่รายการ · PO · SKU
+   ไม่ต้องไล่หาในดรอปดาวน์ (ใบเยอะ ๆ เลื่อนหาไม่ไหว) */
+function arrPickFind(txt){
+  const q = String(txt||'').trim().toUpperCase();
+  if(!q) return null;
+  const norm = v => String(v||'').trim().toUpperCase();
+  const open = ARR_PICK.filter(g=>g.open);
+  /* เรียงความแม่น: เลขที่แจ้งตรงเป๊ะ → เลขที่รายการตรงเป๊ะ → PO/SKU → คำบางส่วน */
+  let g = open.find(x=>norm(x.n.notice_no)===q);
+  if(!g) g = open.find(x=>x.items.some(i=>norm(i.line_ref)===q));
+  if(!g) g = open.find(x=>x.items.some(i=>norm(i.po_number)===q || norm(i.sku)===q));
+  if(!g) g = open.find(x=>norm(x.n.notice_no).includes(q)
+                 || x.items.some(i=>norm(i.line_ref).includes(q)
+                                  || norm(i.po_number).includes(q)
+                                  || norm(i.sku).includes(q)));
+  if(g) return {g:g, closed:false};
+  /* เจอแต่ใบที่ดึงไม่ได้ → บอกเหตุผลให้ ดีกว่าบอกแค่ "ไม่พบ" */
+  const shut = ARR_PICK.find(x=>!x.open && (norm(x.n.notice_no)===q
+      || x.items.some(i=>norm(i.line_ref)===q || norm(i.po_number)===q || norm(i.sku)===q)));
+  return shut ? {g:shut, closed:true} : null;
+}
+function arrPickType(pull){
+  const el = $('tpArrNo'), msg = $('tpArrNoMsg');
+  const hit = arrPickFind(el ? el.value : '');
+  if(!hit){ if(msg){ msg.textContent = (el&&el.value.trim()) ? '❌ ไม่พบใบแจ้งที่ตรงกับที่พิมพ์' : ''; msg.style.color='var(--red)'; } return null; }
+  if(hit.closed){
+    if(msg){ msg.textContent = '⚠️ เจอใบ '+(hit.g.n.notice_no||'')+' แต่ '+(hit.g.why||'ดึงไม่ได้'); msg.style.color='var(--red)'; }
+    return null;
+  }
+  $('tpArrPick').value = String(hit.g.n.id);
+  if(msg){ msg.textContent = '✅ '+(hit.g.n.notice_no||fmtDate(hit.g.n.notice_date))
+      +' · คงเหลือ '+arrInt(hit.g.leftPcs)+' ชิ้น'; msg.style.color='var(--green)'; }
+  if(pull) addArrLines();
+  return hit.g;
+}
 function addArrLines(){
+  /* พิมพ์เลขไว้แต่ยังไม่ได้เลือกในดรอปดาวน์ → ใช้ตัวที่พิมพ์ */
+  const typed = $('tpArrNo') && $('tpArrNo').value.trim();
+  if(typed){ const h = arrPickFind(typed);
+    if(h && !h.closed) $('tpArrPick').value = String(h.g.n.id); }
   const id = $('tpArrPick').value;
   const g = ARR_PICK.find(x=>String(x.n.id)===String(id));
-  if(!g){ toast('เลือกใบแจ้งก่อน'); return; }
+  if(!g){ toast(typed ? 'ไม่พบใบแจ้งที่ตรงกับที่พิมพ์' : 'เลือกใบแจ้งก่อน'); return; }
   /* ★ รวมบรรทัดพ่วงเสมอ — รวมพ่วงที่ยังไม่รู้จำนวน (ดึงมาแล้วกรอกมือได้) */
   const list = g.items.filter(x=>x.pickable);
   if(!list.length){ toast('ใบนี้จัดเที่ยวส่ง/เข้าคลังครบแล้ว'); return; }
@@ -3884,6 +3944,7 @@ function addTripLine(vals={}){
 }
 
 function openAddTrip(){
+  if($('tpArrNo')){ $('tpArrNo').value=''; $('tpArrNoMsg').textContent=''; }
   $('tripTitle').textContent = 'เพิ่มเที่ยวส่ง';
   $('tripId').value=''; $('tpDate').value=''; $('tpCarrier').value='';
   $('tripLines').innerHTML=''; addTripLine();
@@ -3941,7 +4002,8 @@ async function saveTrip(){
     error = res.error; tripId = res.data?.id;
   }
   if(!error && tripId){
-    const itemRows = lines.map(l => ({ ...l, trip_id: tripId }));
+    /* ★ เก็บลำดับที่เห็นบนจอไปด้วย — หน้าแผนรับสินค้าจะได้เรียงเหมือนใบแจ้ง */
+    const itemRows = lines.map((l,i) => ({ ...l, trip_id: tripId, sort: i }));
     const r = await sb.from('receipt_items').insert(itemRows);
     error = r.error;
   }
@@ -4328,19 +4390,32 @@ async function arrPlanLoad(){
 
 /* บรรทัดนี้ถูกจัดเข้าเที่ยวส่งไปแล้วกี่ชิ้น (exceptTrip = เที่ยวที่กำลังเปิดแก้ ไม่นับตัวเอง)
    จับคู่ด้วยเลขที่รายการ + SKU (เลขที่รายการเป็นเลขตู้ ใช้ซ้ำหลาย SKU ได้ ต้องดู SKU ด้วย) */
+/* 🐞 เคสจริงที่ทำให้ "ดึงรอบ 2 ไม่ได้":
+      เที่ยวแรกจองไว้เต็ม 3,000 → ถึงวันจริงของมาแค่ 1,000
+      ของที่เหลือ 2,000 ยังถูกนับว่า "จัดเที่ยวแล้ว" ของเที่ยวที่ผ่านไปแล้ว
+      → ระบบขึ้น "🚚 จัดเที่ยวส่งครบแล้ว" ทั้งที่ของยังค้างที่ขนส่งอยู่จริง = ตัน
+   ✅ กฎใหม่: นับเฉพาะเที่ยวที่ยัง "ไม่ถึงกำหนด" (วันนี้หรืออนาคต) ว่าจองของไว้
+      เที่ยวที่เลยวันไปแล้ว = วิ่งไปแล้ว ของที่ไม่มาต้องจัดเที่ยวใหม่ → ปล่อยให้ดึงได้
+      (ยังกันดึงซ้ำกับเที่ยวที่ยังไม่วิ่งเหมือนเดิม) */
 function arrPlanOf(it, exceptTrip){
-  if(!ARR_PL.length) return {pcs:0,n:0,date:'',carrier:''};
+  if(!ARR_PL.length) return {pcs:0,n:0,date:'',carrier:'',pastPcs:0,pastDate:''};
   const ref = arrKey(it.line_ref), po = String(it.po_number||'').trim(), sku = String(it.sku||'').trim();
-  let pcs=0, n=0, date='', carrier='';
+  const today = arrToday();
+  let pcs=0, n=0, date='', carrier='', pastPcs=0, pastDate='';
   ARR_PL.forEach(function(r){
     if(exceptTrip && r.trip===String(exceptTrip)) return;
     const hit = (ref && r.ref && r.ref===ref && (!sku || !r.sku || r.sku===sku))
              || (po && sku && r.po===po && r.sku===sku);
     if(!hit) return;
+    if(r.date && r.date < today){                 /* เที่ยวที่วิ่งไปแล้ว — ไม่ล็อกของไว้ */
+      pastPcs += r.pcs;
+      if(r.date > pastDate) pastDate = r.date;
+      return;
+    }
     pcs += r.pcs; n++;
     if(r.date > date){ date = r.date; carrier = r.carrier; }
   });
-  return {pcs:pcs, n:n, date:date, carrier:carrier};
+  return {pcs:pcs, n:n, date:date, carrier:carrier, pastPcs:pastPcs, pastDate:pastDate};
 }
 
 /* ยอด "จัดเที่ยวแล้ว" ของทั้งใบ — ตัดไม่ให้เกินยอดค้างของแต่ละบรรทัด */
