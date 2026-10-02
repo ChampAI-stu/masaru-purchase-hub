@@ -1335,7 +1335,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v10-20';
+const PAY_VERSION='v10-21';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -3544,8 +3544,11 @@ function renderMonth(){
   /* ★ ค่าธรรมเนียมโอน — คิดเหมือนตารางสรุปบันทึกเป๊ะ ๆ ตัวเลขสองหน้าจะได้ตรงกัน
      แยกออกจาก "จ่ายแล้ว (บาท)" เพราะนั่นคือเงินที่ร้านได้รับ ส่วนนี่คือเงินที่ธนาคารกิน */
   const sumFee=a=>a.reduce((s,p)=>s+(+p.fee||0),0);
-  const feePaid=sumFee(paid), feePlan=sumFee(planned), feeAll=feePaid+feePlan;
-  const thbAll=sumThb(rows);
+  /* ★ "จ่ายจริง" = เงินที่ออกจากบัญชีไปแล้วจริง ๆ → นับเฉพาะงวดสถานะ "จ่ายแล้ว"
+     งวดค้างแผนยังไม่ได้โอน จะเอามารวมไม่ได้ (ขอมาแก้จากรุ่นก่อน)
+     ค่าธรรมเนียมในตารางจึงนับเฉพาะงวดที่จ่ายแล้วด้วย คอลัมน์จะได้บวกกันลงตัว */
+  const feePaid=sumFee(paid), feePlan=sumFee(planned);
+  const thbPaid=sumThb(paid);
   $('moKpi').innerHTML=`
     <div class="kpi green"><div class="lbl">จ่ายแล้ว (บาท)</div><div class="val">${money(sumThb(paid))}</div>
       <div class="sub">${esc(srcChips(paid,' · '))||'—'}</div></div>
@@ -3556,12 +3559,12 @@ function renderMonth(){
     <div class="kpi" ${planned.length?`onclick="showPending()" style="cursor:pointer" title="กดดูรายการ"`:''}>
       <div class="lbl">งวดค้างแผน ${planned.length?'<span style="opacity:.75">🔎</span>':''}</div>
       <div class="val">${planned.length}</div></div>
-    <div class="kpi ${feeAll?'red':''}"><div class="lbl">💸 ค่าธรรมเนียมโอน (รวม)</div>
-      <div class="val">${money(feeAll)}</div>
-      <div class="sub" style="color:#8a6d1f">จ่ายแล้ว ${money(feePaid)} · ค้างแผน ${money(feePlan)}</div></div>
-    <div class="kpi green"><div class="lbl">รวมจ่ายจริง (บาท + ค่าธรรมเนียม)</div>
-      <div class="val">${money(thbAll+feeAll)}</div>
-      <div class="sub" style="color:#8a6d1f">บาท ${money(thbAll)} + ธรรมเนียม ${money(feeAll)}</div></div>`;
+    <div class="kpi ${feePaid?'red':''}"><div class="lbl">💸 ค่าธรรมเนียมโอน (เฉพาะจ่ายแล้ว)</div>
+      <div class="val">${money(feePaid)}</div>
+      <div class="sub" style="color:#8a6d1f">${feePlan?('ค้างแผนอีก '+money(feePlan)+' — ยังไม่นับ'):'—'}</div></div>
+    <div class="kpi green"><div class="lbl">รวมจ่ายจริง (จ่ายแล้ว + ค่าธรรมเนียม)</div>
+      <div class="val">${money(thbPaid+feePaid)}</div>
+      <div class="sub" style="color:#8a6d1f">บาท ${money(thbPaid)} + ธรรมเนียม ${money(feePaid)}</div></div>`;
   if(!rows.length){$('moBody').innerHTML='<div class="empty">ช่วงที่เลือกยังไม่มีข้อมูล — '
     +esc(P.head)+'</div>';return;}
   const days=[...new Set(rows.map(p=>p.pay_date))].sort();
@@ -3571,23 +3574,23 @@ function renderMonth(){
     +'<th class="right">จ่ายแล้ว (บาท / สกุลต้นทาง)</th><th class="right">งวดค้างแผน</th>'
     +'<th class="right">ค้างแผน (บาท / สกุลต้นทาง)</th>'
     +'<th class="right">รวมวันนั้น (บาท / สกุลต้นทาง)</th>'
-    +'<th class="right" style="width:96px">ค่าธรรมเนียม</th>'
-    +'<th class="right" style="width:110px">รวมจ่ายจริง</th></tr></thead><tbody>';
+    +'<th class="right" style="width:112px" title="ค่าธรรมเนียมของงวดที่จ่ายแล้วเท่านั้น">ค่าธรรมเนียม<div style="font-size:9.5px;font-weight:400;opacity:.75">เฉพาะจ่ายแล้ว</div></th>'
+    +'<th class="right" style="width:122px" title="จ่ายแล้ว (บาท) + ค่าธรรมเนียม — ไม่รวมงวดค้างแผน">รวมจ่ายจริง<div style="font-size:9.5px;font-weight:400;opacity:.75">ไม่รวมค้างแผน</div></th></tr></thead><tbody>';
   days.forEach(d=>{const dp=paid.filter(p=>p.pay_date===d),dl=planned.filter(p=>p.pay_date===d);
-    const da=dp.concat(dl), dFee=sumFee(da);
+    const da=dp.concat(dl), dFee=sumFee(dp);
     h+=`<tr><td><b>${esc(d)}</b></td><td class="right">${dp.length||'-'}</td><td class="right">${moCell(dp)}</td>
       <td class="right">${dl.length?`<button class="btn mini ghost" onclick="showPending('${esc(d)}')" title="ดูรายการงวดค้างของวันนี้">${dl.length} 🔎</button>`:'-'}</td>
       <td class="right">${moCell(dl)}</td>
       <td class="right">${moCell(da)}</td>
       <td class="right">${dFee?`<b style="color:#B01722">${money(dFee)}</b>`:'<span class="muted">-</span>'}</td>
-      <td class="right"><b>${money(sumThb(da)+dFee)}</b></td></tr>`;});
+      <td class="right">${dp.length?`<b>${money(sumThb(dp)+dFee)}</b>`:'<span class="muted">-</span>'}</td></tr>`;});
   h+=`<tr style="background:#FFF7DF;font-weight:800"><td>${esc(P.tot)}</td><td class="right">${paid.length}</td>
     <td class="right">${moCell(paid)}</td>
     <td class="right">${planned.length?`<button class="btn mini" onclick="showPending()" title="ดูงวดค้างทั้งช่วงที่เลือก">${planned.length} 🔎</button>`:'0'}</td>
     <td class="right">${moCell(planned)}</td>
     <td class="right">${moCell(paid.concat(planned))}</td>
-    <td class="right"${feeAll?' style="color:#B01722"':''}>${money(feeAll)}</td>
-    <td class="right">${money(thbAll+feeAll)}</td></tr></tbody></table>`;
+    <td class="right"${feePaid?' style="color:#B01722"':''}>${money(feePaid)}</td>
+    <td class="right">${money(thbPaid+feePaid)}</td></tr></tbody></table>`;
   /* ⚠️ ตัดตาราง "รายบริษัท" ออกแล้ว (v09-88)
      เหตุผล: มันแบ่งด้วยบริษัทของบิล ซึ่งเป็นคำถามคนละข้อกับ "เงินออกในนามใคร"
      ยอดรวมเท่ากันแต่หั่นคนละแบบ วางคู่กันแล้วคนอ่านสับสนว่าอันไหนจริง
@@ -3597,22 +3600,22 @@ function renderMonth(){
     +'— ตัวเลขบนคือบาท ตัวเลขล่างคือสกุลต้นทาง (¥ / $ / ฿)</span></h2>'
     +'<table><thead><tr><th>จ่ายในนาม</th><th class="right">จ่ายแล้ว</th>'
     +'<th class="right">ค้างแผน</th><th class="right">รวม</th>'
-    +'<th class="right" style="width:96px">ค่าธรรมเนียม</th>'
-    +'<th class="right" style="width:110px">รวมจ่ายจริง</th>'
+    +'<th class="right" style="width:112px" title="ค่าธรรมเนียมของงวดที่จ่ายแล้วเท่านั้น">ค่าธรรมเนียม<div style="font-size:9.5px;font-weight:400;opacity:.75">เฉพาะจ่ายแล้ว</div></th>'
+    +'<th class="right" style="width:122px" title="จ่ายแล้ว (บาท) + ค่าธรรมเนียม — ไม่รวมงวดค้างแผน">รวมจ่ายจริง<div style="font-size:9.5px;font-weight:400;opacity:.75">ไม่รวมค้างแผน</div></th>'
     +'<th class="right">งวด</th></tr></thead><tbody>';
   pts.forEach(pt=>{const g=p=>((p.pay_type||'(ยังไม่ระบุ)')===pt);
-    const gp=paid.filter(g), gl=planned.filter(g), ga=rows.filter(g), gFee=sumFee(ga);
+    const gp=paid.filter(g), gl=planned.filter(g), ga=rows.filter(g), gFee=sumFee(gp);
     h+=`<tr><td><b>${esc(pt)}</b></td><td class="right">${moCell(gp)}</td>`
       +`<td class="right">${moCell(gl)}</td><td class="right">${moCell(ga)}</td>`
       +`<td class="right">${gFee?`<b style="color:#B01722">${money(gFee)}</b>`:'<span class="muted">-</span>'}</td>`
-      +`<td class="right"><b>${money(sumThb(ga)+gFee)}</b></td>`
+      +`<td class="right">${gp.length?`<b>${money(sumThb(gp)+gFee)}</b>`:'<span class="muted">-</span>'}</td>`
       +`<td class="right">${ga.length}</td></tr>`;});
   /* แถวรวม — เดิมไม่มี ต้องเลื่อนบวกเอง ทั้งที่เป็นเลขที่ใช้บ่อยสุด */
   h+=`<tr style="background:#FFF7DF;font-weight:800"><td>${esc(P.tot)}</td>`
     +`<td class="right">${moCell(paid)}</td><td class="right">${moCell(planned)}</td>`
     +`<td class="right">${moCell(rows)}</td>`
-    +`<td class="right"${feeAll?' style="color:#B01722"':''}>${money(feeAll)}</td>`
-    +`<td class="right">${money(thbAll+feeAll)}</td>`
+    +`<td class="right"${feePaid?' style="color:#B01722"':''}>${money(feePaid)}</td>`
+    +`<td class="right">${money(thbPaid+feePaid)}</td>`
     +`<td class="right">${rows.length}</td></tr>`;
   h+='</tbody></table>';
   /* บริษัทของบิลไม่มีตารางสรุปแล้ว แต่ยังโชว์ในแท็บ Tracking บิล และใช้เป็นชื่อบนหัวใบปะหน้า
@@ -3656,27 +3659,29 @@ function exportMonthInner(){
     XLSX.utils.book_append_sheet(wb,ws,name);};
 
   // ① รายวัน
+  /* ★ ค่าธรรมเนียม + รวมจ่ายจริง = เฉพาะงวดที่ "จ่ายแล้ว" (ตรงกับหน้าจอ)
+       งวดค้างแผนยังไม่ได้โอน จึงไม่นับเป็นเงินที่จ่ายจริง */
   const d1=[['วันที่','งวดจ่ายแล้ว','บาท (จ่ายแล้ว)','งวดค้างแผน','บาท (แผน)','รวม (บาท)',
-             'ค่าธรรมเนียม','รวมจ่ายจริง','รวมหยวน (¥)','รวมดอลลาร์ ($)']];
+             'ค่าธรรมเนียม (จ่ายแล้ว)','รวมจ่ายจริง (ไม่รวมค้างแผน)','รวมหยวน (¥)','รวมดอลลาร์ ($)']];
   [...new Set(rows.map(p=>p.pay_date))].sort().forEach(d=>{
     const dp=paid.filter(p=>p.pay_date===d), dl=plan.filter(p=>p.pay_date===d), da=rows.filter(p=>p.pay_date===d);
     d1.push([d,dp.length,sT(dp),dl.length,sT(dl),sT(dp)+sT(dl),
-             sF(da),+(sT(da)+sF(da)).toFixed(2),sY(da),sU(da)]);});
+             sF(dp),+(sT(dp)+sF(dp)).toFixed(2),sY(da),sU(da)]);});
   d1.push([P.tot,paid.length,sT(paid),plan.length,sT(plan),sT(rows),
-           sF(rows),+(sT(rows)+sF(rows)).toFixed(2),sY(rows),sU(rows)]);
-  add('รายวัน',d1,[{wch:12},{wch:13},{wch:15},{wch:13},{wch:14},{wch:14},{wch:12},{wch:13},{wch:14},{wch:15}]);
+           sF(paid),+(sT(paid)+sF(paid)).toFixed(2),sY(rows),sU(rows)]);
+  add('รายวัน',d1,[{wch:12},{wch:13},{wch:15},{wch:13},{wch:14},{wch:14},{wch:18},{wch:21},{wch:14},{wch:15}]);
 
   // ② จ่ายในนาม  (ชีท "รายบริษัท" ตัดออกแล้ว ให้ตรงกับหน้าจอ)
   const d3=[['จ่ายในนาม','จ่ายแล้ว (บาท)','ค้างแผน (บาท)','รวม (บาท)',
-             'ค่าธรรมเนียม','รวมจ่ายจริง','รวมหยวน (¥)','รวมดอลลาร์ ($)','จำนวนงวด']];
+             'ค่าธรรมเนียม (จ่ายแล้ว)','รวมจ่ายจริง (ไม่รวมค้างแผน)','รวมหยวน (¥)','รวมดอลลาร์ ($)','จำนวนงวด']];
   [...new Set(rows.map(p=>p.pay_type||'(ยังไม่ระบุ)'))].forEach(pt=>{
     const g=p=>((p.pay_type||'(ยังไม่ระบุ)')===pt);
-    const ga=rows.filter(g);
-    d3.push([pt,sT(paid.filter(g)),sT(plan.filter(g)),sT(ga),
-             sF(ga),+(sT(ga)+sF(ga)).toFixed(2),sY(ga),sU(ga),ga.length]);});
+    const ga=rows.filter(g), gp=paid.filter(g);
+    d3.push([pt,sT(gp),sT(plan.filter(g)),sT(ga),
+             sF(gp),+(sT(gp)+sF(gp)).toFixed(2),sY(ga),sU(ga),ga.length]);});
   d3.push([P.tot,sT(paid),sT(plan),sT(rows),
-           sF(rows),+(sT(rows)+sF(rows)).toFixed(2),sY(rows),sU(rows),rows.length]);
-  add('จ่ายในนาม',d3,[{wch:16},{wch:16},{wch:16},{wch:14},{wch:12},{wch:13},{wch:14},{wch:15},{wch:11}]);
+           sF(paid),+(sT(paid)+sF(paid)).toFixed(2),sY(rows),sU(rows),rows.length]);
+  add('จ่ายในนาม',d3,[{wch:16},{wch:16},{wch:16},{wch:14},{wch:18},{wch:21},{wch:14},{wch:15},{wch:11}]);
 
   // ③ รายละเอียดทุกงวด
   const ST={planned:'วางแผน',submitted:'ส่งยอด',paid:'จ่ายแล้ว'};
@@ -3685,14 +3690,18 @@ function exportMonthInner(){
   rows.slice().sort((a,b)=>String(a.pay_date||'').localeCompare(String(b.pay_date||''))).forEach(p=>{
     const b=billOf(p.bill_id);
     const thb=+thbOf(p).toFixed(2), fee=+p.fee||0;
+    /* รวมจ่ายจริงรายบรรทัด — งวดที่ยังไม่จ่ายเว้นว่างไว้ ไม่ใส่เลขให้เข้าใจผิดว่าโอนแล้ว */
     d4.push([p.pay_date||'',b.po_number||'',b.company||'',b.vendor||'',b.sku||'',p.installment||'',
       p.pay_type||'',p.payee||'',+p.amount||0,b.currency||'CNY',+p.rate||'',
-      thb,fee,+(thb+fee).toFixed(2),p.channel||'',slipCount(p),ST[p.status]||p.status,
+      thb,fee,(p.status==='paid'?+(thb+fee).toFixed(2):''),p.channel||'',slipCount(p),ST[p.status]||p.status,
       p.responsible||'',p.note||'']);});
-  /* แถวรวมปิดท้าย — เว้น 1 บรรทัดก่อน เพื่อให้กรอง/Pivot ได้โดยแถวรวมไม่ปนเข้าไป */
+  /* แถวรวมปิดท้าย — เว้น 1 บรรทัดก่อน เพื่อให้กรอง/Pivot ได้โดยแถวรวมไม่ปนเข้าไป
+     แยก 2 บรรทัด: "จ่ายจริง" นับเฉพาะงวดที่จ่ายแล้ว · อีกบรรทัดคือยอดรวมทั้งช่วงไว้กระทบยอด */
   d4.push([]);
-  d4.push(['รวมทั้งหมด',rows.length+' งวด','','','','','','','','','',
-           sT(rows),sF(rows),+(sT(rows)+sF(rows)).toFixed(2),'','','','','']);
+  d4.push(['รวมเฉพาะจ่ายแล้ว',paid.length+' งวด','','','','','','','','','',
+           sT(paid),sF(paid),+(sT(paid)+sF(paid)).toFixed(2),'','','','','']);
+  d4.push(['รวมทั้งช่วง (รวมค้างแผน)',rows.length+' งวด','','','','','','','','','',
+           sT(rows),sF(rows),'','','','','','']);
   add('รายละเอียด',d4,[{wch:11},{wch:11},{wch:12},{wch:22},{wch:20},{wch:14},{wch:12},{wch:28},
     {wch:12},{wch:8},{wch:8},{wch:13},{wch:12},{wch:13},{wch:20},{wch:8},{wch:10},{wch:14},{wch:22}]);
 
