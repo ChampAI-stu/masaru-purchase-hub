@@ -1568,6 +1568,14 @@ const APPS_FALLBACK = [
     desc:'ขอ/สั่งซื้อสินค้าตัวอย่าง — เก็บรูป · หลักฐานการชำระ · สรุปค่าใช้จ่ายแยกหมวด',
     /* ⚠️ brand_lead ดูอย่างเดียว — ต้องตรงกับ sample.html และ portal_brand_lead.sql */
     url:'sample.html', roles:['purchase','pr_manager','pr_exec','executive','brand_lead'] },
+  /* 📣 แจ้งเปลี่ยนแปลงข้อมูลสินค้า (PCN)
+        เปิดให้ "ทุกบทบาท" เพราะจุดประสงค์คือให้ทีมอื่นรู้ — ไม่งั้นไม่มีประโยชน์
+        ออกใบได้เฉพาะฝ่ายจัดซื้อ (กรองในไฟล์ pcn.html + RLS ใน product_change.sql)
+        ⚠️ ต้องตรงกับ portal_add_pcn.sql */
+  { key:'pcn', icon:'📣', title:'แจ้งเปลี่ยนแปลงข้อมูลสินค้า',
+    desc:'สินค้าเปลี่ยนสเปก/แพ็กเกจ/โรงงาน → จัดซื้อออกใบแจ้ง ทีมที่เกี่ยวข้องกดรับทราบ ไม่ต้องถามกันไปมา',
+    url:'pcn.html',
+    roles:['purchase','pr_manager','pr_exec','executive','marketing','marketing_lead','brand_lead','shipping'] },
   /* 📕 เครื่องมือ PDF — เว็บนอก (คนละ repo) จึงใส่ URL เต็มและเปิดแท็บใหม่เสมอ */
   { key:'pdf', icon:'📕', title:'ระบบจัดการเอกสาร PDF',
     desc:'รวม · แยก · บีบอัด · แปลงไฟล์ · ใส่ลายน้ำ — ทำในเบราว์เซอร์ ไฟล์ไม่ออกจากเครื่อง',
