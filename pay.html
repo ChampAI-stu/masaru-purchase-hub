@@ -1335,7 +1335,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 /* ⭐ ป้ายเวอร์ชันมุมขวาบน — ใช้เช็คว่าเบราว์เซอร์ของแต่ละคนโหลดไฟล์ใหม่แล้วหรือยัง
       ถ้าเห็นเลขเก่า = ยังใช้โค้ดเก่าที่ค้างใน cache → ให้กด Ctrl+Shift+R
       แก้ไฟล์ครั้งหน้าอย่าลืมบวกเลขนี้ */
-const PAY_VERSION='v10-17';
+const PAY_VERSION='v10-18';
 /* สวิตช์ขั้นตอนอนุมัติ
    false = โหมดทดสอบ — ใครแก้ได้ก็กด 'จ่ายแล้ว' ได้เลย ไม่ต้องรอผู้บริหาร
    true  = โหมดใช้งานจริง — ต้องส่งยอด แล้วผู้บริหารอนุมัติเท่านั้น */
@@ -6774,8 +6774,11 @@ function slipList(p){
 }
 function itemThumb(it){
   const id=it.id||driveId(it.url);
+  /* ไฟล์ใน Drive ใช้รูปย่อได้หมด — PDF Drive จะวาดหน้าแรกมาให้ (เหมือนหน้าพิมพ์)
+     จะได้เห็นว่าเป็นหลักฐานใบไหน ไม่ใช่เห็นแค่ไอคอน 📄 เฉย ๆ */
+  if(id)return 'https://drive.google.com/thumbnail?id='+id+'&sz=w400';
   if(/pdf/i.test(it.mime||'')||/\.pdf(\?|$)/i.test(it.url||''))return '';
-  return id?('https://drive.google.com/thumbnail?id='+id+'&sz=w400'):(it.url||'');
+  return it.url||'';
 }
 function openSlip(pid){
   SLIP_PID=pid;
@@ -6804,6 +6807,8 @@ function renderSlipList(){
         <div style="font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.name||'ไฟล์ '+(i+1))}</div>
         <a href="${esc(it.open||it.url)}" target="_blank" rel="noopener" class="muted" style="font-size:11px">เปิดต้นฉบับ ↗</a>
       </div>
+      <button class="btn mini ghost" id="slcp${i}" onclick="copySlipItemImg(${i})"
+        title="คัดลอกเป็นรูปภาพ (PDF ก็ได้)">📋</button>
       <button class="btn mini ghost" onclick="moveSlipItem(${i},-1)" ${i===0?'disabled':''}>↑</button>
       <button class="btn mini red" onclick="delSlipItem(${i})">✕</button>
     </div>`;}).join('');
@@ -6865,6 +6870,191 @@ function fileToB64(f){
     r.readAsDataURL(f);
   });
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   📋 คัดลอกหลักฐานเป็นรูปภาพ  (รองรับ PDF ด้วย)
+   ───────────────────────────────────────────────────────────────
+   ปัญหาเดิม: หลักฐานที่แนบมาเป็น PDF จะคัดลอกเป็นรูปไม่ได้เลย
+   - กดคลิกขวาที่ตัวอย่าง → ได้แค่ไอคอน ไม่ใช่หลักฐาน
+   - ลากจากหน้าต่างพรีวิวของ Drive → เป็น iframe คนละเว็บ ก๊อปไม่ออก
+   - ต่อให้โหลด PDF มาได้ เบราว์เซอร์ก็วาง PDF ลงแชตเป็นรูปไม่ได้
+
+   วิธีแก้: ดึง "ตัวไฟล์จริง" มา → ถ้าเป็น PDF วาดทุกหน้าลงผืนผ้าใบ
+   ต่อกันเป็นรูปเดียว → เขียนลงคลิปบอร์ดเป็น PNG
+   ถ้าเบราว์เซอร์ไม่ให้เขียนคลิปบอร์ด จะบันทึกเป็นไฟล์ .png ให้แทน
+
+   ⚠️ ไฟล์ใน Google Drive ดึงตรง ๆ ด้วย fetch ไม่ได้ (โดน CORS บล็อก)
+      ต้องผ่าน Apps Script — ต้อง Deploy Code.gs ตั้งแต่ v4-fetch ขึ้นไป
+   ═══════════════════════════════════════════════════════════════ */
+const PDFJS_SRC='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+const PDFJS_WRK='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+const CP_MAX_PAGE=12;      /* PDF ยาวมากก็เอาแค่ 12 หน้าแรก กันเบราว์เซอร์ค้าง */
+const CP_MAX_W=1700;       /* ความกว้างรูปผลลัพธ์ (px) — คมพอสำหรับงานเอกสาร */
+let PDFJS_P=null, CP_BUSY=false;
+
+/* โหลดตัวอ่าน PDF ตอนที่ต้องใช้จริงเท่านั้น — จะได้ไม่ถ่วงตอนเปิดหน้า */
+function loadPdfJs(){
+  if(window.pdfjsLib){
+    try{window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS_WRK;}catch(e){}
+    return Promise.resolve(window.pdfjsLib);
+  }
+  if(PDFJS_P)return PDFJS_P;
+  PDFJS_P=new Promise((res,rej)=>{
+    const s=document.createElement('script'); s.src=PDFJS_SRC;
+    s.onload=()=>{
+      if(!window.pdfjsLib){PDFJS_P=null;return rej(new Error('โหลดตัวอ่าน PDF ไม่สำเร็จ'));}
+      try{window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS_WRK;}catch(e){}
+      res(window.pdfjsLib);
+    };
+    s.onerror=()=>{PDFJS_P=null;rej(new Error('โหลดตัวอ่าน PDF ไม่ได้ — เช็คอินเทอร์เน็ตแล้วลองใหม่'));};
+    document.head.appendChild(s);
+  });
+  return PDFJS_P;
+}
+function b64ToBlob(b64,mime){
+  const bin=atob(String(b64||'')), u=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+  return new Blob([u],{type:mime||'application/octet-stream'});
+}
+function cpIsPdf(mime,name,url){
+  return /pdf/i.test(mime||'')||/\.pdf(\?|$)/i.test(url||'')||/\.pdf$/i.test(name||'');
+}
+/* หยิบตัวไฟล์จริงมาให้ได้ — ไฟล์ Drive ผ่าน Apps Script · ไฟล์ในระบบดึงตรง */
+async function cpGetFile(it){
+  const id=it.id||driveId(it.url||it.open||'');
+  if(id){
+    if(!gasUrl())throw new Error('ไฟล์นี้อยู่ใน Google Drive แต่ยังไม่ได้ตั้งค่าที่เก็บสลิป\nกดปุ่ม ⚙️ ที่เก็บสลิป ด้านบนก่อน');
+    let j;
+    try{ j=await gasCall({action:'fetch',fileId:id}); }
+    catch(e){
+      throw new Error(/ไม่มีข้อมูลไฟล์|ไม่รู้จัก|action/i.test(e.message||'')
+        ? 'Apps Script ยังเป็นโค้ดเก่า — เอาไฟล์ Code.gs เวอร์ชัน v4-fetch ไปวางแล้ว Deploy → New version ก่อน'
+        : e.message);
+    }
+    if(!j.data)throw new Error('ไฟล์ว่าง หรือเปิดไม่ได้');
+    return {blob:b64ToBlob(j.data,j.mime), mime:j.mime||it.mime||'', name:j.name||it.name||'หลักฐาน'};
+  }
+  const u=it.url||it.open||'';
+  if(!u)throw new Error('รายการนี้ไม่มีไฟล์');
+  let r;
+  try{ r=await fetch(u,{mode:'cors'}); }
+  catch(e){ throw new Error('ดึงไฟล์มาไม่ได้ — เบราว์เซอร์บล็อกการอ่านไฟล์ข้ามเว็บ\nลองกด “เปิดต้นฉบับ ↗” แล้วบันทึกรูปเอง'); }
+  if(!r.ok)throw new Error('ดึงไฟล์ไม่สำเร็จ (HTTP '+r.status+')');
+  const b=await r.blob();
+  return {blob:b, mime:b.type||it.mime||'', name:it.name||'หลักฐาน'};
+}
+function cpCanvasPng(c){
+  return new Promise((res,rej)=>{
+    try{ c.toBlob(b=>b?res(b):rej(new Error('สร้างรูปไม่สำเร็จ')),'image/png'); }
+    catch(e){ rej(new Error('สร้างรูปไม่สำเร็จ: '+e.message)); }
+  });
+}
+/* รูปธรรมดา → PNG (คลิปบอร์ดรับเฉพาะ PNG · JPG/HEIC วางไม่ได้) */
+function cpImgToPng(blob){
+  return new Promise((res,rej)=>{
+    const u=URL.createObjectURL(blob), im=new Image();
+    im.onload=async()=>{
+      try{
+        let w=im.naturalWidth||im.width, h=im.naturalHeight||im.height;
+        if(!w||!h)throw new Error('อ่านขนาดรูปไม่ได้');
+        if(w>CP_MAX_W){ h=Math.round(h*CP_MAX_W/w); w=CP_MAX_W; }
+        const c=document.createElement('canvas'); c.width=w; c.height=h;
+        const x=c.getContext('2d');
+        x.fillStyle='#fff'; x.fillRect(0,0,w,h);
+        x.drawImage(im,0,0,w,h);
+        res(await cpCanvasPng(c));
+      }catch(e){ rej(e); } finally{ URL.revokeObjectURL(u); }
+    };
+    im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('ไฟล์นี้ไม่ใช่รูปที่เบราว์เซอร์เปิดได้'));};
+    im.src=u;
+  });
+}
+/* PDF → PNG · วาดทุกหน้าต่อกันลงมาเป็นรูปเดียว จะได้ก๊อปทีเดียวครบใบ */
+async function cpPdfToPng(blob,say){
+  const lib=await loadPdfJs();
+  const buf=await blob.arrayBuffer();
+  const doc=await lib.getDocument({data:new Uint8Array(buf)}).promise;
+  const n=Math.min(doc.numPages,CP_MAX_PAGE), pages=[];
+  for(let i=1;i<=n;i++){
+    say('กำลังวาดหน้า '+i+'/'+n+'…');
+    const pg=await doc.getPage(i);
+    const v1=pg.getViewport({scale:1});
+    const sc=Math.min(2.4, Math.max(1, CP_MAX_W/(v1.width||CP_MAX_W)));
+    const vp=pg.getViewport({scale:sc});
+    const c=document.createElement('canvas');
+    c.width=Math.ceil(vp.width); c.height=Math.ceil(vp.height);
+    const x=c.getContext('2d');
+    x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height);
+    await pg.render({canvasContext:x,viewport:vp}).promise;
+    pages.push(c);
+  }
+  if(!pages.length)throw new Error('PDF นี้ไม่มีหน้าให้วาด');
+  if(pages.length===1)return await cpCanvasPng(pages[0]);
+  const gap=14, W=pages.reduce((m,c)=>Math.max(m,c.width),0);
+  const H=pages.reduce((t,c)=>t+c.height,0)+gap*(pages.length-1);
+  const out=document.createElement('canvas'); out.width=W; out.height=H;
+  const ox=out.getContext('2d');
+  ox.fillStyle='#E3E8F0'; ox.fillRect(0,0,W,H);
+  let y=0;
+  pages.forEach(c=>{ ox.drawImage(c,Math.round((W-c.width)/2),y); y+=c.height+gap; });
+  return await cpCanvasPng(out);
+}
+async function cpToPng(it,say){
+  say('กำลังดึงไฟล์…');
+  const f=await cpGetFile(it);
+  if(cpIsPdf(f.mime,f.name,it.url||it.open)){
+    say('กำลังเปิด PDF…');
+    return await cpPdfToPng(f.blob,say);
+  }
+  say('กำลังแปลงเป็นรูป…');
+  return await cpImgToPng(f.blob);
+}
+function cpDownload(blob,name){
+  const u=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=u; a.download=name; a.style.display='none';
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(u);a.remove();},2000);
+}
+function cpPngName(it){
+  const base=String(it.name||'หลักฐาน').replace(/\.[^.]+$/,'').trim()||'หลักฐาน';
+  return base+'.png';
+}
+/* ปุ่มเดียวจบ — mode: 'copy' (คัดลอก) หรือ 'dl' (บันทึกเป็นไฟล์รูป) */
+async function cpRun(it,mode,msgId,btnId){
+  if(!it)return;
+  if(CP_BUSY)return toast('กำลังทำรายการก่อนหน้าอยู่ — รอสักครู่');
+  CP_BUSY=true;
+  const m=msgId&&$(msgId), btn=btnId&&$(btnId), old=btn?btn.textContent:'';
+  const say=t=>{ if(m)m.textContent=t; };
+  if(btn){btn.disabled=true; btn.textContent='⏳ กำลังทำ…';}
+  let png=null;
+  const make=()=>(png||(png=cpToPng(it,say)));
+  try{
+    if(mode==='copy'&&window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write){
+      /* ส่ง Promise เข้า ClipboardItem ตรง ๆ — Safari ต้องแบบนี้เท่านั้น
+         ไม่งั้นมันถือว่า "ไม่ได้เกิดจากการกดปุ่ม" แล้วปฏิเสธ */
+      try{
+        await navigator.clipboard.write([new ClipboardItem({'image/png':make()})]);
+        say(''); toast('คัดลอกรูปแล้ว ✅ กด Ctrl+V วางในแชตได้เลย');
+        return;
+      }catch(e){ /* ตกไปทางบันทึกไฟล์ข้างล่าง */ }
+    }
+    const b=await make();
+    cpDownload(b,cpPngName(it));
+    say('');
+    toast(mode==='copy'?'เบราว์เซอร์นี้คัดลอกรูปไม่ได้ — บันทึกเป็นไฟล์ .png ให้แทน 📥'
+                       :'บันทึกเป็นไฟล์ .png แล้ว 📥');
+  }catch(e){
+    say('');
+    alert('ทำหลักฐานเป็นรูปไม่สำเร็จ\n\n'+(e&&e.message||e));
+  }finally{
+    CP_BUSY=false;
+    if(btn){btn.disabled=false; btn.textContent=old;}
+  }
+}
+function copySlipImg(){ return cpRun(SV_ITEMS[SV_IDX],'copy','svCopyMsg','svCopy'); }
+function dlSlipImg(){   return cpRun(SV_ITEMS[SV_IDX],'dl','svCopyMsg','svDl'); }
+function copySlipItemImg(i){ return cpRun(SLIP_ITEMS[i],'copy','sl_stat','slcp'+i); }
 /* ---------- ตั้งค่าที่เก็บสลิป ---------- */
 function openGasCfg(){
   const c=gasCfg();
@@ -7045,7 +7235,17 @@ function renderSv(){
     : (id ? `<iframe src="https://drive.google.com/file/d/${esc(id)}/preview" style="width:100%;height:66vh;border:0"></iframe>`
       : (pdf ? `<iframe src="${esc(it.url)}" style="width:100%;height:66vh;border:0"></iframe>`
              : `<img src="${esc(it.url)}" style="max-width:100%;max-height:66vh;display:block;margin:0 auto;border-radius:6px">`));
-  $('svBody').innerHTML=body+(SV_ITEMS.length>1?`
+  /* 📋 แถบคัดลอก — ใช้ได้ทั้งรูปและ PDF (PDF จะวาดทุกหน้าต่อกันเป็นรูปเดียว) */
+  const bar=`<div class="row" style="justify-content:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+      <button class="btn mini" id="svCopy" onclick="copySlipImg()"
+        title="คัดลอกหลักฐานเป็นรูปภาพ — วางในแชตได้เลย">📋 คัดลอกเป็นรูป</button>
+      <button class="btn mini ghost" id="svDl" onclick="dlSlipImg()"
+        title="บันทึกหลักฐานเป็นไฟล์รูป .png">⬇️ บันทึกเป็นรูป</button>
+      <span class="muted" id="svCopyMsg" style="font-size:12px"></span>
+    </div>`
+    +(pdf?`<div class="muted" style="text-align:center;font-size:11.5px;margin:-4px 0 8px">
+        📄 ไฟล์นี้เป็น PDF — ปุ่มด้านบนจะแปลงทุกหน้าเป็นรูปเดียวให้ (สูงสุด ${CP_MAX_PAGE} หน้า)</div>`:'');
+  $('svBody').innerHTML=bar+body+(SV_ITEMS.length>1?`
     <div class="row" style="justify-content:center;align-items:center;gap:14px;margin-top:10px">
       <button class="btn mini ghost" onclick="svGo(-1)">← ก่อนหน้า</button>
       <b style="font-size:12.5px">${SV_IDX+1} / ${SV_ITEMS.length}</b>
