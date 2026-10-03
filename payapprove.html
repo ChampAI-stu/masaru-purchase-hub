@@ -174,7 +174,7 @@ tr:nth-child(even) td{background:#F8FAFD}
   <div class="sub">| แจ้งขออนุมัติการชำระเงิน</div>
   <div class="sp"></div>
   <span class="pill-top" id="rolePill">—</span>
-  <span class="pill-top" title="เวอร์ชันไฟล์">v09-66</span>
+  <span class="pill-top" title="เวอร์ชันไฟล์">v09-67</span>
   <button class="btn-top" id="portalBtn">🏠 หน้ารวม</button>
   <button class="logout-btn" id="logoutBtn">ออกจากระบบ</button>
 </div>
@@ -209,12 +209,24 @@ tr:nth-child(even) td{background:#F8FAFD}
         <select id="fType" style="max-width:170px" onchange="PAGE=1;renderList()">
           <option value="">— ทุกประเภทการจ่าย —</option>
         </select>
-        <input type="month" id="fMonth" style="max-width:160px" onchange="PAGE=1;renderList()">
+        <select id="fDateOn" style="max-width:150px" onchange="PAGE=1;renderList()"
+          title="จะกรองวันที่โดยยึดวันไหน">
+          <option value="req">📅 ตามวันที่ยื่น</option>
+          <option value="due">⏰ ตามกำหนดชำระ</option>
+        </select>
+        <input type="month" id="fMonth" style="max-width:160px" onchange="PAGE=1;$('fDay').value='';renderList()"
+          title="กรองทั้งเดือน">
+        <span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap">
+          <input type="date" id="fDay" style="max-width:158px" onchange="PAGE=1;renderList()"
+            title="เลือกวันเดียว — เลือกแล้วจะใช้แทนตัวกรองเดือน">
+          <button class="btn mini ghost" onclick="fDayToday()" title="ดูเฉพาะคำขอของวันนี้">วันนี้</button>
+        </span>
         <button class="btn ghost" onclick="clearFilter()">ล้างตัวกรอง</button>
         <button class="btn ghost" onclick="openPfCfg()"
           title="ที่เก็บไฟล์หลักฐาน + ปฏิทิน Google">⚙️ ตั้งค่า</button>
         <button class="btn" id="newBtn" onclick="openReq()">+ สร้างคำขอ</button>
       </div>
+      <div class="muted" id="fScope" style="font-size:12px;margin:2px 0 8px"></div>
       <div class="scroll"><div id="listBody"></div></div>
     </div>
   </div>
@@ -1492,7 +1504,15 @@ function goTab(t){
 }
 function clearFilter(){
   $('fSearch').value='';$('fStatus').value='';$('fType').value='';$('fMonth').value='';
+  if($('fDay'))$('fDay').value='';
+  if($('fDateOn'))$('fDateOn').value='req';
   PAGE=1;renderList();
+}
+/* ★ ปุ่ม "วันนี้" — ใช้บ่อยสุด กดทีเดียวเห็นคำขอของวันนี้เลย ไม่ต้องไล่เลือกปฏิทิน */
+function fDayToday(){
+  $('fDay').value=todayStr();
+  $('fMonth').value='';            /* เลือกวันเดียวแล้ว ตัวกรองเดือนไม่มีผล — ล้างทิ้งกันสับสน */
+  PAGE=1; renderList();
 }
 function fillTypeFilter(){
   const ts=[...new Set(REQS.map(r=>r.pay_type).filter(Boolean))].sort();
@@ -1527,14 +1547,29 @@ function renderKpi(){
 /* ==================================================================
    รายการ
    ================================================================== */
+/* วันที่ที่ใช้กรอง — เลือกได้ว่ายึด "วันที่ยื่น" หรือ "กำหนดชำระ"
+   ค่าตั้งต้นคือวันที่ยื่น เหมือนของเดิม ไม่กระทบคนที่ใช้อยู่ */
+function fDateOf(r){
+  return String((($('fDateOn')&&$('fDateOn').value)==='due' ? r.due_date : r.req_date) || '');
+}
 function filtered(){
   const q=($('fSearch').value||'').toLowerCase();
-  const st=$('fStatus').value, ty=$('fType').value, mo=$('fMonth').value;
-  return REQS.filter(r=>
-    (!st||r.status===st)&&(!ty||r.pay_type===ty)&&
-    (!mo||String(r.req_date||'').slice(0,7)===mo)&&
-    (!q||((r.req_no||'')+' '+(r.requester||'')+' '+(r.requester_name||'')+' '
-        +(r.items||[]).map(i=>i.po+' '+i.sku).join(' ')).toLowerCase().includes(q)));
+  const st=$('fStatus').value, ty=$('fType').value;
+  const mo=$('fMonth').value, day=($('fDay')&&$('fDay').value)||'';
+  /* ★ เลือกวันเดียว = ชนะตัวกรองเดือนเสมอ (เจาะจงกว่า) */
+  return REQS.filter(r=>{
+    if(st&&r.status!==st)return false;
+    if(ty&&r.pay_type!==ty)return false;
+    const d=fDateOf(r);
+    if(day){ if(d.slice(0,10)!==day)return false; }
+    else if(mo){ if(d.slice(0,7)!==mo)return false; }
+    if(q){
+      const hay=((r.req_no||'')+' '+(r.requester||'')+' '+(r.requester_name||'')+' '
+        +(r.items||[]).map(i=>i.po+' '+i.sku).join(' ')).toLowerCase();
+      if(!hay.includes(q))return false;
+    }
+    return true;
+  });
 }
 function pager(total,page,fn){
   const pages=Math.max(1,Math.ceil(total/PER));
@@ -1591,8 +1626,24 @@ function renderList(){
   const rows=filtered();
   const pages=Math.max(1,Math.ceil(rows.length/PER));
   if(PAGE>pages)PAGE=pages; if(PAGE<1)PAGE=1;
+  paintScope(rows.length);
   $('listBody').innerHTML=reqTable(rows.slice((PAGE-1)*PER,PAGE*PER),
     {pager:pager(rows.length,PAGE,'listGo')});
+}
+/* บอกให้ชัดว่ากำลังดูช่วงไหน + ยอดรวมของสิ่งที่กรองอยู่
+   กันเข้าใจผิดว่า "เห็นเท่านี้ = มีเท่านี้" ตอนที่ตัวกรองวันเดียวเปิดอยู่ */
+function paintScope(n){
+  const box=$('fScope'); if(!box)return;
+  const day=($('fDay')&&$('fDay').value)||'', mo=$('fMonth').value;
+  const basis=(($('fDateOn')&&$('fDateOn').value)==='due')?'กำหนดชำระ':'วันที่ยื่น';
+  /* ช่องวันเดียวมีค่า → ช่องเดือนไม่มีผล ทำให้จางลงเพื่อบอกด้วยสายตา */
+  if($('fMonth')){ $('fMonth').style.opacity=day?'.45':'1'; $('fMonth').title=day
+    ? 'ตอนนี้ใช้ตัวกรอง "วันเดียว" อยู่ — ช่องเดือนไม่มีผล' : 'กรองทั้งเดือน'; }
+  if(!day&&!mo){ box.innerHTML=`<span class="pill" style="background:#EEF2F7;color:#1F3864">`
+    +`📜 กำลังดู: ทุกคำขอในระบบ (${n} ใบ)</span>`; return; }
+  box.innerHTML = day
+    ? `<span class="pill" style="background:#EDE7F6;color:#5E35B1">📅 กำลังดู: ${basis} วันที่ <b>${esc(thDate(day))}</b> (${n} ใบ)</span>`
+    : `<span class="pill" style="background:#EEF2F7;color:#1F3864">🗓️ กำลังดู: ${basis} เดือน <b>${esc(mo)}</b> (${n} ใบ)</span>`;
 }
 function renderMine(){
   const rank=r=>r.status==='rejected'?0:(r.status==='draft'?1:2);
